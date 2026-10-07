@@ -3,7 +3,7 @@ import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { archSplineKnots, SPLINE_PEAK_SOURCE } from '../../../helpers/math/vibeMath';
 import { clamp } from '../../../helpers/math/simpleGeometry';
-import { ArchCurve, ArchSpline, ArchSplinePoint, ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, RenderToggleKey } from '../../ceruti-types';
+import { ArchCurve, ArchSpline, ArchSplinePoint, ArchingParams, CerutiViewFlags, EnricoCerutiParams, FlutingParams, RenderToggleKey } from '../../ceruti-types';
 import { clampSplinePointHeights, defaultArchingParams, maxRibTaperMm, splinePeakRow } from '../../calculation/arching/ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
 import { calculateOuterArcs, solveNeckForProfile } from '../../calculation/outline/ceruti-calcs';
@@ -40,7 +40,6 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
-  @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
   protected readonly peakSource = SPLINE_PEAK_SOURCE;
 
@@ -232,7 +231,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
 
   private splineHighlightFor(plate: 'top' | 'bottom'): HighlightedSplinePoint | null {
     return this.highlightedPlate === plate
-      ? { source: this.highlightedSource, color: plate === 'top' ? this.colors.archTop : this.colors.archBack }
+      ? { source: this.highlightedSource, color: plate === 'top' ? this.pal.ink(0).css : this.pal.ink(2).css }
       : null;
   }
 
@@ -247,7 +246,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     const p = this.params;
     const { neck, scroll } = this.showNeck ? solveNeckForProfile(p, this.solved.top) : { neck: false, scroll: false };
     const sideX = sideViewOffsetX(p);
-    const section = renderBodySideProfile(p, this.colors, {
+    const section = renderBodySideProfile(p, this.pal, {
       solved: this.solved,
       gouge: { top: this.gouge('top'), bottom: this.gouge('bottom') },
       highlight: plate => this.splineHighlightFor(plate),
@@ -259,7 +258,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
         g: g.append('g').attr('transform', `translate(${sideX},0)`),
         ui: ui.append('g').attr('transform', `translate(${sideX},0)`),
       };
-      if (neck) renderNeck(p, this.colors, { strings: false, bridge: false, scroll, ground: this.colors.neckGround })(side.g, side.ui);
+      if (neck) renderNeck(p, this.pal, { strings: false, bridge: false, scroll, ground: this.pal.neutral.lightness(-0.3).css })(side.g, side.ui);
       section(side.g, side.ui);
     }];
   }

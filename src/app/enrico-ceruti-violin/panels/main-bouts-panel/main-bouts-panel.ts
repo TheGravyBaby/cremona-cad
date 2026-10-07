@@ -8,12 +8,13 @@ import { STROKE_WEIGHT } from '../../../theme/strokes';
 import { arcFromCircle, Arc, Rectangle } from '../../../models/types';
 import { calculateInnerOutline, calculateMainBouts, MainBoutFailure, violNeckJoinLimit } from '../../calculation/outline/ceruti-calcs';
 import { violNeckCap } from '../../calculation/outline/ceruti-paths';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
+import { CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderFrontInnerProfile } from '../../renders/front-profile.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { HighlightedArc } from '../../renders/render-constants';
 import { violNeckJoinExceeded } from '../../../docs/conditions';
+import { PanelPalette } from '../../../theme/palette';
 
 export interface MainBoutsViewFlags {
   showModuleCircles: boolean;
@@ -34,7 +35,6 @@ export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'renderOuterPath'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
-  @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   protected readonly nearestFraction = nearestFraction;
@@ -90,7 +90,7 @@ export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
   public buildRun(): RenderLayer[] {
     const p = this.params;
     const f = this.flags;
-    const c = this.colors;
+    const c = this.pal;
     const highlighted = this.highlighted;
 
     const failures = calculateMainBouts(p);
@@ -101,7 +101,7 @@ export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
       renderBounds(p, f.showModuleGuides),
       renderBoutBouts(p, c, f.showModuleGuides),
       renderMainBouts(p, c, f, true, highlighted, failures),
-      renderSolveFailures(failures, c.pathError, true),
+      renderSolveFailures(failures, c.alert.css, true),
     ];
   }
 }
@@ -145,7 +145,7 @@ const renderViolNeck = (p: EnricoCerutiParams, d: number, color: string) => (g: 
 
 export const renderMainBouts = (
   params: EnricoCerutiParams,
-  colors: CerutiColors,
+  pal: PanelPalette,
   flags: MainBoutsViewFlags,
   currentModule: boolean,
   highlighted: HighlightedArc | null,
@@ -168,48 +168,48 @@ export const renderMainBouts = (
 
   if ((currentModule && flags.showModuleCircles) || flags.showAllCircles) {
     if (upper) {
-      renderCircle(p.bouts.U0!, colors.upperBout)(g, ui);
-      renderCircle(p.bouts.U1!, colors.upperBout, true)(g, ui);
+      renderCircle(p.bouts.U0!, pal.ink(1).css)(g, ui);
+      renderCircle(p.bouts.U1!, pal.ink(1).css, true)(g, ui);
     }
     if (lower) {
-      renderCircle(p.bouts.L1!, colors.lowerBout, true)(g, ui);
-      renderCircle(p.bouts.L0!, colors.lowerBout)(g, ui);
+      renderCircle(p.bouts.L1!, pal.ink(2).css, true)(g, ui);
+      renderCircle(p.bouts.L0!, pal.ink(2).css)(g, ui);
     }
   }
 
   if ((currentModule && flags.showModuleArcs) || flags.showAllArcs) {
     if (params.options.useViolNeck) {
       const mirrorV0 = flipArcAboutY(p.viol.V0!);
-      renderArcFromArcFancy(p.viol.V0!, colors.violNeck)(g, ui);
-      renderArcFromArcFancy(mirrorV0, colors.violNeck)(g, ui);
+      renderArcFromArcFancy(p.viol.V0!, pal.ink(1).saturation(0.4).lightness(-0.25).css)(g, ui);
+      renderArcFromArcFancy(mirrorV0, pal.ink(1).saturation(0.4).lightness(-0.25).css)(g, ui);
       // V0 draws in full: it is seated against the join, so its start is the tangency and there
       // is nothing for the join to trim off
-      renderViolNeckJoin(p, 0, colors.violNeck)(g, ui);
+      renderViolNeckJoin(p, 0, pal.ink(1).saturation(0.4).lightness(-0.25).css)(g, ui);
     }
 
     if (upper) {
       if (params.options.useViolNeck) {
-        renderArcFromArcFancy(p.bouts.U0!, colors.upperBout)(g, ui);
-        renderArcFromArcFancy(flipArcAboutY(p.bouts.U0!), colors.upperBout)(g, ui);
+        renderArcFromArcFancy(p.bouts.U0!, pal.ink(1).css)(g, ui);
+        renderArcFromArcFancy(flipArcAboutY(p.bouts.U0!), pal.ink(1).css)(g, ui);
       } else {
-        renderArcFromArcFancy(wideTopArc, colors.upperBout)(g, ui);
+        renderArcFromArcFancy(wideTopArc, pal.ink(1).css)(g, ui);
       }
-      renderArcFromArcFancy(p.bouts.U1!, colors.upperBoutSide)(g, ui);
-      renderArcFromArcFancy(mirroredU1Arc, colors.upperBoutSide)(g, ui);
+      renderArcFromArcFancy(p.bouts.U1!, pal.ink(1).lightness(0.45).css)(g, ui);
+      renderArcFromArcFancy(mirroredU1Arc, pal.ink(1).lightness(0.45).css)(g, ui);
     }
 
     if (lower) {
-      renderArcFromArcFancy(wideBottomArc, colors.lowerBout)(g, ui);
-      renderArcFromArcFancy(p.bouts.L1!, colors.lowerBoutSide)(g, ui);
-      renderArcFromArcFancy(mirroredL1Arc, colors.lowerBoutSide)(g, ui);
+      renderArcFromArcFancy(wideBottomArc, pal.ink(2).css)(g, ui);
+      renderArcFromArcFancy(p.bouts.L1!, pal.ink(2).lightness(0.45).css)(g, ui);
+      renderArcFromArcFancy(mirroredL1Arc, pal.ink(2).lightness(0.45).css)(g, ui);
     }
   } else {
     // in their own colours on this panel, where their fields are; grey under a later panel's work
-    const top = currentModule ? colors.upperBout : colors.trace;
-    const topSide = currentModule ? colors.upperBoutSide : colors.trace;
-    const bottom = currentModule ? colors.lowerBout : colors.trace;
-    const bottomSide = currentModule ? colors.lowerBoutSide : colors.trace;
-    if (params.options.useViolNeck) renderViolNeck(p, 0, currentModule ? colors.violNeck : colors.trace)(g, ui);
+    const top = currentModule ? pal.ink(1).css : pal.neutral.css;
+    const topSide = currentModule ? pal.ink(1).lightness(0.45).css : pal.neutral.css;
+    const bottom = currentModule ? pal.ink(2).css : pal.neutral.css;
+    const bottomSide = currentModule ? pal.ink(2).lightness(0.45).css : pal.neutral.css;
+    if (params.options.useViolNeck) renderViolNeck(p, 0, currentModule ? pal.ink(1).saturation(0.4).lightness(-0.25).css : pal.neutral.css)(g, ui);
 
     if (upper) {
       if (params.options.useViolNeck) {
@@ -230,11 +230,11 @@ export const renderMainBouts = (
   }
 
   if (flags.renderOuterPath) {
-    const outerTopColor = currentModule ? colors.upperBout : colors.trace;
-    const outerTopSideColor = currentModule ? colors.upperBoutSide : colors.trace;
-    const outerBotColor = currentModule ? colors.lowerBout : colors.trace;
-    const outerBotSideColor = currentModule ? colors.lowerBoutSide : colors.trace;
-    const violNeckColor = currentModule ? colors.violNeck : colors.trace;
+    const outerTopColor = currentModule ? pal.ink(1).css : pal.neutral.css;
+    const outerTopSideColor = currentModule ? pal.ink(1).lightness(0.45).css : pal.neutral.css;
+    const outerBotColor = currentModule ? pal.ink(2).css : pal.neutral.css;
+    const outerBotSideColor = currentModule ? pal.ink(2).lightness(0.45).css : pal.neutral.css;
+    const violNeckColor = currentModule ? pal.ink(1).saturation(0.4).lightness(-0.25).css : pal.neutral.css;
     if (params.options.useViolNeck) renderViolNeck(p, inset, violNeckColor)(g, ui);
 
     if (upper) {
@@ -269,17 +269,17 @@ export const renderBounds = (params: EnricoCerutiParams, render: boolean) => (g:
   }
 };
 
-export const renderBoutBouts = (params: EnricoCerutiParams, colors: CerutiColors, render: boolean) => (g: any, ui: any): void => {
+export const renderBoutBouts = (params: EnricoCerutiParams, pal: PanelPalette, render: boolean) => (g: any, ui: any): void => {
   if (!render) return;
   let p = params;
   let lowerBoutSquare = new Rectangle({ x: -p.bouts.LBW / 2, y: 0 }, { x: p.bouts.LBW / 2, y: p.bouts.LBW });
   let upperBoutSquare = new Rectangle({ x: -p.bouts.UBW / 2, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2, y: p.height });
   const inset = params.overhang + params.rib;
 
-  renderRect(lowerBoutSquare, colors.lowerBoutSide)(g, ui);
-  renderSegment({ x: -p.bouts.LBW / 2 + inset, y: 0 }, { x: -p.bouts.LBW / 2 + inset, y: p.bouts.LBW }, colors.lowerBoutSide)(g, ui);
-  renderSegment({ x: p.bouts.LBW / 2 - inset, y: 0 }, { x: p.bouts.LBW / 2 - inset, y: p.bouts.LBW }, colors.lowerBoutSide)(g, ui);
-  renderRect(upperBoutSquare, colors.upperBoutSide)(g, ui);
-  renderSegment({ x: -p.bouts.UBW / 2 + inset, y: p.height - p.bouts.UBW }, { x: -p.bouts.UBW / 2 + inset, y: p.height }, colors.upperBoutSide)(g, ui);
-  renderSegment({ x: p.bouts.UBW / 2 - inset, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2 - inset, y: p.height }, colors.upperBoutSide)(g, ui);
+  renderRect(lowerBoutSquare, pal.ink(2).lightness(0.45).css)(g, ui);
+  renderSegment({ x: -p.bouts.LBW / 2 + inset, y: 0 }, { x: -p.bouts.LBW / 2 + inset, y: p.bouts.LBW }, pal.ink(2).lightness(0.45).css)(g, ui);
+  renderSegment({ x: p.bouts.LBW / 2 - inset, y: 0 }, { x: p.bouts.LBW / 2 - inset, y: p.bouts.LBW }, pal.ink(2).lightness(0.45).css)(g, ui);
+  renderRect(upperBoutSquare, pal.ink(1).lightness(0.45).css)(g, ui);
+  renderSegment({ x: -p.bouts.UBW / 2 + inset, y: p.height - p.bouts.UBW }, { x: -p.bouts.UBW / 2 + inset, y: p.height }, pal.ink(1).lightness(0.45).css)(g, ui);
+  renderSegment({ x: p.bouts.UBW / 2 - inset, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2 - inset, y: p.height }, pal.ink(1).lightness(0.45).css)(g, ui);
 };

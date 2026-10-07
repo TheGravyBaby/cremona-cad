@@ -10,9 +10,10 @@ import { calculateOuterArcs, ensureFholePath, ensureOuterTracePaths } from '../.
 import { renderPlatePair } from '../../renders/front-profile.render';
 import { defineButton } from '../../calculation/outline/ceruti-paths';
 import { plateLayoutOffset } from '../../calculation/arching/ceruti-arch-geometry';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
+import { CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
+import { PanelPalette } from '../../../theme/palette';
 
 export interface OuterTraceViewFlags {
   showModuleArcs: boolean;
@@ -32,7 +33,6 @@ export class OuterTracePanel extends CerutiPanelBase implements OnInit {
 
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[];
-  @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
   protected readonly adjustArcEnd = adjustArcEnd;
 
@@ -54,7 +54,7 @@ export class OuterTracePanel extends CerutiPanelBase implements OnInit {
 
   public buildRun(): RenderLayer[] {
     const p = this.params;
-    const c = this.colors;
+    const c = this.pal;
 
     calculateOuterArcs(p);
     ensureOuterTracePaths(p, this.paths);
@@ -72,19 +72,19 @@ export class OuterTracePanel extends CerutiPanelBase implements OnInit {
 }
 
 // the button in the back plate's colour, over the back's grey outline, `dx` across with the back
-const renderButton = (p: EnricoCerutiParams, colors: CerutiColors, flags: OuterTraceViewFlags, dx: number) => (g: any, ui: any): void => {
+const renderButton = (p: EnricoCerutiParams, pal: PanelPalette, flags: OuterTraceViewFlags, dx: number) => (g: any, ui: any): void => {
   const button = defineButton(p);
   if (!button) return;
-  renderPath(translatePath(button.path, dx, 0), colors.archBack, STROKE_WEIGHT.trace)(g, ui);
+  renderPath(translatePath(button.path, dx, 0), pal.ink(2).css, STROKE_WEIGHT.trace)(g, ui);
   if (flags.showModuleArcs || flags.showAllArcs) {
-    renderArcFromArcFancy(arcFromCircle({ ...button.cap, x: button.cap.x + dx }, button.cap.start, button.cap.end), colors.archBack)(g, ui);
+    renderArcFromArcFancy(arcFromCircle({ ...button.cap, x: button.cap.x + dx }, button.cap.start, button.cap.end), pal.ink(2).css)(g, ui);
   }
 };
 
 /** Construction-guide arcs/circles for the outer-corner module; the trace itself is rendered from the path cache. */
 export const renderOuterTraceGuides = (
   params: EnricoCerutiParams,
-  colors: CerutiColors,
+  pal: PanelPalette,
   flags: OuterTraceViewFlags,
   currentModule: boolean,
 ) => (g: any, ui: any): void => {
@@ -94,62 +94,62 @@ export const renderOuterTraceGuides = (
   const fancy = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
   const arc = (a: Arc, color: string) => (fancy ? renderArcFromArcFancy(a, color) : renderArcFromArc(a, color, STROKE_WEIGHT.trace))(g, ui);
   if (currentModule || fancy) {
-    !p.options.useViolCornerUC && !p.options.U31DoubleArc && arc(p.outerCorners.U3!, colors.centerBoutUp);
-    !p.options.useViolCornerUC && !p.options.U31DoubleArc && arc(flipArcAboutY(p.outerCorners.U3!), colors.centerBoutUp);
+    !p.options.useViolCornerUC && !p.options.U31DoubleArc && arc(p.outerCorners.U3!, pal.ink(0).css);
+    !p.options.useViolCornerUC && !p.options.U31DoubleArc && arc(flipArcAboutY(p.outerCorners.U3!), pal.ink(0).css);
 
-    !p.options.useViolCornerUC && !p.options.C21DoubleArc && arc(p.outerCorners.C2!, colors.centerBoutUp);
-    !p.options.useViolCornerUC && !p.options.C21DoubleArc && arc(flipArcAboutY(p.outerCorners.C2!), colors.centerBoutUp);
+    !p.options.useViolCornerUC && !p.options.C21DoubleArc && arc(p.outerCorners.C2!, pal.ink(0).css);
+    !p.options.useViolCornerUC && !p.options.C21DoubleArc && arc(flipArcAboutY(p.outerCorners.C2!), pal.ink(0).css);
 
-    !p.options.useViolCornerLC && !p.options.C11DoubleArc && arc(p.outerCorners.C1!, colors.centerBoutLow);
-    !p.options.useViolCornerLC && !p.options.C11DoubleArc && arc(flipArcAboutY(p.outerCorners.C1!), colors.centerBoutLow);
-    !p.options.useViolCornerLC && !p.options.L31DoubleArc && arc(p.outerCorners.L3!, colors.centerBoutLow);
-    !p.options.useViolCornerLC && !p.options.L31DoubleArc && arc(flipArcAboutY(p.outerCorners.L3!), colors.centerBoutLow);
+    !p.options.useViolCornerLC && !p.options.C11DoubleArc && arc(p.outerCorners.C1!, pal.ink(0).lightness(0.5).css);
+    !p.options.useViolCornerLC && !p.options.C11DoubleArc && arc(flipArcAboutY(p.outerCorners.C1!), pal.ink(0).lightness(0.5).css);
+    !p.options.useViolCornerLC && !p.options.L31DoubleArc && arc(p.outerCorners.L3!, pal.ink(0).lightness(0.5).css);
+    !p.options.useViolCornerLC && !p.options.L31DoubleArc && arc(flipArcAboutY(p.outerCorners.L3!), pal.ink(0).lightness(0.5).css);
 
     if (p.options.U31DoubleArc) {
-      !p.options.useViolCornerUC && arc(p.outerCorners.U31!, colors.centerBoutUp);
-      !p.options.useViolCornerUC && arc(flipArcAboutY(p.outerCorners.U31!), colors.centerBoutUp);
+      !p.options.useViolCornerUC && arc(p.outerCorners.U31!, pal.ink(0).css);
+      !p.options.useViolCornerUC && arc(flipArcAboutY(p.outerCorners.U31!), pal.ink(0).css);
     }
     if (p.options.C21DoubleArc) {
-      !p.options.useViolCornerUC && arc(p.outerCorners.C21!, colors.centerBoutUp);
-      !p.options.useViolCornerUC && arc(flipArcAboutY(p.outerCorners.C21!), colors.centerBoutUp);
+      !p.options.useViolCornerUC && arc(p.outerCorners.C21!, pal.ink(0).css);
+      !p.options.useViolCornerUC && arc(flipArcAboutY(p.outerCorners.C21!), pal.ink(0).css);
     }
     if (p.options.C11DoubleArc) {
-      !p.options.useViolCornerLC && arc(p.outerCorners.C11!, colors.centerBoutLow);
-      !p.options.useViolCornerLC && arc(flipArcAboutY(p.outerCorners.C11!), colors.centerBoutLow);
+      !p.options.useViolCornerLC && arc(p.outerCorners.C11!, pal.ink(0).lightness(0.5).css);
+      !p.options.useViolCornerLC && arc(flipArcAboutY(p.outerCorners.C11!), pal.ink(0).lightness(0.5).css);
     }
     if (p.options.L31DoubleArc) {
-      !p.options.useViolCornerLC && arc(p.outerCorners.L31!, colors.centerBoutLow);
-      !p.options.useViolCornerLC && arc(flipArcAboutY(p.outerCorners.L31!), colors.centerBoutLow);
+      !p.options.useViolCornerLC && arc(p.outerCorners.L31!, pal.ink(0).lightness(0.5).css);
+      !p.options.useViolCornerLC && arc(flipArcAboutY(p.outerCorners.L31!), pal.ink(0).lightness(0.5).css);
     }
   }
 
   if ((currentModule && flags.showModuleCircles) || flags.showAllCircles) {
-    !p.options.useViolCornerUC && renderCircle(p.outerCorners.U3!, colors.centerBoutUp)(g, ui);
-    !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.U3!), colors.centerBoutUp)(g, ui);
+    !p.options.useViolCornerUC && renderCircle(p.outerCorners.U3!, pal.ink(0).css)(g, ui);
+    !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.U3!), pal.ink(0).css)(g, ui);
 
-    !p.options.useViolCornerUC && renderCircle(p.outerCorners.C2!, colors.centerBoutUp)(g, ui);
-    !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.C2!), colors.centerBoutUp)(g, ui);
-    !p.options.useViolCornerLC && renderCircle(p.outerCorners.C1!, colors.centerBoutLow)(g, ui);
-    !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.C1!), colors.centerBoutLow)(g, ui);
+    !p.options.useViolCornerUC && renderCircle(p.outerCorners.C2!, pal.ink(0).css)(g, ui);
+    !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.C2!), pal.ink(0).css)(g, ui);
+    !p.options.useViolCornerLC && renderCircle(p.outerCorners.C1!, pal.ink(0).lightness(0.5).css)(g, ui);
+    !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.C1!), pal.ink(0).lightness(0.5).css)(g, ui);
 
-    !p.options.useViolCornerLC && renderCircle(p.outerCorners.L3!, colors.centerBoutLow)(g, ui);
-    !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.L3!), colors.centerBoutLow)(g, ui);
+    !p.options.useViolCornerLC && renderCircle(p.outerCorners.L3!, pal.ink(0).lightness(0.5).css)(g, ui);
+    !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.L3!), pal.ink(0).lightness(0.5).css)(g, ui);
 
     if (p.options.U31DoubleArc) {
-      !p.options.useViolCornerUC && renderCircle(p.outerCorners.U31!, colors.centerBoutUp)(g, ui);
-      !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.U31!), colors.centerBoutUp)(g, ui);
+      !p.options.useViolCornerUC && renderCircle(p.outerCorners.U31!, pal.ink(0).css)(g, ui);
+      !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.U31!), pal.ink(0).css)(g, ui);
     }
     if (p.options.C21DoubleArc) {
-      !p.options.useViolCornerUC && renderCircle(p.outerCorners.C21!, colors.centerBoutUp)(g, ui);
-      !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.C21!), colors.centerBoutUp)(g, ui);
+      !p.options.useViolCornerUC && renderCircle(p.outerCorners.C21!, pal.ink(0).css)(g, ui);
+      !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.C21!), pal.ink(0).css)(g, ui);
     }
     if (p.options.C11DoubleArc) {
-      !p.options.useViolCornerLC && renderCircle(p.outerCorners.C11!, colors.centerBoutLow)(g, ui);
-      !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.C11!), colors.centerBoutLow)(g, ui);
+      !p.options.useViolCornerLC && renderCircle(p.outerCorners.C11!, pal.ink(0).lightness(0.5).css)(g, ui);
+      !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.C11!), pal.ink(0).lightness(0.5).css)(g, ui);
     }
     if (p.options.L31DoubleArc) {
-      !p.options.useViolCornerLC && renderCircle(p.outerCorners.L31!, colors.centerBoutLow)(g, ui);
-      !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.L31!), colors.centerBoutLow)(g, ui);
+      !p.options.useViolCornerLC && renderCircle(p.outerCorners.L31!, pal.ink(0).lightness(0.5).css)(g, ui);
+      !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.L31!), pal.ink(0).lightness(0.5).css)(g, ui);
     }
   }
 };

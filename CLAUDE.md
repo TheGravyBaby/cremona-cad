@@ -44,7 +44,7 @@ expect — a stray file outside these globs only runs under the full `ng test`.
 | `src/app/models/types.ts` | `Pt`/`Circle`/`Arc`/`Rectangle` — recipe-side geometry. Read its header. |
 | `src/app/recipe-base/` | `RecipeComponentBase` — panel flow, undo/redo, file load/save, toolbox sync. |
 | `src/app/shared/` | Message/toast service. |
-| `src/app/theme/` | Colour and stroke, for the whole app. `palette.ts` is the model: a `Palette` is five inks plus a neutral and an alert, instrument-agnostic; `resolveTheme` turns one into `Ink`s for the mode, each a ramp (`lightness(t)`, `saturation(t)`, `fade(t)`, t in [-1, 1]) held inside the lightness band that reads against the canvas. `theme.service.ts` holds the mode and palette as signals and reads the canvas colour off `--ui-bg-canvas`. `strokes.ts` is `STROKE_WEIGHT` and `DASH`; `canvas-colors.ts` the toolbox's pen and marks; `palettes/` the palettes themselves. A recipe maps its parts onto inks in one file (`enrico-ceruti-violin/renders/ceruti-colors.ts`); nothing else holds a hex. The UI chrome stays on the `--ui-*` variables in `styles.css`. |
+| `src/app/theme/` | Colour and stroke, for the whole app. `palette.ts` is the model: a `Palette` is a list of inks, any length, instrument-agnostic; `resolveTheme` turns every palette in `palettes/index.ts` into `Ink`s for the mode, each a ramp (`lightness(t)`, `saturation(t)`, `fade(t)`, t in [-1, 1]) held inside the lightness band that reads against the canvas. A panel names the palette it reads (`paletteId` on `CerutiPanelBase`) and reads it by position, `pal.ink(1).css`, wrapping past the end, so a panel wanting two inks can take a palette of six; `pal.neutral` is the trace grey and `pal.alert` the solve-failure red, the same whichever palette. `theme.service.ts` holds the mode as a signal and reads the canvas colour off `--ui-bg-canvas`. `strokes.ts` is `STROKE_WEIGHT` and `DASH`; `canvas-colors.ts` the toolbox's pen and marks; `theme-fixtures.ts` the specs' labelled theme. No file outside this folder holds a hex. The UI chrome stays on the `--ui-*` variables in `styles.css`. |
 | `src/app/docs/` | Every word the app says to the user, in one place. `field-help.ts` is the ⓘ write-ups (`help('id')` in a panel); `tooltips.ts` the explanatory tooltips, bound as `docTip="id"`, a tooltip that only names a control stays a literal `title=`; `conditions.ts` the toasts that run to a paragraph; `export-descriptions.ts` the export rows; `guide/` the Documentation tab. The change log is `CHANGELOG.md` at the root, rendered in the about modal. See `docs/documentation-plan.md`. |
 | `src/app/docs/wiki/` | The wiki: Markdown articles under `articles/` (folders allowed), imported as text, parsed into a registry the wiki component renders and `wiki.spec.ts` lints. One article per concept; `[[slug]]` links between them; figures under `public/wiki/`. Dev builds only, for now. |
 | `examples/` | **Not built, not tested.** Outside `tsconfig.app.json` and `tsconfig.spec.json`. |
@@ -69,8 +69,8 @@ Sort by what the code knows, not by what feature it serves:
   from the caller.
 - **A panel's own render functions** live in its panel file, exported when a neighbour draws them
   too (`renderMainBouts`, `renderVolute`). `renders/` holds only what several panels draw and that
-  knows it's a violin: the front profile, the body section, and `ceruti-colors.ts`, the one file
-  that says which ink each part draws in.
+  knows it's a violin: the front profile and the body section. Colour is read by position off the
+  palette a panel named (`pal.ink(2)`), never by a part's name.
   Geometry that only serves a view is still geometry — violin geometry goes in `calculation/`
   (`computeWireframeGeometry`, the scroll's back and front views), generic in `helpers/math/`.
 - **Component `change*()` methods** — thin: debounce/validate, call a `calculate*`/`define*`,
@@ -143,7 +143,7 @@ complain loudly; nobody complains about a comment that wasn't there.
 ## Conventions
 
 - **Colour has two tiers on a panel, not three.** The parts a panel edits draw in their own ink,
-  told apart by tone (`lightness`), and everything else draws in `colors.trace`. The old
+  told apart by tone (`lightness`), and everything else draws in `pal.neutral`. The old
   `Off`/`Off2`/`Muted` greyings went with the theme refactor (2026-10-07); a part that needs to
   recede without going grey takes `fade` or a stroke opacity, never a desaturated twin.
 - Units are **millimetres** in world space throughout. Angles are radians in geometry, degrees in

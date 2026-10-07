@@ -3,12 +3,13 @@ import { renderPath, renderPointHalo, renderSegment, renderGuideBaseline, render
 import { STROKE_WEIGHT } from '../../theme/strokes';
 import { archSplineKnots } from '../../helpers/math/vibeMath';
 import { occludePath } from '../../helpers/math/pathVibes';
-import { ArchCurve, CerutiColors, EnricoCerutiParams, FlutingParams } from '../ceruti-types';
+import { ArchCurve, EnricoCerutiParams, FlutingParams } from '../ceruti-types';
 import { ribHeightAt, ribLine, solveRibTaper, topPlatePlacement, buildArchPathFor, archGuideKnots } from '../calculation/arching/ceruti-arching';
 import { channelCapPath, LongArchSolve } from '../calculation/arching/ceruti-arch-geometry';
 import { defaultStringSetup } from '../calculation/neck/ceruti-neck';
 import { outerCornerFlats } from '../calculation/outline/ceruti-paths';
 import { HighlightedSplinePoint } from './render-constants';
+import { PanelPalette } from '../../theme/palette';
 
 // the body's side profile: the rib between the two plates, the top growing up off it and the back down.
 // Drawn by the long-arching panel cut down the centreline, and by the neck panels seen from the side
@@ -38,7 +39,7 @@ export interface BodySideProfileOptions {
   color?: string;
 }
 
-export function renderBodySideProfile(p: EnricoCerutiParams, colors: CerutiColors, opts: BodySideProfileOptions) {
+export function renderBodySideProfile(p: EnricoCerutiParams, pal: PanelPalette, opts: BodySideProfileOptions) {
   const taper = solveRibTaper(p);
   const rib = ribLine(p, taper);
   const placement = topPlatePlacement(p, taper);
@@ -48,12 +49,12 @@ export function renderBodySideProfile(p: EnricoCerutiParams, colors: CerutiColor
   return (g: any, ui: any): void => {
     renderPath(
       `M 0 ${rib.yLow} L ${rib.zLow} ${rib.yLow} L ${rib.zHigh} ${rib.yHigh} L 0 ${rib.yHigh} Z`,
-      paint(colors.trace), STROKE_WEIGHT.guide,
+      paint(pal.neutral.css), STROKE_WEIGHT.guide,
     )(g, ui);
     for (const corner of [p.bouts.UCr, p.bouts.LCr]) {
       if (corner) {
         renderSegment(
-          new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), paint(colors.trace), STROKE_WEIGHT.guide,
+          new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), paint(pal.neutral.css), STROKE_WEIGHT.guide,
         )(g, ui);
       }
     }
@@ -77,9 +78,9 @@ export function renderBodySideProfile(p: EnricoCerutiParams, colors: CerutiColor
     const thickness = isTop ? a.top.thickness : a.bottom.thickness;
     const innerZ = isTop ? taper.zLower : 0;
     const outerZ = innerZ + sign * thickness;
-    const color = paint(isTop ? colors.archTop : colors.archBack);
-    const edge = paint(colors.trace);
-    const channel = paint(colors.fluting);
+    const color = paint(isTop ? pal.ink(0).css : pal.ink(2).css);
+    const edge = paint(pal.neutral.css);
+    const channel = paint(pal.ink(1).lightness(-0.15).css);
     const gouge = opts.gouge[plate];
     const solved = opts.solved[plate];
     const landEdge = p.outerFlutingDepth ?? 0;

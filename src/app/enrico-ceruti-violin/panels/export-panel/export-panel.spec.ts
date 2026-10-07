@@ -1,12 +1,13 @@
 import { recordLayers } from '../../../helpers/layer-recorder';
 import { archedViolin, defaultViolin, templateViolin } from '../../ceruti-fixtures';
-import { CerutiColors, DefaultParams, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
+import { DefaultParams, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateMould } from '../../calculation/outline/ceruti-calcs';
 import { defaultFHolePlacement } from '../f-hole-placement-panel/f-hole-placement-panel';
 import { ExportPanel } from './export-panel';
 import { calculateNeck, defaultNeckParams, defaultStringSetup } from '../../calculation/neck/ceruti-neck';
 import { defaultFlutingParams, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
 import { defaultVoluteParams, scrollBackStrip, scrollCompassWalk } from '../../calculation/neck/ceruti-scroll';
+import { nightTheme } from '../../../theme/theme-fixtures';
 
 /**
  * The export panel — the last step, and the one whose output leaves the app.
@@ -20,7 +21,7 @@ import { defaultVoluteParams, scrollBackStrip, scrollCompassWalk } from '../../c
  * file rather than as anything visible.
  */
 
-const colors = new Proxy({}, { get: () => '#888888' }) as CerutiColors;
+const theme = nightTheme();
 
 /** The plain export buttons (excluding the f-hole templates, covered below), and which of them need an arched plate. */
 const PLAIN_EXPORTS = ['innerTrace', 'outerTrace', 'back', 'mould', 'blocks'] as const;
@@ -50,7 +51,7 @@ function moulded(): EnricoCerutiParams {
 function makePanel(p: EnricoCerutiParams, fileName = 'test-violin'): ExportPanel {
   const panel = new ExportPanel();
   panel.params = p;
-  panel.colors = colors;
+  panel.theme = theme;
   panel.paths = [] as PathEntry[];
   panel.fileName = fileName;
   return panel;

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { getFieldDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
 import { renderPath, renderSolveFailures, renderArcHalo, renderDashLine, renderSegment, renderSegmentHalo } from '../../../helpers/renderFuncs';
 import { STROKE_WEIGHT } from '../../../theme/strokes';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, ScrollParams } from '../../ceruti-types';
+import { CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, ScrollParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams } from '../../calculation/neck/ceruti-neck';
 import { calculateScroll, ScrollKey, scrollExtent, scrollLines, ScrollFailure } from '../../calculation/neck/ceruti-scroll';
@@ -16,6 +16,7 @@ import { Pt } from '../../../models/types';
 import { ScrollViewFlags, longArc, scrollArc, renderScrollNeck, renderVolute } from '../volute-panel/volute-panel';
 import { HighlightedArc, HighlightedSegment } from '../../renders/render-constants';
 import { TooltipDirective } from '../../../docs/tooltips';
+import { PanelPalette } from '../../../theme/palette';
 
 // the arcs take an arc halo; the straights and the flat a segment halo on the line their length makes
 export type ScrollHighlightKey = 'S2' | 'S3' | 'nape' | 'F0' | 'F1' | 'backStraight' | 'flat' | 'frontStraight';
@@ -30,7 +31,6 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
-  @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   protected readonly getFieldDeg = getFieldDeg;
@@ -82,12 +82,12 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
     // the volute as plain profile, so only what this panel edits is in colour. The profile needs the
     // whole scroll solved, so a miss falls back to the volute's own render
     return [
-      renderScrollNeck(p, this.colors, false, failures),
+      renderScrollNeck(p, this.pal, false, failures),
       failures.length
-        ? renderVolute(p, this.colors, this.flags, false, null, failures)
-        : renderPath(defineSideScrollPath(p), this.colors.trace, STROKE_WEIGHT.trace),
-      renderScroll(p, this.colors, this.flags, true, highlighted, highlightedLine, failures),
-      renderSolveFailures(failures, this.colors.pathError),
+        ? renderVolute(p, this.pal, this.flags, false, null, failures)
+        : renderPath(defineSideScrollPath(p), this.pal.neutral.css, STROKE_WEIGHT.trace),
+      renderScroll(p, this.pal, this.flags, true, highlighted, highlightedLine, failures),
+      renderSolveFailures(failures, this.pal.alert.css),
     ];
   }
 }
@@ -96,7 +96,7 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
 // colour, the square line the nape's; module guides box the head
 export const renderScroll = (
   p: EnricoCerutiParams,
-  colors: CerutiColors,
+  pal: PanelPalette,
   flags: ScrollViewFlags,
   currentModule: boolean,
   highlighted: HighlightedArc | null,
@@ -114,20 +114,20 @@ export const renderScroll = (
   if (currentModule && flags.showModuleGuides && solved('S3')) {
     const { height, width } = scrollExtent(v);
     const corners = [new Pt(0, 0), new Pt(0, height), new Pt(-width, height), new Pt(-width, 0)];
-    for (let i = 0; i < 4; i++) renderDashLine(corners[i], corners[(i + 1) % 4], colors.neck, STROKE_WEIGHT.guide)(g, ui);
+    for (let i = 0; i < 4; i++) renderDashLine(corners[i], corners[(i + 1) % 4], pal.ink(0).saturation(-0.25).css, STROKE_WEIGHT.guide)(g, ui);
   }
 
-  solved('S2') && scrollArc(v.S2, colors.scrollBackLight, fancy)(g, ui);
-  solved('S3') && scrollArc(v.S3, colors.scrollBack, fancy)(g, ui);
-  solved('nape') && scrollArc(v.nape, colors.scrollNape, fancy)(g, ui);
-  solved('F0') && scrollArc(v.F0, colors.scrollFront, fancy)(g, ui);
-  solved('F1') && scrollArc(v.F1, colors.scrollFrontLight, fancy)(g, ui);
+  solved('S2') && scrollArc(v.S2, pal.ink(2).lightness(0.6).css, fancy)(g, ui);
+  solved('S3') && scrollArc(v.S3, pal.ink(2).lightness(0.2).css, fancy)(g, ui);
+  solved('nape') && scrollArc(v.nape, pal.ink(2).lightness(-0.3).css, fancy)(g, ui);
+  solved('F0') && scrollArc(v.F0, pal.ink(0).saturation(0.4).lightness(0.15).css, fancy)(g, ui);
+  solved('F1') && scrollArc(v.F1, pal.ink(0).lightness(0.55).css, fancy)(g, ui);
 
   // a straight of no length, or a duck tail already at the nape, has nothing to draw
   const line = ([a, b]: [Pt, Pt], color: string) => dist(a, b) > 1e-9 && renderSegment(a, b, color, STROKE_WEIGHT.trace)(g, ui);
   const lines = scrollLines(p);
-  solved('backStraight') && line(lines.backStraight, colors.scrollBackLight);
-  solved('nape') && line(lines.square, colors.scrollNape);
-  solved('flat') && line(lines.flat, colors.scrollFrontLight);
-  solved('frontStraight') && line(lines.frontStraight, colors.scrollFront);
+  solved('backStraight') && line(lines.backStraight, pal.ink(2).lightness(0.6).css);
+  solved('nape') && line(lines.square, pal.ink(2).lightness(-0.3).css);
+  solved('flat') && line(lines.flat, pal.ink(0).lightness(0.55).css);
+  solved('frontStraight') && line(lines.frontStraight, pal.ink(0).saturation(0.4).lightness(0.15).css);
 };

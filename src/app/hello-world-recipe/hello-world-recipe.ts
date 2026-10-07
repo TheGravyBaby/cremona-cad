@@ -9,21 +9,12 @@ import {
   angleFromCenter, flipArcAboutY, flipCircleAboutY, flipPointAboutY, offsetCircleRadius, pointOnCircle,
 } from '../helpers/math/simpleGeometry';
 import { renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderSmallCrosshair } from '../helpers/renderFuncs';
-import { Theme } from '../theme/palette';
+import { PanelPalette } from '../theme/palette';
 import { ThemeService } from '../theme/theme.service';
 import { RECIPE_KEY, writeWorkingState } from '../helpers/workingStorage';
 import { error } from '../shared/message-emitter';
 import { FOUR_CIRCLES_DEFAULTS, FourCircles, FourCirclesParams, FourCirclesViewFlags } from './hello-world-types';
 
-export interface FourCirclesColors { upper: string; center: string; lower: string; outline: string }
-
-// the recipe's parts on the palette's inks: green, warm and blue as the violin's bouts are
-export const fourCirclesColors = ({ inks: [warm, green, blue], neutral }: Theme): FourCirclesColors => ({
-  upper: green.css,
-  center: warm.css,
-  lower: blue.css,
-  outline: neutral.css,
-});
 
 const blankRecipe = (): RecipeInterface => ({
   recipeName: 'hello-world',
@@ -51,16 +42,9 @@ export class HelloWorldRecipe extends RecipeComponentBase {
   flags: FourCirclesViewFlags = { showCircles: false, showArcs: true };
 
   private readonly themeService = inject(ThemeService);
-  private colorsTheme: Theme | null = null;
-  private colorsCache!: FourCirclesColors;
 
-  get colors(): FourCirclesColors {
-    const theme = this.themeService.theme();
-    if (theme !== this.colorsTheme) {
-      this.colorsTheme = theme;
-      this.colorsCache = fourCirclesColors(theme);
-    }
-    return this.colorsCache;
+  get pal(): PanelPalette {
+    return this.themeService.theme().palette('classicCremona');
   }
 
   constructor() {
@@ -108,7 +92,7 @@ export class HelloWorldRecipe extends RecipeComponentBase {
   private render(): void {
     try {
       const solved = solveFourCircles(this.d.params as FourCirclesParams);
-      this.draftChange.emit([renderFourCircles(solved, this.flags, this.colors)]);
+      this.draftChange.emit([renderFourCircles(solved, this.flags, this.pal)]);
     } catch (e) {
       error(e instanceof Error ? e.message : String(e), 'Four Circles');
       this.draftChange.emit([]);
@@ -140,19 +124,21 @@ export function solveFourCircles(p: FourCirclesParams): FourCircles {
   };
 }
 
-export const renderFourCircles = (s: FourCircles, flags: FourCirclesViewFlags, colors: FourCirclesColors) => (g: any, ui: any): void => {
-  const arcs: Array<[Arc, string]> = [[s.upper, colors.upper], [s.center, colors.center], [s.lower, colors.lower]];
+// the three circles on the palette's second, first and third inks, as the violin's bouts are
+export const renderFourCircles = (s: FourCircles, flags: FourCirclesViewFlags, pal: PanelPalette) => (g: any, ui: any): void => {
+  const [upper, center, lower] = [pal.ink(1).css, pal.ink(0).css, pal.ink(2).css];
+  const arcs: Array<[Arc, string]> = [[s.upper, upper], [s.center, center], [s.lower, lower]];
 
   if (flags.showCircles) {
-    renderCircle(s.upper, colors.upper)(g, ui);
-    renderCircle(s.center, colors.center, true)(g, ui);
-    renderCircle(s.lower, colors.lower)(g, ui);
+    renderCircle(s.upper, upper)(g, ui);
+    renderCircle(s.center, center, true)(g, ui);
+    renderCircle(s.lower, lower)(g, ui);
     for (const [arc, color] of arcs) renderCrosshair(arc, color)(g, ui);
-    renderCrosshair(flipCircleAboutY(s.center), colors.center)(g, ui);
+    renderCrosshair(flipCircleAboutY(s.center), center)(g, ui);
     // where the circles touch: the upper arc starts there and the lower arc ends there
     for (const t of [pointOnCircle(s.upper, s.upper.start), pointOnCircle(s.lower, s.lower.end)]) {
-      renderSmallCrosshair(t, colors.outline)(g, ui);
-      renderSmallCrosshair(flipPointAboutY(t), colors.outline)(g, ui);
+      renderSmallCrosshair(t, pal.neutral.css)(g, ui);
+      renderSmallCrosshair(flipPointAboutY(t), pal.neutral.css)(g, ui);
     }
   }
 

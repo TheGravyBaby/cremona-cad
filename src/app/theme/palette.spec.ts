@@ -1,8 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { contrastRatio, parseColor, rgbToHsl } from './color-math';
-import { INK_COUNT, makeInk, resolveTheme } from './palette';
-import { CREMONA } from './palettes/cremona';
+import { makeInk, resolveTheme } from './palette';
+import { classicCremona } from './palettes/classic-cremona';
+
+const CREMONA = { ...classicCremona, neutral: '#868484', alert: '#d62828' };
 
 const NIGHT = '#1e1e1e';
 const DAY = '#c3bfb3';
@@ -56,10 +58,19 @@ describe('an ink', () => {
 });
 
 describe('a theme', () => {
-  it('always carries INK_COUNT inks, repeating a shorter palette', () => {
-    const short = { ...CREMONA, inks: ['#c97a35', '#3f9a63'] };
-    const theme = resolveTheme(short, 'night', NIGHT);
-    expect(theme.inks).toHaveLength(INK_COUNT);
-    expect(theme.inks[2].css).toBe(theme.inks[0].css);
+  const short = { id: 'short', name: 'Short', inks: ['#c97a35', '#3f9a63'] };
+
+  it('wraps a palette read past its end, so a panel wanting six inks can take two', () => {
+    const pal = resolveTheme([short], 'night', NIGHT).palette('short');
+    expect(pal.inks).toHaveLength(2);
+    expect(pal.ink(2).css).toBe(pal.ink(0).css);
+    expect(pal.ink(5).css).toBe(pal.ink(1).css);
+  });
+
+  it('resolves every palette by id, the first standing in for an unknown one, and shares the neutral and alert', () => {
+    const theme = resolveTheme([classicCremona, short], 'night', NIGHT);
+    expect(theme.palette('short').ink(1).css).toBe(theme.palette('short').inks[1].css);
+    expect(theme.palette('nope').id).toBe('classicCremona');
+    expect(theme.palette('short').neutral.css).toBe(theme.neutral.css);
   });
 });

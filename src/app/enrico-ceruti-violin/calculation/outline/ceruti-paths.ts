@@ -86,7 +86,6 @@ export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners
     offset ??= p.overhang + p.rib;
     let arcs = [];
 
-
     // a viol corner's flank (L4/U4) is itself the arc that reaches the corner tip,
     // so the `corners` block below pushes it trimmed to the new intersection.
     // don't add it here as well — the untrimmed copy runs past the corner.
@@ -95,7 +94,6 @@ export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners
         arcs.push(offsetArcRadius(p.bouts.L2, offset));
         // corners && fullPath.push(offsetArcRadius(p.bouts.L3, -offset));
     }
-
 
     // centerOffset code is half baked, but largely unnecessary
     // it was intended to allow fluting along the c-bout to be a different
@@ -361,7 +359,6 @@ function angleBeforeEnd(arc: Arc, degrees: number): number {
     return arc.end - dir * Math.min(degrees * TURN.degree, Math.abs(delta));
 }
 
-
 // some center bout / main bout fluting combinations degenerate, this catches those
 const MAX_JOIN_RADIUS_TO_CHORD = 10;
 // how far the search below is willing to walk the c-bout arc's own endpoint back before
@@ -488,7 +485,6 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerO
         }
         return flutingArcs;
     }
-
 
     if (p.options.useViolCornerUC){
         easeCBoutEnd(flutingArcs[3], "end", flutingArcs[2], "end");

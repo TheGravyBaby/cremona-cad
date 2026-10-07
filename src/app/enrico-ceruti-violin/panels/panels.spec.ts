@@ -4,7 +4,7 @@ import { samplePathToPolyline, splitPathStrings, translatePath, applyMatrix } fr
 import { splineZAt } from '../../helpers/math/vibeMath';
 import { recordLayers } from '../../helpers/layer-recorder';
 import { archedViolin, defaultViolin } from '../ceruti-fixtures';
-import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, DefaultParams, EnricoCerutiParams, PathEntry, VoluteStyle } from '../ceruti-types';
+import { CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, DefaultParams, EnricoCerutiParams, PathEntry, VoluteStyle } from '../ceruti-types';
 import { calculateCenterBout, calculateCorners, calculateMainBouts, ensureFrontProfilePaths, getPath, solveNeckForProfile } from '../calculation/outline/ceruti-calcs';
 import { plateLayoutOffset } from '../calculation/arching/ceruti-arch-geometry';
 import { defineBackNeckPath, defineFholePath, defineInnerPath, defineOuterPath, definePlacedSideScrollPath, definePurflingPath, mortiseFloorY, scrollOnNeck } from '../calculation/outline/ceruti-paths';
@@ -24,13 +24,15 @@ import { NeckPanel } from './neck-panel/neck-panel';
 import { StringSetupPanel } from './string-setup-panel/string-setup-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
 import { ScrollPanel } from './scroll-panel/scroll-panel';
-import { ScrollWidthsPanel } from './scroll-widths-panel/scroll-widths-panel';
-import { defaultVoluteParams, duckTailRadius, duckTailRoundTop, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollExtent, scrollLines, scrollNeckHalfWidth, scrollPathStretches, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../calculation/neck/ceruti-scroll';
+import { ScrollWidthsPanel, stationColor } from './scroll-widths-panel/scroll-widths-panel';
+import { defaultVoluteParams, duckTailRadius, duckTailRoundTop, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollExtent, scrollLines, scrollNeckHalfWidth, scrollPathStretches, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS, ScrollStationKey } from '../calculation/neck/ceruti-scroll';
 import { VolutePanel } from './volute-panel/volute-panel';
 import { Pt } from '../../models/types';
 import { scrollBackInPlan, scrollBackViewStrokes, scrollFrontInPlan } from '../calculation/neck/ceruti-scroll-views';
 import { sideViewOffsetX } from '../renders/body-side-profile.render';
 import { STROKE_WEIGHT } from '../../theme/strokes';
+import { Theme } from '../../theme/palette';
+import { labelTheme, nightTheme } from '../../theme/theme-fixtures';
 
 /**
  * What the panels actually draw.
@@ -48,18 +50,18 @@ import { STROKE_WEIGHT } from '../../theme/strokes';
  */
 
 /** Every colour resolves; which one is never what a render decision turns on. */
-const colors = new Proxy({}, { get: () => '#888888' }) as CerutiColors;
+const theme = nightTheme();
 
 const flags = (over: Partial<CerutiViewFlags> = {}): CerutiViewFlags =>
   ({ ...DEFAULT_CERUTI_VIEW_FLAGS, ...over });
 
-type AnyPanel = { params: EnricoCerutiParams; colors: CerutiColors; flags: CerutiViewFlags; paths?: PathEntry[]; buildRun(): any[] };
+type AnyPanel = { params: EnricoCerutiParams; theme: Theme; flags: CerutiViewFlags; paths?: PathEntry[]; buildRun(): any[] };
 
 /** Builds a panel with its inputs filled, the way the template's bindings would. */
 function panel<T extends AnyPanel>(Ctor: new () => T, p: EnricoCerutiParams, f = flags()): T {
   const instance = new Ctor();
   instance.params = p;
-  instance.colors = colors;
+  instance.theme = theme;
   instance.flags = f;
   if ('paths' in instance) instance.paths = [];
   return instance;
@@ -208,14 +210,14 @@ describe('the whole front profile', () => {
     panel(MainBoutsPanel, p).buildRun();
     panel(CornersPanel, p).buildRun();
     const paths: PathEntry[] = [];
-    const drawn = recordLayers(renderFrontProfile(p, paths, colors, ensureFrontProfilePaths(p, paths))).paths;
+    const drawn = recordLayers(renderFrontProfile(p, paths, theme.palette('classicCremona'), ensureFrontProfilePaths(p, paths))).paths;
     expect(drawn).toEqual([defineInnerPath(p)]);
   });
 
   it('adds the neck once the neck panel has set it', () => {
     const p = archedViolin();
     const paths: PathEntry[] = [];
-    const drawn = () => recordLayers(renderFrontProfile(p, paths, colors, ensureFrontProfilePaths(p, paths))).paths.length;
+    const drawn = () => recordLayers(renderFrontProfile(p, paths, theme.palette('classicCremona'), ensureFrontProfilePaths(p, paths))).paths.length;
     const without = drawn();
     const neck = panel(NeckPanel, p);
     neck.paths = paths;
@@ -285,7 +287,7 @@ describe('the scroll panel', () => {
   it('draws the nut on the neck\'s front and the neck below it, stopping short, with nothing across its top', () => {
     const p = defaultViolin();
     const instance = panel(ScrollPanel, p, flags({ showVoluteConstruction: false, showModuleArcs: false }));
-    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.theme = labelTheme();
     instance.buildRun();
     // with the nape unsolved the neck's back stops at the nut's level
     p.scroll!.nape.r = 0;
@@ -295,7 +297,7 @@ describe('the scroll panel', () => {
     expect(Math.max(...nut.map(c => c[0]))).toBeCloseTo(defaultStringSetup(p).nutThickness, 9);
     expect(Math.min(...nut.map(c => c[1]))).toBe(0);
 
-    const lines = drawn.elements.filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckGround').map(el => el.attrs);
+    const lines = drawn.elements.filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neutral-0.3').map(el => el.attrs);
     expect(lines.length).toBe(2);
     expect(lines.every(l => l['x1'] === l['x2'])).toBe(true);
     const lowest = Math.min(...lines.flatMap(l => [l['y1'] as number, l['y2'] as number]));
@@ -308,12 +310,12 @@ describe('the scroll panel', () => {
   describe('the volute', () => {
     // the plain spiral unless a test asks for module arcs, each colour drawn as its own name so the
     // plain profile under it can be told apart
-    const named = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
-    const withNames = <T extends ScrollPanel | VolutePanel>(instance: T) => Object.assign(instance, { colors: named });
+    const named = labelTheme();
+    const withNames = <T extends ScrollPanel | VolutePanel>(instance: T) => Object.assign(instance, { theme: named });
     const scroll = (p: EnricoCerutiParams, over: Partial<CerutiViewFlags> = {}) => withNames(panel(ScrollPanel, p, flags({ showModuleArcs: false, ...over })));
     const volute = (p: EnricoCerutiParams, over: Partial<CerutiViewFlags> = {}) => withNames(panel(VolutePanel, p, flags({ showModuleArcs: false, ...over })));
     const isArc = (el: ReturnType<typeof recordLayers>['elements'][number]) => typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(' A ');
-    const isProfile = (el: ReturnType<typeof recordLayers>['elements'][number]) => el.attrs['stroke'] === 'trace';
+    const isProfile = (el: ReturnType<typeof recordLayers>['elements'][number]) => el.attrs['stroke'] === 'neutral';
     const drawn = (eyeRadius: number) => {
       const p = defaultViolin();
       const instance = volute(p);
@@ -430,7 +432,7 @@ describe('the scroll panel', () => {
       p.scroll!.F1.r = 0;
       for (const instance of [volute(p), scroll(p)]) expect(recordLayers(instance.buildRun()).elements.filter(isProfile)).toEqual([]);
       // the scroll panel falls back to the volute in its own colours
-      expect(spiralArcs(scroll(p)).map(el => el.attrs['stroke'])).toContain('voluteTurn1');
+      expect(spiralArcs(scroll(p)).map(el => el.attrs['stroke'])).toContain('ink0s-0.5+0.8');
     });
 
     it('seeds the four point radii from Kelly\'s once, then leaves them to the user', () => {
@@ -542,7 +544,7 @@ describe('the scroll panel', () => {
         const instance = scroll(p, { showModuleGuides: false, showVoluteConstruction: false });
         return recordLayers(instance.buildRun()).elements.filter(el => el.tag === 'line' && el.attrs['stroke-width'] === 2).map(el => el.attrs);
       };
-      expect(traced().map(l => l['stroke'])).toEqual(['scrollBackLight', 'scrollNape', 'scrollFrontLight', 'scrollFront']);
+      expect(traced().map(l => l['stroke'])).toEqual(['ink2+0.6', 'ink2-0.3', 'ink0+0.55', 'ink0s0.4+0.15']);
       const [, square] = traced();
       expect(square['y1']).toBeCloseTo(square['y2'] as number, 9);
 
@@ -567,11 +569,11 @@ describe('the scroll panel', () => {
       const instance = scroll(p, { showModuleArcs: true, showModuleGuides: false, showVoluteConstruction: false });
       const drawn = () => recordLayers(instance.buildRun()).elements;
       const backTop = (els: ReturnType<typeof drawn>) => els
-        .filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckGround' && el.attrs['x1'] === -p.neck!.thickness && el.attrs['x2'] === -p.neck!.thickness)
+        .filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neutral-0.3' && el.attrs['x1'] === -p.neck!.thickness && el.attrs['x2'] === -p.neck!.thickness)
         .map(el => Math.max(el.attrs['y1'] as number, el.attrs['y2'] as number));
       // the duck tail hangs no higher than the nut line, so the nape meets the neck's back below it
       const naped = drawn();
-      const nape = naped.filter(el => el.attrs['stroke'] === 'scrollNape' && String(el.attrs['d'] ?? '').includes(' A '));
+      const nape = naped.filter(el => el.attrs['stroke'] === 'ink2-0.3' && String(el.attrs['d'] ?? '').includes(' A '));
       expect(nape).toHaveLength(1);
       expect(p.scroll!.nape.y).toBeLessThan(0);
       expect(backTop(naped)).toEqual([p.scroll!.nape.y]);
@@ -580,7 +582,7 @@ describe('the scroll panel', () => {
       expect(p.scroll!.nape.y).toBeLessThan(-8);
       p.scroll!.nape.r = 1000;
       const unfit = drawn();
-      expect(unfit.filter(el => el.attrs['stroke'] === 'scrollNape')).toEqual([]);
+      expect(unfit.filter(el => el.attrs['stroke'] === 'ink2-0.3')).toEqual([]);
       expect(backTop(unfit)).toEqual([0]);
     });
   });
@@ -620,7 +622,7 @@ describe('the scroll widths panel', () => {
 
   it('draws each view as it is seen: a turn\'s far side only as far as the next turn lets it show, and the hollow dashed in the side view', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.theme = labelTheme();
     instance.buildRun();
     const p = instance.params;
     const on = scrollPathStretches(p);
@@ -634,7 +636,7 @@ describe('the scroll widths panel', () => {
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
     const paths = (stroke: string) => drawn.filter(el => el.attrs['stroke'] === stroke && !el.attrs['stroke-dasharray']).map(el => points(el.attrs['d'] as string));
     // the turns draw in one ink in both views, the back view left of the side view and the front right
-    const turns = (behind: boolean) => paths('scrollTurns').filter(pts => (pts[0].x < 0) === behind);
+    const turns = (behind: boolean) => paths('ink1+0.1').filter(pts => (pts[0].x < 0) === behind);
     // each line is drawn once on each side, and known here by the height it stops at
     const stoppingAt = (behind: boolean, y: number) => turns(behind).filter(pts => Math.abs(pts.at(-1)!.y - y) < 1e-9);
 
@@ -650,7 +652,7 @@ describe('the scroll widths panel', () => {
     const frontView = paths('archTop').filter(pts => pts[0].x > 0);
     expect(frontView.filter(pts => pts[0].y < turn1Bottom.y - 1e-9).every(pts => pts.every(pt => pt.y <= turn1Bottom.y + 1e-9))).toBe(true);
 
-    const mouth = drawn.filter(el => el.attrs['stroke'] === 'scrollFrontLight' && !el.attrs['stroke-dasharray']);
+    const mouth = drawn.filter(el => el.attrs['stroke'] === 'ink0+0.55' && !el.attrs['stroke-dasharray']);
     expect(mouth).toHaveLength(1);
     const hidden = scrollLines(p).frontStraight[1].y > turn1Bottom.y;
     expect(/Z$/.test(mouth[0].attrs['d'] as string)).toBe(!hidden);
@@ -658,7 +660,7 @@ describe('the scroll widths panel', () => {
 
     // the volute's bottom closes right across the pegbox running in under it
     const across = recordLayers(instance.buildRun()).elements.filter(el =>
-      el.tag === 'line' && el.attrs['stroke'] === 'scrollTurns' && (el.attrs['x1'] as number) > 0 && el.attrs['y1'] === turn1Bottom.y && el.attrs['y2'] === turn1Bottom.y);
+      el.tag === 'line' && el.attrs['stroke'] === 'ink1+0.1' && (el.attrs['x1'] as number) > 0 && el.attrs['y1'] === turn1Bottom.y && el.attrs['y2'] === turn1Bottom.y);
     expect(across).toHaveLength(1);
     expect(Math.abs((across[0].attrs['x1'] as number) - (across[0].attrs['x2'] as number))).toBeCloseTo(2 * turn1Bottom.x, 9);
 
@@ -669,7 +671,7 @@ describe('the scroll widths panel', () => {
     // shows from behind, down to the second turn's top
     p.scroll!.widths.poll = 14;
     const narrowed = recordLayers(instance.buildRun()).elements
-      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'scrollTurns')
+      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'ink1+0.1')
       .map(el => points(el.attrs['d'] as string))
       .filter(pts => pts[0].x < 0);
     expect(narrowed.filter(pts => Math.abs(pts.at(-1)!.y - turn2Top.y) < 1e-9)).toHaveLength(4);
@@ -677,7 +679,7 @@ describe('the scroll widths panel', () => {
 
   it('shows the pegbox\'s cheeks above the first turn\'s bottom only where they stand out past the volute', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.theme = labelTheme();
     instance.buildRun();
     const p = instance.params;
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
@@ -685,7 +687,7 @@ describe('the scroll widths panel', () => {
     const cheeks = () => {
       const turn1Bottom = scrollPathStretches(p).turn1Front.at(-1)!;
       const paths = recordLayers(instance.buildRun()).elements
-        .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'archTop')
+        .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'ink0')
         .map(el => points(el.attrs['d'] as string))
         .filter(pts => pts[0].x > 0);
       const center = (Math.min(...paths.flat().map(pt => pt.x)) + Math.max(...paths.flat().map(pt => pt.x))) / 2;
@@ -710,13 +712,13 @@ describe('the scroll widths panel', () => {
 
   it('starts the back as wide as its foot, a wider foot meeting the round along level shoulders', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.theme = labelTheme();
     instance.buildRun();
     const p = instance.params;
     const v = p.scroll!;
     const shoulders = () => recordLayers(instance.buildRun()).elements.filter(el => {
       const start = scrollBackWidths(p)[0];
-      return el.tag === 'line' && el.attrs['y1'] === start.y && el.attrs['y2'] === start.y && el.attrs['stroke'] === 'archBack';
+      return el.tag === 'line' && el.attrs['y1'] === start.y && el.attrs['y2'] === start.y && el.attrs['stroke'] === 'ink2';
     });
     p.neck!.topWidth = v.widths.duckTail - 4;
     expect(shoulders()).toEqual([]);
@@ -732,12 +734,12 @@ describe('the scroll widths panel', () => {
     const p = defaultViolin();
     const draw = (showModuleArcs: boolean) => {
       const instance = panel(ScrollWidthsPanel as any, p, flags({ showModuleArcs, showModuleGuides: false })) as unknown as ScrollWidthsPanel;
-      instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+      instance.theme = labelTheme();
       return recordLayers(instance.buildRun()).elements;
     };
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
     const circles = (els: ReturnType<typeof draw>) => els.filter(el => el.tag === 'circle');
-    const halves = (els: ReturnType<typeof draw>, key: string) => els.filter(el => el.tag === 'path' && el.attrs['stroke'] === `scrollWidth${key}`).map(el => points(el.attrs['d'] as string));
+    const halves = (els: ReturnType<typeof draw>, key: ScrollStationKey) => els.filter(el => el.tag === 'path' && el.attrs['stroke'] === stationColor(labelTheme().palette('classicCremona'), key)).map(el => points(el.attrs['d'] as string));
     const centrelines = (els: ReturnType<typeof draw>) => els.filter(el => el.tag === 'line' && el.attrs['stroke-dasharray'] && el.attrs['x1'] === el.attrs['x2']);
     expect(circles(draw(false))).toEqual([]);
     expect(centrelines(draw(false))).toEqual([]);
@@ -762,18 +764,18 @@ describe('the scroll widths panel', () => {
     };
     const crown = stations.find(st => st.key === 'crown')!;
     const throat = stations.find(st => st.key === 'throat')!;
-    const crowns = halves(on, 'Crown');
+    const crowns = halves(on, 'crown');
     expect(crowns).toHaveLength(2);
     hanging(crowns.find(pts => pts[0].x < 0)!, behind, crown);
     hanging(crowns.find(pts => pts[0].x > 0)!, inFront, crown);
-    const throats = halves(on, 'Throat');
+    const throats = halves(on, 'throat');
     expect(throats).toHaveLength(1);
     hanging(throats[0], inFront, throat);
   });
 
   it('draws a level shoulder on the round\'s top where the neck stands wider than it, out from the round or from cheeks wider still, and none for a narrower neck', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.theme = labelTheme();
     instance.buildRun();
     const p = instance.params;
     const v = p.scroll!;
@@ -804,13 +806,13 @@ describe('the scroll widths panel', () => {
 
   it('runs the front view down to the foot of the nut and closes it level there, whatever the duck tail', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.theme = labelTheme();
     instance.buildRun();
     const p = instance.params;
     // the nut's corners cut the closing where it crosses them, and walls narrower than the nut pass
     // behind it, so only the level run at the end is read
     const closings = () => recordLayers(instance.buildRun()).elements.filter(el =>
-      el.tag === 'path' && el.attrs['stroke'] === 'archTop' && /^M [^-]/.test(el.attrs['d'] as string) && / \S+ 0 L \S+ 0$/.test(el.attrs['d'] as string));
+      el.tag === 'path' && el.attrs['stroke'] === 'ink0' && /^M [^-]/.test(el.attrs['d'] as string) && / \S+ 0 L \S+ 0$/.test(el.attrs['d'] as string));
     expect(scrollBackWidths(p)[0].y).toBeGreaterThan(0);
     expect(closings()).toHaveLength(2);
     instance.params.neck!.topWidth -= 10;
@@ -819,13 +821,13 @@ describe('the scroll widths panel', () => {
 
   it('shows the pegbox\'s front from behind, in its colour, wherever it stands out past the back, and none of it behind a wider back', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.theme = labelTheme();
     instance.buildRun();
     const p = instance.params;
     const v = p.scroll!;
     // the back view stands left of the side view, the front view right of it
     const fromBehind = () => recordLayers(instance.buildRun()).elements.filter(el =>
-      el.tag === 'path' && el.attrs['stroke'] === 'archTop' && /^M -/.test(el.attrs['d'] as string));
+      el.tag === 'path' && el.attrs['stroke'] === 'ink0' && /^M -/.test(el.attrs['d'] as string));
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
     const nutTop = p.neck!.nutHeight;
 
@@ -867,7 +869,7 @@ describe('the scroll widths panel', () => {
 
   it('shows a cello\'s cheeks from behind down to hips on the pegbox\'s foot, and the foot\'s edge in to the neck', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.theme = labelTheme();
     instance.buildRun();
     const p = instance.params;
     const v = p.scroll!;
@@ -880,7 +882,7 @@ describe('the scroll widths panel', () => {
     expect(roundTop).toBeGreaterThan(0);
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
     const fromBehind = drawn
-      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'archTop' && /^M -/.test(el.attrs['d'] as string))
+      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'ink0' && /^M -/.test(el.attrs['d'] as string))
       .map(el => points(el.attrs['d'] as string));
     // the cheeks come out past the back above the round's top and run down to the hips on the foot
     const cheeks = fromBehind.filter(pts => pts.length === 2 && pts[0].y > roundTop && Math.abs(pts[1].y) < 1e-6);
@@ -912,13 +914,13 @@ describe('the scroll widths panel', () => {
     const place = (x: number, y: number) => new Pt(x, y);
     const shown = scrollBackViewStrokes(p, place, 0);
     const alone = scrollBackViewStrokes(p, place, 0, { front: false });
-    expect(shown.some(s => s.ink === 'archTop')).toBe(true);
-    expect(alone.some(s => s.ink === 'archTop')).toBe(false);
-    expect(alone.filter(s => s.ink === 'scrollTurns')).toEqual(shown.filter(s => s.ink === 'scrollTurns'));
+    expect(shown.some(s => s.ink === 'front')).toBe(true);
+    expect(alone.some(s => s.ink === 'front')).toBe(false);
+    expect(alone.filter(s => s.ink === 'turns')).toEqual(shown.filter(s => s.ink === 'turns'));
     // the cheeks hide the neck's sides on the panel; alone they run up to the round's top and,
     // wider than the round, meet it along a shoulder the cheeks had stood in place of
-    expect(shown.filter(s => s.ink === 'neckGround')).toEqual([]);
-    const sides = alone.filter(s => s.ink === 'neckGround') as { d: string }[];
+    expect(shown.filter(s => s.ink === 'neck')).toEqual([]);
+    const sides = alone.filter(s => s.ink === 'neck') as { d: string }[];
     expect(sides).toHaveLength(2);
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
     const roundTop = duckTailRoundTop(p);
@@ -934,7 +936,7 @@ describe('the scroll widths panel', () => {
 
   it('joins the neck to the front\'s walls from behind along the front\'s foot, in its colour, where the nut is wider than the neck', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.theme = labelTheme();
     instance.buildRun();
     const p = instance.params;
     p.neck!.nutWidth = p.neck!.topWidth + 6;
@@ -944,13 +946,13 @@ describe('the scroll widths panel', () => {
       .filter(el => el.tag === 'path' && el.attrs['stroke'] === stroke && /^M -/.test(el.attrs['d'] as string))
       .map(el => points(el.attrs['d'] as string));
 
-    const front = fromBehind('archTop');
+    const front = fromBehind('ink0');
     const joins = front.filter(pts => pts.every(pt => Math.abs(pt.y) < 1e-9));
     expect(front).toHaveLength(4);
     expect(joins).toHaveLength(2);
     const walls = front.filter(pts => !joins.includes(pts));
     const center = (walls[0][0].x + walls[1][0].x) / 2;
-    const neckTops = fromBehind('neckGround').map(pts => pts.at(-1)!);
+    const neckTops = fromBehind('neutral-0.3').map(pts => pts.at(-1)!);
     for (const join of joins) {
       const [outer, inner] = [...join].sort((a, b) => Math.abs(b.x - center) - Math.abs(a.x - center));
       expect(Math.abs(outer.x - center)).toBeCloseTo(p.neck!.nutWidth / 2, 6);
@@ -961,12 +963,12 @@ describe('the scroll widths panel', () => {
 
   it('carries the neck on below both views, widening down it: in front up to the nut over it, behind up to where it meets the scroll', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.theme = labelTheme();
     instance.buildRun();
     const p = instance.params;
     const drawn = recordLayers(instance.buildRun()).elements;
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
-    const sides = drawn.filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neckGround').map(el => points(el.attrs['d'] as string));
+    const sides = drawn.filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neutral-0.3').map(el => points(el.attrs['d'] as string));
     expect(sides).toHaveLength(4);
     for (const [bottom] of sides) expect(bottom.y).toBeCloseTo(-2 * p.neck!.thickness, 9);
 
@@ -985,7 +987,7 @@ describe('the scroll widths panel', () => {
       expect(Math.abs(top.x - center(behind))).toBeCloseTo(p.neck!.nutWidth / 2, 6);
     }
 
-    const nut = drawn.filter(el => el.attrs['stroke'] === 'nut').map(el => points(el.attrs['d'] as string));
+    const nut = drawn.filter(el => el.attrs['stroke'] === 'ink3-0.3').map(el => points(el.attrs['d'] as string));
     const front = nut.find(corners => corners.every(c => c.x > center(inFront) - p.neck!.nutWidth))!;
     expect(Math.max(...front.map(c => c.x)) - Math.min(...front.map(c => c.x))).toBeCloseTo(p.neck!.nutWidth, 9);
     expect([Math.min(...front.map(c => c.y)), Math.max(...front.map(c => c.y))]).toEqual([0, p.neck!.nutHeight]);
@@ -994,7 +996,7 @@ describe('the scroll widths panel', () => {
     p.scroll!.hang = p.scroll!.widths.hip / 2 + 1;
     instance.buildRun();
     const lowered = recordLayers(instance.buildRun()).elements
-      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neckGround').map(el => points(el.attrs['d'] as string))
+      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neutral-0.3').map(el => points(el.attrs['d'] as string))
       .filter(s => s[0].x < 0);
     const { y } = scrollBackWidths(p)[0];
     expect(y).toBeLessThanOrEqual(0);
@@ -1022,10 +1024,10 @@ describe('the fluting panel', () => {
 });
 
 describe('the outer path panel', () => {
-  const named = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+  const named = labelTheme();
   const build = (p: EnricoCerutiParams, over: Partial<CerutiViewFlags> = {}) => {
     const instance = panel(OuterTracePanel, p, flags({ showModuleArcs: false, showAllArcs: false, ...over }));
-    instance.colors = named;
+    instance.theme = named;
     return recordLayers(instance.buildRun()).elements;
   };
 
@@ -1037,7 +1039,7 @@ describe('the outer path panel', () => {
     expect(d).toContain(defineOuterPath(p, undefined, true, false));
     for (const hole of splitPathStrings(defineFholePath(p))) expect(d).toContain(hole);
 
-    const button = drawn.filter(el => el.attrs['stroke'] === 'archBack');
+    const button = drawn.filter(el => el.attrs['stroke'] === 'ink2');
     expect(button.length).toBeGreaterThan(0);
     for (const el of button) expect(xRange(el.attrs['d'] as string).max).toBeLessThan(0);
   });
@@ -1076,7 +1078,7 @@ describe('the f-hole contours panel lays the front profile under its own work', 
   it('draws the outline and purfling in grey, leaving the holes to its own colours', () => {
     const p = archedViolin();
     const instance = panel(FHoleContoursPanel, p);
-    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.theme = labelTheme();
     const drawn = recordLayers(instance.buildRun()).elements;
     const d = drawn.map(el => el.attrs['d']);
     expect(d).toContain(defineOuterPath(p, undefined, true, false));
@@ -1201,25 +1203,25 @@ describe('the scroll\'s front view on the front profile', () => {
     // the neck's sides the widths panel carries on below the nut are the profile's own here
     const ys = (d: string) => [...d.matchAll(/[ML]\s*-?[\d.e-]+\s+(-?[\d.e-]+)/g)].map(mm => Number(mm[1]));
     const stub = 2 * p.neck!.thickness;
-    const onPanel = scrollBackViewStrokes(p, (x, y) => new Pt(x, y), -stub).filter(s => s.ink === 'neckGround');
+    const onPanel = scrollBackViewStrokes(p, (x, y) => new Pt(x, y), -stub).filter(s => s.ink === 'neck');
     expect(onPanel).toHaveLength(2);
     expect(onPanel.every(s => Math.min(...ys((s as { d: string }).d)) < 0)).toBe(true);
-    const inPlan = strokes.filter(s => s.ink === 'neckGround');
+    const inPlan = strokes.filter(s => s.ink === 'neck');
     expect(inPlan.every(s => Math.min(...ys((s as { d: string }).d)) >= p.neck!.neckTop!.y - 1e-6)).toBe(true);
   });
 
   it('goes on the profile in grey once the scroll is started, and not before', () => {
     const { p, paths } = necked();
-    const named = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    const named = labelTheme();
     const unstarted = ensureFrontProfilePaths(p, paths);
     expect(unstarted.scroll).toBe(false);
-    const before = recordLayers(renderFrontProfile(p, paths, named, unstarted)).elements;
+    const before = recordLayers(renderFrontProfile(p, paths, named.palette('classicCremona'), unstarted)).elements;
     p.scroll = defaultVoluteParams(p);
     const solve = ensureFrontProfilePaths(p, paths);
     expect(solve.scroll).toBe(true);
-    const after = recordLayers(renderFrontProfile(p, paths, named, solve)).elements;
+    const after = recordLayers(renderFrontProfile(p, paths, named.palette('classicCremona'), solve)).elements;
     expect(after.length - before.length).toBe(scrollFrontInPlan(p).length);
-    expect(after.slice(before.length).every(el => el.attrs['stroke'] === 'trace')).toBe(true);
+    expect(after.slice(before.length).every(el => el.attrs['stroke'] === 'neutral')).toBe(true);
   });
 
   it('goes on the neck panel\'s front view too', () => {
@@ -1235,10 +1237,10 @@ describe('the scroll\'s front view on the front profile', () => {
 
   it('goes on the plate pair once asked for, the front view on the top and the back view on the back', () => {
     const { p, paths } = necked();
-    const neckOnly = recordLayers(renderPlatePair(p, paths, colors, STROKE_WEIGHT.trace, solveNeckForProfile(p))).elements.length;
+    const neckOnly = recordLayers(renderPlatePair(p, paths, theme.palette('classicCremona'), STROKE_WEIGHT.trace, solveNeckForProfile(p))).elements.length;
     p.scroll = defaultVoluteParams(p);
     const dx = plateLayoutOffset(p, 'bottom');
-    const withScroll = recordLayers(renderPlatePair(p, paths, colors, STROKE_WEIGHT.trace, solveNeckForProfile(p))).elements.length;
+    const withScroll = recordLayers(renderPlatePair(p, paths, theme.palette('classicCremona'), STROKE_WEIGHT.trace, solveNeckForProfile(p))).elements.length;
     expect(withScroll - neckOnly).toBe(scrollFrontInPlan(p).length + scrollBackInPlan(p, dx).length);
     // the plate panels don't ask for it yet
     for (const instance of [panel(OuterTracePanel, p), panel(FlutingPanel, p)]) {
@@ -1249,9 +1251,9 @@ describe('the scroll\'s front view on the front profile', () => {
 
   it('draws the neck on the back plate from the plate\'s edge, not from the mortise', () => {
     const { p, paths } = necked();
-    const named = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    const named = labelTheme();
     const dx = plateLayoutOffset(p, 'bottom');
-    const neck = recordLayers(renderPlatePair(p, paths, named, STROKE_WEIGHT.trace, solveNeckForProfile(p))).elements.find(el => el.attrs['d'] === translatePath(defineBackNeckPath(p, getPath(paths, 'back')), dx, 0));
+    const neck = recordLayers(renderPlatePair(p, paths, named.palette('classicCremona'), STROKE_WEIGHT.trace, solveNeckForProfile(p))).elements.find(el => el.attrs['d'] === translatePath(defineBackNeckPath(p, getPath(paths, 'back')), dx, 0));
     expect(neck).toBeDefined();
     const ys = [...(neck!.attrs['d'] as string).matchAll(/[ML]\s*-?[\d.e-]+\s+(-?[\d.e-]+)/g)].map(m => Number(m[1]));
     expect(Math.min(...ys)).toBeGreaterThan(mortiseFloorY(p) + p.neck!.mortiseDepth / 2);
@@ -1266,10 +1268,10 @@ function archedViolinWithNeck(): EnricoCerutiParams {
 }
 
 describe('the long arching panel lays the neck the user has set under the body', () => {
-  const named = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+  const named = labelTheme();
   const build = (p: EnricoCerutiParams, showNeck = true) => {
     const instance = panel(LongArchingPanel, p);
-    instance.colors = named;
+    instance.theme = named;
     instance.showNeck = showNeck;
     return recordLayers(instance.buildRun()).elements;
   };
@@ -1285,15 +1287,15 @@ describe('the long arching panel lays the neck the user has set under the body',
   it('draws no neck before the neck panel is visited, and the neck in grey after', () => {
     const p = archedViolin();
     const before = build(p);
-    expect(before.some(el => el.attrs['stroke'] === 'neckGround')).toBe(false);
+    expect(before.some(el => el.attrs['stroke'] === 'neutral-0.3')).toBe(false);
 
     const neck = panel(NeckPanel, p);
     neck.buildRun();
     const after = build(p);
-    const grey = after.filter(el => el.attrs['stroke'] === 'neckGround');
+    const grey = after.filter(el => el.attrs['stroke'] === 'neutral-0.3');
     expect(grey.length).toBeGreaterThan(0);
     expect(after.length - before.length).toBe(grey.length);
-    for (const part of ['neck', 'neckRoot', 'fingerboard', 'nut', 'bridge']) {
+    for (const part of ['ink0s-0.25', 'ink0s0.5-0.1', 'ink3+0.15', 'ink3-0.3', 'ink0s-0.5+0.55']) {
       expect(after.some(el => el.attrs['stroke'] === part), part).toBe(false);
     }
   });
@@ -1553,7 +1555,7 @@ describe('arching panels — arranging spline rows', () => {
     await TestBed.configureTestingModule({ imports: [LongArchingPanel] }).compileComponents();
     const fixture = TestBed.createComponent(LongArchingPanel);
     fixture.componentRef.setInput('params', archedViolin());
-    fixture.componentRef.setInput('colors', colors);
+    fixture.componentRef.setInput('theme', theme);
     fixture.componentRef.setInput('flags', flags());
 
     const panelUnderTest = fixture.componentInstance;
@@ -1646,7 +1648,7 @@ describe('arching panels — arranging spline rows', () => {
     await TestBed.configureTestingModule({ imports: [CrossArchingPanel] }).compileComponents();
     const fixture = TestBed.createComponent(CrossArchingPanel);
     fixture.componentRef.setInput('params', archedViolin());
-    fixture.componentRef.setInput('colors', colors);
+    fixture.componentRef.setInput('theme', theme);
     fixture.componentRef.setInput('flags', flags());
 
     const panelUnderTest = fixture.componentInstance;

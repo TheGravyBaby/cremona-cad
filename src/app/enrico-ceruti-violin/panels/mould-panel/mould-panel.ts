@@ -3,9 +3,10 @@ import { FormsModule } from '@angular/forms';
 import { flipRectAboutY } from '../../../helpers/math/simpleGeometry';
 import { renderPath, renderRect } from '../../../helpers/renderFuncs';
 import { calculateMould, ensureCenterBoutInnerPath, getPath } from '../../calculation/outline/ceruti-calcs';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
+import { CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
+import { PanelPalette } from '../../../theme/palette';
 
 @Component({
   selector: 'app-ceruti-mould-panel',
@@ -21,7 +22,6 @@ export class MouldPanel extends CerutiPanelBase implements OnInit {
 
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[];
-  @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   ngOnInit(): void {
@@ -40,28 +40,28 @@ export class MouldPanel extends CerutiPanelBase implements OnInit {
     const previewMouldPath = calculateMould(p, false, this.flags.simpleClampBox);
 
     return [
-      renderMould(p, this.colors, this.flags.showBlocks, this.flags.showInnerPath, previewMouldPath, innerPath),
+      renderMould(p, this.pal, this.flags.showBlocks, this.flags.showInnerPath, previewMouldPath, innerPath),
     ];
   }
 }
 
 export const renderMould = (
   params: EnricoCerutiParams,
-  colors: CerutiColors,
+  pal: PanelPalette,
   showBlocks: boolean,
   showInnerPath: boolean,
   mouldPath: string,
   innerPath: string,
 ) => (g: any, ui: any): void => {
-  showInnerPath && renderPath(innerPath, colors.trace)(g, ui);
-  renderPath(mouldPath, colors.trace)(g, ui);
+  showInnerPath && renderPath(innerPath, pal.neutral.css)(g, ui);
+  renderPath(mouldPath, pal.neutral.css)(g, ui);
 
   if (showBlocks) {
-    renderRect(params.blocks.U!, colors.upperBout)(g, ui);
-    renderRect(params.blocks.CU!, colors.centerBoutUp)(g, ui);
-    renderRect(flipRectAboutY(params.blocks.CU!), colors.centerBoutUp)(g, ui);
-    renderRect(params.blocks.CL!, colors.centerBoutLow)(g, ui);
-    renderRect(flipRectAboutY(params.blocks.CL!), colors.centerBoutLow)(g, ui);
-    renderRect(params.blocks.L!, colors.lowerBout)(g, ui);
+    renderRect(params.blocks.U!, pal.ink(1).css)(g, ui);
+    renderRect(params.blocks.CU!, pal.ink(0).css)(g, ui);
+    renderRect(flipRectAboutY(params.blocks.CU!), pal.ink(0).css)(g, ui);
+    renderRect(params.blocks.CL!, pal.ink(0).lightness(0.5).css)(g, ui);
+    renderRect(flipRectAboutY(params.blocks.CL!), pal.ink(0).lightness(0.5).css)(g, ui);
+    renderRect(params.blocks.L!, pal.ink(2).css)(g, ui);
   }
 };

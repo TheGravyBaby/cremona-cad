@@ -2,9 +2,7 @@ import { Pt } from '../../../models/types';
 import { clamp, smoothstep } from '../../../helpers/math/simpleGeometry';
 import { buildPolylineIndex, closestPointToPolylineIndexed, makeC2SplineWithFlatKnot, makeMonotoneSpline, PolylineIndex, archSplineKnots, catenaryZAt, cycloidZAt, splineZAt } from '../../../helpers/math/vibeMath';
 import { samplePathToPolyline } from '../../../helpers/math/pathMath';
-import {
-  ArchCurve, EnricoCerutiParams, CrossArchShape, CrossArchCycloid, CrossArchSpline, FlutingParams,
-} from '../../ceruti-types';
+import { ArchCurve, EnricoCerutiParams, CrossArchShape, CrossArchCycloid, CrossArchSpline, FlutingParams } from '../../ceruti-types';
 import { defineFlutingPath, defineInsetPath } from '../outline/ceruti-paths';
 import { archFromLoweredTakeoff, normalizeCrossArchStations } from './ceruti-arching';
 
@@ -575,7 +573,6 @@ const CYCLOID_CROWN_KNOTS = 24;
 
 // past 1 the window runs beyond the cusp, so the ends curl under the takeoff and back up; 1.5 dips a full rise
 export const CYCLOID_MAX_PCT = 1.5;
-
 
 /** One authored knot of a crown shape, both coordinates as fractions. */
 export interface CrossArchKnot {

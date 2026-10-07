@@ -6,7 +6,7 @@ import { STROKE_WEIGHT } from '../../../theme/strokes';
 import { translatePath } from '../../../helpers/math/pathMath';
 import { calculateOuterArcs, ensureFholePath, ensureOuterTracePaths } from '../../calculation/outline/ceruti-calcs';
 import { renderPlatePair } from '../../renders/front-profile.render';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
+import { CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { defaultArchingParams } from '../../calculation/arching/ceruti-arching';
 import { defaultFlutingParams, effectiveCBoutSweep, channelAreaPath, channelPaths, cornerJoinAreaPath, gougeHalfWidth, plateLayoutOffset } from '../../calculation/arching/ceruti-arch-geometry';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -24,7 +24,6 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
 
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[];
-  @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
   protected readonly gougeHalfWidth = gougeHalfWidth;
   protected readonly effectiveCBoutSweep = effectiveCBoutSweep;
@@ -61,10 +60,10 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
     // The plates are context only, so guide weight; the purfling is what the land edge is set against
     ensureOuterTracePaths(p, this.paths);
     if (p.fHoles) ensureFholePath(p, this.paths);
-    const renders: RenderLayer[] = renderPlatePair(p, this.paths, this.colors, STROKE_WEIGHT.guide);
+    const renders: RenderLayer[] = renderPlatePair(p, this.paths, this.pal, STROKE_WEIGHT.guide);
     for (const plate of ['top', 'bottom'] as const) {
       const g = plate === 'top' ? top : back;
-      const color = plate === 'top' ? this.colors.archTop : this.colors.archBack;
+      const color = plate === 'top' ? this.pal.ink(0).css : this.pal.ink(2).css;
       const dx = plateLayoutOffset(p, plate);
       const at = (path: string): string => translatePath(path, dx, 0);
 

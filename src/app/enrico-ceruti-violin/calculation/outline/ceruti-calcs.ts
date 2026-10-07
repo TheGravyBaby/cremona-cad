@@ -302,7 +302,6 @@ export function calculateCorners(p: EnricoCerutiParams): CornerFailure[] {
         p.bouts.U2 = new Arc(p.bouts.UBW / 2 - U2R - inset, p.bouts.U1.y, U2R);
     }
 
-
     let L2R = p.bouts.L2?.r ?? Math.round(LBWI * p.ratios.L2toLBW);
     let L2Y = p.bouts.L2?.y ?? p.bouts.L1.y;
     let L2U1Match = false
@@ -1033,7 +1032,6 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
         p.blocks.CU = new Rectangle(new Pt(p.bouts.UCr.x + p.blocks.CUPad, p.bouts.UCr.y - p.blocks.CUPad), new Pt(p.bouts.UCr.x + p.blocks.CUPad - p.blocks.CU.width, p.bouts.UCr.y - p.blocks.CUPad + p.blocks.CU.height));
         p.blocks.CL = new Rectangle(new Pt(p.bouts.LCr.x + p.blocks.CLPad, p.bouts.LCr.y + p.blocks.CLPad), new Pt(p.bouts.LCr.x + p.blocks.CLPad - p.blocks.CL.width, p.bouts.LCr.y + p.blocks.CLPad - p.blocks.CL.height));
         p.blocks.L = new Rectangle(new Pt(-p.blocks.L.width / 2, inset), new Pt(p.blocks.L.width / 2, inset + p.blocks.L.height));
-
 
         if (p.options.useViolNeck) {
             // only the top edge is the neck's — it sits at the join tangency rather than at
