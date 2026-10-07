@@ -24,14 +24,14 @@
           <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: axisGrid.showAxes }" />
         </button>
         <span class="layer-tab-label"
-          title="The two lines through the origin, numbered along the view's edges at the grid steps.">Axes</span>
+          docTip="axis.axes">Axes</span>
       </div>
       <div class="layer-tab axis-row" [class.off-panel]="!axisGrid.visible">
         <button type="button" class="layer-tab-icon-btn" (click)="toggle('showGridX')"
           [title]="axisGrid.showGridX ? 'Hide vertical grid lines' : 'Show vertical grid lines'">
           <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: axisGrid.showGridX }" />
         </button>
-        <span class="layer-tab-label" title="Vertical lines, one every step along X. Also spaces the X axis numbers.">X grid</span>
+        <span class="layer-tab-label" docTip="axis.gridX">X grid</span>
         <input #stepX class="axis-step" type="number" min="0.1" step="0.1" [value]="axisGrid.gridStepX"
           (change)="setStep('gridStepX', stepX)" title="X step, mm" />
         <span class="axis-unit">mm</span>
@@ -41,7 +41,7 @@
           [title]="axisGrid.showGridY ? 'Hide horizontal grid lines' : 'Show horizontal grid lines'">
           <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: axisGrid.showGridY }" />
         </button>
-        <span class="layer-tab-label" title="Horizontal lines, one every step along Y. Also spaces the Y axis numbers.">Y grid</span>
+        <span class="layer-tab-label" docTip="axis.gridY">Y grid</span>
         <input #stepY class="axis-step" type="number" min="0.1" step="0.1" [value]="axisGrid.gridStepY"
           (change)="setStep('gridStepY', stepY)" title="Y step, mm" />
         <span class="axis-unit">mm</span>

@@ -20,8 +20,8 @@
         </label>
         <div class="field-cell field-cell--xy">
             <div class="xy-titles">
-                <span class="field-title" title="Eye centre's distance in front of the neck's front, so negative behind it. Set while Flush with Neck is on">X <span class="unit-label">mm</span></span>
-                <span class="field-title" title="Eye centre's height up the neck from the nut">Y <span class="unit-label">mm</span></span>
+                <span class="field-title" docTip="volute.eyeX">X <span class="unit-label">mm</span></span>
+                <span class="field-title" docTip="volute.eyeY">Y <span class="unit-label">mm</span></span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Eye position"
                 [style.borderColor]="colors.neckOff"
@@ -36,20 +36,20 @@
     <div class="input-group basic-row field-row" role="group">
         @if (archimedean) {
         <label class="field-cell">
-            <span class="field-title" title="How much the spiral's radius grows each full turn, so the even spacing between its turns">Pitch <span class="unit-label">mm</span></span>
+            <span class="field-title" docTip="volute.pitch">Pitch <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.25" data-step-shift="1" data-step-fine="0.1" min="0.25" [style.border-color]="colors.outerTrace"
                 [(ngModel)]="scroll.pitch" (input)="onChange()" />
         </label>
         }
         @if (kelly) {
         <label class="field-cell">
-            <span class="field-title" title="The column of four squares the spiral's centres are struck round, top of it to bottom. The longer the seed, the wider each turn opens">Seed <span class="unit-label">mm</span></span>
+            <span class="field-title" docTip="volute.seed">Seed <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.25" data-step-shift="1" data-step-fine="0.1" min="0.25" [style.border-color]="colors.outerTrace"
                 [(ngModel)]="scroll.seedLength" (input)="onChange()" />
         </label>
         }
         <label class="field-cell">
-            <div class="toggle" title="Slide the eye so the spiral's front is flush with the neck's front, Y still setting its height. Off, X is yours too">
+            <div class="toggle" docTip="volute.flushWithNeck">
                 <input type="checkbox" [(ngModel)]="scroll.flushWithNeck" (ngModelChange)="onChange()" />
                 <span>Fit to Neck</span>
             </div>
@@ -75,13 +75,13 @@
     <div class="ui-group-title">Crown</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="colors.scrollFrontLight" title="The arc carrying the spiral's front on up to the top of the scroll">S0 R <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="colors.scrollFrontLight" docTip="volute.s0">S0 R <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollFrontLight"
                 [(ngModel)]="scroll.S0.r" (input)="onChange(); onArcFocus('S0', colors.scrollFrontLight)"
                 (focus)="onArcFocus('S0', colors.scrollFrontLight)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: 90° the top of the scroll, 180° the back. It starts where the spiral's front ends">End <span class="unit-label">°</span></span>
+            <span class="field-title" docTip="volute.s0End">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
                 [ngModel]="getFieldDeg(scroll.S0, 'end')" (ngModelChange)="setFieldDeg(scroll.S0, 'end', $event, onChange.bind(this)); onArcFocus('S0', colors.scrollFrontLight)"
                 (focus)="onArcFocus('S0', colors.scrollFrontLight)" (blur)="onArcBlur()" />
@@ -89,13 +89,13 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="colors.scrollFront" title="The arc from the top of the scroll on over to the back">S1 R <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="colors.scrollFront" docTip="volute.s1">S1 R <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollFront"
                 [(ngModel)]="scroll.S1.r" (input)="onChange(); onArcFocus('S1', colors.scrollFront)"
                 (focus)="onArcFocus('S1', colors.scrollFront)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: 180° the back. It starts where S0 ended">End <span class="unit-label">°</span></span>
+            <span class="field-title" docTip="volute.s1End">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
                 [ngModel]="getFieldDeg(scroll.S1, 'end')" (ngModelChange)="setFieldDeg(scroll.S1, 'end', $event, onChange.bind(this)); onArcFocus('S1', colors.scrollFront)"
                 (focus)="onArcFocus('S1', colors.scrollFront)" (blur)="onArcBlur()" />

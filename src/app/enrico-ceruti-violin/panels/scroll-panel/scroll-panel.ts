@@ -14,13 +14,14 @@ import { dist } from '../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../models/types';
 import { ScrollViewFlags, longArc, scrollArc, renderScrollNeck, renderVolute } from '../volute-panel/volute-panel';
 import { HighlightedArc, HighlightedSegment } from '../../renders/render-constants';
+import { TooltipDirective } from '../../../docs/tooltips';
 
 // the arcs take an arc halo; the straights and the flat a segment halo on the line their length makes
 export type ScrollHighlightKey = 'S2' | 'S3' | 'nape' | 'F0' | 'F1' | 'backStraight' | 'flat' | 'frontStraight';
 
 @Component({
   selector: 'app-ceruti-scroll-panel',
-  imports: [FormsModule, DecimalPipe, NumberStepperDirective],
+  imports: [TooltipDirective, FormsModule, DecimalPipe, NumberStepperDirective],
   templateUrl: './scroll-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

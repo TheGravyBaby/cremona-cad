@@ -1,4 +1,4 @@
-import { error } from '../shared/message-emitter';
+import { storageFull } from '../docs/conditions';
 
 // per-tab copy of the in-progress design (recipe, open panel, toolbox shapes) — sessionStorage,
 // so each tab is its own workspace but closing it discards the work. saving to disk is the only durable copy.
@@ -23,11 +23,7 @@ export function writeWorkingState(key: string, value: string): void {
   } catch {
     if (quotaWarned) return;
     quotaWarned = true;
-    error(
-      'Your browser\'s storage is full, so this design is no longer being kept while the tab ' +
-      'is open. Save it to keep it. Large reference images are the usual cause.',
-      'Storage full', true,
-    );
+    storageFull();
   }
 }
 

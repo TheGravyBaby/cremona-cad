@@ -13,7 +13,7 @@
                     @if (ready.has('outerTrace')) {
                         <div class="export-row">
                             <span class="export-row__name">Top Plate</span>
-                            <span class="export-row__desc">Top of the instrument</span>
+                            <span class="export-row__desc">{{ describe('outerTrace') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('outerTrace')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('outerTrace')">SVG</button>
@@ -25,7 +25,7 @@
                     @if (ready.has('back')) {
                         <div class="export-row">
                             <span class="export-row__name">Back Plate</span>
-                            <span class="export-row__desc">Back of the instrument, with button</span>
+                            <span class="export-row__desc">{{ describe('back') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('back')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('back')">SVG</button>
@@ -37,7 +37,7 @@
                     @if (ready.has('innerTrace')) {
                         <div class="export-row">
                             <span class="export-row__name">Inner Trace</span>
-                            <span class="export-row__desc">Inner body outline for mould &amp; rib bending</span>
+                            <span class="export-row__desc">{{ describe('innerTrace') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('innerTrace')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('innerTrace')">SVG</button>
@@ -57,7 +57,7 @@
                     @if (ready.has('longArchTemplates')) {
                         <div class="export-row">
                             <span class="export-row__name">Long Arch Templates</span>
-                            <span class="export-row__desc">Centerline profile strips, top and back</span>
+                            <span class="export-row__desc">{{ describe('longArchTemplates') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('longArchTemplates')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('longArchTemplates')">SVG</button>
@@ -69,7 +69,7 @@
                     @if (ready.has('crossArchTemplates')) {
                         <div class="export-row">
                             <span class="export-row__name">Cross Arch Templates</span>
-                            <span class="export-row__desc">5 cross-section strips per plate, evenly spaced</span>
+                            <span class="export-row__desc">{{ describe('crossArchTemplates') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('crossArchTemplates')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('crossArchTemplates')">SVG</button>
@@ -89,7 +89,7 @@
                     @if (ready.has('fholeTemplate')) {
                         <div class="export-row">
                             <span class="export-row__name">F-Hole Template</span>
-                            <span class="export-row__desc">Single unmirrored f-hole, for cutting or tracing</span>
+                            <span class="export-row__desc">{{ describe('fholeTemplate') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('fholeTemplate')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('fholeTemplate')">SVG</button>
@@ -101,7 +101,7 @@
                     @if (ready.has('fholeTemplateNoEyes')) {
                         <div class="export-row">
                             <span class="export-row__name">F-Hole(No Eyes)</span>
-                            <span class="export-row__desc">Single unmirrored f-hole, eyes closed with a short arc for hand-cut eyes</span>
+                            <span class="export-row__desc">{{ describe('fholeTemplateNoEyes') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('fholeTemplateNoEyes')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('fholeTemplateNoEyes')">SVG</button>
@@ -121,7 +121,7 @@
                     @if (ready.has('neckTemplate')) {
                         <div class="export-row">
                             <span class="export-row__name">Neck Template</span>
-                            <span class="export-row__desc">Side profile, neck foot to scroll, with the volute as a slotted stencil and the eye pricked</span>
+                            <span class="export-row__desc">{{ describe('neckTemplate') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('neckTemplate')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('neckTemplate')">SVG</button>
@@ -133,7 +133,7 @@
                     @if (ready.has('scrollFrontView')) {
                         <div class="export-row">
                             <span class="export-row__name">Scroll Front View</span>
-                            <span class="export-row__desc">The head from in front, the pegbox and the turns as seen, with the nut</span>
+                            <span class="export-row__desc">{{ describe('scrollFrontView') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('scrollFrontView')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('scrollFrontView')">SVG</button>
@@ -145,7 +145,7 @@
                     @if (ready.has('scrollBackView')) {
                         <div class="export-row">
                             <span class="export-row__name">Scroll Back View</span>
-                            <span class="export-row__desc">The head from behind, the duck tail's round, the back and the turns as seen</span>
+                            <span class="export-row__desc">{{ describe('scrollBackView') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('scrollBackView')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('scrollBackView')">SVG</button>
@@ -157,7 +157,7 @@
                     @if (ready.has('scrollBack')) {
                         <div class="export-row">
                             <span class="export-row__name">Scroll Back</span>
-                            <span class="export-row__desc">The back unrolled into a strip, duck tail to the second turn's bottom, to lay on the carved back and draw round</span>
+                            <span class="export-row__desc">{{ describe('scrollBack') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('scrollBack')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('scrollBack')">SVG</button>
@@ -169,7 +169,7 @@
                     @if (ready.has('scrollCompass')) {
                         <div class="export-row">
                             <span class="export-row__name">Compass Walk</span>
-                            <span class="export-row__desc">A box to cut, its spine marked where a compass steps up the back, a circle each width across, to set the compass from</span>
+                            <span class="export-row__desc">{{ describe('scrollCompass') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('scrollCompass')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('scrollCompass')">SVG</button>
@@ -189,7 +189,7 @@
                     @if (ready.has('mould')) {
                         <div class="export-row">
                             <span class="export-row__name">Mould</span>
-                            <span class="export-row__desc">Mould for creating the rib structure</span>
+                            <span class="export-row__desc">{{ describe('mould') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('mould')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('mould')">SVG</button>
@@ -201,7 +201,7 @@
                     @if (ready.has('blocks')) {
                         <div class="export-row">
                             <span class="export-row__name">Block Templates</span>
-                            <span class="export-row__desc">Individual block templates</span>
+                            <span class="export-row__desc">{{ describe('blocks') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn" (click)="previewExport('blocks')">Preview</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('blocks')">SVG</button>
@@ -220,14 +220,14 @@
                 <div class="export-group__body">
                     <div class="export-row">
                         <span class="export-row__name">Top Plate 3D</span>
-                        <span class="export-row__desc">Arched top surface with fluting channel, for CNC</span>
+                        <span class="export-row__desc">{{ describe('stlTop') }}</span>
                         <div class="export-row__actions">
                             <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadStl('top')">STL</button>
                         </div>
                     </div>
                     <div class="export-row">
                         <span class="export-row__name">Back Plate 3D</span>
-                        <span class="export-row__desc">Arched back surface with fluting channel, for CNC</span>
+                        <span class="export-row__desc">{{ describe('stlBack') }}</span>
                         <div class="export-row__actions">
                             <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadStl('bottom')">STL</button>
                         </div>

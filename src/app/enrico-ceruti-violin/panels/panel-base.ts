@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { PanelRenderRequest } from '../ceruti-types';
+import { showFieldHelp } from '../../docs/field-help';
 
 export type RenderLayer = (g: any, ui: any) => void;
 
@@ -18,6 +19,8 @@ export type RenderLayer = (g: any, ui: any) => void;
 })
 export abstract class CerutiPanelBase {
   @Output() panelUpdate = new EventEmitter<PanelRenderRequest>();
+
+  protected readonly help = showFieldHelp;
 
   /**
    * Builds this panel's render layer stack for its current state.

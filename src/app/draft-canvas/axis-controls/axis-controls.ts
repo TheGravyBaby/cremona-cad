@@ -1,13 +1,14 @@
 import { Component, ElementRef, HostListener, inject, Input } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { AxisGridController, AxisGridPreferences } from '../axis-grid-controller';
+import { TooltipDirective } from '../../docs/tooltips';
 
 // the strip and popup chrome is layer-controls.css, shared rather than restated, so the three
 // bottom-bar lists stay one look
 @Component({
   selector: 'app-axis-controls',
   standalone: true,
-  imports: [NgTemplateOutlet],
+  imports: [TooltipDirective, NgTemplateOutlet],
   templateUrl: './axis-controls.html',
   styleUrls: ['../layer-controls/layer-controls.css', './axis-controls.css'],
 })

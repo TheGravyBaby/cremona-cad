@@ -1,5 +1,4 @@
 import { Injectable, inject } from '@angular/core';
-import { warn } from '../../shared/message-emitter';
 import { DraftShape, makeGroupId, makeShapeId } from './toolbox-shape';
 import { ToolboxStore } from './toolbox-store';
 import { SelectionStore, toolboxRef } from './selection-store';
@@ -8,6 +7,7 @@ import { reflectAcross, rotateAbout, transformShape, translateShape } from './sh
 import { ShapeBounds, shapeBounds, unionBounds } from './shape-hit-test';
 import { Matrix2D } from '../../helpers/math/pathMath';
 import { Pt } from '../../models/types';
+import { layerLocked } from '../../docs/conditions';
 
 /**
  * The actions that act on the selection as a whole — the edit verbs, and the Bench tab's transforms,
@@ -265,7 +265,7 @@ export class SelectionActions {
   private activeLayerAccepts(action: string): boolean {
     const layerId = this.toolbox.activeLayerId;
     if (!this.toolbox.layers.find(l => l.id === layerId)?.locked) return true;
-    warn('The active layer is locked — unlock it or switch layers first.', action);
+    layerLocked(action);
     return false;
   }
 }

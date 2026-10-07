@@ -43,7 +43,7 @@
   </div>
 
   @if (showExport) {
-  <button type="button" class="toolbar-btn toolbar-btn--text" title="Templates, plans and a copy of the recipe"
+  <button type="button" class="toolbar-btn toolbar-btn--text" docTip="toolbar.export"
     [class.active]="exportActive" [attr.aria-pressed]="exportActive"
     [disabled]="!exportEnabled" (click)="openExport.emit()">Export</button>
   }

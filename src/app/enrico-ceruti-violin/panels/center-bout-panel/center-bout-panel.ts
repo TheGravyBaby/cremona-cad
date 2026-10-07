@@ -11,7 +11,6 @@ import { cornerOffsetSign } from '../../calculation/outline/ceruti-paths';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { renderMainBouts, renderBounds, renderBoutBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCorners } from '../corners-panel/corners-panel';
-import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../field-info';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
@@ -41,9 +40,6 @@ export class CenterBoutPanel extends CerutiPanelBase implements OnInit {
 
   protected readonly nearestFraction = nearestFraction;
   protected readonly adjustArcStart = adjustArcStart;
-  protected readonly centerBoutWidthInfo = centerBoutWidthInfo;
-  protected readonly fitC0Info = fitC0Info;
-  protected readonly cornerPositionInfo = cornerPositionInfo;
 
   private highlightedArc: Arc | null = null;
   private highlightedArcColor = '';

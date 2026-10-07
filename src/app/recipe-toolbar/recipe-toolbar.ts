@@ -4,11 +4,12 @@ import { RecipeInterface } from '../models/types';
 import { MessageService } from '../shared/message.service';
 import { RECIPE_SCHEMA_VERSION } from '../enrico-ceruti-violin/ceruti-types';
 import { isLocalHost } from '../helpers/debugDump';
+import { TooltipDirective } from '../docs/tooltips';
 
 @Component({
   selector: 'app-recipe-toolbar',
   standalone: true,
-  imports: [FormsModule],
+  imports: [TooltipDirective, FormsModule],
   templateUrl: './recipe-toolbar.html',
   styleUrls: ['../sidebar.css', './recipe-toolbar.css'],
 })

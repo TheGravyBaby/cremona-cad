@@ -10,7 +10,7 @@ import { LOCAL_TEMPLATES } from './templates/local/generated-index';
 import { calculateMainBouts, ensureFrontProfilePaths, hasCenterBout, hasCorners, hasMainBouts } from './calculation/outline/ceruti-calcs';
 import { renderFrontProfile } from './renders/front-profile.render';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
-import { dimensionInfo, insetInfo } from './panels/field-info';
+import { showFieldHelp } from '../docs/field-help';
 import { MainBoutsPanel, renderBounds } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from './panels/corners-panel/corners-panel';
 import { CenterBoutPanel } from './panels/center-bout-panel/center-bout-panel';
@@ -383,8 +383,7 @@ export class CerutiViolin extends RecipeComponentBase {
   }
 
   // used by the base-measurements section inlined in ceruti-violin.html — see changeBaseMeasurements().
-  protected readonly dimensionInfo = dimensionInfo;
-  protected readonly insetInfo = insetInfo;
+  protected readonly help = showFieldHelp;
 
   protected override refreshBoundInputs(): void {
     queueMicrotask(() => {

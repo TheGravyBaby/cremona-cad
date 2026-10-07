@@ -12,13 +12,14 @@ import { arcReach, normalizeRadians, TURN } from '../../../helpers/math/simpleGe
 import { Arc, Pt } from '../../../models/types';
 import { scrollNeckStub } from '../../calculation/neck/ceruti-scroll-views';
 import { HighlightedArc } from '../../renders/render-constants';
+import { TooltipDirective } from '../../../docs/tooltips';
 
 // a four point arc by its index innermost first, or a crown arc by name
 export type VoluteHighlightKey = number | 'S0' | 'S1';
 
 @Component({
   selector: 'app-ceruti-volute-panel',
-  imports: [FormsModule, NumberStepperDirective],
+  imports: [TooltipDirective, FormsModule, NumberStepperDirective],
   templateUrl: './volute-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

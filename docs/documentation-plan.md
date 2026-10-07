@@ -197,6 +197,23 @@ Mechanical, and the bulk of the work:
 Stale text is marked `status: stale`, not fixed yet. The outcome is one place where every piece
 of documentation can be read in a row, which is what makes the rewrite possible.
 
+**Done 2026-10-07, in a different shape than planned above.** The wiki is being written by hand
+rather than filled by extraction, so the existing text was consolidated under `src/app/docs/`
+as the source the live UI reads, word for word, with no wiki articles made from it:
+
+- `field-help.ts`: the 42 ⓘ write-ups as one `FIELD_HELP` record; panels bind `help('id')`
+  through `CerutiPanelBase`. `panels/field-info.ts` is gone.
+- `tooltips.ts`: 99 explanatory tooltips as one `TOOLTIPS` record behind a `docTip` directive,
+  113 bindings across 13 templates. The ~110 chrome tooltips stay literal.
+- `conditions.ts`: the 13 toasts that run to a paragraph, as functions the call sites call. The
+  solvers' one-line failures stay beside the math that builds them.
+- `export-descriptions.ts`: the 16 export rows.
+- `guide/`: the Documentation tab as its own component, markup moved as-is.
+- `CHANGELOG.md` at the root, rendered through the wiki's markdown renderer.
+
+Still where they were, by choice: inline state notes (`station-note`, `hint`), the solver
+failure sentences, the base panel's clamp messages, README and the CLAUDE.md files.
+
 ### Phase 3: 0.9.0 documentation (release scope)
 
 What 0.9.0 actually needs written, and nothing more:

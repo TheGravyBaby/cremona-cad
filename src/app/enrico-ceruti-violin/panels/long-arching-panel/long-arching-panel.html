@@ -12,7 +12,7 @@
             <input class="basic-input" type="number" step="1" min="1"
                 [(ngModel)]="arching.ribHeightLower" (input)="onChange()" />
         </label>
-        <button type="button" class="info-icon" (click)="ribHeightInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('ribHeight')" title="More information">ⓘ</button>
     </div>
 </section>
 
@@ -29,7 +29,7 @@
                 (change)="setCurveType('top', 'spline')" />
             <span>Spline</span>
         </div>
-        <button type="button" class="info-icon" (click)="curveTypeInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('curveType')" title="More information">ⓘ</button>
     </div>
 
     @if (!topSpline) {
@@ -40,7 +40,7 @@
                 [ngModel]="topArch.archHeight" (ngModelChange)="setArchHeight('top', $event)"
                 [style.border-color]="colors.archTop" />
         </label>
-        <button type="button" class="info-icon" (click)="archHeightInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('archHeight')" title="More information">ⓘ</button>
     </div>
     }
 
@@ -50,12 +50,12 @@
             <span class="field-cell">Position <span class="unit-label">%</span></span>
             <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
             <span class="field-cell">Height <span class="unit-label">mm</span></span>
-            <button type="button" class="info-icon" (click)="splinePointInfo()" title="More information">ⓘ</button>
+            <button type="button" class="info-icon" (click)="help('splinePoint')" title="More information">ⓘ</button>
         </div>
         @for (row of splineRows(topSpline); track $index) {
         <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
             <button type="button" class="row-grip" data-reorder-handle aria-label="Reorder row"
-                title="Drag to put this row in order, or move it with the arrow keys">⠿</button>
+                docTip="reorderRow">⠿</button>
             @if (row.pt; as pt) {
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="1" max="99"
@@ -69,7 +69,7 @@
                     [ngModel]="pt.z" (ngModelChange)="setSplinePointHeight('top', pt, $event)"
                     (focus)="onSplinePointFocus('top', row.index)" (blur)="onSplinePointBlur()" />
             </div>
-            <div class="toggle" title="Repeat this point at the opposite end of the plate">
+            <div class="toggle" docTip="longArching.mirrorPoint">
                 <input type="checkbox" [checked]="pt.mirror" (change)="toggleSplineMirror(pt)" />
                 <span>Mirror</span>
             </div>
@@ -88,7 +88,7 @@
                     (focus)="onSplinePointFocus('top', peakSource)" (blur)="onSplinePointBlur()" />
             </div>
             <span>Peak</span>
-            <button type="button" class="info-icon" (click)="archHeightInfo()" title="More information">ⓘ</button>
+            <button type="button" class="info-icon" (click)="help('archHeight')" title="More information">ⓘ</button>
             }
         </div>
         }
@@ -104,13 +104,13 @@
             <input class="basic-input" type="number" step="1" min="0"
                 [(ngModel)]="arching.top.thickness" (input)="onChange()" />
         </label>
-        <button type="button" class="info-icon" (click)="plateThicknessInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('plateThickness')" title="More information">ⓘ</button>
     </div>
 
     @if (unsolvable('top')) {
     <div class="input-group basic-row field-row" role="group">
         <span class="station-note">No tangent meeting — lower the arch, or widen the gouge.</span>
-        <button type="button" class="info-icon" (click)="transitionInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('transition')" title="More information">ⓘ</button>
     </div>
     }
 
@@ -134,7 +134,7 @@
                 (change)="setCurveType('bottom', 'spline')" />
             <span>Spline</span>
         </div>
-        <button type="button" class="info-icon" (click)="curveTypeInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('curveType')" title="More information">ⓘ</button>
     </div>
 
     @if (!bottomSpline) {
@@ -145,7 +145,7 @@
                 [ngModel]="bottomArch.archHeight" (ngModelChange)="setArchHeight('bottom', $event)"
                 [style.border-color]="colors.archBack" />
         </label>
-        <button type="button" class="info-icon" (click)="archHeightInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('archHeight')" title="More information">ⓘ</button>
     </div>
     }
 
@@ -155,12 +155,12 @@
             <span class="field-cell">Position <span class="unit-label">%</span></span>
             <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
             <span class="field-cell">Height <span class="unit-label">mm</span></span>
-            <button type="button" class="info-icon" (click)="splinePointInfo()" title="More information">ⓘ</button>
+            <button type="button" class="info-icon" (click)="help('splinePoint')" title="More information">ⓘ</button>
         </div>
         @for (row of splineRows(bottomSpline); track $index) {
         <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
             <button type="button" class="row-grip" data-reorder-handle aria-label="Reorder row"
-                title="Drag to put this row in order, or move it with the arrow keys">⠿</button>
+                docTip="reorderRow">⠿</button>
             @if (row.pt; as pt) {
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="1" max="99"
@@ -174,7 +174,7 @@
                     [ngModel]="pt.z" (ngModelChange)="setSplinePointHeight('bottom', pt, $event)"
                     (focus)="onSplinePointFocus('bottom', row.index)" (blur)="onSplinePointBlur()" />
             </div>
-            <div class="toggle" title="Repeat this point at the opposite end of the plate">
+            <div class="toggle" docTip="longArching.mirrorPoint">
                 <input type="checkbox" [checked]="pt.mirror" (change)="toggleSplineMirror(pt)" />
                 <span>Mirror</span>
             </div>
@@ -193,7 +193,7 @@
                     (focus)="onSplinePointFocus('bottom', peakSource)" (blur)="onSplinePointBlur()" />
             </div>
             <span>Peak</span>
-            <button type="button" class="info-icon" (click)="archHeightInfo()" title="More information">ⓘ</button>
+            <button type="button" class="info-icon" (click)="help('archHeight')" title="More information">ⓘ</button>
             }
         </div>
         }
@@ -209,13 +209,13 @@
             <input class="basic-input" type="number" step="1" min="0"
                 [(ngModel)]="arching.bottom.thickness" (input)="onChange()" />
         </label>
-        <button type="button" class="info-icon" (click)="plateThicknessInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('plateThickness')" title="More information">ⓘ</button>
     </div>
 
     @if (unsolvable('bottom')) {
     <div class="input-group basic-row field-row" role="group">
         <span class="station-note">No tangent meeting — lower the arch, or widen the gouge.</span>
-        <button type="button" class="info-icon" (click)="transitionInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('transition')" title="More information">ⓘ</button>
     </div>
     }
 

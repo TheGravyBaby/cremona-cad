@@ -12,10 +12,11 @@ import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { renderSolveFailures } from '../../../helpers/renderFuncs';
 import { renderBodySideProfile, sideViewOffsetX } from '../../renders/body-side-profile.render';
 import { renderFrontView, renderNeck, renderNeckHighlight, StringSetupHighlightKey } from '../neck-panel/neck-panel';
+import { TooltipDirective } from '../../../docs/tooltips';
 
 @Component({
   selector: 'app-ceruti-string-setup-panel',
-  imports: [FormsModule, DecimalPipe, NumberStepperDirective],
+  imports: [TooltipDirective, FormsModule, DecimalPipe, NumberStepperDirective],
   templateUrl: './string-setup-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
