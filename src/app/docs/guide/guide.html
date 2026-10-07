@@ -1,4 +1,4 @@
-  <nav class="tutorial-nav" aria-label="Tutorial contents">
+  <nav class="tutorial-nav" aria-label="Documentation contents">
     @for (group of tutorialGroups; track group.label) {
     <div class="nav-group-label">{{ group.label }}</div>
     @for (topic of group.topics; track topic.id) {
@@ -23,8 +23,8 @@
     </dl>
     <ul class="tips-list">
       <li><code>Axis</code>, bottom right of the canvas — grid settings.</li>
-      <li><code>+</code> new, <code>↓</code> save, <code>↑</code> load, at the top right.</li>
-      <li>Templates of historical instruments can be found on the top right.</li>
+      <li class="todo">TODO: the File menu at the top right — new design, save, load, and the historical instrument
+        templates.</li>
     </ul>
 
     <h4>Number fields</h4>
@@ -95,7 +95,7 @@
     <ul class="tips-list">
       <li><code>Size</code> — in millimetres, measured on the drawing rather than the screen, so a
         label keeps its proportion as you zoom. The size you set becomes the size for new labels.</li>
-      <li><code>Angle</code> — degrees counterclockwise, for reading along a rib or a centreline.
+      <li><code>Angle</code> — degrees counterclockwise, for reading along a rib or a centerline.
         A selected label also carries a round handle above it to turn by hand.</li>
     </ul>
 
@@ -112,6 +112,11 @@
     <h4>Layers</h4>
     <p>The <code>Layers</code> button lists your layers; new shapes land on the active layer. Double-click to
       rename, eye to hide, lock to protect. The eye button on the toolbar hides all your layers at once.</p>
+
+    <h4>Not yet covered</h4>
+    <p class="todo">TODO: Polyline, Tangent Line, Perpendicular Line, Freehand; Ticks, Angle, Curve Length, Curve Ticks;
+      Polygons, Right Triangle; Batten, Catenary, Cycloid; Eraser; and the modify set: Move, Fillet, Scale, Rotate,
+      Mirror Line.</p>
     }
 
     @if (tutorialTopic === 'images') {
@@ -225,7 +230,7 @@
         sighting positions — the two widest points, two corners, waist.</li>
         <li>Cross arching can be defined using cycloid curves or splines.</li>
       <li><code>+ Set Station</code> pins the current cross-section at the height you are previewing. Each
-        <strong>station</strong> holds its own shape and the surface flows between them — a rounder centre bout
+        <strong>station</strong> holds its own shape and the surface flows between them — a rounder center bout
         and flatter ends, for example.</li>
       <li><strong>Wireframe</strong> and <strong>Contour Map</strong> show the interpolated surface in 3D.</li>
     </ul>
@@ -272,11 +277,67 @@
     </ul>
     }
 
+    @if (tutorialTopic === 'neck') {
+    <h3>Neck</h3>
+    <p class="todo">TODO: the neck in the side elevation, hung off the top plate's edge.</p>
+    <ul class="tips-list">
+      <li class="todo">TODO: <strong>Neck</strong> — length, thickness, top width.</li>
+      <li class="todo">TODO: <strong>Neck Root</strong> — heel radius, button height, mortise, overstand, projection,
+        root width.</li>
+    </ul>
+    }
+
+    @if (tutorialTopic === 'volute') {
+    <h3>Volute</h3>
+    <p class="todo">TODO: the spiral about the eye and the crown over it.</p>
+    <ul class="tips-list">
+      <li class="todo">TODO: <strong>Volute</strong> — style, eye radius and position, pitch, seed.</li>
+      <li class="todo">TODO: <strong>Crown</strong> — S0 and S1.</li>
+    </ul>
+    }
+
+    @if (tutorialTopic === 'scroll') {
+    <h3>Scroll</h3>
+    <p class="todo">TODO: the back of the head down to the neck and the front of the pegbox up to the volute.</p>
+    <ul class="tips-list">
+      <li class="todo">TODO: <strong>Back</strong> — S2, straight, S3, hang, nape; height and width readouts.</li>
+      <li class="todo">TODO: <strong>Front</strong> — flat, nut height, F0, straight, F1.</li>
+    </ul>
+    }
+
+    @if (tutorialTopic === 'scrollWidths') {
+    <h3>Scroll Widths</h3>
+    <p class="todo">TODO: the head seen from behind and in front, beside the side profile.</p>
+    <ul class="tips-list">
+      <li class="todo">TODO: <strong>Front</strong> — sawn straight through the blank, by height.</li>
+      <li class="todo">TODO: <strong>Back</strong> — carved off the volute, by distance along the path; the compass
+        step.</li>
+      <li class="todo">TODO: <strong>Turns</strong> — widths at each turn's top and bottom, in to the eye.</li>
+    </ul>
+    }
+
+    @if (tutorialTopic === 'stringSetup') {
+    <h3>String Setup</h3>
+    <p class="todo">TODO: bridge, nut and fingerboard, fitted to the neck rather than part of its template.</p>
+    <ul class="tips-list">
+      <li class="todo">TODO: <strong>Neck</strong> — length (shared with the neck panel).</li>
+      <li class="todo">TODO: <strong>Fingerboard</strong> — length, thickness, radius.</li>
+      <li class="todo">TODO: <strong>Bridge</strong> — body stop, height, and the string length readout.</li>
+    </ul>
+    }
+
     @if (tutorialTopic === 'export') {
     <h3>Export</h3>
-    <p>Traces, mould and block templates export as <strong>SVG</strong>, <strong>PDF</strong> and
-      <strong>DXF</strong>; the arched plates export as <strong>STL</strong> for CNC carving.</p>
+    <p class="todo">TODO: what each sheet is for, and which formats carry which. SVG, PDF and DXF for the 2D sheets;
+      STL for the plates.</p>
     <ul class="tips-list">
+      <li class="todo">TODO: <strong>Outline</strong> — top, back, inner trace.</li>
+      <li class="todo">TODO: <strong>Arching</strong> — long arch strips, cross arch strips.</li>
+      <li class="todo">TODO: <strong>F-holes</strong> — with and without eyes.</li>
+      <li class="todo">TODO: <strong>Neck and scroll</strong> — neck template, front view, back view, back strip,
+        compass walk.</li>
+      <li class="todo">TODO: <strong>Mould</strong> — mould, blocks.</li>
+      <li class="todo">TODO: <strong>Plates</strong> — top and back STL.</li>
       <li><strong>Preview</strong> will render the selected section on the canvas for final review.</li>
     </ul>
     }

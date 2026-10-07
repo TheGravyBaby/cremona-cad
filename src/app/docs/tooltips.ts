@@ -6,9 +6,9 @@ import { Directive, HostBinding, Input } from '@angular/core';
 export const TOOLTIPS = {
   // view
   'view.zoom': 'Zoom (px/mm). Click to set the view by number.',
-  'view.centerX': "Horizontal position of the view's centre, as the X axis numbers it.",
-  'view.centerY': "Vertical position of the view's centre, as the Y axis numbers it.",
-  'view.scale': 'Screen pixels per millimetre of drawing, held about the centre.',
+  'view.centerX': "Horizontal position of the view's center, as the X axis numbers it.",
+  'view.centerY': "Vertical position of the view's center, as the Y axis numbers it.",
+  'view.scale': 'Screen pixels per millimetre of drawing, held about the center.',
 
   // axis
   'axis.axes': "The two lines through the origin, numbered along the view's edges at the grid steps.",
@@ -37,7 +37,7 @@ export const TOOLTIPS = {
   'settings.recipePiece': 'Read-only: the recipe draws this from its parameters. Duplicate it (Ctrl+D) for an editable copy.',
   'settings.color': "Drawing color — edits the selected shape's color, or the color new shapes will use",
   'settings.sectionColor2': "Section's second alternating segment color",
-  'settings.selectionCenter': 'Centre of the selection — type to move everything selected',
+  'settings.selectionCenter': 'Center of the selection — type to move everything selected',
   'settings.lineLength': 'Sets the distance from X1/Y1, keeping the current angle',
   'settings.dimensionOffset': 'How far the dimension line sits off the points it measures — negative puts it on the other side',
   'settings.roundRadius': 'Radius of the round, in mm',
@@ -87,7 +87,7 @@ export const TOOLTIPS = {
 
   // scroll
   'scroll.s2': 'The arc from the crown on down the back toward the pegbox',
-  'scroll.s2End': 'Where the arc ends, as the angle round its own centre from the front: 180° the back. It starts where S1 ended',
+  'scroll.s2End': 'Where the arc ends, as the angle round its own center from the front: 180° the back. It starts where S1 ended',
   'scroll.backStraight': "The straight run on down the back of the scroll from S2's end, along its heading",
   'scroll.s3': "Where the back of the scroll turns into the back of the pegbox: an arc off the straight's end, curving the other way. Its end is the duck tail",
   'scroll.hang': "The duck tail: where the pegbox's back ends and the neck's back begins. How far it hangs below the nut's lower edge; S3 ends where it comes down to it. 0 lands it level with the nut; a cello's hangs about half the neck's width, so the round seen from behind tops out at the pegbox's foot",
@@ -98,7 +98,7 @@ export const TOOLTIPS = {
   'scroll.flat': "The front of the pegbox rising straight up the neck's front from the top of the nut, before it turns back under the volute",
   'scroll.nutHeight': "The nut's length along the neck. The flat rises from its top",
   'scroll.f0': 'The arc turning the front of the pegbox back from the flat, in under the volute',
-  'scroll.f0End': 'Where the arc ends, as the angle round its own centre from the front: the more it turns, the further back the straight after it leans',
+  'scroll.f0End': 'Where the arc ends, as the angle round its own center from the front: the more it turns, the further back the straight after it leans',
   'scroll.frontStraight': "The straight run on from F0's end, along its heading, in under the volute",
   'scroll.f1': 'The small arc curving the front up off the straight to meet the scroll. It ends where it meets it',
 
@@ -122,15 +122,15 @@ export const TOOLTIPS = {
   'stringSetup.nutThickness': 'How far the nut stands off the neck, which is where the strings sit',
 
   // volute
-  'volute.eyeX': "Eye centre's distance in front of the neck's front, so negative behind it. Set while Flush with Neck is on",
-  'volute.eyeY': "Eye centre's height up the neck from the nut",
+  'volute.eyeX': "Eye center's distance in front of the neck's front, so negative behind it. Set while Flush with Neck is on",
+  'volute.eyeY': "Eye center's height up the neck from the nut",
   'volute.pitch': "How much the spiral's radius grows each full turn, so the even spacing between its turns",
-  'volute.seed': "The column of four squares the spiral's centres are struck round, top of it to bottom. The longer the seed, the wider each turn opens",
+  'volute.seed': "The column of four squares the spiral's centers are struck round, top of it to bottom. The longer the seed, the wider each turn opens",
   'volute.flushWithNeck': "Slide the eye so the spiral's front is flush with the neck's front, Y still setting its height. Off, X is yours too",
   'volute.s0': "The arc carrying the spiral's front on up to the top of the scroll",
-  'volute.s0End': "Where the arc ends, as the angle round its own centre from the front: 90° the top of the scroll, 180° the back. It starts where the spiral's front ends",
+  'volute.s0End': "Where the arc ends, as the angle round its own center from the front: 90° the top of the scroll, 180° the back. It starts where the spiral's front ends",
   'volute.s1': 'The arc from the top of the scroll on over to the back',
-  'volute.s1End': 'Where the arc ends, as the angle round its own centre from the front: 180° the back. It starts where S0 ended',
+  'volute.s1End': 'Where the arc ends, as the angle round its own center from the front: 180° the back. It starts where S0 ended',
 } as const satisfies Record<string, string>;
 
 export type TooltipId = keyof typeof TOOLTIPS;

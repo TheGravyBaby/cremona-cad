@@ -45,6 +45,16 @@ export class GuideComponent {
       ],
     },
     {
+      label: 'Neck & Scroll',
+      topics: [
+        { id: 'neck', label: 'Neck' },
+        { id: 'volute', label: 'Volute' },
+        { id: 'scroll', label: 'Scroll' },
+        { id: 'scrollWidths', label: 'Scroll Widths' },
+        { id: 'stringSetup', label: 'String Setup' },
+      ],
+    },
+    {
       label: 'Output',
       topics: [
         { id: 'mould', label: 'Mould' },

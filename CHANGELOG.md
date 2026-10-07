@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.9.0 — TODO
+
+TODO: the neck, volute, scroll and scroll widths panels, the string setup, and the five neck and scroll sheets.
+
 ## v0.8.8.0 — Sep 14, 2026
 
 New panels for designing f-holes.
@@ -14,7 +18,7 @@ New panels for designing f-holes.
 
 Added more comprehensive arc tools, improvements made to the text tool, ctrl/cmd + arrow keys now moves objects by a small degree.
 
-- **Two more arc tools** — set both ends first, then either a point the arc passes through or its centre. The four three-point arc tools renamed and re-drawn for the order you click them in.
+- **Two more arc tools** — set both ends first, then either a point the arc passes through or its center. The four three-point arc tools renamed and re-drawn for the order you click them in.
 - **Text on the drawing, not the screen** — labels take a size in millimetres and an angle, double-click to edit in place, and line breaks are editable in the settings bar.
 - **Fine nudge** — Ctrl(⌘)+Arrow moves a selection 0.1mm, beside the existing 1mm and 10mm steps.
 
@@ -45,7 +49,7 @@ Files and view controls.
 Drawing toolbox.
 
 - **A drawing toolbox** — now draw directly onto the canvas with lines, arcs, circles, boxes, points and text. Keep your work sorted on named layers.
-- **Snapping** — everything you draw can snap to existing paths, centres and edges of the recipe underneath, so your sketch lines up with the instrument rather than near it.
+- **Snapping** — everything you draw can snap to existing paths, centers and edges of the recipe underneath, so your sketch lines up with the instrument rather than near it.
 - **Reference images have moved** — images are now objects on the canvas instead of a panel setting. Several can sit side by side, each named.
 - **Asymmetric arching** — splines can now be drawn asymetrically, and can be used for both the long and cross arching.
 - **Cross Arcing Stations** - to support more complex curvature along the plate surfaces, different cross arches can be set at different heights along the panel. A smooth surface will be generated between the different stations.

@@ -1,7 +1,8 @@
 import { info } from '../shared/message-emitter';
 
 // The write-up behind each ⓘ. Bound in a panel as (click)="help('id')"; an entry with no
-// ⓘ yet is still kept here so the text has one home.
+// ⓘ yet is still kept here so the text has one home. A text beginning "TODO:" is a placeholder
+// waiting to be written; the note after it says what the entry is for.
 
 export const FIELD_HELP = {
   inset: {
@@ -51,7 +52,7 @@ export const FIELD_HELP = {
     title: "Button",
     text:
       "The button is the small semicircular tab at the top of the upper bout on the back plate. It reinforces the neck joint, and the heel is finished flush to it.\n\n" +
-      "Width is the cap's diameter. Height is how far the tip stands beyond the plate's end on the centreline — the same number the neck panel shows as the heel foot's reach. " +
+      "Width is the cap's diameter. Height is how far the tip stands beyond the plate's end on the centerline — the same number the neck panel shows as the heel foot's reach. " +
       "A height under half the width has no straight walls: the cap alone breaks the edge, as a segment.\n\n" +
       "Violin: 20–22 wide, 13–14 high. It appears only on the back — not on the top plate.",
   },
@@ -124,15 +125,7 @@ export const FIELD_HELP = {
   plateThickness: {
     title: "Plate Thickness",
     text:
-      "The thickness of the plate at the outer edge.\n\n",
-  },
-  trochoidFactor: {
-    title: "Trochoid Factor",
-    text:
-      "Shape within the trochoid family, all peaking at the same height.\n\n" +
-      "- d = 0: raised cosine — gradual, symmetric rise from the edge.\n" +
-      "- d = 1: standard cycloid — steeper from the edge, flatter near the peak.\n" +
-      "- Between blends the two.",
+      "The thickness of the plate at the outer edge.",
   },
   curveType: {
     title: "Arch Curve Type",
@@ -208,7 +201,7 @@ export const FIELD_HELP = {
   crossArchPeak: {
     title: "Crown Position",
     text:
-      "Where the peak of the curve fits along the body. Real plates rarely peak dead centre.\n\n" +
+      "Where the peak of the curve fits along the body. Real plates rarely peak dead center.\n\n" +
       "You can move the peak +/- from the center as needed, center is defined as 50%.",
   },
   crossArchStation: {
@@ -223,17 +216,10 @@ export const FIELD_HELP = {
       "Where the arch stops being the template and becomes the run into the channel. Solved for, not set — tangency is one equation, and the contact point is its one unknown.\n\n" +
       "If no solution exists, the arch and channel genuinely cannot meet there. Lower the arch, move the channel outward, or widen the gouge.",
   },
-  bodyStop: {
-    title: "Body Stop",
-    text:
-      "The body stop is the distance from the top plate's upper edge down to the bridge line. " +
-      "On a violin it is 195 mm, and the f-hole notches are cut on that line.\n\n" +
-      "The neck stop (edge to nut) and the stop length (nut to bridge) both follow from the neck's own length rather than being entered.",
-  },
   bridgeHeight: {
     title: "Bridge Height",
     text:
-      "The bridge's height from its feet to the string notches, on the centreline. " +
+      "The bridge's height from its feet to the string notches, on the centerline. " +
       "The feet stand on the arch at the bridge line, so the strings stand arch plus bridge above the edge.\n\n" +
       "Violin bridges finish around 33 mm. Raise it and the strings sit higher over the fingerboard's end.",
   },
@@ -251,20 +237,6 @@ export const FIELD_HELP = {
       "measured square to the plate.\n\n" +
       "Violin: 6–7 mm. It fixes where the neck leaves the body; the angle fixes where it points.",
   },
-  neckAngle: {
-    title: "Neck Angle",
-    text:
-      "The tilt of the fingerboard plane off the body's axis, nut end leaning toward the back. " +
-      "Makers set it by projection — a straightedge on the fingerboard should clear the top at the bridge line by about 27 mm on a violin — " +
-      "and the projection readout below shows what this angle gives.",
-  },
-  stopLength: {
-    title: "Stop Length",
-    text:
-      "The vibrating string, nut to bridge, measured along the string — read off, not entered.\n\n" +
-      "The nut sits wherever the neck's own length puts it; this reports what that gives, which should land near " +
-      "325–328 mm on a violin, the classical 2:3 against a 195 mm body stop.",
-  },
   neckThickness: {
     title: "Neck Thickness",
     text:
@@ -279,21 +251,57 @@ export const FIELD_HELP = {
       "The foot below it is cut square to the neck, not level with the body, so it rises off the button at the neck angle. " +
       "A tight radius meets the foot and a flat carries on to the button's tip; a wide one reaches the tip on its own.",
   },
+  neckLength: {
+    title: "Neck Length",
+    text: "TODO: the neck's own length, mortise floor to the nut along the fingerboard plane. It places the nut; the string length is read off it.",
+  },
+  neckAngle: {
+    title: "Neck Projection",
+    text: "TODO: the tilt of the fingerboard plane off the body's axis, entered in degrees. Makers set it by projection at the bridge line (about 27 mm on a violin); there is no projection readout.",
+  },
+  neckWidths: {
+    title: "Neck Widths",
+    text: "TODO: Top Width at the nut and Root Width at the body, the neck's taper seen from in front.",
+  },
   fingerboard: {
     title: "Fingerboard",
-    text:
-      "The fingerboard runs from the nut down over the body, parallel to the neck. Thickness is taken as uniform along its length — " +
-      "a real board is planed thicker toward the body as the crown rises under it, but that's not worth a second variable here.\n\n" +
-      "Violin: 270 mm long, about 10 mm thick.",
+    text: "TODO: Length (stock sizes by instrument, seeded from body height), Thickness at the edges, and Radius of the cylinder the crown is cut from.",
   },
-  neckReadout: {
-    title: "Neck Readouts",
-    text:
-      "Neck stop: plate edge to the nut along the fingerboard. Violin: 130 mm.\n\n" +
-      "Stop length: nut to bridge along the string. Violin: 325–328 mm, the classical 2:3 against the body stop.\n\n" +
-      "Projection: the fingerboard's top carried to the bridge line, above the top there. Violin: 27 mm.\n\n" +
-      "String over fingerboard end: clearance where the board stops. Violin: 3.5–5.5 mm.\n\n" +
-      "Body depth at root: ribs and both plates, which is what the heel's foot spans.",
+  bodyStop: {
+    title: "Body Stop",
+    text: "TODO: top plate's upper edge down to the bridge line, where the f-hole notches are cut. Violin 195 mm.",
+  },
+  stringLength: {
+    title: "String Length",
+    text: "TODO: the readout, nut to bridge, straight-line and approximate. Follows from the neck's length; should land near 325–328 mm on a violin, the classical 2:3 against the body stop.",
+  },
+  voluteSpiral: {
+    title: "Volute",
+    text: "TODO: the spiral about the eye: style, eye radius and position, pitch and seed.",
+  },
+  voluteCrown: {
+    title: "Crown",
+    text: "TODO: S0 and S1, the arcs over the top of the head from the spiral to the back.",
+  },
+  scrollBack: {
+    title: "Scroll Back",
+    text: "TODO: S2, the straight, S3, the hang, the nape and the nape-as-circle toggle; the head's height and width readouts.",
+  },
+  scrollFront: {
+    title: "Scroll Front",
+    text: "TODO: the flat up from the nut, the nut's height, F0, the straight and F1 in under the volute.",
+  },
+  scrollWidthsFront: {
+    title: "Front Widths",
+    text: "TODO: the pegbox sawn through the blank: nut width, hips and hip height, throat, wall.",
+  },
+  scrollWidthsBack: {
+    title: "Back Widths",
+    text: "TODO: the path from the duck tail's round over the crown and in to the eye: duck tail, foot, back hip, poll, crown; the compass step.",
+  },
+  scrollWidthsTurns: {
+    title: "Turn Widths",
+    text: "TODO: the width at the bottom of turn 1, the top and bottom of turn 2, and the eye.",
   },
 } as const satisfies Record<string, { title: string; text: string }>;
 
