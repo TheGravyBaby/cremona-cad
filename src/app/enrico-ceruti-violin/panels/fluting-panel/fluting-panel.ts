@@ -1,7 +1,8 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { renderFilledPath, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
+import { renderFilledPath } from '../../../helpers/renderFuncs';
+import { STROKE_WEIGHT } from '../../../theme/strokes';
 import { translatePath } from '../../../helpers/math/pathMath';
 import { calculateOuterArcs, ensureFholePath, ensureOuterTracePaths } from '../../calculation/outline/ceruti-calcs';
 import { renderPlatePair } from '../../renders/front-profile.render';

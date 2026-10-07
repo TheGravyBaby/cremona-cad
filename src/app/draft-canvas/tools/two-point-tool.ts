@@ -3,10 +3,12 @@ import { Pt } from '../../models/types';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape } from './toolbox-shape';
 import { snapToAngle, snapToLockedAngle } from './angle-lock';
+import { CANVAS_COLORS } from '../../theme/canvas-colors';
+import { DASH } from '../../theme/strokes';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
-export const PREVIEW_COLOR = '#2563eb';
+export const PREVIEW_COLOR = CANVAS_COLORS.preview;
 
 /**
  * The dashed, non-scaling, click-through look every in-progress preview shares, applied to an
@@ -20,7 +22,7 @@ export function stylePreview<E extends d3.BaseType>(
     .attr('fill', 'none')
     .attr('stroke', PREVIEW_COLOR)
     .attr('stroke-width', 1.5)
-    .attr('stroke-dasharray', '4 3')
+    .attr('stroke-dasharray', DASH.preview)
     .attr('vector-effect', 'non-scaling-stroke')
     .style('pointer-events', 'none');
 }

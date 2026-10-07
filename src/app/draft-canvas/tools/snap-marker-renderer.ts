@@ -1,9 +1,10 @@
 import * as d3 from 'd3';
 import { SnapCandidate } from './snap-engine';
+import { CANVAS_COLORS } from '../../theme/canvas-colors';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
-const SNAP_COLOR = '#16a34a';
+const SNAP_COLOR = CANVAS_COLORS.snap;
 const SNAP_STROKE_WIDTH = 2;
 const SNAP_MARKER_PX = 5;
 

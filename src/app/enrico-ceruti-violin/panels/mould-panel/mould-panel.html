@@ -1,16 +1,16 @@
-<section class="ui-group" [style.border-color]="colors.upperBoutOff">
+<section class="ui-group" [style.border-color]="colors.upperBoutSide">
     <div class="ui-group-title">Upper Block</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.U!.height"
-                (input)="onChange()" [style.borderColor]="colors.upperBoutOff" />
+                (input)="onChange()" [style.borderColor]="colors.upperBoutSide" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.U!.width"
-                (input)="onChange()" [style.borderColor]="colors.upperBoutOff" />
+                (input)="onChange()" [style.borderColor]="colors.upperBoutSide" />
         </label>
     </div>
 </section>
@@ -61,19 +61,19 @@
     </div>
 </section>
 
-<section class="ui-group" [style.border-color]="colors.lowerBoutOff">
+<section class="ui-group" [style.border-color]="colors.lowerBoutSide">
     <div class="ui-group-title">Lower Block</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.L!.height"
-                (input)="onChange()" [style.borderColor]="colors.lowerBoutOff" />
+                (input)="onChange()" [style.borderColor]="colors.lowerBoutSide" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.L!.width"
-                (input)="onChange()" [style.borderColor]="colors.lowerBoutOff" />
+                (input)="onChange()" [style.borderColor]="colors.lowerBoutSide" />
         </label>
     </div>
 </section>

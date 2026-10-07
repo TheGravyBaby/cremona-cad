@@ -5,12 +5,14 @@ import { makeShapeId } from './toolbox-shape';
 import { angleFromCenter, dist, pointOnCircle } from '../../helpers/math/simpleGeometry';
 import { pickArcOrientation } from '../../helpers/math/draftMath';
 import { arcPathData } from '../../helpers/math/pathMath';
+import { CANVAS_COLORS } from '../../theme/canvas-colors';
+import { DASH } from '../../theme/strokes';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
 type ArcStage = 'idle' | 'first-set' | 'second-set';
 
-const PREVIEW_COLOR = '#2563eb';
+const PREVIEW_COLOR = CANVAS_COLORS.preview;
 
 /**
  * Three clicks, no dragging. Two variants share this class, differing only in
@@ -100,7 +102,7 @@ export class ArcTool implements DraftTool {
         .attr('fill', 'none')
         .attr('stroke', PREVIEW_COLOR)
         .attr('stroke-width', 1)
-        .attr('stroke-dasharray', '2 4')
+        .attr('stroke-dasharray', DASH.construction)
         .attr('opacity', 0.5)
         .attr('vector-effect', 'non-scaling-stroke')
         .style('pointer-events', 'none');
@@ -117,7 +119,7 @@ export class ArcTool implements DraftTool {
         .attr('fill', 'none')
         .attr('stroke', PREVIEW_COLOR)
         .attr('stroke-width', 1.5)
-        .attr('stroke-dasharray', '4 3')
+        .attr('stroke-dasharray', DASH.preview)
         .attr('vector-effect', 'non-scaling-stroke')
         .style('pointer-events', 'none');
     }
@@ -158,7 +160,7 @@ export class ArcTool implements DraftTool {
       .attr('x2', to.x).attr('y2', to.y)
       .attr('stroke', PREVIEW_COLOR)
       .attr('stroke-width', 1)
-      .attr('stroke-dasharray', '2 4')
+      .attr('stroke-dasharray', DASH.construction)
       .attr('vector-effect', 'non-scaling-stroke')
       .style('pointer-events', 'none');
   }

@@ -9,10 +9,12 @@ import { pointOnCircle } from '../../helpers/math/simpleGeometry';
 import { arcPathData, pathFromPolyline } from '../../helpers/math/pathMath';
 import { pointAtPolylineLength, polylineCumulativeLengths } from '../../helpers/math/vibeMath';
 import { GrabberKind } from './shape-grabbers';
+import { CANVAS_COLORS } from '../../theme/canvas-colors';
+import { DASH } from '../../theme/strokes';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
-const DASH_PATTERN = '4 3';
+const DASH_PATTERN = DASH.preview;
 
 // an annotation keeps its own contrast between light and heavy strokes and scales the lot, so at
 // the default weight it draws exactly as it always has
@@ -690,7 +692,7 @@ export function drawCurveTicks(gRoot: RootGroup, points: Pt[], weights: number[]
   });
 }
 
-const SELECTION_HALO_COLOR = '#f59e0b';
+const SELECTION_HALO_COLOR = CANVAS_COLORS.selection;
 
 /** Draws a soft highlight behind a selected shape — append before drawShape so it sits underneath. */
 export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, pxPerMm: number): void {
@@ -829,8 +831,8 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
   }
 }
 
-const GRABBER_FILL = '#f59e0b';
-const GRABBER_STROKE = '#78350f';
+const GRABBER_FILL = CANVAS_COLORS.selection;
+const GRABBER_STROKE = CANVAS_COLORS.grabberStroke;
 
 const ENDPOINT_GRABBER_SIZE_PX = 10;
 
@@ -878,7 +880,7 @@ export function drawEndpointGrabber(
   }
 }
 
-const AREA_SELECT_COLOR = '#2563eb';
+const AREA_SELECT_COLOR = CANVAS_COLORS.preview;
 
 /** Draws the rubber-band marquee box (world mm) while an area-select drag is in progress —
  * see draft-canvas.ts's areaSelectAnchor/areaSelectCurrent. */

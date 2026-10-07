@@ -12,6 +12,7 @@ import { ToolboxStore } from './draft-canvas/tools/toolbox-store';
 import { readWorkingState, SELECTED_RECIPE_KEY, writeWorkingState } from './helpers/workingStorage';
 import { CerutiViolin } from './enrico-ceruti-violin/ceruti-violin';
 import { HelloWorldRecipe } from './hello-world-recipe/hello-world-recipe';
+import { ThemeService } from './theme/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -44,8 +45,7 @@ import { HelloWorldRecipe } from './hello-world-recipe/hello-world-recipe';
         @if (selectedRecipe == "enrico-ceruti-violin") {
          <app-ceruti-violin class="sidebar"
           (draftChange)="onDraftChange($event)"
-          (requestFit)="requestFit()"
-          [nightMode]="nightMode">
+          (requestFit)="requestFit()">
         </app-ceruti-violin>
         }
 
@@ -78,6 +78,7 @@ import { HelloWorldRecipe } from './hello-world-recipe/hello-world-recipe';
 
 export class App implements OnDestroy {
   private readonly doc = inject(DOCUMENT);
+  private readonly theme = inject(ThemeService);
   // inject MessageService via Angular's injector
   private messageService = inject(MessageService);
   private toolbox = inject(ToolboxStore);
@@ -90,7 +91,6 @@ export class App implements OnDestroy {
   fitToken = signal(0);
 
   themeMode: ThemeMode = 'auto';
-  nightMode = true;
 
   private static readonly SIDEBAR_OPEN_KEY = 'app-sidebar-open';
   private static readonly BAR_PINNED_KEY = 'app-bar-pinned';
@@ -190,8 +190,8 @@ export class App implements OnDestroy {
   // auto reads the clock when the mode is applied, not continuously
   private applyThemeClass() {
     const hour = new Date().getHours();
-    this.nightMode = this.themeMode === 'auto' ? hour < 7 || hour >= 19 : this.themeMode === 'night';
-    this.doc.documentElement.classList.toggle('day-mode', !this.nightMode);
+    const night = this.themeMode === 'auto' ? hour < 7 || hour >= 19 : this.themeMode === 'night';
+    this.theme.setMode(night ? 'night' : 'day');
   }
 
   onDraftChange(fns: Array<(g: any, ui: any) => void>) {

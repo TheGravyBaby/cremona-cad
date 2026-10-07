@@ -30,7 +30,7 @@ import { VolutePanel } from './volute-panel/volute-panel';
 import { Pt } from '../../models/types';
 import { scrollBackInPlan, scrollBackViewStrokes, scrollFrontInPlan } from '../calculation/neck/ceruti-scroll-views';
 import { sideViewOffsetX } from '../renders/body-side-profile.render';
-import { STROKE_WEIGHT } from '../../helpers/renderFuncs';
+import { STROKE_WEIGHT } from '../../theme/strokes';
 
 /**
  * What the panels actually draw.
@@ -295,7 +295,7 @@ describe('the scroll panel', () => {
     expect(Math.max(...nut.map(c => c[0]))).toBeCloseTo(defaultStringSetup(p).nutThickness, 9);
     expect(Math.min(...nut.map(c => c[1]))).toBe(0);
 
-    const lines = drawn.elements.filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckOff').map(el => el.attrs);
+    const lines = drawn.elements.filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckGround').map(el => el.attrs);
     expect(lines.length).toBe(2);
     expect(lines.every(l => l['x1'] === l['x2'])).toBe(true);
     const lowest = Math.min(...lines.flatMap(l => [l['y1'] as number, l['y2'] as number]));
@@ -313,7 +313,7 @@ describe('the scroll panel', () => {
     const scroll = (p: EnricoCerutiParams, over: Partial<CerutiViewFlags> = {}) => withNames(panel(ScrollPanel, p, flags({ showModuleArcs: false, ...over })));
     const volute = (p: EnricoCerutiParams, over: Partial<CerutiViewFlags> = {}) => withNames(panel(VolutePanel, p, flags({ showModuleArcs: false, ...over })));
     const isArc = (el: ReturnType<typeof recordLayers>['elements'][number]) => typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(' A ');
-    const isProfile = (el: ReturnType<typeof recordLayers>['elements'][number]) => el.attrs['stroke'] === 'outerTrace';
+    const isProfile = (el: ReturnType<typeof recordLayers>['elements'][number]) => el.attrs['stroke'] === 'trace';
     const drawn = (eyeRadius: number) => {
       const p = defaultViolin();
       const instance = volute(p);
@@ -567,7 +567,7 @@ describe('the scroll panel', () => {
       const instance = scroll(p, { showModuleArcs: true, showModuleGuides: false, showVoluteConstruction: false });
       const drawn = () => recordLayers(instance.buildRun()).elements;
       const backTop = (els: ReturnType<typeof drawn>) => els
-        .filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckOff' && el.attrs['x1'] === -p.neck!.thickness && el.attrs['x2'] === -p.neck!.thickness)
+        .filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckGround' && el.attrs['x1'] === -p.neck!.thickness && el.attrs['x2'] === -p.neck!.thickness)
         .map(el => Math.max(el.attrs['y1'] as number, el.attrs['y2'] as number));
       // the duck tail hangs no higher than the nut line, so the nape meets the neck's back below it
       const naped = drawn();
@@ -917,8 +917,8 @@ describe('the scroll widths panel', () => {
     expect(alone.filter(s => s.ink === 'scrollTurns')).toEqual(shown.filter(s => s.ink === 'scrollTurns'));
     // the cheeks hide the neck's sides on the panel; alone they run up to the round's top and,
     // wider than the round, meet it along a shoulder the cheeks had stood in place of
-    expect(shown.filter(s => s.ink === 'neckOff')).toEqual([]);
-    const sides = alone.filter(s => s.ink === 'neckOff') as { d: string }[];
+    expect(shown.filter(s => s.ink === 'neckGround')).toEqual([]);
+    const sides = alone.filter(s => s.ink === 'neckGround') as { d: string }[];
     expect(sides).toHaveLength(2);
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
     const roundTop = duckTailRoundTop(p);
@@ -950,7 +950,7 @@ describe('the scroll widths panel', () => {
     expect(joins).toHaveLength(2);
     const walls = front.filter(pts => !joins.includes(pts));
     const center = (walls[0][0].x + walls[1][0].x) / 2;
-    const neckTops = fromBehind('neckOff').map(pts => pts.at(-1)!);
+    const neckTops = fromBehind('neckGround').map(pts => pts.at(-1)!);
     for (const join of joins) {
       const [outer, inner] = [...join].sort((a, b) => Math.abs(b.x - center) - Math.abs(a.x - center));
       expect(Math.abs(outer.x - center)).toBeCloseTo(p.neck!.nutWidth / 2, 6);
@@ -966,7 +966,7 @@ describe('the scroll widths panel', () => {
     const p = instance.params;
     const drawn = recordLayers(instance.buildRun()).elements;
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
-    const sides = drawn.filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neckOff').map(el => points(el.attrs['d'] as string));
+    const sides = drawn.filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neckGround').map(el => points(el.attrs['d'] as string));
     expect(sides).toHaveLength(4);
     for (const [bottom] of sides) expect(bottom.y).toBeCloseTo(-2 * p.neck!.thickness, 9);
 
@@ -994,7 +994,7 @@ describe('the scroll widths panel', () => {
     p.scroll!.hang = p.scroll!.widths.hip / 2 + 1;
     instance.buildRun();
     const lowered = recordLayers(instance.buildRun()).elements
-      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neckOff').map(el => points(el.attrs['d'] as string))
+      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neckGround').map(el => points(el.attrs['d'] as string))
       .filter(s => s[0].x < 0);
     const { y } = scrollBackWidths(p)[0];
     expect(y).toBeLessThanOrEqual(0);
@@ -1201,10 +1201,10 @@ describe('the scroll\'s front view on the front profile', () => {
     // the neck's sides the widths panel carries on below the nut are the profile's own here
     const ys = (d: string) => [...d.matchAll(/[ML]\s*-?[\d.e-]+\s+(-?[\d.e-]+)/g)].map(mm => Number(mm[1]));
     const stub = 2 * p.neck!.thickness;
-    const onPanel = scrollBackViewStrokes(p, (x, y) => new Pt(x, y), -stub).filter(s => s.ink === 'neckOff');
+    const onPanel = scrollBackViewStrokes(p, (x, y) => new Pt(x, y), -stub).filter(s => s.ink === 'neckGround');
     expect(onPanel).toHaveLength(2);
     expect(onPanel.every(s => Math.min(...ys((s as { d: string }).d)) < 0)).toBe(true);
-    const inPlan = strokes.filter(s => s.ink === 'neckOff');
+    const inPlan = strokes.filter(s => s.ink === 'neckGround');
     expect(inPlan.every(s => Math.min(...ys((s as { d: string }).d)) >= p.neck!.neckTop!.y - 1e-6)).toBe(true);
   });
 
@@ -1219,7 +1219,7 @@ describe('the scroll\'s front view on the front profile', () => {
     expect(solve.scroll).toBe(true);
     const after = recordLayers(renderFrontProfile(p, paths, named, solve)).elements;
     expect(after.length - before.length).toBe(scrollFrontInPlan(p).length);
-    expect(after.slice(before.length).every(el => el.attrs['stroke'] === 'outerTrace')).toBe(true);
+    expect(after.slice(before.length).every(el => el.attrs['stroke'] === 'trace')).toBe(true);
   });
 
   it('goes on the neck panel\'s front view too', () => {
@@ -1285,12 +1285,12 @@ describe('the long arching panel lays the neck the user has set under the body',
   it('draws no neck before the neck panel is visited, and the neck in grey after', () => {
     const p = archedViolin();
     const before = build(p);
-    expect(before.some(el => el.attrs['stroke'] === 'outerTrace')).toBe(false);
+    expect(before.some(el => el.attrs['stroke'] === 'neckGround')).toBe(false);
 
     const neck = panel(NeckPanel, p);
     neck.buildRun();
     const after = build(p);
-    const grey = after.filter(el => el.attrs['stroke'] === 'outerTrace');
+    const grey = after.filter(el => el.attrs['stroke'] === 'neckGround');
     expect(grey.length).toBeGreaterThan(0);
     expect(after.length - before.length).toBe(grey.length);
     for (const part of ['neck', 'neckRoot', 'fingerboard', 'nut', 'bridge']) {

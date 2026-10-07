@@ -1,4 +1,5 @@
-import { renderPath, renderStroke, STROKE_WEIGHT } from '../../helpers/renderFuncs';
+import { renderPath, renderStroke } from '../../helpers/renderFuncs';
+import { STROKE_WEIGHT } from '../../theme/strokes';
 import { translatePath } from '../../helpers/math/pathMath';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../ceruti-types';
 import { FrontProfileSolve, getPath, getPathOrNull, hasOuterTrace, NeckProfileSolve, topPlatePaths } from '../calculation/outline/ceruti-calcs';
@@ -14,7 +15,7 @@ type Layer = (g: any, ui: any) => void;
 // be later work getting in the way of the shape being set.
 export function renderFrontInnerProfile(p: EnricoCerutiParams, colors: CerutiColors, failures: SolveFailure[] = []): Layer[] {
   const inner = defineInnerPath(p, failures.flatMap(f => f.unsolved));
-  return inner ? [renderPath(inner, colors.innerTrace)] : [];
+  return inner ? [renderPath(inner, colors.trace)] : [];
 }
 
 // the top plate from its plan, the neck laid over it once the solve reached it and the scroll's front
@@ -23,11 +24,11 @@ export function renderFrontInnerProfile(p: EnricoCerutiParams, colors: CerutiCol
 function renderTopPlate(p: EnricoCerutiParams, plan: PlatePlan, colors: CerutiColors, weight: number, holes: { ink: string; weight: number }, solve: NeckProfileSolve): Layer[] {
   const front = solve.neck ? defineFrontProfilePath(p, plan) : null;
   const body = front ? front.body : plan;
-  const layers = [renderPath(body.outline, colors.outerTrace, weight)];
-  for (const d of body.purfling) layers.push(renderPath(d, colors.innerTrace, STROKE_WEIGHT.guide));
+  const layers = [renderPath(body.outline, colors.trace, weight)];
+  for (const d of body.purfling) layers.push(renderPath(d, colors.trace, STROKE_WEIGHT.guide));
   for (const d of body.fHoles) layers.push(renderPath(d, holes.ink, holes.weight));
-  if (front) layers.push(renderPath(front.neck, colors.outerTrace), renderPath(front.nut, colors.outerTrace));
-  if (front && solve.scroll) for (const stroke of scrollFrontInPlan(p)) layers.push(renderStroke(stroke, colors.outerTrace));
+  if (front) layers.push(renderPath(front.neck, colors.trace), renderPath(front.nut, colors.trace));
+  if (front && solve.scroll) for (const stroke of scrollFrontInPlan(p)) layers.push(renderStroke(stroke, colors.trace));
   return layers;
 }
 
@@ -43,7 +44,7 @@ export function renderFrontProfile(
   let plan = topPlatePaths(p, paths);
   if (opts.fHoles === false) plan = { ...plan, fHoles: [] };
   if (opts.purfling === false) plan = { ...plan, purfling: [] };
-  return renderTopPlate(p, plan, colors, STROKE_WEIGHT.trace, { ink: colors.outerTrace, weight: STROKE_WEIGHT.trace }, solve);
+  return renderTopPlate(p, plan, colors, STROKE_WEIGHT.trace, { ink: colors.trace, weight: STROKE_WEIGHT.trace }, solve);
 }
 
 // both plates in plan from the path cache, for the panels that work on the plates themselves: the top
@@ -58,14 +59,14 @@ export function renderPlatePair(p: EnricoCerutiParams, paths: PathEntry[], color
   const top = topPlatePaths(p, paths);
   const backOutline = getPath(paths, 'back');
   const layers = [
-    ...renderTopPlate(p, top, colors, weight, { ink: colors.innerTrace, weight: STROKE_WEIGHT.guide }, solve),
-    renderPath(back(backOutline), colors.outerTrace, weight),
-    ...top.purfling.map(d => renderPath(back(d), colors.innerTrace, STROKE_WEIGHT.guide)),
+    ...renderTopPlate(p, top, colors, weight, { ink: colors.trace, weight: STROKE_WEIGHT.guide }, solve),
+    renderPath(back(backOutline), colors.trace, weight),
+    ...top.purfling.map(d => renderPath(back(d), colors.trace, STROKE_WEIGHT.guide)),
   ];
   if (solve.neck) {
     const neck = defineBackNeckPath(p, backOutline);
-    if (neck) layers.push(renderPath(back(neck), colors.outerTrace));
-    if (solve.scroll) for (const stroke of scrollBackInPlan(p, dx)) layers.push(renderStroke(stroke, colors.outerTrace));
+    if (neck) layers.push(renderPath(back(neck), colors.trace));
+    if (solve.scroll) for (const stroke of scrollBackInPlan(p, dx)) layers.push(renderStroke(stroke, colors.trace));
   }
   return layers;
 }

@@ -290,7 +290,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   // (see onScrollWheel) rather than per event.
   private wheelGestureIsPan = false;
   private wheelGestureTimer: ReturnType<typeof setTimeout> | null = null;
-  public isDarkMode = false;
   private isDragging = false;
   private isSpaceDown = false;
   /** Set while the camera still owes the scene a fit — starts true so the first draw with anything

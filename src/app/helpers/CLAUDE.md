@@ -49,7 +49,7 @@ being resorted to fit that rule exactly.
 
 | File | Concern |
 |---|---|
-| `renderFuncs.ts` | SVG emission — `renderPath`, color/transform utilities. |
+| `renderFuncs.ts` | SVG emission — `renderPath` and the other primitives. Colour math lives in `src/app/theme/color-math.ts`, weights and dashes in `theme/strokes.ts`. |
 | `fileExporter.ts` | SVG and PDF output (`jspdf`, `svg2pdf.js`). |
 | `dxfExporter.ts` | DXF output for templates and moulds. |
 | `stlExporter.ts` | `buildHeightFieldStl` — CNC plate output. |

@@ -5,7 +5,8 @@ import { combinePathStrings, pathFromCircle, pathFromLine, pathFromPolygon, path
 import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage, SvgPathExport, SvgTextExport } from '../../../helpers/fileExporter';
 import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
-import { renderPath, renderText, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
+import { renderPath, renderText } from '../../../helpers/renderFuncs';
+import { STROKE_WEIGHT } from '../../../theme/strokes';
 import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureFrontProfilePaths, FrontProfileSolve, getPath, getPathOrNull, hasOuterTrace, solveNeckForProfile } from '../../calculation/outline/ceruti-calcs';
 import { defineNeckTemplate, NeckTemplate, neckTemplatePath } from '../../calculation/neck/ceruti-neck-template';
 import { calculateScroll, calculateScrollWidths, scrollBackStrip, scrollCompassWalk } from '../../calculation/neck/ceruti-scroll';
@@ -263,7 +264,7 @@ export class ExportPanel implements OnInit {
 
     switch (type) {
       case 'innerTrace': {
-        this.draftChange.emit([renderPath(this.getPath('inner'), this.colors.innerTrace, STROKE_WEIGHT.trace)]);
+        this.draftChange.emit([renderPath(this.getPath('inner'), this.colors.trace, STROKE_WEIGHT.trace)]);
         break;
       }
       case 'outerTrace':
@@ -274,32 +275,32 @@ export class ExportPanel implements OnInit {
         // whole. A rim pair on a contour sheet would be a second, weaker
         // account of geometry that is stated exactly elsewhere.
         const renders: Array<(g: any, ui: any) => void> = [
-          renderPath(this.getPath(type === 'back' ? 'back' : 'top'), this.colors.outerTrace, STROKE_WEIGHT.trace),
+          renderPath(this.getPath(type === 'back' ? 'back' : 'top'), this.colors.trace, STROKE_WEIGHT.trace),
         ];
         const purflingPath = this.getPathOrNull('purfling');
-        if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
+        if (purflingPath) renders.push(renderPath(purflingPath, this.colors.trace, STROKE_WEIGHT.guide));
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
-        if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
+        if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.trace, STROKE_WEIGHT.guide));
         const fHole = this.getPathOrNull('fHole');
         if (type === 'outerTrace' && fHole) {
-          for (const hole of splitPathStrings(fHole)) renders.push(renderPath(hole, this.colors.outerTrace, STROKE_WEIGHT.trace));
+          for (const hole of splitPathStrings(fHole)) renders.push(renderPath(hole, this.colors.trace, STROKE_WEIGHT.trace));
         }
         this.draftChange.emit(renders);
         break;
       }
       case 'fholeTemplate':
       case 'fholeTemplateNoEyes': {
-        this.draftChange.emit([renderPath(this.fholeTemplatePath(type === 'fholeTemplate'), this.colors.outerTrace, STROKE_WEIGHT.trace)]);
+        this.draftChange.emit([renderPath(this.fholeTemplatePath(type === 'fholeTemplate'), this.colors.trace, STROKE_WEIGHT.trace)]);
         break;
       }
       case 'mould': {
         // Computed directly rather than read from the cache — it's export-only and
         // too expensive (10x denser boolean diff) to keep current on every edit.
-        this.draftChange.emit([renderPath(calculateMould(p, true, false), this.colors.mouldTrace, STROKE_WEIGHT.trace)]);
+        this.draftChange.emit([renderPath(calculateMould(p, true, false), this.colors.trace, STROKE_WEIGHT.trace)]);
         break;
       }
       case 'blocks': {
-        const renders = this.cornerBlocks().map((block: string) => renderPath(block, this.colors.mouldTrace, STROKE_WEIGHT.trace));
+        const renders = this.cornerBlocks().map((block: string) => renderPath(block, this.colors.trace, STROKE_WEIGHT.trace));
         this.draftChange.emit(renders);
         break;
       }
@@ -307,32 +308,32 @@ export class ExportPanel implements OnInit {
         const t = this.neckTemplate();
         if (!t) { this.draftChange.emit([]); return; }
         this.draftChange.emit([
-          renderPath(t.outline, this.colors.outerTrace, STROKE_WEIGHT.trace),
-          renderPath(combinePathStrings([...t.slots, ...t.dots, t.eye]), this.colors.innerTrace, STROKE_WEIGHT.trace),
+          renderPath(t.outline, this.colors.trace, STROKE_WEIGHT.trace),
+          renderPath(combinePathStrings([...t.slots, ...t.dots, t.eye]), this.colors.trace, STROKE_WEIGHT.trace),
         ]);
         break;
       }
       case 'scrollBack': {
         const strip = this.scrollBack();
         if (!strip) { this.draftChange.emit([]); return; }
-        this.draftChange.emit([renderPath(strip, this.colors.outerTrace, STROKE_WEIGHT.trace)]);
+        this.draftChange.emit([renderPath(strip, this.colors.trace, STROKE_WEIGHT.trace)]);
         break;
       }
       case 'scrollFrontView':
       case 'scrollBackView': {
         const view = this.scrollView(type);
         if (!view) { this.draftChange.emit([]); return; }
-        this.draftChange.emit([renderPath(view, this.colors.outerTrace, STROKE_WEIGHT.trace)]);
+        this.draftChange.emit([renderPath(view, this.colors.trace, STROKE_WEIGHT.trace)]);
         break;
       }
       case 'scrollCompass': {
         const t = this.scrollCompass();
         if (!t) { this.draftChange.emit([]); return; }
         this.draftChange.emit([
-          renderPath(t.box, this.colors.outerTrace, STROKE_WEIGHT.trace),
-          renderPath(t.marks, this.colors.innerTrace, STROKE_WEIGHT.guide),
-          renderPath(t.centres, this.colors.outerTrace, STROKE_WEIGHT.trace),
-          renderPath(t.edges, this.colors.innerTrace, STROKE_WEIGHT.guide, 0.4),
+          renderPath(t.box, this.colors.trace, STROKE_WEIGHT.trace),
+          renderPath(t.marks, this.colors.trace, STROKE_WEIGHT.guide),
+          renderPath(t.centres, this.colors.trace, STROKE_WEIGHT.trace),
+          renderPath(t.edges, this.colors.trace, STROKE_WEIGHT.guide, 0.4),
         ]);
         break;
       }
@@ -340,8 +341,8 @@ export class ExportPanel implements OnInit {
       case 'longArchTemplates': {
         const shapes = this.archTemplates(type);
         const renders = shapes.flatMap(s => [
-          renderPath(s.path, this.colors.mouldTrace, STROKE_WEIGHT.trace),
-          renderText(s.labelPos, s.label, this.colors.mouldTrace, TEMPLATE_LABEL_SIZE, s.labelRotation),
+          renderPath(s.path, this.colors.trace, STROKE_WEIGHT.trace),
+          renderText(s.labelPos, s.label, this.colors.trace, TEMPLATE_LABEL_SIZE, s.labelRotation),
         ]);
         this.draftChange.emit(renders);
         break;

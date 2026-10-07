@@ -1,7 +1,10 @@
-import { ChangeDetectorRef, Component, Input, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ViewChild, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { applyTransforms, ColorTransform, renderSolveFailures } from '../helpers/renderFuncs';
+import { renderSolveFailures } from '../helpers/renderFuncs';
+import { Theme } from '../theme/palette';
+import { ThemeService } from '../theme/theme.service';
+import { cerutiColors } from './renders/ceruti-colors';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiPanelId, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './templates/ceruti-templates';
@@ -30,7 +33,6 @@ import { ExportPanel } from './panels/export-panel/export-panel';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 import { RenderToggles } from './panels/render-toggles/render-toggles';
 import { NumberStepperDirective } from '../shared/number-stepper';
-import { CERUTI_COLOR_PALETTE, LIGHT_CONTRAST_MIN, LIGHT_CONTRAST_MIN_PALE, LIGHT_MODE_CANVAS_BG, LIGHT_SATURATE_DEGREE, OFF2_FACTOR, OFF_FACTOR } from './renders/render-constants';
 
 @Component({
   selector: 'app-ceruti-violin',
@@ -62,98 +64,27 @@ export class CerutiViolin extends RecipeComponentBase {
     { id: 'export', label: 'Export', toggles: [] },
   ];
 
-  @Input() nightMode = true;
+  private readonly themeService = inject(ThemeService);
+  private colorsTheme: Theme | null = null;
+  private colorsCache!: CerutiColors;
 
-  private makeColor(base: string, ...extra: ColorTransform[]): string {
-    return this.makeColorWithFloor(base, LIGHT_CONTRAST_MIN, LIGHT_SATURATE_DEGREE, ...extra);
-  }
-
-  // saturateDegree is 0 for the neutral trace greys — boosting saturation on an almost-hueless
-  // color just amplifies whatever tiny rounding bias its hex happens to carry, tinting a
-  // reference line an arbitrary color instead of keeping it neutral.
-  private makeColorWithFloor(base: string, minRatio: number, saturateDegree: number, ...extra: ColorTransform[]): string {
-    const transforms: ColorTransform[] = [];
-    if (!this.nightMode) {
-      if (saturateDegree > 0) transforms.push({ type: 'saturate', degree: saturateDegree });
-      transforms.push({ type: 'ensureContrast', against: LIGHT_MODE_CANVAS_BG, minRatio });
-    }
-    transforms.push(...extra);
-    return applyTransforms(base, ...transforms);
-  }
-
+  // rebuilt once per theme, not per change detection pass
   get colors(): CerutiColors {
-    const p = CERUTI_COLOR_PALETTE;
-    return {
-      upperBout: this.makeColor(p.upperBout),
-      upperBoutOff: this.makeColor(p.upperBout, { type: 'greyOut', degree: OFF_FACTOR }),
-      upperBoutOff2: this.makeColor(p.upperBout, { type: 'greyOut', degree: OFF2_FACTOR }),
-      centerBoutUp: this.makeColor(p.centerBoutUp),
-      centerBoutUpOff: this.makeColor(p.centerBoutUp, { type: 'greyOut', degree: OFF_FACTOR }),
-      centerBoutUpOff2: this.makeColor(p.centerBoutUp, { type: 'greyOut', degree: OFF2_FACTOR }),
-      centerBout: this.makeColor(p.centerBout),
-      centerBoutOff: this.makeColor(p.centerBout, { type: 'greyOut', degree: OFF_FACTOR }),
-      centerBoutOff2: this.makeColor(p.centerBout, { type: 'greyOut', degree: OFF2_FACTOR }),
-      centerBoutLow: this.makeColorWithFloor(p.centerBoutLow, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
-      centerBoutLowOff: this.makeColorWithFloor(p.centerBoutLow, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE, { type: 'greyOut', degree: OFF_FACTOR }),
-      centerBoutLowOff2: this.makeColorWithFloor(p.centerBoutLow, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE, { type: 'greyOut', degree: OFF2_FACTOR }),
-      lowerBout: this.makeColor(p.lowerBout),
-      lowerBoutOff: this.makeColor(p.lowerBout, { type: 'greyOut', degree: OFF_FACTOR }),
-      lowerBoutOff2: this.makeColor(p.lowerBout, { type: 'greyOut', degree: OFF2_FACTOR }),
-      violNeck: this.makeColor(p.violNeck),
-      innerTrace: this.makeColorWithFloor(p.innerTrace, LIGHT_CONTRAST_MIN, 0),
-      outerTrace: this.makeColorWithFloor(p.outerTrace, LIGHT_CONTRAST_MIN, 0),
-      mouldTrace: this.makeColorWithFloor(p.mouldTrace, LIGHT_CONTRAST_MIN, 0),
-      fluting: this.makeColor(p.fluting),
-      archTop: this.makeColor(p.archTop),
-      archBack: this.makeColor(p.archBack),
-      fHoleUpperDark: this.makeColor(p.fHoleUpperDark),
-      fHoleUpper: this.makeColor(p.fHoleUpper),
-      fHoleUpperMuted: this.makeColor(p.fHoleUpper, { type: 'greyOut', degree: OFF_FACTOR }),
-      fHoleUpperLight: this.makeColorWithFloor(p.fHoleUpperLight, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
-      fHoleLowerDark: this.makeColor(p.fHoleLowerDark),
-      fHoleLower: this.makeColor(p.fHoleLower),
-      fHoleLowerMuted: this.makeColor(p.fHoleLower, { type: 'greyOut', degree: OFF_FACTOR }),
-      fHoleLowerLight: this.makeColorWithFloor(p.fHoleLowerLight, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
-      fHoleStem: this.makeColor(p.fHoleStem),
-      fHoleStemOff: this.makeColor(p.fHoleStem, { type: 'greyOut', degree: OFF_FACTOR }),
-      fHoleCut: this.makeColor(p.fHoleCut),
-      pathError: this.makeColor(p.pathError),
-      neck: this.makeColor(p.neck),
-      neckOff: this.makeColor(p.neck, { type: 'greyOut', degree: OFF_FACTOR }),
-      scrollBack: this.makeColor(p.scrollBack),
-      scrollBackLight: this.makeColorWithFloor(p.scrollBackLight, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
-      scrollNape: this.makeColor(p.scrollNape),
-      scrollFront: this.makeColor(p.scrollFront),
-      scrollFrontLight: this.makeColorWithFloor(p.scrollFrontLight, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
-      scrollTurns: this.makeColor(p.scrollTurns),
-      scrollWidthNut: this.makeColor(p.scrollWidthNut),
-      scrollWidthHip: this.makeColorWithFloor(p.scrollWidthHip, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
-      scrollWidthThroat: this.makeColor(p.scrollWidthThroat),
-      scrollWidthDuckTail: this.makeColor(p.scrollWidthDuckTail),
-      scrollWidthFoot: this.makeColorWithFloor(p.scrollWidthFoot, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
-      scrollWidthBackHip: this.makeColor(p.scrollWidthBackHip),
-      scrollWidthPoll: this.makeColorWithFloor(p.scrollWidthPoll, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
-      scrollWidthCrown: this.makeColor(p.scrollWidthCrown),
-      scrollWidthTurn1Bottom: this.makeColor(p.scrollWidthTurn1Bottom),
-      scrollWidthTurn2Top: this.makeColorWithFloor(p.scrollWidthTurn2Top, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
-      scrollWidthTurn2Bottom: this.makeColor(p.scrollWidthTurn2Bottom),
-      scrollWidthEye: this.makeColorWithFloor(p.scrollWidthEye, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
-      // unsaturated, or the ivory darkens to the same ochre as the scroll's front on the day canvas
-      voluteTurn1: this.makeColorWithFloor(p.voluteTurn1, LIGHT_CONTRAST_MIN, 0),
-      voluteTurn1Alt: this.makeColorWithFloor(p.voluteTurn1Alt, LIGHT_CONTRAST_MIN_PALE, 0),
-      voluteTurn2: this.makeColorWithFloor(p.voluteTurn2, LIGHT_CONTRAST_MIN, 0),
-      voluteTurn2Alt: this.makeColorWithFloor(p.voluteTurn2Alt, LIGHT_CONTRAST_MIN_PALE, 0),
-      voluteTurn3: this.makeColorWithFloor(p.voluteTurn3, LIGHT_CONTRAST_MIN, 0),
-      voluteTurn3Alt: this.makeColorWithFloor(p.voluteTurn3Alt, LIGHT_CONTRAST_MIN_PALE, 0),
-      neckRoot: this.makeColor(p.neckRoot),
-      fingerboard: this.makeColor(p.fingerboard),
-      nut: this.makeColor(p.nut),
-      bridge: this.makeColor(p.bridge),
-    };
+    const theme = this.themeService.theme();
+    if (theme !== this.colorsTheme) {
+      this.colorsTheme = theme;
+      this.colorsCache = cerutiColors(theme);
+    }
+    return this.colorsCache;
   }
 
   constructor(private readonly cdr: ChangeDetectorRef) {
     super();
+    effect(() => {
+      this.themeService.theme();
+      this.panelRef?.requestViewRerender();
+      this.exportRef?.redrawPreview();
+    });
     this.initializePanelFlow(this.panelOrder);
     this.initializeDebounce(() => this.refreshBoundInputs());
   }

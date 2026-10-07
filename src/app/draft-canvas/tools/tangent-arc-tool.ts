@@ -4,10 +4,12 @@ import { DraftTool, DraftToolHost } from './draft-tool';
 import { makeShapeId } from './toolbox-shape';
 import { fitTangentArc } from '../../helpers/math/draftMath';
 import { arcPathData } from '../../helpers/math/pathMath';
+import { CANVAS_COLORS } from '../../theme/canvas-colors';
+import { DASH } from '../../theme/strokes';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
-const PREVIEW_COLOR = '#2563eb';
+const PREVIEW_COLOR = CANVAS_COLORS.preview;
 const DEFAULT_TANGENT = 0; // pointing along +x, used when the start point didn't snap to anything
 
 type Stage = 'idle' | 'start-set';
@@ -74,7 +76,7 @@ export class TangentArcTool implements DraftTool {
       .attr('y2', this.start.y + Math.sin(this.startTangent) * guideLen)
       .attr('stroke', PREVIEW_COLOR)
       .attr('stroke-width', 1)
-      .attr('stroke-dasharray', '2 4')
+      .attr('stroke-dasharray', DASH.construction)
       .attr('opacity', 0.5)
       .attr('vector-effect', 'non-scaling-stroke')
       .style('pointer-events', 'none');
@@ -87,7 +89,7 @@ export class TangentArcTool implements DraftTool {
       .attr('fill', 'none')
       .attr('stroke', PREVIEW_COLOR)
       .attr('stroke-width', 1.5)
-      .attr('stroke-dasharray', '4 3')
+      .attr('stroke-dasharray', DASH.preview)
       .attr('vector-effect', 'non-scaling-stroke')
       .style('pointer-events', 'none');
   }

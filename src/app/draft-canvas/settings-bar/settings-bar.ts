@@ -13,6 +13,7 @@ import { clamp, normalizeDegrees, pointAtDistanceToward } from '../../helpers/ma
 import { shapeBounds, unionBounds } from '../tools/shape-hit-test';
 import { translateShape } from '../tools/shape-transform';
 import { TooltipDirective } from '../../docs/tooltips';
+import { CANVAS_COLORS } from '../../theme/canvas-colors';
 
 /**
  * The Inkscape-style contextual settings strip along the bottom bar: color, then whichever
@@ -504,7 +505,7 @@ export class SettingsBarComponent {
 
   // A wide, translucent yellow stroke — the look someone reaches for on every highlighter pass,
   // so it's a shortcut for a Color+Width+Opacity combination rather than a fourth pen setting.
-  private static readonly HIGHLIGHTER_COLOR = '#fde047';
+  private static readonly HIGHLIGHTER_COLOR = CANVAS_COLORS.highlighter;
   private static readonly HIGHLIGHTER_WIDTH = 14;
   private static readonly HIGHLIGHTER_OPACITY = 0.35;
 

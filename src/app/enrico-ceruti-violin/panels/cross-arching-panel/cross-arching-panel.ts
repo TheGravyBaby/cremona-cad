@@ -1,7 +1,8 @@
 import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Circle, Pt, Pt3D, Rectangle } from '../../../models/types';
-import { renderCircle, renderSegment, renderPath, renderPointHalo, renderRect, renderGuideBaseline, renderGuideKnot, renderGuideMeasure, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
+import { renderCircle, renderSegment, renderPath, renderPointHalo, renderRect, renderGuideBaseline, renderGuideKnot, renderGuideMeasure } from '../../../helpers/renderFuncs';
+import { DASH, STROKE_WEIGHT } from '../../../theme/strokes';
 import { clamp } from '../../../helpers/math/simpleGeometry';
 import { projectedPath, samplePathToPolyline } from '../../../helpers/math/pathMath';
 import { buildProjection, projectedBounds } from '../../../helpers/math/vibeMath';
@@ -38,9 +39,9 @@ function renderWireframeDragFrame(
       .attr('width', (bounds.maxX - bounds.minX) + pad * 2)
       .attr('height', (bounds.maxY - bounds.minY) + pad * 2)
       .attr('fill', 'transparent')
-      .attr('stroke', colors.mouldTrace)
+      .attr('stroke', colors.trace)
       .attr('stroke-width', STROKE_WEIGHT.guide)
-      .attr('stroke-dasharray', '4 3')
+      .attr('stroke-dasharray', DASH.preview)
       .attr('vector-effect', 'non-scaling-stroke')
       .style('pointer-events', 'all')
       .style('cursor', dragging ? 'grabbing' : 'grab')
@@ -847,7 +848,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
           };
         }
         const { levels, outline } = c.contours;
-        if (outline) layers.push(renderPath(projectedPath(proj, outline, true), colors.outerTrace, STROKE_WEIGHT.guide, 0.6));
+        if (outline) layers.push(renderPath(projectedPath(proj, outline, true), colors.trace, STROKE_WEIGHT.guide, 0.6));
         // channel levels fainter than the arch's
         for (const { level, rings } of levels) {
           const d = rings.map(ring => projectedPath(proj, ring, true)).join(' ');
@@ -857,7 +858,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
       } else {
         c.wireframe ??= computeWireframeGeometry(p, model, stationStepMm, sampleStepMm);
         const { strips, ribs } = c.wireframe;
-        for (const rib of ribs) layers.push(renderPath(projectedPath(proj, rib), colors.mouldTrace, STROKE_WEIGHT.guide * 0.6, 0.45));
+        for (const rib of ribs) layers.push(renderPath(projectedPath(proj, rib), colors.trace, STROKE_WEIGHT.guide * 0.6, 0.45));
         for (const strip of strips) {
           const channel = strip.maxZ < -0.01;
           layers.push(renderPath(projectedPath(proj, strip.pts), channel ? colors.fluting : color, STROKE_WEIGHT.guide * 0.75, channel ? 0.5 : 0.65));
@@ -868,7 +869,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
       // the cursor's station in both views: a contour map says how deep the plate is everywhere and
       // nothing about where you are on it
       const cursor = wireframeStripAt(p, model, y, sampleStepMm);
-      if (cursor) layers.push(renderPath(projectedPath(proj, cursor.pts), colors.mouldTrace, STROKE_WEIGHT.section));
+      if (cursor) layers.push(renderPath(projectedPath(proj, cursor.pts), colors.trace, STROKE_WEIGHT.section));
       layers.push(renderWireframeDragFrame(bounds, colors, drag.active, drag.onPointerDown));
     }
     return layers;
@@ -913,10 +914,10 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     if (innerHalf !== null) {
       parts.push(renderRect(
         new Rectangle({ x: -(innerHalf + p.rib), y: 0 }, { x: innerHalf + p.rib, y: ribZ }),
-        this.colors.mouldTrace, 'none', STROKE_WEIGHT.guide,
+        this.colors.trace, 'none', STROKE_WEIGHT.guide,
       ));
       for (const sx of [-1, 1]) {
-        parts.push(renderSegment(new Pt(sx * innerHalf, 0), new Pt(sx * innerHalf, ribZ), this.colors.innerTrace, STROKE_WEIGHT.guide));
+        parts.push(renderSegment(new Pt(sx * innerHalf, 0), new Pt(sx * innerHalf, ribZ), this.colors.trace, STROKE_WEIGHT.guide));
       }
     }
     for (const plate of ['top', 'bottom'] as const) {
@@ -938,9 +939,9 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const section = this.section[plate];
     const parts: RenderLayer[] = [];
 
-    parts.push(renderSegment(new Pt(-outerHalf, innerZ), new Pt(outerHalf, innerZ), this.colors.innerTrace, STROKE_WEIGHT.guide));
+    parts.push(renderSegment(new Pt(-outerHalf, innerZ), new Pt(outerHalf, innerZ), this.colors.trace, STROKE_WEIGHT.guide));
     for (const side of [1, -1] as const) {
-      parts.push(renderSegment(new Pt(side * outerHalf, innerZ), new Pt(side * outerHalf, zBase), this.colors.innerTrace, STROKE_WEIGHT.guide));
+      parts.push(renderSegment(new Pt(side * outerHalf, innerZ), new Pt(side * outerHalf, zBase), this.colors.trace, STROKE_WEIGHT.guide));
     }
     // Split by what carved it: the flat land
     // and the plate edges in the trace colour, the gouged channel in the
@@ -949,7 +950,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const c = this.cache[plate];
     if (c?.model) {
       const pen = {
-        land: [this.colors.innerTrace, STROKE_WEIGHT.guide],
+        land: [this.colors.trace, STROKE_WEIGHT.guide],
         channel: [this.colors.fluting, STROKE_WEIGHT.section],
         arch: [color, STROKE_WEIGHT.section],
       } as const;

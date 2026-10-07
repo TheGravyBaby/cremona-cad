@@ -2,7 +2,8 @@ import { pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
 import { occludePath } from '../../../helpers/math/pathVibes';
 import { pathFromLine, pathFromPolygon, pathFromPolyline } from '../../../helpers/math/pathMath';
 import { clipPolylineAtY, polylinePointAtY } from '../../../helpers/math/vibeMath';
-import { StrokeShape, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
+import { StrokeShape } from '../../../helpers/renderFuncs';
+import { STROKE_WEIGHT } from '../../../theme/strokes';
 import { Pt, Pt3D } from '../../../models/types';
 import { EnricoCerutiParams } from '../../ceruti-types';
 import { duckTailRadius, pegboxHipHeight, pegboxWidth, scrollPathStretches, ScrollStretches, scrollFrontTop, scrollFrontWidths, scrollLines, scrollNeckHalfWidth } from './ceruti-scroll';
@@ -61,7 +62,7 @@ function pegboxFrontOutline(p: EnricoCerutiParams) {
   return { foot, walls, cheeks, bottom };
 }
 
-export type ScrollViewInk = 'archTop' | 'archBack' | 'scrollFrontLight' | 'scrollBackLight' | 'scrollTurns' | 'scrollWidthCrown' | 'nut' | 'neckOff';
+export type ScrollViewInk = 'archTop' | 'archBack' | 'scrollFrontLight' | 'scrollBackLight' | 'scrollTurns' | 'scrollWidthCrown' | 'nut' | 'neckGround';
 
 export type ScrollViewStroke = { ink: ScrollViewInk; weight: number } & StrokeShape;
 
@@ -123,7 +124,7 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   // the neck's sides run on up until they meet the scroll, in the round or the front's cheeks
   const overNeck = [...(r > 0 ? [pathFromPolygon(round)] : []), ...(front ? [closed(cheeks)] : [])];
   for (const side of [1, -1]) {
-    stroke(pathFromLine(place(side * scrollNeckHalfWidth(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidth(p, start.y), start.y)), 'neckOff', STROKE_WEIGHT.section, overNeck);
+    stroke(pathFromLine(place(side * scrollNeckHalfWidth(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidth(p, start.y), start.y)), 'neckGround', STROKE_WEIGHT.section, overNeck);
   }
 
   // the head's back stands nearest and shows whole, and the back of each turn stands out past it.
@@ -193,7 +194,7 @@ export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number,
   const nut = [place(-nutHalf, 0), place(nutHalf, 0), place(nutHalf, nutHeight), place(-nutHalf, nutHeight)];
   const overPegbox = pathFromPolygon(nut);
   for (const side of [1, -1]) {
-    stroke(pathFromLine(place(side * scrollNeckHalfWidth(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidth(p, 0), 0)), 'neckOff', STROKE_WEIGHT.section, null);
+    stroke(pathFromLine(place(side * scrollNeckHalfWidth(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidth(p, 0), 0)), 'neckGround', STROKE_WEIGHT.section, null);
   }
   strokes.push({ polygon: nut, ink: 'nut', weight: STROKE_WEIGHT.section });
   contour([...walls, ...bottom.slice(1)], 'archTop', overPegbox);
@@ -257,7 +258,7 @@ const onNeckInPlan = (p: EnricoCerutiParams, dx: number) => {
 // the front view as the front profile shows it: the nut and the neck below are the profile's own
 export function scrollFrontInPlan(p: EnricoCerutiParams): ScrollViewStroke[] {
   return scrollFrontViewStrokes(p, onNeckInPlan(p, 0), 0)
-    .filter(stroke => stroke.ink !== 'nut' && stroke.ink !== 'neckOff');
+    .filter(stroke => stroke.ink !== 'nut' && stroke.ink !== 'neckGround');
 }
 
 // the back view as the back profile shows it, the neck's sides carried on from the nut up to the

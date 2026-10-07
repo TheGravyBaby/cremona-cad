@@ -1,6 +1,7 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { renderCircle, renderDashLine, renderPath, renderSolveFailures, renderCrosshair, renderPointHalo, renderStroke, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
+import { renderCircle, renderDashLine, renderPath, renderSolveFailures, renderCrosshair, renderPointHalo, renderStroke } from '../../../helpers/renderFuncs';
+import { STROKE_WEIGHT } from '../../../theme/strokes';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { defaultNeckParams, defaultStringSetup } from '../../calculation/neck/ceruti-neck';
 import { calculateScroll, calculateScrollWidths, ScrollStationKey, pegboxCavity, scrollCompassWalk, scrollExtent, scrollWidthStations } from '../../calculation/neck/ceruti-scroll';
@@ -66,7 +67,7 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
     return [
       renderScrollNeck(p, this.colors, false, failures),
       ...(failures.length ? [] : [
-        renderPath(defineSideScrollPath(p), this.colors.outerTrace, STROKE_WEIGHT.trace),
+        renderPath(defineSideScrollPath(p), this.colors.trace, STROKE_WEIGHT.trace),
         renderScrollWidths(p, this.colors, this.focused, this.flags.showModuleGuides, this.flags.showModuleArcs),
       ]),
       renderSolveFailures(failures, this.colors.pathError),

@@ -64,10 +64,6 @@
   white-space: pre;
 }
 
-.canvas-shell.dark-mode .text-edit-overlay {
-  background: rgba(45, 45, 45, 0.85);
-  border-color: rgba(96, 165, 250, 0.7);
-}
 
 .host:focus,
 .host:focus-visible {
@@ -296,98 +292,4 @@ svg {
 .view-unit {
   width: 30px;
   color: var(--ui-text-muted);
-}
-
-/* Dark mode styles */
-.canvas-shell.dark-mode {
-  background-color: #1e1e1e;
-  color: #e0e0e0;
-}
-
-.canvas-shell.dark-mode .host {
-  background-color: #2d2d2d;
-}
-
-.canvas-shell.dark-mode .ui-controls-top {
-  border-bottom-color: #444;
-  background-color: #252525;
-  color: #e0e0e0;
-}
-
-.canvas-shell.dark-mode .file-upload {
-  background: #3a3a3a;
-  color: #e0e0e0;
-  border-color: #555;
-}
-
-.canvas-shell.dark-mode .file-upload:hover {
-  background: #454545;
-  border-color: #666;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-.canvas-shell.dark-mode .file-upload:active {
-  background: #3a3a3a;
-}
-
-.canvas-shell.dark-mode .ui-controls {
-  border-top-color: #444;
-  background-color: #252525;
-  color: #e0e0e0;
-}
-
-.canvas-shell.dark-mode .btn {
-  background: linear-gradient(180deg, #3a3a3a 0%, #2f2f2f 100%);
-  border-color: #555;
-  color: #e0e0e0;
-}
-
-.canvas-shell.dark-mode .zoom-controls {
-  background: linear-gradient(180deg, #3a3a3a 0%, #2f2f2f 100%);
-  border-color: #555;
-}
-
-.canvas-shell.dark-mode .zoom-controls > *:not(:first-child) {
-  border-left-color: #555;
-}
-
-.canvas-shell.dark-mode .zoom-btn {
-  color: #e0e0e0;
-}
-
-.canvas-shell.dark-mode .zoom-btn:hover {
-  background: #353535;
-}
-
-.canvas-shell.dark-mode .btn:hover {
-  border-color: #666;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-.canvas-shell.dark-mode .btn:active {
-  background: #353535;
-  border-color: #666;
-}
-
-.canvas-shell.dark-mode .btn.active {
-  background: var(--ui-accent);
-  color: #fff;
-}
-
-.canvas-shell.dark-mode .readout {
-  border-color: #444;
-  background: #3a3a3a;
-  color: #e0e0e0;
-}
-
-.canvas-shell.dark-mode .sep {
-  background: #444;
-}
-
-.canvas-shell.dark-mode input[type="checkbox"] {
-  accent-color: var(--ui-accent);
-}
-
-svg.dark-mode {
-  background-color: #2d2d2d;
 }
