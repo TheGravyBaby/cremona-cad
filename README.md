@@ -14,7 +14,7 @@ CremonaCad draws instruments using a simple system of **intersecting arcs**, his
 
 The outline is drawn from parameters — bout widths, corner placements, cutoff angles — which then carry through to purfling, fluting, long and cross arching, and the internal mould. A **drawing toolbox** sits alongside the recipe for sketching and tracing directly on the canvas, snapping to the geometry underneath. Finished designs export as SVG, PDF and DXF for templates and moulds, and as STL for CNC-carved plates.
 
-See the in-app **About** and **Tutorial** tabs for the full picture, including the design workflow and each panel in turn.
+See the in-app **About** and **Documentation** tabs for the full picture, including the design workflow and each panel in turn.
 
 ## Getting Started
 
@@ -72,22 +72,31 @@ A few conventions worth knowing before editing geometry code:
 
 ```
 src/app/
-├── about-modal/           # About, tutorial, changelog and license
+├── about-modal/           # About, documentation, settings, changelog
+├── docs/                  # Every word the app says to the user: field help, tooltips, conditions
+│   ├── guide/             #   The Documentation tab
+│   └── wiki/              #   Markdown articles and the wiki that renders them (dev builds)
 ├── draft-canvas/          # SVG canvas, camera, axis grid
 │   ├── tools/             #   Drawing toolbox: tools, snapping, layers, images
-│   ├── tool-palette/      #   Toolbar and layer/image panels
-│   └── settings-bar/      #   Per-shape properties for the current selection
+│   ├── tool-palette/      #   Toolbar
+│   ├── settings-bar/      #   Per-shape properties for the current selection
+│   ├── layer-controls/    #   Layers and reference images, under the canvas
+│   ├── axis-controls/     #   Grid settings
+│   └── edit-menu/         #   Selection actions
 ├── enrico-ceruti-violin/  # Primary working recipe
-│   ├── panels/            #   One input panel per design stage
-│   ├── renders/           #   Arching, 3D preview and guide renderers
-│   └── render-toggles/    #   Module and view visibility controls
+│   ├── calculation/       #   The math: outline/, arching/, neck/
+│   ├── panels/            #   One input panel per design stage, plus the render toggles
+│   ├── renders/           #   Drawing several panels share
+│   └── templates/         #   Bundled historical instruments and the open corpus
 ├── helpers/               # Math, render functions, SVG/PDF/DXF/STL export
 ├── hello-world-recipe/    # Minimal recipe for experimentation
 ├── models/                # Shared TypeScript types
 ├── recipe-base/           # Base class shared across all recipes
-├── recipe-toolbar/        # New/save/load and template selection
+├── recipe-toolbar/        # Design name, file menu, export
 ├── shared/                # Message service and UI components
 └── top-bar/               # Application toolbar
+
+CHANGELOG.md               # Rendered in the about modal
 
 examples/
 ├── beard-violin/          # Archived Beard recipe

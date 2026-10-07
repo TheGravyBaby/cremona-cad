@@ -63,6 +63,12 @@
                 (ngModelChange)="params.fHoles!.stem.width = $event; onChange()"
                 [style.borderColor]="colors.fHoleStem" />
         </label>
+         <label class="field-cell">
+            <span class="field-title">Angle <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1" [min]="stemAngleRange[0]" [max]="stemAngleRange[1]"
+                [ngModel]="getStemAngleDeg(params.fHoles!.stem)"
+                (ngModelChange)="setStemAngleDeg(params.fHoles!.stem, $event)" />
+        </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <div class="field-cell field-cell--xy">
@@ -79,14 +85,6 @@
                     [ngModel]="round2(params.fHoles!.stem.center!.y)" (ngModelChange)="params.fHoles!.stem.center!.y = $event; onChange()" />
             </div>
         </div>
-    </div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Angle <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" [min]="stemAngleRange[0]" [max]="stemAngleRange[1]"
-                [ngModel]="getStemAngleDeg(params.fHoles!.stem)"
-                (ngModelChange)="setStemAngleDeg(params.fHoles!.stem, $event)" />
-        </label>
     </div>
 </section>
 

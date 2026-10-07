@@ -1,5 +1,54 @@
 # Documentation: state and plan
 
+## Where things stand (2026-10-07, before 0.9.0)
+
+Read this first when coming back to it.
+
+**Done.** Phases 1 and 2 below. The wiki framework exists under `src/app/docs/wiki/` and shows
+as a dev-only Wiki tab with three hand-written demo articles. Every word the app says to the
+user now lives under `src/app/docs/`: `field-help.ts` (ⓘ), `tooltips.ts` (`docTip`),
+`conditions.ts` (toasts), `export-descriptions.ts`, `guide/` (the Documentation tab), and
+`CHANGELOG.md` at the root. Prose was moved, not rewritten.
+
+**First thing on return: commit.** The consolidation is uncommitted at the time of writing:
+53 files modified, 6 added, `panels/field-info.ts` deleted. `ng test` passes (1034 tests) and
+both builds pass.
+
+**Placeholders are in (2026-10-07).** Stale text is gone and every gap has a marker: a text that
+begins `TODO:` in `field-help.ts`, the guide (`class="todo"`, drawn faint) and `CHANGELOG.md`.
+`grep -rn "TODO:" src/app/docs CHANGELOG.md` lists what is left to write. The new field-help
+entries are not bound to any ⓘ, by the ceruti CLAUDE.md rule that icons are added by hand.
+
+**Next, in order:**
+
+1. *Phase 3, the 0.9.0 documentation.* This is release scope and nothing more. Write it in
+   the files above, not inline:
+   - Five topics missing from the Documentation tab, in `guide/guide.html` and its topic list
+     in `guide.ts`: Neck, Volute, Scroll, Scroll Widths, String Setup.
+   - The ten neck entries at the end of `field-help.ts` are stale (they describe readouts since
+     cut) and bound to no ⓘ. Correct them against the current neck and string setup panels,
+     then bind them by hand, as the ceruti CLAUDE.md asks.
+   - The Export topic in the guide predates the f-hole, neck and scroll sheets. The Drawing
+     Tools topic predates several tools.
+   - `plateThickness` in `field-help.ts` is a one-line stub; `trochoidFactor` is bound nowhere.
+   - README's project structure is stale, and it says "Tutorial tab" where the tab says
+     Documentation.
+   - A 0.9.0 entry at the top of `CHANGELOG.md`.
+2. *Three decisions*, listed at the end of this document, that shape the prose: centre or
+   center, whether the ⓘ keeps opening a toast, and whether the "ⓘ by hand" rule becomes a
+   coverage test plus review.
+3. *Phase 4, after release: the wiki, by hand.* The hooks are already in place, so it can grow
+   one article at a time: when an article exists for a field, its `TOOLTIPS` entry can become
+   `wiki.summary(id)` and its `FIELD_HELP` entry can become `wiki.open(id)`, and the entry
+   leaves the record. The Documentation tab is replaced by the wiki only once the wiki covers
+   what the tab does. Write to `wiki/articles/style.md`.
+
+**Orientation.** `npm run test:shell` runs the docs specs; `wiki.spec.ts` lints the articles.
+The Wiki tab is `isDevMode()` only. Figures go in `public/wiki/`. The root CLAUDE.md has the
+one-paragraph version of all this under Layout.
+
+---
+
 Written 2026-10-06, ahead of 0.9.0. The goal is one documentation corpus the app, the
 Documentation tab, the field help, the condition toasts and the developer notes all read from,
 written as a wiki: one article per concept, a shared vocabulary, links between them.
@@ -13,7 +62,7 @@ Ten places, four voices, no shared vocabulary.
 | Documentation tab | `about-modal.html`, nav in `about-modal.ts` | 17 topics, ~230 lines of HTML | Hand-written. Covers canvas, outline, arching, f-holes, mould, export. **No topic for Neck, Volute, Scroll, Scroll Widths or String Setup** (5 of 17 panels). Export topic predates the f-hole, neck and scroll sheets. |
 | Field help (ⓘ) | `panels/field-info.ts` → `info()` toast | 42 write-ups, 31 bound in a panel | Ten neck write-ups are unbound and already stale: `neckReadoutInfo` lists projection, string-over-board and body depth, all cut since; `bodyStopInfo` still mentions neck stop. `trochoidFactorInfo` unbound. `plateThicknessInfo` is a one-line stub. |
 | Tooltips (`title=`) | 25 HTML files | 251 attributes: ~140 explanatory, ~110 UI chrome ("Zoom in", "Add layer") | The scroll panels (volute, scroll, scroll widths: 39 titles, 0 ⓘ) carry their whole documentation in tooltips, several a paragraph long. Invisible on touch, unsearchable, no formatting. Some fields carry a title *and* an ⓘ saying the same thing. |
-| Condition toasts | `helpers/validators.ts`, `ceruti-paths.ts`, `main-bouts-panel.ts`, `long-arching-panel.ts`, canvas, image store, layers, storage | ~15 messages | `MessageService` already models conditions well (titled chips that refresh and expire). The prose is the problem: the viol-neck one ends "Play with it, I'm sure you'll figure it out"; `safeRun` rotates seven jokes under "An Error Occurred :["; `transitionError` is written and never raised. |
+| Condition toasts | `helpers/validators.ts`, `ceruti-paths.ts`, `main-bouts-panel.ts`, `long-arching-panel.ts`, canvas, image store, layers, storage | ~15 messages | `MessageService` already models conditions well (titled chips that refresh and expire). The prose is the problem: the viol-neck one ends "Play with it, I'm sure you'll figure it out"; `safeRun` rotates seven jokes under "An Error Occurred :["; the transition error opens with "This isn't a big deal, don't worry". |
 | Inline notes | `station-note`, `hint`, `viol-corner-notice`, `settings-popup-note`, `export-row__desc` | ~25 strings | Fine where they are: they report state. The 16 export descriptions are documentation, though. |
 | Changelog | `about-modal.html` | 12 releases, ~150 lines of HTML | Hardcoded markup. |
 | README | `README.md` | 129 lines | Project structure is stale (no `calculation/`, no `templates/`, `render-toggles` at the wrong level). Says "Tutorial tab"; the tab says "Documentation". |
@@ -225,7 +274,7 @@ What 0.9.0 actually needs written, and nothing more:
   binding is enforced, the prose is reviewed by hand".
 - Export article updated for the f-hole, neck, scroll front/back, strip and compass sheets.
 - Drawing Tools article updated for the tools added since it was written.
-- `plateThicknessInfo`, `trochoidFactor` and `transitionError` finished or deleted.
+- The `plateThickness` and `trochoidFactor` help entries finished or deleted (`trochoidFactor` is bound nowhere).
 - README structure refreshed, "Tutorial" renamed throughout.
 - 0.9.0 changelog entry.
 
@@ -241,11 +290,18 @@ What 0.9.0 actually needs written, and nothing more:
 - Code constants pointed at the library.
 - Possibly a docs drawer beside the panel in place of the info toast, once the content earns it.
 
-## Decisions to make
+## Decisions
 
-1. Markdown subset by hand, or `marked`. Recommendation: by hand, until an article needs more.
-2. *Centre* or *center*. Applies to field labels, not just prose.
-3. Keep the info toast as the ⓘ surface for 0.9.0. Recommendation: yes; a drawer is phase 4.
-4. Whether the measurement library is front matter per concept (recommended) or one table.
-5. Whether the "ⓘ added by hand, not by an agent" rule becomes a coverage test plus human review
+Settled 2026-10-07:
+
+- **American spelling throughout**: center, color. The consolidated docs files were swept; the
+  wiki articles were left as they were, to be fixed as they are rewritten.
+- **The ⓘ keeps opening a toast**, for good, not just for 0.9.0: it leaves the user at their task.
+  A wiki article opened from an ⓘ would open in the toast too.
+- Markdown subset by hand (built that way in phase 1).
+
+Still open:
+
+1. Whether the measurement library is front matter per concept (recommended) or one table.
+2. Whether the "ⓘ added by hand, not by an agent" rule becomes a coverage test plus human review
    of prose.

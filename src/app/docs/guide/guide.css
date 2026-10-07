@@ -191,3 +191,9 @@ code {
 .tips-list li {
   opacity: 0.85;
 }
+
+/* a placeholder waiting for its text; grep "TODO:" to find them all */
+.todo {
+  opacity: 0.55;
+  font-style: italic;
+}
