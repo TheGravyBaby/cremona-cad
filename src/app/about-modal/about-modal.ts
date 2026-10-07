@@ -1,5 +1,7 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
 import packageJson from '../../../package.json';
+
+export type ThemeMode = 'auto' | 'day' | 'night';
 
 @Component({
   selector: 'app-about-modal',
@@ -11,8 +13,19 @@ import packageJson from '../../../package.json';
 export class AboutModalComponent {
   readonly appVersion: string = packageJson.version;
 
+  @Input() themeMode: ThemeMode = 'auto';
+  @Output() themeModeChange = new EventEmitter<ThemeMode>();
+
+  readonly themeOptions: { id: ThemeMode; label: string; hint: string }[] = [
+    { id: 'day', label: 'Day', hint: 'Light interface' },
+    { id: 'auto', label: 'Auto', hint: 'Day from 7:00 to 19:00, by the time you open the app' },
+    { id: 'night', label: 'Night', hint: 'Dark interface' },
+  ];
+  @Input() barPinned = true;
+  @Output() barPinnedChange = new EventEmitter<boolean>();
+
   isOpen = false;
-  activeTab: 'about' | 'tutorial' | 'author' | 'version' | 'license' | '' = 'about';
+  activeTab: 'about' | 'tutorial' | 'author' | 'settings' | 'version' | '' = 'about';
 
   /** Tutorial topics, shown one at a time from the sidebar. Grouped by what they cover:
    *  the canvas itself, then the design sections in the order the recipe builds them. */
@@ -96,9 +109,9 @@ export class AboutModalComponent {
     return this.images[this.currentImageIndex];
   }
 
-  open() {
+  open(tab: 'about' | 'tutorial' = 'about') {
     this.isOpen = true;
-    this.activeTab = 'about';
+    this.activeTab = tab;
   }
 
   close() {
