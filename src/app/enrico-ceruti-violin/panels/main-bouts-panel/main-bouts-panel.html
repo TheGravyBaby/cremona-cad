@@ -36,8 +36,8 @@
             <label class='field-cell'>
                 <span class="field-title">U1 - Vesecai Radius <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="params.bouts.U1!.r"
-                    (input)="onChange(); onArcFocus(params.bouts.U1!, colors.upperBoutOff)" [style.borderColor]="colors.upperBoutOff"
-                    (focus)="onArcFocus(params.bouts.U1!, colors.upperBoutOff)" (blur)="onArcBlur()" />
+                    (input)="onChange(); onArcFocus(params.bouts.U1!, colors.upperBoutSide)" [style.borderColor]="colors.upperBoutSide"
+                    (focus)="onArcFocus(params.bouts.U1!, colors.upperBoutSide)" (blur)="onArcBlur()" />
             </label>
             <label class="field-cell"></label>
             <label class='field-cell'>
@@ -87,8 +87,8 @@
             <label class='field-cell'>
                 <span class="field-title">L1 - Vesecai Radius <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="params.bouts.L1!.r"
-                    (input)="onChange(); onArcFocus(params.bouts.L1!, colors.lowerBoutOff)" [style.borderColor]="colors.lowerBoutOff"
-                    (focus)="onArcFocus(params.bouts.L1!, colors.lowerBoutOff)" (blur)="onArcBlur()" />
+                    (input)="onChange(); onArcFocus(params.bouts.L1!, colors.lowerBoutSide)" [style.borderColor]="colors.lowerBoutSide"
+                    (focus)="onArcFocus(params.bouts.L1!, colors.lowerBoutSide)" (blur)="onArcBlur()" />
             </label>
             <label class="field-cell"></label>
             <label class='field-cell'>

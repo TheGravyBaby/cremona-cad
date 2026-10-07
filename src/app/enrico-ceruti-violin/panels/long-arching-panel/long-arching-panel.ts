@@ -259,7 +259,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
         g: g.append('g').attr('transform', `translate(${sideX},0)`),
         ui: ui.append('g').attr('transform', `translate(${sideX},0)`),
       };
-      if (neck) renderNeck(p, this.colors, { strings: false, bridge: false, scroll, ground: this.colors.outerTrace })(side.g, side.ui);
+      if (neck) renderNeck(p, this.colors, { strings: false, bridge: false, scroll, ground: this.colors.neckGround })(side.g, side.ui);
       section(side.g, side.ui);
     }];
   }

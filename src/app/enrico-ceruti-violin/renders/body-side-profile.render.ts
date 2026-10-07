@@ -1,5 +1,6 @@
 import { Pt } from '../../models/types';
-import { renderPath, renderPointHalo, renderSegment, renderGuideBaseline, renderGuideKnot, renderGuideMeasure, STROKE_WEIGHT } from '../../helpers/renderFuncs';
+import { renderPath, renderPointHalo, renderSegment, renderGuideBaseline, renderGuideKnot, renderGuideMeasure } from '../../helpers/renderFuncs';
+import { STROKE_WEIGHT } from '../../theme/strokes';
 import { archSplineKnots } from '../../helpers/math/vibeMath';
 import { occludePath } from '../../helpers/math/pathVibes';
 import { ArchCurve, CerutiColors, EnricoCerutiParams, FlutingParams } from '../ceruti-types';
@@ -47,12 +48,12 @@ export function renderBodySideProfile(p: EnricoCerutiParams, colors: CerutiColor
   return (g: any, ui: any): void => {
     renderPath(
       `M 0 ${rib.yLow} L ${rib.zLow} ${rib.yLow} L ${rib.zHigh} ${rib.yHigh} L 0 ${rib.yHigh} Z`,
-      paint(colors.mouldTrace), STROKE_WEIGHT.guide,
+      paint(colors.trace), STROKE_WEIGHT.guide,
     )(g, ui);
     for (const corner of [p.bouts.UCr, p.bouts.LCr]) {
       if (corner) {
         renderSegment(
-          new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), paint(colors.mouldTrace), STROKE_WEIGHT.guide,
+          new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), paint(colors.trace), STROKE_WEIGHT.guide,
         )(g, ui);
       }
     }
@@ -77,7 +78,7 @@ export function renderBodySideProfile(p: EnricoCerutiParams, colors: CerutiColor
     const innerZ = isTop ? taper.zLower : 0;
     const outerZ = innerZ + sign * thickness;
     const color = paint(isTop ? colors.archTop : colors.archBack);
-    const edge = paint(colors.innerTrace);
+    const edge = paint(colors.trace);
     const channel = paint(colors.fluting);
     const gouge = opts.gouge[plate];
     const solved = opts.solved[plate];

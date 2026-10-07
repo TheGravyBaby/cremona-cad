@@ -1,11 +1,11 @@
 @if (params.scroll) {
 
-<section class="ui-group" [style.border-color]="colors.outerTrace">
+<section class="ui-group" [style.border-color]="colors.trace">
     <div class="ui-group-title">Volute</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell field-cell--full">
             <span class="field-title">Style</span>
-            <select [style.border-color]="colors.outerTrace" [(ngModel)]="scroll.style" (ngModelChange)="onChange()">
+            <select [style.border-color]="colors.trace" [(ngModel)]="scroll.style" (ngModelChange)="onChange()">
                 @for (s of styles; track s.id) {
                 <option [value]="s.id">{{ s.label }}</option>
                 }
@@ -15,7 +15,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Radius <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.25" data-step-shift="1" data-step-fine="0.1" min="0.25" [style.border-color]="colors.neckOff"
+            <input class="basic-input" type="number" step="0.25" data-step-shift="1" data-step-fine="0.1" min="0.25" [style.border-color]="colors.voluteEye"
                 [(ngModel)]="scroll.eye.r" (input)="onChange()" />
         </label>
         <div class="field-cell field-cell--xy">
@@ -24,7 +24,7 @@
                 <span class="field-title" docTip="volute.eyeY">Y <span class="unit-label">mm</span></span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Eye position"
-                [style.borderColor]="colors.neckOff"
+                [style.borderColor]="colors.voluteEye"
                 title="Arrow keys move the eye from either box">
                 <input type="number" class="basic-input" step="0.25" data-step-shift="1" data-step-fine="0.1" data-xy="x" aria-label="Eye X"
                     [disabled]="scroll.flushWithNeck" [ngModel]="round2(scroll.eye.x)" (ngModelChange)="scroll.eye.x = $event; onChange()" />
@@ -37,14 +37,14 @@
         @if (archimedean) {
         <label class="field-cell">
             <span class="field-title" docTip="volute.pitch">Pitch <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.25" data-step-shift="1" data-step-fine="0.1" min="0.25" [style.border-color]="colors.outerTrace"
+            <input class="basic-input" type="number" step="0.25" data-step-shift="1" data-step-fine="0.1" min="0.25" [style.border-color]="colors.trace"
                 [(ngModel)]="scroll.pitch" (input)="onChange()" />
         </label>
         }
         @if (kelly) {
         <label class="field-cell">
             <span class="field-title" docTip="volute.seed">Seed <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.25" data-step-shift="1" data-step-fine="0.1" min="0.25" [style.border-color]="colors.outerTrace"
+            <input class="basic-input" type="number" step="0.25" data-step-shift="1" data-step-fine="0.1" min="0.25" [style.border-color]="colors.trace"
                 [(ngModel)]="scroll.seedLength" (input)="onChange()" />
         </label>
         }

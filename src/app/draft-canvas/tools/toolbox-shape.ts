@@ -2,8 +2,9 @@ import { ImageCredit, ImageCrop, Pt } from '../../models/types';
 import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, rotatePointAbout } from '../../helpers/math/simpleGeometry';
 import { battenPath, catenaryBetween, cycloidBetween } from '../../helpers/math/pathVibes';
 import { PanelScope } from './panel-scope';
+import { CANVAS_COLORS } from '../../theme/canvas-colors';
 
-export const DEFAULT_SHAPE_COLOR = '#1d4ed8';
+export const DEFAULT_SHAPE_COLOR = CANVAS_COLORS.pen;
 export const DEFAULT_STROKE_WIDTH = 1.5;
 
 // Properties shared by every shape type, regardless of geometry — extend here

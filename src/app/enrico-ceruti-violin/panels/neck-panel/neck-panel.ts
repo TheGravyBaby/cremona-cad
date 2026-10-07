@@ -11,7 +11,8 @@ import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { applyMatrix, pathFromArc } from '../../../helpers/math/pathMath';
 import { dist, moveInVectorSpace, pointAtDistanceToward, pointOnCircle, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
-import { renderSegment, renderSegmentHalo, renderArcHalo, renderPolygon, renderPath, renderSolveFailures, renderGuideMeasure, renderGuideBaseline, renderStroke, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
+import { renderSegment, renderSegmentHalo, renderArcHalo, renderPolygon, renderPath, renderSolveFailures, renderGuideMeasure, renderGuideBaseline, renderStroke } from '../../../helpers/renderFuncs';
+import { STROKE_WEIGHT } from '../../../theme/strokes';
 import { Pt, Vect2D } from '../../../models/types';
 import { scrollFrontInPlan } from '../../calculation/neck/ceruti-scroll-views';
 import { renderBodySideProfile, sideViewOffsetX } from '../../renders/body-side-profile.render';
@@ -102,7 +103,7 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
           g: g.append('g').attr('transform', `translate(${sideX},0)`),
           ui: ui.append('g').attr('transform', `translate(${sideX},0)`),
         };
-        renderBodySideProfile(p, this.colors, { solved, gouge, color: this.colors.outerTrace })(side.g, side.ui);
+        renderBodySideProfile(p, this.colors, { solved, gouge, color: this.colors.trace })(side.g, side.ui);
         // the bridge and strings are the string setup's alone; this panel shows the board and nut it sits under
         renderNeck(p, this.colors, { guides: this.flags.showModuleGuides, fingerboard: this.flags.showFingerboard, strings: false, bridge: false, scroll, panel: 'neck' })(side.g, side.ui);
         renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'side')(side.g, side.ui);
@@ -131,7 +132,7 @@ export interface NeckRenderOptions {
 
 // each panel draws the other's parts as plain profile
 function neckSetPalette(colors: CerutiColors, panel?: NeckSetPanel, ground?: string) {
-  const paint = (owner: NeckSetPanel, on: string) => ground ?? (panel && panel !== owner ? colors.outerTrace : on);
+  const paint = (owner: NeckSetPanel, on: string) => ground ?? (panel && panel !== owner ? colors.trace : on);
   return {
     neck: paint('neck', colors.neck),
     // the neck's length is entered on both panels
@@ -202,7 +203,7 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, opts: Ne
     }
 
     // the neck itself: the scroll or the nut-end wall, the back, and the heel down to the button
-    if (scroll) renderPath(definePlacedSideScrollPath(p), paint(colors.outerTrace), STROKE_WEIGHT.section)(g, ui);
+    if (scroll) renderPath(definePlacedSideScrollPath(p), paint(colors.trace), STROKE_WEIGHT.section)(g, ui);
     else seg(nk.neckTop!, nk.backNut!);
     const heel = nk.heel;
     if (heelStands(p)) {
@@ -215,12 +216,12 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, opts: Ne
     }
 
     if (ss && fbEnd && strings) {
-      seg(ss.nutTop!, ss.bridgeTop!, paint(colors.innerTrace));
-      if (fretMarks) renderFretTicks(ss.nutTop!, ss.bridgeTop!, dist(nk.neckTop!, fbEnd))(g, ui);
+      seg(ss.nutTop!, ss.bridgeTop!, paint(colors.trace));
+      if (fretMarks) renderFretTicks(ss.nutTop!, ss.bridgeTop!, dist(nk.neckTop!, fbEnd), colors)(g, ui);
     }
 
     if (!guides) return;
-    const guide = colors.neckOff;
+    const guide = colors.trace;
     const rootPlaneY = p.height - p.overhang;
     // offsets scale with the neck's own wood thickness rather than a fixed mm, so the parked
     // dimension lines clear the drawing the same way on a cello neck as on a violin's
@@ -281,8 +282,8 @@ export function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], color
   const part = neckSetPalette(colors, panel);
 
   return (g: any, ui: any): void => {
-    renderPath(profile.body.outline, colors.outerTrace, STROKE_WEIGHT.trace)(g, ui);
-    for (const d of [...profile.body.purfling, ...profile.body.fHoles]) renderPath(d, colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
+    renderPath(profile.body.outline, colors.trace, STROKE_WEIGHT.trace)(g, ui);
+    for (const d of [...profile.body.purfling, ...profile.body.fHoles]) renderPath(d, colors.trace, STROKE_WEIGHT.guide)(g, ui);
 
     if (p.stringSetup && panel === 'stringSetup') {
       const [footA, footB] = bridgeWedge(p);
@@ -300,7 +301,7 @@ export function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], color
     renderPath(profile.neck, showFingerboard && p.stringSetup ? part.fingerboard : part.neckRoot, STROKE_WEIGHT.section)(g, ui);
     if (p.stringSetup) renderPath(profile.nut, part.nut, STROKE_WEIGHT.section)(g, ui);
     else if (scroll) renderPath(profile.nut, part.neck, STROKE_WEIGHT.section)(g, ui);
-    if (scroll) for (const stroke of scrollFrontInPlan(p)) renderStroke(stroke, colors.outerTrace)(g, ui);
+    if (scroll) for (const stroke of scrollFrontInPlan(p)) renderStroke(stroke, colors.trace)(g, ui);
   };
 }
 
@@ -313,15 +314,9 @@ const FINGERBOARD_CROWN_OPACITY = 0.45;
 const FRET_MARK_SEMITONES = 12;
 const FRET_TICK_HALF_LENGTH_MM = 1;
 const LANDMARK_TICK_HALF_LENGTH_MM = 3;
-const FRET_TICK_COLOR = '#2e9e44';
-
-/** Semitone counts of the intervals worth calling out against the plain fret color, above the
- * open string: perfect fourth, perfect fifth, octave. */
-const INTERVAL_TICK_COLORS: Record<number, string> = {
-  5: '#b08d1f',
-  7: '#c24b2e',
-  12: '#3a6ea5',
-};
+// the intervals worth calling out against the plain fret colour, above the open string: perfect
+// fourth, perfect fifth, octave
+const landmarkColors = (colors: CerutiColors): Record<number, string> => ({ 5: colors.fretFourth, 7: colors.fretFifth, 12: colors.fretOctave });
 
 /** Twelve-tone equal temperament: each semitone shortens the vibrating length by a factor of the
  * 12th root of 2, so fret n sits `stringLength * (1 - 2^(-n/12))` from the nut. Returns one
@@ -334,7 +329,8 @@ function equalTemperamentPositions(stringLength: number, semitones: number): num
   return positions;
 }
 
-function renderFretTicks(nut: Pt, bridge: Pt, maxDistance: number) {
+function renderFretTicks(nut: Pt, bridge: Pt, maxDistance: number, colors: CerutiColors) {
+  const landmarks = landmarkColors(colors);
   const stringLength = dist(nut, bridge);
   const along: Vect2D = { a: (bridge.x - nut.x) / stringLength, b: (bridge.y - nut.y) / stringLength, mag: 1 };
   const across: Vect2D = { a: -along.b, b: along.a, mag: 1 };
@@ -344,12 +340,12 @@ function renderFretTicks(nut: Pt, bridge: Pt, maxDistance: number) {
     positions.forEach((d, i) => {
       if (d > maxDistance) return;
       const semitone = i + 1;
-      const landmarkColor = INTERVAL_TICK_COLORS[semitone];
+      const landmarkColor = landmarks[semitone];
       const halfLength = landmarkColor ? LANDMARK_TICK_HALF_LENGTH_MM : FRET_TICK_HALF_LENGTH_MM;
       const center = moveInVectorSpace(nut, [{ ...along, mag: d }]);
       const a = moveInVectorSpace(center, [{ ...across, mag: halfLength }]);
       const b = moveInVectorSpace(center, [{ ...across, mag: -halfLength }]);
-      renderSegment(a, b, landmarkColor ?? FRET_TICK_COLOR, STROKE_WEIGHT.guide)(g, ui);
+      renderSegment(a, b, landmarkColor ?? colors.fretMark, STROKE_WEIGHT.guide)(g, ui);
     });
   };
 }

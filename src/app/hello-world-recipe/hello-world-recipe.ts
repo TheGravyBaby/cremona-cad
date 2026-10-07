@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
@@ -8,19 +8,22 @@ import { circleCircleIntersections } from '../helpers/math/draftMath';
 import {
   angleFromCenter, flipArcAboutY, flipCircleAboutY, flipPointAboutY, offsetCircleRadius, pointOnCircle,
 } from '../helpers/math/simpleGeometry';
-import {
-  greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderSmallCrosshair,
-} from '../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderSmallCrosshair } from '../helpers/renderFuncs';
+import { Theme } from '../theme/palette';
+import { ThemeService } from '../theme/theme.service';
 import { RECIPE_KEY, writeWorkingState } from '../helpers/workingStorage';
 import { error } from '../shared/message-emitter';
 import { FOUR_CIRCLES_DEFAULTS, FourCircles, FourCirclesParams, FourCirclesViewFlags } from './hello-world-types';
 
-const COLORS = {
-  upper: '#4D8660',
-  center: '#A97645',
-  lower: '#4D74A8',
-  outline: '#868484',
-} as const;
+export interface FourCirclesColors { upper: string; center: string; lower: string; outline: string }
+
+// the recipe's parts on the palette's inks: green, warm and blue as the violin's bouts are
+export const fourCirclesColors = ({ inks: [warm, green, blue], neutral }: Theme): FourCirclesColors => ({
+  upper: green.css,
+  center: warm.css,
+  lower: blue.css,
+  outline: neutral.css,
+});
 
 const blankRecipe = (): RecipeInterface => ({
   recipeName: 'hello-world',
@@ -46,6 +49,19 @@ export class HelloWorldRecipe extends RecipeComponentBase {
   protected readonly panelOrder = [{ id: 'fourCircles', label: 'Four Circles' }] as const;
 
   flags: FourCirclesViewFlags = { showCircles: false, showArcs: true };
+
+  private readonly themeService = inject(ThemeService);
+  private colorsTheme: Theme | null = null;
+  private colorsCache!: FourCirclesColors;
+
+  get colors(): FourCirclesColors {
+    const theme = this.themeService.theme();
+    if (theme !== this.colorsTheme) {
+      this.colorsTheme = theme;
+      this.colorsCache = fourCirclesColors(theme);
+    }
+    return this.colorsCache;
+  }
 
   constructor() {
     super();
@@ -92,7 +108,7 @@ export class HelloWorldRecipe extends RecipeComponentBase {
   private render(): void {
     try {
       const solved = solveFourCircles(this.d.params as FourCirclesParams);
-      this.draftChange.emit([renderFourCircles(solved, this.flags)]);
+      this.draftChange.emit([renderFourCircles(solved, this.flags, this.colors)]);
     } catch (e) {
       error(e instanceof Error ? e.message : String(e), 'Four Circles');
       this.draftChange.emit([]);
@@ -124,19 +140,19 @@ export function solveFourCircles(p: FourCirclesParams): FourCircles {
   };
 }
 
-export const renderFourCircles = (s: FourCircles, flags: FourCirclesViewFlags) => (g: any, ui: any): void => {
-  const arcs: Array<[Arc, string]> = [[s.upper, COLORS.upper], [s.center, COLORS.center], [s.lower, COLORS.lower]];
+export const renderFourCircles = (s: FourCircles, flags: FourCirclesViewFlags, colors: FourCirclesColors) => (g: any, ui: any): void => {
+  const arcs: Array<[Arc, string]> = [[s.upper, colors.upper], [s.center, colors.center], [s.lower, colors.lower]];
 
   if (flags.showCircles) {
-    renderCircle(s.upper, greyOut(COLORS.upper, 0.5))(g, ui);
-    renderCircle(s.center, greyOut(COLORS.center, 0.5), true)(g, ui);
-    renderCircle(s.lower, greyOut(COLORS.lower, 0.5))(g, ui);
+    renderCircle(s.upper, colors.upper)(g, ui);
+    renderCircle(s.center, colors.center, true)(g, ui);
+    renderCircle(s.lower, colors.lower)(g, ui);
     for (const [arc, color] of arcs) renderCrosshair(arc, color)(g, ui);
-    renderCrosshair(flipCircleAboutY(s.center), COLORS.center)(g, ui);
+    renderCrosshair(flipCircleAboutY(s.center), colors.center)(g, ui);
     // where the circles touch: the upper arc starts there and the lower arc ends there
     for (const t of [pointOnCircle(s.upper, s.upper.start), pointOnCircle(s.lower, s.lower.end)]) {
-      renderSmallCrosshair(t, COLORS.outline)(g, ui);
-      renderSmallCrosshair(flipPointAboutY(t), COLORS.outline)(g, ui);
+      renderSmallCrosshair(t, colors.outline)(g, ui);
+      renderSmallCrosshair(flipPointAboutY(t), colors.outline)(g, ui);
     }
   }
 

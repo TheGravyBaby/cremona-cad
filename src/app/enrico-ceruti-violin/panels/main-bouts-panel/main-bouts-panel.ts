@@ -3,7 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { getArcEndDeg, getArcStartDeg, setArcEndDeg, setArcStartDeg } from '../../../helpers/math/arcDegrees';
 import { flipAngleAboutYAxis, flipArcAboutY, offsetArcRadius } from '../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../helpers/nearestFraction';
-import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderSegment, renderSolveFailures, renderRect, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderSegment, renderSolveFailures, renderRect } from '../../../helpers/renderFuncs';
+import { STROKE_WEIGHT } from '../../../theme/strokes';
 import { arcFromCircle, Arc, Rectangle } from '../../../models/types';
 import { calculateInnerOutline, calculateMainBouts, MainBoutFailure, violNeckJoinLimit } from '../../calculation/outline/ceruti-calcs';
 import { violNeckCap } from '../../calculation/outline/ceruti-paths';
@@ -193,22 +194,22 @@ export const renderMainBouts = (
       } else {
         renderArcFromArcFancy(wideTopArc, colors.upperBout)(g, ui);
       }
-      renderArcFromArcFancy(p.bouts.U1!, colors.upperBoutOff)(g, ui);
-      renderArcFromArcFancy(mirroredU1Arc, colors.upperBoutOff)(g, ui);
+      renderArcFromArcFancy(p.bouts.U1!, colors.upperBoutSide)(g, ui);
+      renderArcFromArcFancy(mirroredU1Arc, colors.upperBoutSide)(g, ui);
     }
 
     if (lower) {
       renderArcFromArcFancy(wideBottomArc, colors.lowerBout)(g, ui);
-      renderArcFromArcFancy(p.bouts.L1!, colors.lowerBoutOff)(g, ui);
-      renderArcFromArcFancy(mirroredL1Arc, colors.lowerBoutOff)(g, ui);
+      renderArcFromArcFancy(p.bouts.L1!, colors.lowerBoutSide)(g, ui);
+      renderArcFromArcFancy(mirroredL1Arc, colors.lowerBoutSide)(g, ui);
     }
   } else {
     // in their own colours on this panel, where their fields are; grey under a later panel's work
-    const top = currentModule ? colors.upperBout : colors.innerTrace;
-    const topOff = currentModule ? colors.upperBoutOff : colors.innerTrace;
-    const bottom = currentModule ? colors.lowerBout : colors.innerTrace;
-    const bottomOff = currentModule ? colors.lowerBoutOff : colors.innerTrace;
-    if (params.options.useViolNeck) renderViolNeck(p, 0, currentModule ? colors.violNeck : colors.innerTrace)(g, ui);
+    const top = currentModule ? colors.upperBout : colors.trace;
+    const topSide = currentModule ? colors.upperBoutSide : colors.trace;
+    const bottom = currentModule ? colors.lowerBout : colors.trace;
+    const bottomSide = currentModule ? colors.lowerBoutSide : colors.trace;
+    if (params.options.useViolNeck) renderViolNeck(p, 0, currentModule ? colors.violNeck : colors.trace)(g, ui);
 
     if (upper) {
       if (params.options.useViolNeck) {
@@ -217,23 +218,23 @@ export const renderMainBouts = (
       } else {
         renderArcFromArc(wideTopArc, top, STROKE_WEIGHT.trace)(g, ui);
       }
-      renderArcFromArc(p.bouts.U1!, topOff, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(mirroredU1Arc, topOff, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(p.bouts.U1!, topSide, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(mirroredU1Arc, topSide, STROKE_WEIGHT.trace)(g, ui);
     }
 
     if (lower) {
       renderArcFromArc(wideBottomArc, bottom, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(p.bouts.L1!, bottomOff, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(mirroredL1Arc, bottomOff, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(p.bouts.L1!, bottomSide, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(mirroredL1Arc, bottomSide, STROKE_WEIGHT.trace)(g, ui);
     }
   }
 
   if (flags.renderOuterPath) {
-    const outerTopColor = currentModule ? colors.upperBout : colors.outerTrace;
-    const outerTopOffColor = currentModule ? colors.upperBoutOff : colors.outerTrace;
-    const outerBotColor = currentModule ? colors.lowerBout : colors.outerTrace;
-    const outerBotOffColor = currentModule ? colors.lowerBoutOff : colors.outerTrace;
-    const violNeckColor = currentModule ? colors.violNeck : colors.outerTrace;
+    const outerTopColor = currentModule ? colors.upperBout : colors.trace;
+    const outerTopSideColor = currentModule ? colors.upperBoutSide : colors.trace;
+    const outerBotColor = currentModule ? colors.lowerBout : colors.trace;
+    const outerBotSideColor = currentModule ? colors.lowerBoutSide : colors.trace;
+    const violNeckColor = currentModule ? colors.violNeck : colors.trace;
     if (params.options.useViolNeck) renderViolNeck(p, inset, violNeckColor)(g, ui);
 
     if (upper) {
@@ -243,14 +244,14 @@ export const renderMainBouts = (
       } else {
         renderArcFromArc(offsetArcRadius(wideTopArc, inset), outerTopColor, STROKE_WEIGHT.trace)(g, ui);
       }
-      renderArcFromArc(offsetArcRadius(p.bouts.U1!, inset), outerTopOffColor, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(offsetArcRadius(mirroredU1Arc, inset), outerTopOffColor, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(offsetArcRadius(p.bouts.U1!, inset), outerTopSideColor, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(offsetArcRadius(mirroredU1Arc, inset), outerTopSideColor, STROKE_WEIGHT.trace)(g, ui);
     }
 
     if (lower) {
       renderArcFromArc(offsetArcRadius(wideBottomArc, inset), outerBotColor, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(offsetArcRadius(p.bouts.L1!, inset), outerBotOffColor, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(offsetArcRadius(mirroredL1Arc, inset), outerBotOffColor, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(offsetArcRadius(p.bouts.L1!, inset), outerBotSideColor, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(offsetArcRadius(mirroredL1Arc, inset), outerBotSideColor, STROKE_WEIGHT.trace)(g, ui);
     }
   }
 };
@@ -275,10 +276,10 @@ export const renderBoutBouts = (params: EnricoCerutiParams, colors: CerutiColors
   let upperBoutSquare = new Rectangle({ x: -p.bouts.UBW / 2, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2, y: p.height });
   const inset = params.overhang + params.rib;
 
-  renderRect(lowerBoutSquare, colors.lowerBoutOff)(g, ui);
-  renderSegment({ x: -p.bouts.LBW / 2 + inset, y: 0 }, { x: -p.bouts.LBW / 2 + inset, y: p.bouts.LBW }, colors.lowerBoutOff)(g, ui);
-  renderSegment({ x: p.bouts.LBW / 2 - inset, y: 0 }, { x: p.bouts.LBW / 2 - inset, y: p.bouts.LBW }, colors.lowerBoutOff)(g, ui);
-  renderRect(upperBoutSquare, colors.upperBoutOff)(g, ui);
-  renderSegment({ x: -p.bouts.UBW / 2 + inset, y: p.height - p.bouts.UBW }, { x: -p.bouts.UBW / 2 + inset, y: p.height }, colors.upperBoutOff)(g, ui);
-  renderSegment({ x: p.bouts.UBW / 2 - inset, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2 - inset, y: p.height }, colors.upperBoutOff)(g, ui);
+  renderRect(lowerBoutSquare, colors.lowerBoutSide)(g, ui);
+  renderSegment({ x: -p.bouts.LBW / 2 + inset, y: 0 }, { x: -p.bouts.LBW / 2 + inset, y: p.bouts.LBW }, colors.lowerBoutSide)(g, ui);
+  renderSegment({ x: p.bouts.LBW / 2 - inset, y: 0 }, { x: p.bouts.LBW / 2 - inset, y: p.bouts.LBW }, colors.lowerBoutSide)(g, ui);
+  renderRect(upperBoutSquare, colors.upperBoutSide)(g, ui);
+  renderSegment({ x: -p.bouts.UBW / 2 + inset, y: p.height - p.bouts.UBW }, { x: -p.bouts.UBW / 2 + inset, y: p.height }, colors.upperBoutSide)(g, ui);
+  renderSegment({ x: p.bouts.UBW / 2 - inset, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2 - inset, y: p.height }, colors.upperBoutSide)(g, ui);
 };

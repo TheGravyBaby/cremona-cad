@@ -313,44 +313,35 @@ export interface ScrollParams {
   pegbox: PegboxParams;
 }
 
-/** Resolved palette from CerutiViolin's `colors` getter, threaded into every panel and render fn. */
+// the violin's parts by the colour each draws in, resolved by renders/ceruti-colors.ts from the
+// theme and threaded into every panel and render fn as plain strings
 export interface CerutiColors {
   upperBout: string;
-  upperBoutOff: string;
-  upperBoutOff2: string;
+  upperBoutSide: string;
   centerBoutUp: string;
-  centerBoutUpOff: string;
-  centerBoutUpOff2: string;
   centerBout: string;
-  centerBoutOff: string;
-  centerBoutOff2: string;
   centerBoutLow: string;
-  centerBoutLowOff: string;
-  centerBoutLowOff2: string;
   lowerBout: string;
-  lowerBoutOff: string;
-  lowerBoutOff2: string;
+  lowerBoutSide: string;
   violNeck: string;
-  innerTrace: string;
-  outerTrace: string;
-  mouldTrace: string;
+  trace: string;
   fluting: string;
   archTop: string;
   archBack: string;
   fHoleUpperDark: string;
   fHoleUpper: string;
-  fHoleUpperMuted: string;
   fHoleUpperLight: string;
   fHoleLowerDark: string;
   fHoleLower: string;
-  fHoleLowerMuted: string;
   fHoleLowerLight: string;
   fHoleStem: string;
-  fHoleStemOff: string;
   fHoleCut: string;
+  guideFaint: string;
+  guideAccent: string;
   pathError: string;
   neck: string;
-  neckOff: string;
+  neckRoot: string;
+  neckGround: string;
   scrollBack: string;
   scrollBackLight: string;
   scrollNape: string;
@@ -375,10 +366,14 @@ export interface CerutiColors {
   voluteTurn2Alt: string;
   voluteTurn3: string;
   voluteTurn3Alt: string;
-  neckRoot: string;
+  voluteEye: string;
   fingerboard: string;
   nut: string;
   bridge: string;
+  fretMark: string;
+  fretFourth: string;
+  fretFifth: string;
+  fretOctave: string;
 }
 
 export type PlateViewMode = 'none' | 'contours' | 'wireframe';

@@ -2,7 +2,8 @@ import { DecimalPipe } from '@angular/common';
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { getFieldDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
-import { renderPath, renderSolveFailures, renderArcHalo, renderDashLine, renderSegment, renderSegmentHalo, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
+import { renderPath, renderSolveFailures, renderArcHalo, renderDashLine, renderSegment, renderSegmentHalo } from '../../../helpers/renderFuncs';
+import { STROKE_WEIGHT } from '../../../theme/strokes';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, ScrollParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams } from '../../calculation/neck/ceruti-neck';
@@ -84,7 +85,7 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
       renderScrollNeck(p, this.colors, false, failures),
       failures.length
         ? renderVolute(p, this.colors, this.flags, false, null, failures)
-        : renderPath(defineSideScrollPath(p), this.colors.outerTrace, STROKE_WEIGHT.trace),
+        : renderPath(defineSideScrollPath(p), this.colors.trace, STROKE_WEIGHT.trace),
       renderScroll(p, this.colors, this.flags, true, highlighted, highlightedLine, failures),
       renderSolveFailures(failures, this.colors.pathError),
     ];

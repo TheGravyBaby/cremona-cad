@@ -5,6 +5,7 @@ import { PanelScope, scopeShows, scopeWith } from './panel-scope';
 import { ImageAssetStore } from './image-asset-store';
 import { readWorkingState, writeWorkingState } from '../../helpers/workingStorage';
 import { UndoCoordinator, Undoable } from '../../helpers/undoCoordinator';
+import { CANVAS_COLORS } from '../../theme/canvas-colors';
 
 const STORAGE_KEY = 'draft-canvas-toolbox-shapes';
 const MAX_HISTORY = 50;
@@ -42,7 +43,7 @@ export class ToolboxStore implements Undoable {
   private _currentTextSize = DEFAULT_TEXT_SIZE_MM;
   private _currentStrokeWidth: number = DEFAULT_STROKE_WIDTH;
   private _currentOpacity = 1;
-  private _currentSectionColor2: string = '#93c5fd';
+  private _currentSectionColor2: string = CANVAS_COLORS.sectionAlt;
   private _currentSectionWeights: number[] = [1, 1, 1];
   private _currentTickWeights: number[] = [1, 1, 1];
   private _currentCycloidFactor = 1;

@@ -53,8 +53,8 @@ export const renderMould = (
   mouldPath: string,
   innerPath: string,
 ) => (g: any, ui: any): void => {
-  showInnerPath && renderPath(innerPath, colors.innerTrace)(g, ui);
-  renderPath(mouldPath, colors.mouldTrace)(g, ui);
+  showInnerPath && renderPath(innerPath, colors.trace)(g, ui);
+  renderPath(mouldPath, colors.trace)(g, ui);
 
   if (showBlocks) {
     renderRect(params.blocks.U!, colors.upperBout)(g, ui);

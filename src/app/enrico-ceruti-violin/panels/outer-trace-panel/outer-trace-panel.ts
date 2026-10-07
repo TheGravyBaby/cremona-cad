@@ -2,7 +2,8 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { flipArcAboutY, flipCircleAboutY } from '../../../helpers/math/simpleGeometry';
 import { adjustArcEnd } from '../../../helpers/math/arcDegrees';
-import { renderArcFromArc, renderArcFromArcFancy, renderCircle, renderPath, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderCircle, renderPath } from '../../../helpers/renderFuncs';
+import { STROKE_WEIGHT } from '../../../theme/strokes';
 import { translatePath } from '../../../helpers/math/pathMath';
 import { Arc, arcFromCircle } from '../../../models/types';
 import { calculateOuterArcs, ensureFholePath, ensureOuterTracePaths } from '../../calculation/outline/ceruti-calcs';
@@ -123,32 +124,32 @@ export const renderOuterTraceGuides = (
   }
 
   if ((currentModule && flags.showModuleCircles) || flags.showAllCircles) {
-    !p.options.useViolCornerUC && renderCircle(p.outerCorners.U3!, colors.centerBoutUpOff)(g, ui);
-    !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.U3!), colors.centerBoutUpOff)(g, ui);
+    !p.options.useViolCornerUC && renderCircle(p.outerCorners.U3!, colors.centerBoutUp)(g, ui);
+    !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.U3!), colors.centerBoutUp)(g, ui);
 
     !p.options.useViolCornerUC && renderCircle(p.outerCorners.C2!, colors.centerBoutUp)(g, ui);
     !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.C2!), colors.centerBoutUp)(g, ui);
     !p.options.useViolCornerLC && renderCircle(p.outerCorners.C1!, colors.centerBoutLow)(g, ui);
     !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.C1!), colors.centerBoutLow)(g, ui);
 
-    !p.options.useViolCornerLC && renderCircle(p.outerCorners.L3!, colors.centerBoutLowOff)(g, ui);
-    !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.L3!), colors.centerBoutLowOff)(g, ui);
+    !p.options.useViolCornerLC && renderCircle(p.outerCorners.L3!, colors.centerBoutLow)(g, ui);
+    !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.L3!), colors.centerBoutLow)(g, ui);
 
     if (p.options.U31DoubleArc) {
-      !p.options.useViolCornerUC && renderCircle(p.outerCorners.U31!, colors.centerBoutUpOff2)(g, ui);
-      !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.U31!), colors.centerBoutUpOff2)(g, ui);
+      !p.options.useViolCornerUC && renderCircle(p.outerCorners.U31!, colors.centerBoutUp)(g, ui);
+      !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.U31!), colors.centerBoutUp)(g, ui);
     }
     if (p.options.C21DoubleArc) {
-      !p.options.useViolCornerUC && renderCircle(p.outerCorners.C21!, colors.centerBoutUpOff2)(g, ui);
-      !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.C21!), colors.centerBoutUpOff2)(g, ui);
+      !p.options.useViolCornerUC && renderCircle(p.outerCorners.C21!, colors.centerBoutUp)(g, ui);
+      !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.C21!), colors.centerBoutUp)(g, ui);
     }
     if (p.options.C11DoubleArc) {
-      !p.options.useViolCornerLC && renderCircle(p.outerCorners.C11!, colors.centerBoutLowOff2)(g, ui);
-      !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.C11!), colors.centerBoutLowOff2)(g, ui);
+      !p.options.useViolCornerLC && renderCircle(p.outerCorners.C11!, colors.centerBoutLow)(g, ui);
+      !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.C11!), colors.centerBoutLow)(g, ui);
     }
     if (p.options.L31DoubleArc) {
-      !p.options.useViolCornerLC && renderCircle(p.outerCorners.L31!, colors.centerBoutLowOff2)(g, ui);
-      !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.L31!), colors.centerBoutLowOff2)(g, ui);
+      !p.options.useViolCornerLC && renderCircle(p.outerCorners.L31!, colors.centerBoutLow)(g, ui);
+      !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.L31!), colors.centerBoutLow)(g, ui);
     }
   }
 };

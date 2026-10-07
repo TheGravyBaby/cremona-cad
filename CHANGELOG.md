@@ -4,6 +4,8 @@
 
 TODO: the neck, volute, scroll and scroll widths panels, the string setup, and the five neck and scroll sheets.
 
+- **One palette for the drawing** — the colours on canvas come from five inks and a tone per part rather than a hand-picked hex each, so a part another panel owns draws in plain grey and the day canvas gets the same ramps in a legible band. Some colours have shifted slightly.
+
 ## v0.8.8.0 — Sep 14, 2026
 
 New panels for designing f-holes.

@@ -85,7 +85,7 @@ export class StringSetupPanel extends CerutiPanelBase implements OnInit {
           g: g.append('g').attr('transform', `translate(${sideX},0)`),
           ui: ui.append('g').attr('transform', `translate(${sideX},0)`),
         };
-        renderBodySideProfile(p, this.colors, { solved, gouge, color: this.colors.outerTrace })(side.g, side.ui);
+        renderBodySideProfile(p, this.colors, { solved, gouge, color: this.colors.trace })(side.g, side.ui);
         renderNeck(p, this.colors, { fingerboard: this.flags.showFingerboard, fretMarks: this.flags.showFretMarks, scroll, panel: 'stringSetup' })(side.g, side.ui);
         renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'side')(side.g, side.ui);
         renderSolveFailures(failures, this.colors.pathError)(side.g, side.ui);

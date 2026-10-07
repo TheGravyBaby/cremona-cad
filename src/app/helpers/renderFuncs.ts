@@ -1,16 +1,7 @@
 import { Pt, Circle, Line, Rectangle, Arc } from "../models/types";
 import { normalizeRadians, pointOnCircle, TURN } from "./math/simpleGeometry";
 import { SolveFailure } from "./validators";
-
-// stroke widths in screen px, every render drawing non-scaling. trace is a cut line (bouts, corners,
-// f-hole contours), guide a reference drawn beside one (purfling, insets), section the curves in the
-// arching section views, focusHalo the halo behind a focused arc or point
-export const STROKE_WEIGHT = {
-  trace: 2,
-  guide: 1,
-  section: 1.5,
-  focusHalo: 12,
-} as const;
+import { DASH, STROKE_WEIGHT } from "../theme/strokes";
 
 // - number[] => segment weights (e.g. [3,4,3])
 export const renderBoxLine = (
@@ -655,180 +646,14 @@ export const renderPointHalo = (P: Pt, color: string, haloR = 3, opacity = .33) 
         .attr("fill", color)
         .attr("opacity", opacity);
 }
-
-export type ColorTransform =
-    | { type: 'greyOut'; degree: number }
-    | { type: 'darken'; degree: number }
-    | { type: 'saturate'; degree: number }
-    // pulls the color's HSL lightness toward whichever extreme has headroom until it clears
-    // minRatio against `against`, preferring the smaller move. Use for a background that isn't
-    // near-black or near-white, where a fixed darken/lighten amount can't target a real contrast
-    // floor — see ceruti-violin.ts's light-mode makeColor.
-    | { type: 'ensureContrast'; against: string; minRatio: number };
-
-function parsedColor(s: string): { r: number; g: number; b: number; a: number } | null {
-    const hexShort = /^#([0-9a-f]{3})$/i.exec(s);
-    if (hexShort) {
-        const [r1, g1, b1] = hexShort[1].split('');
-        return { r: parseInt(r1 + r1, 16), g: parseInt(g1 + g1, 16), b: parseInt(b1 + b1, 16), a: 1 };
-    }
-    const hexLong = /^#([0-9a-f]{6})$/i.exec(s);
-    if (hexLong) {
-        return {
-            r: parseInt(hexLong[1].substring(0, 2), 16),
-            g: parseInt(hexLong[1].substring(2, 4), 16),
-            b: parseInt(hexLong[1].substring(4, 6), 16),
-            a: 1,
-        };
-    }
-    const hexAlpha = /^#([0-9a-f]{8})$/i.exec(s);
-    if (hexAlpha) {
-        return {
-            r: parseInt(hexAlpha[1].substring(0, 2), 16),
-            g: parseInt(hexAlpha[1].substring(2, 4), 16),
-            b: parseInt(hexAlpha[1].substring(4, 6), 16),
-            a: parseInt(hexAlpha[1].substring(6, 8), 16) / 255,
-        };
-    }
-    const rgbMatch = /^rgba?\(\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.exec(s);
-    if (rgbMatch) {
-        return {
-            r: Number(rgbMatch[1]),
-            g: Number(rgbMatch[2]),
-            b: Number(rgbMatch[3]),
-            a: rgbMatch[4] !== undefined ? Math.max(0, Math.min(1, parseFloat(rgbMatch[4]))) : 1,
-        };
-    }
-    return null;
-}
-
-function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
-    const rn = r / 255, gn = g / 255, bn = b / 255;
-    const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
-    const l = (max + min) / 2;
-    if (max === min) return { h: 0, s: 0, l };
-    const d = max - min;
-    const s = d / (1 - Math.abs(2 * l - 1));
-    let h: number;
-    if (max === rn)      h = ((gn - bn) / d + 6) % 6;
-    else if (max === gn) h = (bn - rn) / d + 2;
-    else                 h = (rn - gn) / d + 4;
-    return { h: h * 60, s, l };
-}
-
-function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
-    const c = (1 - Math.abs(2 * l - 1)) * s;
-    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-    const m = l - c / 2;
-    let rn = 0, gn = 0, bn = 0;
-    if      (h < 60)  { rn = c; gn = x; bn = 0; }
-    else if (h < 120) { rn = x; gn = c; bn = 0; }
-    else if (h < 180) { rn = 0; gn = c; bn = x; }
-    else if (h < 240) { rn = 0; gn = x; bn = c; }
-    else if (h < 300) { rn = x; gn = 0; bn = c; }
-    else              { rn = c; gn = 0; bn = x; }
-    const to255 = (v: number) => Math.max(0, Math.min(255, Math.round((v + m) * 255)));
-    return { r: to255(rn), g: to255(gn), b: to255(bn) };
-}
-
-// WCAG relative luminance / contrast ratio (https://www.w3.org/TR/WCAG21/#dfn-relative-luminance).
-function relativeLuminance(r: number, g: number, b: number): number {
-    const lin = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
-    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-}
-
-export function contrastRatio(a: { r: number; g: number; b: number }, bg: { r: number; g: number; b: number }): number {
-    const lA = relativeLuminance(a.r, a.g, a.b), lBg = relativeLuminance(bg.r, bg.g, bg.b);
-    const lighter = Math.max(lA, lBg), darker = Math.min(lA, lBg);
-    return (lighter + 0.05) / (darker + 0.05);
-}
-
-function applyOneTransform(r: number, g: number, b: number, t: ColorTransform): { r: number; g: number; b: number } {
-    const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
-    switch (t.type) {
-        case 'greyOut': {
-            const degree = Math.max(0, Math.min(1, Number.isFinite(t.degree) ? t.degree : 0));
-            const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-            return { r: clamp(r * (1 - degree) + lum * degree), g: clamp(g * (1 - degree) + lum * degree), b: clamp(b * (1 - degree) + lum * degree) };
-        }
-        case 'darken': {
-            const degree = Math.max(0, Math.min(1, Number.isFinite(t.degree) ? t.degree : 0));
-            return { r: clamp(r * (1 - degree)), g: clamp(g * (1 - degree)), b: clamp(b * (1 - degree)) };
-        }
-        case 'saturate': {
-            const degree = Math.max(0, Math.min(1, Number.isFinite(t.degree) ? t.degree : 0));
-            const { h, s, l } = rgbToHsl(r, g, b);
-            return hslToRgb(h, Math.min(1, s + degree), l);
-        }
-        case 'ensureContrast': {
-            const bg = parsedColor(t.against.trim());
-            if (!bg) return { r, g, b };
-            const minRatio = Math.max(1, t.minRatio);
-            const { h, s, l } = rgbToHsl(r, g, b);
-            if (contrastRatio(hslToRgb(h, s, l), bg) >= minRatio) return { r, g, b };
-
-            // finds the lightness between `l` and `extreme` closest to `l` that still clears
-            // minRatio, assuming contrast rises monotonically from `l` toward `extreme`. Returns
-            // null if even `extreme` itself falls short.
-            const nearestSatisfying = (extreme: number): { l: number; ratio: number } | null => {
-                if (contrastRatio(hslToRgb(h, s, extreme), bg) < minRatio) return null;
-                let satisfy = extreme, fail = l;
-                for (let i = 0; i < 24; i++) {
-                    const mid = (satisfy + fail) / 2;
-                    if (contrastRatio(hslToRgb(h, s, mid), bg) >= minRatio) satisfy = mid; else fail = mid;
-                }
-                return { l: satisfy, ratio: contrastRatio(hslToRgb(h, s, satisfy), bg) };
-            };
-            const darker = nearestSatisfying(0.02);
-            const lighter = nearestSatisfying(0.98);
-            if (darker || lighter) {
-                const chosen = darker && lighter
-                    ? (Math.abs(darker.l - l) <= Math.abs(lighter.l - l) ? darker : lighter)
-                    : (darker ?? lighter)!;
-                return hslToRgb(h, s, chosen.l);
-            }
-            // neither extreme reaches minRatio — fall back to whichever gets closer.
-            const darkExtreme = { l: 0.02, ratio: contrastRatio(hslToRgb(h, s, 0.02), bg) };
-            const lightExtreme = { l: 0.98, ratio: contrastRatio(hslToRgb(h, s, 0.98), bg) };
-            const best = darkExtreme.ratio >= lightExtreme.ratio ? darkExtreme : lightExtreme;
-            return hslToRgb(h, s, best.l);
-        }
-    }
-}
-
-export function applyTransforms(color: string, ...transforms: ColorTransform[]): string {
-    if (transforms.length === 0) return color;
-    const parsed = parsedColor(color.trim());
-    if (!parsed) return color;
-    const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
-    const toHex = (v: number) => clamp(v).toString(16).padStart(2, '0');
-    let { r, g, b, a } = parsed;
-    for (const t of transforms) ({ r, g, b } = applyOneTransform(r, g, b, t));
-    return a >= (1 - 1 / 255)
-        ? `#${toHex(r)}${toHex(g)}${toHex(b)}`
-        : `rgba(${clamp(r)}, ${clamp(g)}, ${clamp(b)}, ${a.toFixed(2)})`;
-}
-
-// a colour t of the way from a to b, channel by channel; b alone past halfway if either won't parse
-export function mixColors(a: string, b: string, t: number): string {
-    const from = parsedColor(a.trim());
-    const to = parsedColor(b.trim());
-    if (!from || !to) return t < 0.5 ? a : b;
-    const channel = (x: number, y: number) => Math.round(x + (y - x) * t).toString(16).padStart(2, '0');
-    return `#${channel(from.r, to.r)}${channel(from.g, to.g)}${channel(from.b, to.b)}`;
-}
-
-export function greyOut(color: string, degree: number): string {
-    return applyTransforms(color, { type: 'greyOut', degree });
-}
 export const renderSolveFailures = (failures: SolveFailure[], color: string, mirrorY = false) => (g: any, ui: any) => {
     for (let failure of failures) {
         for (let circle of failure.circles) {
-            renderCircle(circle, color, mirrorY, '4 4')(g, ui);
+            renderCircle(circle, color, mirrorY, DASH.hidden)(g, ui);
         }
         for (let [a, b] of failure.segments) {
-            renderDashedLine(a, b, color, '4 4', 2, 1)(g, ui);
-            if (mirrorY) renderDashedLine({ x: -a.x, y: a.y }, { x: -b.x, y: b.y }, color, '4 4', 2, 1)(g, ui);
+            renderDashedLine(a, b, color, DASH.hidden, 2, 1)(g, ui);
+            if (mirrorY) renderDashedLine({ x: -a.x, y: a.y }, { x: -b.x, y: b.y }, color, DASH.hidden, 2, 1)(g, ui);
         }
         for (let point of failure.points ?? []) {
             renderCrosshair(point, color, 4)(g, ui);
