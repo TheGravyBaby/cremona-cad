@@ -134,11 +134,12 @@ export class ExportPanel implements OnInit {
   }
 
   // the scroll seen from in front or behind, as the widths panel draws it, on its own sheet: the
-  // head and the nut, the neck's sides from the nut up to where they meet it
+  // head and the nut, the neck's sides from the nut up to where they meet it. The back is drawn
+  // alone, without the pegbox's front the panel shows standing out past it
   private scrollView(type: 'scrollFrontView' | 'scrollBackView'): string | null {
     if (!this.scrollWidthsSolved()) return null;
     const place = (x: number, y: number) => new Pt(x, y);
-    const strokes = type === 'scrollFrontView' ? scrollFrontViewStrokes(this.params, place, 0) : scrollBackViewStrokes(this.params, place, 0);
+    const strokes = type === 'scrollFrontView' ? scrollFrontViewStrokes(this.params, place, 0) : scrollBackViewStrokes(this.params, place, 0, { front: false });
     const d = combinePathStrings(strokes.map(s => 'line' in s ? pathFromLine(...s.line) : 'polygon' in s ? pathFromPolygon(s.polygon) : s.d));
     return translatePath(d, 0, -pathsBounds([d]).minY);
   }

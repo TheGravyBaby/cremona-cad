@@ -433,7 +433,7 @@ export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]>
 // that the pegbox runs in under it out of sight. The duck tail's round is the neck's width
 function defaultScrollWidths(p: EnricoCerutiParams): ScrollWidths {
   let mm = (v: number) => Math.round(v * p.height / 350);
-  return { hip: mm(26), throat: mm(20), duckTail: mm(24), foot: mm(24), backHip: mm(24), poll: mm(24), crown: mm(13), turn1Bottom: mm(26), turn2Top: mm(30), turn2Bottom: mm(34), eye: mm(41) };
+  return { hip: mm(25), throat: mm(20), duckTail: mm(26), foot: mm(26), backHip: mm(26), poll: mm(24), crown: mm(13), turn1Bottom: mm(26), turn2Top: mm(30), turn2Bottom: mm(34), eye: mm(41) };
 }
 
 function defaultPegbox(p: EnricoCerutiParams): PegboxParams {

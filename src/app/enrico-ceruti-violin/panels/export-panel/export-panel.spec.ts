@@ -386,6 +386,22 @@ describe('the scroll back strip', () => {
     expect(viewBox[3]).toBeGreaterThan(Math.max(...ys));
   });
 
+  it('leaves the pegbox\'s front off the back view sheet', async () => {
+    const p = scrolled();
+    p.scroll!.widths.hip = 46;
+    p.neck!.nutWidth = 42;
+    p.neck!.topWidth = 33;
+    p.scroll!.hipHeight = -p.neck!.nutHeight;
+    const xs = async (type: 'scrollFrontView' | 'scrollBackView') => {
+      const result = await captured(() => makePanel(p).downloadExport(type));
+      const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+      return [...doc.querySelector('path')!.getAttribute('d')!.replace(/A \S+ \S+ \S+ \S+ \S+ /g, '').matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => Math.abs(+m[1]));
+    };
+    // the cheeks stand 23 out from the centreline, wider than anything of the back's own
+    expect((await xs('scrollFrontView')).some(x => Math.abs(x - 23) < 1e-6)).toBe(true);
+    expect((await xs('scrollBackView')).some(x => Math.abs(x - 23) < 1e-6)).toBe(false);
+  });
+
   it.each(['neckTemplate', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass'] as const)('%s writes a complete DXF in millimetres', async type => {
     const result = await captured(() => makePanel(type === 'neckTemplate' ? necked() : scrolled()).downloadDxf(type));
     expect(result!.name).toBe(`test-violin-${type}.dxf`);

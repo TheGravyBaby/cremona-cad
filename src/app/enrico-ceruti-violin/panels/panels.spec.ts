@@ -899,6 +899,39 @@ describe('the scroll widths panel', () => {
     expect(shoulders).toEqual([]);
   });
 
+  it('draws the back alone without the front, the neck\'s sides running up into the round', () => {
+    const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
+    instance.buildRun();
+    const p = instance.params;
+    const v = p.scroll!;
+    v.widths.hip = 46;
+    p.neck!.nutWidth = 42;
+    p.neck!.topWidth = 33;
+    v.hipHeight = -p.neck!.nutHeight;
+    instance.buildRun();
+    const place = (x: number, y: number) => new Pt(x, y);
+    const shown = scrollBackViewStrokes(p, place, 0);
+    const alone = scrollBackViewStrokes(p, place, 0, { front: false });
+    expect(shown.some(s => s.ink === 'archTop')).toBe(true);
+    expect(alone.some(s => s.ink === 'archTop')).toBe(false);
+    expect(alone.filter(s => s.ink === 'scrollTurns')).toEqual(shown.filter(s => s.ink === 'scrollTurns'));
+    // the cheeks hide the neck's sides on the panel; alone they run up to the round's top and,
+    // wider than the round, meet it along a shoulder the cheeks had stood in place of
+    expect(shown.filter(s => s.ink === 'neckOff')).toEqual([]);
+    const sides = alone.filter(s => s.ink === 'neckOff') as { d: string }[];
+    expect(sides).toHaveLength(2);
+    const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
+    const roundTop = duckTailRoundTop(p);
+    for (const side of sides) expect(Math.max(...points(side.d).map(pt => pt.y))).toBeCloseTo(roundTop, 6);
+    const shoulders = (strokes: typeof alone) => strokes.filter(s => 'line' in s && s.line.every(pt => Math.abs(pt.y - roundTop) < 1e-6)) as { line: [Pt, Pt] }[];
+    expect(shoulders(shown)).toEqual([]);
+    expect(shoulders(alone)).toHaveLength(2);
+    for (const { line } of shoulders(alone)) {
+      expect(Math.min(...line.map(pt => Math.abs(pt.x)))).toBeCloseTo(duckTailRadius(p), 6);
+      expect(Math.max(...line.map(pt => Math.abs(pt.x)))).toBeCloseTo(scrollNeckHalfWidth(p, roundTop), 6);
+    }
+  });
+
   it('joins the neck to the front\'s walls from behind along the front\'s foot, in its colour, where the nut is wider than the neck', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
     instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
