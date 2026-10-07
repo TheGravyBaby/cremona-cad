@@ -1,20 +1,10 @@
 {
   "key": "stradivari-violin-ward",
-  "label": "Violin - Antonio Stradivari - Ward",
   "recipeName": "enrico-ceruti-violin",
   "fileName": "Violin - Antonio Stradivari - Ward",
   "description": "Cremona, 1700",
+  "source": "https://www.loc.gov/item/2022560100/",
   "version": "1",
-  "meta": {
-    "maker": "Antonio Stradivari",
-    "instrument": "Violin \"Ward\"",
-    "date": "1700",
-    "record": {
-      "objectId": "2022560100",
-      "url": "https://www.loc.gov/item/2022560100/"
-    },
-    "notes": ""
-  },
   "params": {
     "height": 354,
     "width": 206,
@@ -577,9 +567,6 @@
       "suppressWhite": true,
       "locked": true,
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154810.0002",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
         "url": "https://www.loc.gov/resource/music.musihas-200154810/?sp=2&st=image"
       }
@@ -608,9 +595,6 @@
         "bottom": 0
       },
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154810.0003",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
         "url": "https://www.loc.gov/resource/music.musihas-200154810/?sp=3&st=image"
       }

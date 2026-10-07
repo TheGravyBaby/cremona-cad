@@ -65,6 +65,16 @@ describe('Fillet tool', () => {
     expect(round.endAngle).toBeCloseTo(0, 9);
   });
 
+  it('draws the round in the colour of the first piece clicked', () => {
+    const a: LineShape = { id: 'a', type: 'line', start: at(0, 0), end: at(20, 0), color: '#c04020' };
+    const b: LineShape = { id: 'b', type: 'line', start: at(30, 5), end: at(30, 30), color: '#2040c0' };
+    const host = fakeToolHost({ curveAt: pt => pt.y < 1 ? a : b });
+    const tool = createFilletTool(toolbox);
+    tool.onPointerDown(at(5, 0), host);
+    tool.onPointerDown(at(30, 20), host);
+    expect(host.added[0].color).toBe('#c04020');
+  });
+
   it('cuts an arc back to the round but leaves a circle whole', () => {
     const line: LineShape = { id: 'l', type: 'line', start: at(-30, 12), end: at(30, 12) };
     const ring: DraftShape = { id: 'c', type: 'circle', center: at(0, 0), radius: 10 };

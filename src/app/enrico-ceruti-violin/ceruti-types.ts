@@ -460,28 +460,13 @@ export type CerutiPanelId = typeof CERUTI_PANEL_IDS[number];
 
 export const RECIPE_SCHEMA_VERSION = '1';
 
-export interface TemplateMeta {
-  maker: string;
-  /** named as the record names it — 'Violin "Ole Bull"', 'Viola'. */
-  instrument: string;
-  /** as published: '1669', 'c.1730', '1610-20' — a string, not a year, since most are ranges. */
-  date: string;
-  record: {
-    /** The institution's own object id — Met 898377, SI nmah_833906, LoC ihas.200154811. */
-    objectId: string;
-    url: string;
-  };
-  notes?: string;
-}
-
 export interface EnricoCerutiTemplate {
   key: string;
-  label: string;
   recipeName: string;
   fileName: string;
   version: string;
   description?: string;
-  meta?: TemplateMeta;
+  source?: string;
   params: EnricoCerutiParams;
   paths: PathEntry[];
   referenceImages?: ReferenceImage[];

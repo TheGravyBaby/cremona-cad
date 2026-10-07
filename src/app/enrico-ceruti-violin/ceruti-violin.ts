@@ -198,18 +198,27 @@ export class CerutiViolin extends RecipeComponentBase {
   // something to start from. Off localhost, templates carrying a non-LoC reference image are
   // hidden too — their host may send no CORS header, or may not stay reachable at all — so a
   // visitor doesn't reach for one that can't fully work; a dev running locally sees everything,
-  // with the ones a deployed build won't offer marked local.
-  get templateCards(): Array<{ key: string; instrument: string; meta: string; thumb?: string }> {
+  // with the ones a deployed build won't offer listed as slim rows after the blank.
+  get templateCards(): Array<{ key: string; instrument: string; meta: string; thumb?: string; local: boolean }> {
     const isLocalDev = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
     return this.templates
       .filter(t => t.key !== CERUTI_TEMPLATES[0].key)
       .filter(t => isLocalDev || isLocSourced(t))
       .map(t => ({
         key: t.key,
-        instrument: t.meta?.instrument ?? t.label,
-        meta: [t.meta?.maker, t.meta?.date, isLocSourced(t) ? '' : 'local'].filter(Boolean).join(' · '),
+        instrument: t.fileName,
+        meta: t.description ?? '',
         thumb: thumbnailHref(t),
+        local: LOCAL_TEMPLATES.includes(t),
       }));
+  }
+
+  get corpusCards() {
+    return this.templateCards.filter(t => !t.local);
+  }
+
+  get localCards() {
+    return this.templateCards.filter(t => t.local);
   }
 
   // The gallery is the base panel's first section while it's open: on a first visit and when

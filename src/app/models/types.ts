@@ -52,18 +52,10 @@ export function arcFromCircleAndPoints(circle: Circle, startPt: Pt, endPt: Pt): 
 
 export type Axis = "x" | "y";
 
-/** Where a reference image came from and under what terms it may be used. Per-image rather than
- * per-recipe since one instrument's image set can mix provenances. Absent on user-placed images. */
+/** Where a reference image came from. Per-image rather than per-recipe since one instrument's
+ * image set can mix provenances. Absent on user-placed images. */
 export type ImageCredit = {
-  /** Holding institution or publisher, spelled as they ask to be credited. */
-  source: string;
-  /** The institution's own id for this image, where it has one separate from the object id. */
-  imageId?: string;
-  /** Licence or terms of use, verbatim and short — 'CC0', 'Public domain', 'Educational use'. */
-  licence: string;
-  /** The credit line to display. */
   attribution: string;
-  /** Where the image or its record can be seen. */
   url?: string;
 };
 

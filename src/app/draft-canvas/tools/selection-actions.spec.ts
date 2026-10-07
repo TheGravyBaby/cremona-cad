@@ -91,8 +91,8 @@ describe('SelectionActions', () => {
     expect(ids()).toEqual(['a', 'b']);
   });
 
-  it('duplicates a recipe piece into a drawn shape in the pen colour, leaving the recipe alone', () => {
-    scene.setLayers([renderSegment({ x: 0, y: 0 }, { x: 5, y: 5 }, '#000')]);
+  it('duplicates a recipe piece into a drawn shape in its own colour, leaving the recipe alone', () => {
+    scene.setLayers([renderSegment({ x: 0, y: 0 }, { x: 5, y: 5 }, '#c04020')]);
     const [piece] = scene.shapes;
     selection.select(sceneRef(piece.id));
     toolbox.currentColor = '#112233';
@@ -101,10 +101,20 @@ describe('SelectionActions', () => {
 
     expect(actions.duplicate()).toBe(true);
     const [copy] = toolbox.getShapes();
-    expect(copy).toMatchObject({ type: 'line', color: '#112233', layerId: toolbox.activeLayerId });
+    expect(copy).toMatchObject({ type: 'line', color: '#c04020', layerId: toolbox.activeLayerId });
     expect(copy.id).not.toBe(piece.id);
     expect(selection.toolboxShapes.map(s => s.id)).toEqual([copy.id]);
     expect(scene.shapes.length).toBe(1);
+  });
+
+  it('copies a recipe piece in the colour it is drawn in, not the pen colour', () => {
+    scene.setLayers([renderSegment({ x: 0, y: 0 }, { x: 5, y: 5 }, '#c04020')]);
+    selection.select(sceneRef(scene.shapes[0].id));
+    toolbox.currentColor = '#112233';
+
+    expect(actions.copy()).toContain('stroke="#c04020"');
+    expect(actions.paste()).toBe(true);
+    expect(toolbox.getShapes()[0]).toMatchObject({ type: 'line', color: '#c04020' });
   });
 
   it('refuses to place onto a locked layer', () => {

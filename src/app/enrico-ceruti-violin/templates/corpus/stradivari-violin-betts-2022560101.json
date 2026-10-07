@@ -1,20 +1,10 @@
 {
   "key": "stradivari-violin-betts",
-  "label": "Violin - Antonio Stradivari - Betts",
   "recipeName": "enrico-ceruti-violin",
   "fileName": "Violin - Antonio Stradivari - Betts",
-  "description": "Cremona, 1704",
+  "description": "Cremona, 1704. LoC catalogue dimensions; no arching published.",
+  "source": "https://www.loc.gov/item/2022560101/",
   "version": "1",
-  "meta": {
-    "maker": "Antonio Stradivari",
-    "instrument": "Violin \"Betts\"",
-    "date": "1704",
-    "record": {
-      "objectId": "2022560101",
-      "url": "https://www.loc.gov/item/2022560101/"
-    },
-    "notes": "Bout set and back length are the LoC catalogue dimensions, verbatim. No arching is published, and everything below them is unsolved."
-  },
   "params": {
     "height": 357.5,
     "width": 208,
@@ -697,9 +687,6 @@
       "suppressWhite": true,
       "locked": false,
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154811.0002",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
         "url": "https://www.loc.gov/resource/music.musihas-200154811/?sp=2&st=image"
       }
@@ -730,9 +717,6 @@
         "bottom": 0
       },
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154811.0003",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
         "url": "https://www.loc.gov/resource/music.musihas-200154811/?sp=3&st=image"
       }

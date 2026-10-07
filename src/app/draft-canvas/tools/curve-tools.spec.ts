@@ -29,6 +29,12 @@ describe('Curve Length', () => {
     expect((host.added[0] as CurveLengthShape).length).toBeCloseTo(quarter, 2);
   });
 
+  it('takes the colour of the curve it follows', () => {
+    const host = makeHost({ ...circle, color: '#c04020' });
+    walk(host, [0, 45, 90]);
+    expect(host.added[0].color).toBe('#c04020');
+  });
+
   it('goes the long way round when the pointer sets off that way', () => {
     const host = makeHost(circle);
     walk(host, [0, -45, -90, -135, -180, -225, -270]);

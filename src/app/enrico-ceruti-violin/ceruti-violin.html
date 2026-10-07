@@ -70,7 +70,7 @@
                 High quality templates built with reference images from the Library of Congress. 
             </p>
             <div class="template-cards">
-                @for (t of templateCards; track t.key) {
+                @for (t of corpusCards; track t.key) {
                 <button type="button" class="template-card" (click)="loadTemplate(t.key)">
                     <span class="template-card__thumb">
                         @if (t.thumb) {
@@ -97,6 +97,15 @@
                         <span class="template-card__meta">A blank sheet, your own measurements</span>
                     </span>
                 </button>
+                @for (t of localCards; track t.key) {
+                <button type="button" class="template-card template-card--local" (click)="loadTemplate(t.key)">
+                    <span class="template-card__thumb template-card__thumb--local" aria-hidden="true">/</span>
+                    <span class="template-card__text">
+                        <span class="template-card__name">{{ t.instrument }}</span>
+                        <span class="template-card__meta">{{ t.meta }}</span>
+                    </span>
+                </button>
+                }
             </div>
         </section>
         } @else {
@@ -104,16 +113,28 @@
         <section class="ui-group">
             <div class="ui-group-title">File Properties</div>
             <!-- the toolbar carries the name too; a field here is where a user expects to find it -->
-            <label>
-                Name
-                <input type="text" class="file-name-input" placeholder="Untitled" maxlength="120" [ngModel]="d.fileName"
-                    (ngModelChange)="onFileNameChange($event)" />
-            </label>
-            <label>
-                Description
-                <textarea class="description-textarea" rows="1" maxlength="200"
-                    [(ngModel)]="d.description"></textarea>
-            </label>
+            <!-- the toolbar carries the name too; a field here is where a user expects to find it -->
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell field-cell--full">
+                    <span class="field-title">Name</span>
+                    <input class="basic-input" type="text" placeholder="Untitled" maxlength="120" [ngModel]="d.fileName"
+                        (ngModelChange)="onFileNameChange($event)" />
+                </label>
+            </div>
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell field-cell--full">
+                    <span class="field-title">Description</span>
+                    <textarea class="description-textarea" rows="1" maxlength="200"
+                        [(ngModel)]="d.description"></textarea>
+                </label>
+            </div>
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell field-cell--full">
+                    <span class="field-title">Source</span>
+                    <input class="basic-input" type="text" placeholder="Where this came from" maxlength="300"
+                        [(ngModel)]="d.source" />
+                </label>
+            </div>
         </section>
 
         <section class="ui-group">

@@ -1,7 +1,7 @@
 # templates/local
 
 Drop-in space for templates you're actively tracing or theorizing about — no provenance, no
-credit, no `meta`, no licence to check. Unlike `../corpus/`, nothing here goes into source control
+credit, no `source`, nothing to check. Unlike `../corpus/`, nothing here goes into source control
 (see the root `.gitignore`) and nothing here ships in a production build.
 
 ## One-time setup, per clone

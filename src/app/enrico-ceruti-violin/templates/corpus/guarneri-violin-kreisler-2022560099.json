@@ -1,20 +1,10 @@
 {
   "key": "guarneri-violin-kreisler",
-  "label": "Violin - Giuseppe Guarneri - Kreisler",
   "recipeName": "enrico-ceruti-violin",
   "fileName": "Violin - Giuseppe Guarneri - Kreisler",
-  "description": "Cremona, c.1730",
+  "description": "Cremona, c.1730. LoC catalogue dimensions; no arching published.",
+  "source": "https://www.loc.gov/item/2022560099/",
   "version": "1",
-  "meta": {
-    "maker": "Giuseppe Guarneri",
-    "instrument": "Violin \"Kreisler\"",
-    "date": "c.1730",
-    "record": {
-      "objectId": "2022560099",
-      "url": "https://www.loc.gov/item/2022560099/"
-    },
-    "notes": "Bout set and back length are the LoC catalogue dimensions verbatim, except the middle bout — printed as \"11.2 m\", read here as centimetres. No arching is published, and everything below the catalogue dimensions is unsolved."
-  },
   "params": {
     "height": 357,
     "width": 205,
@@ -551,9 +541,6 @@
       "suppressWhite": true,
       "locked": true,
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154814.0002",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Gift of Fritz Kreisler, 1952.",
         "url": "https://www.loc.gov/resource/music.musihas-200154814/?sp=2&st=image"
       }
@@ -582,9 +569,6 @@
         "bottom": 0
       },
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154814.0003",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Gift of Fritz Kreisler, 1952.",
         "url": "https://www.loc.gov/resource/music.musihas-200154814/?sp=3&st=image"
       }

@@ -137,7 +137,7 @@ export class SelectionActions {
   }
 
   /** A copy of the selection over itself, Inkscape-style. A recipe piece becomes a drawn shape in
-   * the pen colour — the one way to get an editable version of the instrument's own geometry. */
+   * its own colour — the one way to get an editable version of the instrument's own geometry. */
   duplicate(): boolean {
     return this.place(this.selection.shapes.filter(s => s.type !== 'image'));
   }

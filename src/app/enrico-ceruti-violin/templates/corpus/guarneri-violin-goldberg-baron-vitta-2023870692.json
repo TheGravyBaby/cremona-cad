@@ -1,20 +1,10 @@
 {
   "key": "guarneri-violin-goldberg-baron-vitta",
-  "label": "Violin - Giuseppe Guarneri - Goldberg-Baron Vitta",
   "recipeName": "enrico-ceruti-violin",
   "fileName": "Violin - Giuseppe Guarneri - Goldberg-Baron Vitta",
-  "description": "Cremona, c.1730",
+  "description": "Cremona, c.1730. Scale inherited from the Kreisler (357 mm); proportions fitted to the back scan. Outline only.",
+  "source": "https://www.loc.gov/item/2023870692/",
   "version": "1",
-  "meta": {
-    "maker": "Giuseppe Guarneri",
-    "instrument": "Violin \"Goldberg-Baron Vitta\"",
-    "date": "c.1730",
-    "record": {
-      "objectId": "2023870692",
-      "url": "https://www.loc.gov/item/2023870692/"
-    },
-    "notes": "The LoC record publishes no dimensions. Back length is taken as 357 mm from the Kreisler del Gesu, the same maker and near the same form; every other figure is measured off the back-plate scan (image .0001) at that scale, not copied. Bout widths, corner positions and the four bout radii come from fitting the recipe solver to the plate silhouette — 0.38 mm mean deviation over the outline, about 1.7 px of the source scan. So the proportions are the instrument and the absolute scale is inherited: if the true back length is not 357, every length here scales with it. No arching, no f-holes — nothing below the outline is published or solved."
-  },
   "params": {
     "height": 357,
     "width": 204,
@@ -809,9 +799,6 @@
       "suppressWhite": true,
       "locked": true,
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154815.0002",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Photographs by Michael Zirkle.",
         "url": "https://www.loc.gov/resource/music.musihas-200154815/?sp=2&st=image"
       }

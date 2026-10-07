@@ -1,20 +1,10 @@
 {
   "key": "stradivari-viola-cassavetti",
-  "label": "Viola - Antonio Stradivari - Cassavetti",
   "recipeName": "enrico-ceruti-violin",
   "fileName": "Viola - Antonio Stradivari - Cassavetti",
-  "description": "Cremona, 1727",
+  "description": "Cremona, 1727. LoC catalogue dimensions; no arching published.",
+  "source": "https://www.loc.gov/item/2022560103/",
   "version": "1",
-  "meta": {
-    "maker": "Antonio Stradivari",
-    "instrument": "Viola \"Cassavetti\"",
-    "date": "1727",
-    "record": {
-      "objectId": "2022560103",
-      "url": "https://www.loc.gov/item/2022560103/"
-    },
-    "notes": "Bout set and back length are the LoC catalogue dimensions, verbatim. No arching is published, and everything below them is unsolved."
-  },
   "params": {
     "height": 410.6,
     "width": 237,
@@ -496,9 +486,6 @@
       "suppressWhite": true,
       "locked": true,
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154830.0002",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
         "url": "https://www.loc.gov/resource/music.musihas-200154830/?sp=2&st=image"
       }
@@ -527,9 +514,6 @@
         "bottom": 0
       },
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154830.0003",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
         "url": "https://www.loc.gov/resource/music.musihas-200154830/?sp=3&st=image"
       }

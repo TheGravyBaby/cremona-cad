@@ -1,20 +1,10 @@
 {
   "key": "amati-violin-brookings",
-  "label": "Violin - Nicolo Amati - Brookings",
   "recipeName": "enrico-ceruti-violin",
   "fileName": "Violin - Nicolo Amati - Brookings",
-  "description": "Cremona, 1654",
+  "description": "Cremona, 1654. No dimensions published; height and width are placeholders.",
+  "source": "https://www.loc.gov/item/2022560097/",
   "version": "1",
-  "meta": {
-    "maker": "Nicolo Amati",
-    "instrument": "Violin \"Brookings\"",
-    "date": "1654",
-    "record": {
-      "objectId": "2022560097",
-      "url": "https://www.loc.gov/item/2022560097/"
-    },
-    "notes": "The LoC record publishes no dimensions for this instrument — height and width here are DefaultParams placeholders, not real measurements, so nothing traced off these images means anything in millimetres until a scale is established elsewhere. No arching is published, and everything below the catalogue level is still untraced."
-  },
   "params": {
     "height": 358,
     "width": 209,
@@ -908,9 +898,6 @@
         ]
       },
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154831.0002",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Gift of Mrs. Brookings, 1938.",
         "url": "https://www.loc.gov/resource/music.musihas-200154831/?sp=2&st=image"
       }
@@ -941,9 +928,6 @@
         "bottom": 0
       },
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154831.0003",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Gift of Mrs. Brookings, 1938.",
         "url": "https://www.loc.gov/resource/music.musihas-200154831/?sp=3&st=image"
       }
@@ -974,9 +958,6 @@
         "bottom": 0
       },
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154831.0014",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Gift of Mrs. Brookings, 1938.",
         "url": "https://www.loc.gov/resource/music.musihas-200154831/?sp=14&st=image"
       }

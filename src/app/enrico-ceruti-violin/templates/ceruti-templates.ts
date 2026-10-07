@@ -10,7 +10,6 @@ import { CORPUS_TEMPLATES } from "./corpus";
 export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
   {
     key: 'ceruti-new',
-    label: 'New Instrument',
     recipeName: 'enrico-ceruti-violin',
     fileName: 'New Instrument',
     description: 'A blank template to start from...',
