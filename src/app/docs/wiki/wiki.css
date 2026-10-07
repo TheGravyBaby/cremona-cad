@@ -1,0 +1,279 @@
+:host {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.wiki-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+  border-right: 1px solid var(--ui-border-soft, #444);
+  padding-right: 8px;
+}
+
+.wiki-search {
+  margin: 0 0 8px 2px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ui-text-primary, #e0e0e0);
+  background: var(--ui-control-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--ui-border-soft, #444);
+  border-radius: 4px;
+  outline: none;
+}
+
+.wiki-search:focus {
+  border-color: var(--ui-focus-border, var(--ui-accent, #6f8fb8));
+}
+
+.nav-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.45;
+  margin: 12px 0 3px 6px;
+}
+
+.nav-topic {
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: 0 3px 3px 0;
+  color: var(--ui-text-primary, #e0e0e0);
+  font-size: 13px;
+  text-align: left;
+  padding: 4px 8px;
+  cursor: pointer;
+  opacity: 0.7;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.nav-topic:hover {
+  opacity: 1;
+  background: var(--ui-control-bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.nav-topic.active {
+  opacity: 1;
+  font-weight: 600;
+  border-left-color: var(--ui-accent, #6f8fb8);
+  background: var(--ui-bg-surface, rgba(255, 255, 255, 0.05));
+}
+
+.nav-kind,
+.nav-empty {
+  font-size: 10px;
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.nav-empty {
+  padding: 4px 8px;
+}
+
+.wiki-page {
+  overflow-y: auto;
+  padding-right: 24px;
+}
+
+.page-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ui-accent, #6f8fb8) 40%, transparent 60%);
+}
+
+.page-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.page-back {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.page-back:hover {
+  opacity: 1;
+}
+
+.badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--ui-bg-surface, rgba(255, 255, 255, 0.08));
+  opacity: 0.7;
+}
+
+.badge-status {
+  color: var(--ui-severity-warn, #d9a441);
+  border: 1px solid currentColor;
+  background: none;
+}
+
+/* the article body is innerHTML, which Angular's scoped styles can't reach without ::ng-deep */
+:host ::ng-deep .article-body h4,
+.wiki-page h4 {
+  margin: 14px 0 5px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+:host ::ng-deep .article-body h5 {
+  margin: 10px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+:host ::ng-deep .article-body p {
+  margin: 0 0 10px;
+}
+
+:host ::ng-deep .article-body ul,
+:host ::ng-deep .article-body ol {
+  padding-left: 20px;
+  margin: 0 0 10px;
+}
+
+:host ::ng-deep .article-body li {
+  margin-bottom: 6px;
+}
+
+:host ::ng-deep .article-body code,
+.wiki-page code {
+  background: var(--ui-bg-surface, rgba(255, 255, 255, 0.08));
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+:host ::ng-deep .article-body a,
+.wiki-page a.doc-link {
+  color: var(--ui-accent, #6f8fb8);
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+}
+
+:host ::ng-deep .article-body a:hover,
+.wiki-page a.doc-link:hover {
+  border-bottom-style: solid;
+}
+
+/* a figure is a thumbnail pinned to the right, as on Wikipedia; the text runs round it */
+:host ::ng-deep .article-body figure {
+  float: right;
+  clear: right;
+  width: 220px;
+  margin: 2px 0 10px 16px;
+  padding: 4px;
+  text-align: center;
+  background: var(--ui-bg-surface, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--ui-border-soft, #444);
+  border-radius: 4px;
+}
+
+:host ::ng-deep .article-body img {
+  max-width: 100%;
+  max-height: 260px;
+  height: auto;
+}
+
+:host ::ng-deep .article-body figcaption {
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.65;
+  margin-top: 4px;
+}
+
+.article-body::after {
+  content: '';
+  display: block;
+  clear: both;
+}
+
+:host ::ng-deep .doc-link-missing {
+  color: var(--ui-severity-error, #d06060);
+  border-bottom: 1px dashed currentColor;
+}
+
+:host ::ng-deep .article-body table,
+table {
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+:host ::ng-deep .article-body th,
+:host ::ng-deep .article-body td,
+th,
+td {
+  text-align: left;
+  padding: 3px 10px 3px 0;
+  border-bottom: 1px solid var(--ui-border-soft, #444);
+  vertical-align: top;
+}
+
+:host ::ng-deep .article-body th,
+th {
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.standard {
+  float: right;
+  margin: 0 0 10px 16px;
+  min-width: 150px;
+}
+
+.standard td:last-child {
+  text-align: right;
+}
+
+.related {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+}
+
+.related li {
+  margin-bottom: 4px;
+}
+
+.related-summary {
+  display: block;
+  opacity: 0.65;
+  font-size: 13px;
+}
+
+.related-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}

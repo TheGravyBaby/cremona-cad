@@ -1,0 +1,86 @@
+<nav class="wiki-nav" aria-label="Documentation contents">
+  <input class="wiki-search" type="search" placeholder="Search" [value]="query()"
+    (input)="query.set($any($event.target).value)" />
+
+  @if (query()) {
+    @if (results().length) {
+      @for (a of results(); track a.id) {
+        <button class="nav-topic" [class.active]="a.id === current()" (click)="show(a.id)">
+          {{ a.title }}<span class="nav-kind">{{ kindLabel(a.kind) }}</span>
+        </button>
+      }
+    } @else {
+      <div class="nav-empty">Nothing matches.</div>
+    }
+  } @else {
+    @for (group of groups; track group.label) {
+      <div class="nav-group-label">{{ group.label }}</div>
+      @for (a of group.articles; track a.id) {
+        <button class="nav-topic" [class.active]="a.id === current()" (click)="show(a.id)">{{ a.title }}</button>
+      }
+    }
+  }
+</nav>
+
+<div class="wiki-page" #page (click)="onPageClick($event)">
+  @if (article(); as a) {
+    <div class="page-head">
+      @if (history().length) {
+        <button type="button" class="page-back" (click)="back()" title="Back">‹</button>
+      }
+      <h3>{{ a.title }}</h3>
+      @if (kindLabel(a.kind)) { <span class="badge">{{ kindLabel(a.kind) }}</span> }
+      @if (a.status) { <span class="badge badge-status">{{ a.status }}</span> }
+    </div>
+
+    @if (a.standard) {
+      <table class="standard">
+        <thead><tr><th colspan="2">Standard, {{ a.unit }}</th></tr></thead>
+        <tbody>
+          @for (row of standardRows(a); track row.key) {
+            <tr><td>{{ row.key }}</td><td>{{ row.value }}</td></tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <div class="article-body" [innerHTML]="html()"></div>
+
+    @if (a.id === 'measurements') {
+      <table class="library">
+        <thead><tr><th>Figure</th><th>Of</th><th>Value</th></tr></thead>
+        <tbody>
+          @for (m of measurements(); track m.id) {
+            @for (row of standardRows(m); track row.key; let first = $first) {
+              <tr>
+                <td>@if (first) { <a class="doc-link" href="#doc/{{ m.id }}">{{ m.title }}</a> }</td>
+                <td>{{ row.key }}</td>
+                <td>{{ row.value }} {{ m.unit }}</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    }
+
+    @if (fields().length) {
+      <h4>On this panel</h4>
+      <ul class="related">
+        @for (f of fields(); track f.id) {
+          <li><a class="doc-link" href="#doc/{{ f.id }}">{{ f.title }}</a><span class="related-summary">{{ registry.summary(f.id) }}</span></li>
+        }
+      </ul>
+    }
+
+    @if (backlinks().length) {
+      <h4>Linked from</h4>
+      <ul class="related related-inline">
+        @for (b of backlinks(); track b.id) {
+          <li><a class="doc-link" href="#doc/{{ b.id }}">{{ b.title }}</a></li>
+        }
+      </ul>
+    }
+  } @else {
+    <p>No article named <code>{{ current() }}</code>.</p>
+  }
+</div>
