@@ -2,7 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { getFieldDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
 import { renderPath, renderSolveFailures, renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashLine, renderPolygon, renderSegment } from '../../../helpers/renderFuncs';
-import { PaletteId, STROKE_WEIGHT } from '../../../theme/palettes';
+import { STROKE_WEIGHT } from '../../../theme/palettes';
 import { CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, ScrollParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams, defaultStringSetup } from '../../calculation/neck/ceruti-neck';
@@ -14,7 +14,7 @@ import { Arc, Pt } from '../../../models/types';
 import { scrollNeckStub } from '../../calculation/neck/ceruti-scroll-views';
 import { HighlightedArc } from '../../renders/render-constants';
 import { TooltipDirective } from '../../../docs/tooltips';
-import { PanelPalette } from '../../../theme/theme.service';
+import { PanelPalette, ThemeService } from '../../../theme/theme.service';
 
 // a four point arc by its index innermost first, or a crown arc by name
 export type VoluteHighlightKey = number | 'S0' | 'S1';
@@ -26,7 +26,7 @@ export type VoluteHighlightKey = number | 'S0' | 'S1';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class VolutePanel extends CerutiPanelBase implements OnInit {
-  protected override readonly paletteId: PaletteId = 'workshop';
+  protected readonly pal = ThemeService.getPalette('workshop');
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'showVoluteConstruction'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
@@ -156,8 +156,8 @@ export const renderScrollNeck = (p: EnricoCerutiParams, pal: PanelPalette, showG
   const crownTop = Math.max(...[v.S0, v.S1].flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y));
   const S1Back = Math.min(...arcReach(v.S1, TURN.half).map(pt => pt.x));
   if (!Number.isFinite(crownTop) || !Number.isFinite(S1Back)) return;
-  renderDashLine(new Pt(0, 0), new Pt(0, crownTop), pal.ink(4).mod(0, 0, 0.5), STROKE_WEIGHT.guide)(g, ui);
-  renderDashLine(new Pt(0, crownTop), new Pt(S1Back, crownTop), pal.ink(4).mod(0, 0, 0.5), STROKE_WEIGHT.guide)(g, ui);
+  renderDashLine(new Pt(0, 0), new Pt(0, crownTop), pal.ink(4).mod(0, 0.5), STROKE_WEIGHT.guide)(g, ui);
+  renderDashLine(new Pt(0, crownTop), new Pt(S1Back, crownTop), pal.ink(4).mod(0, 0.5), STROKE_WEIGHT.guide)(g, ui);
 };
 
 // the eye, the spiral and the crown (S0, S1). The construction toggle adds the figure the spiral's
@@ -182,7 +182,7 @@ export const renderVolute = (
   if (currentModule && flags.showVoluteConstruction) {
     for (const line of voluteConstruction(v)) {
       const placed = line.map(pt => new Pt(v.eye.x + pt.x, v.eye.y + pt.y));
-      for (let i = 1; i < placed.length; i++) renderSegment(placed[i - 1], placed[i], pal.ink(2).mod(0, 0, 0.5), STROKE_WEIGHT.guide, true)(g, ui);
+      for (let i = 1; i < placed.length; i++) renderSegment(placed[i - 1], placed[i], pal.ink(2).mod(0, 0.5), STROKE_WEIGHT.guide, true)(g, ui);
     }
   }
 

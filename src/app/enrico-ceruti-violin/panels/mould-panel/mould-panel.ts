@@ -6,7 +6,7 @@ import { calculateMould, ensureCenterBoutInnerPath, getPath } from '../../calcul
 import { CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
-import { PanelPalette } from '../../../theme/theme.service';
+import { PanelPalette, ThemeService } from '../../../theme/theme.service';
 
 @Component({
   selector: 'app-ceruti-mould-panel',
@@ -15,6 +15,7 @@ import { PanelPalette } from '../../../theme/theme.service';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class MouldPanel extends CerutiPanelBase implements OnInit {
+  protected readonly pal = ThemeService.getPalette('classicCremona');
   // What the mould is drawn *around* — the blocks it is built to hold, and the inner path it is
   // cut to. What appears on the canvas rather than what the recipe is, so they belong on the
   // toggle bar rather than as checkboxes at the foot of this panel.

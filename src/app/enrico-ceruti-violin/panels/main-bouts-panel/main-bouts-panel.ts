@@ -14,7 +14,7 @@ import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { HighlightedArc } from '../../renders/render-constants';
 import { violNeckJoinExceeded } from '../../../docs/conditions';
-import { PanelPalette } from '../../../theme/theme.service';
+import { PanelPalette, ThemeService } from '../../../theme/theme.service';
 
 export interface MainBoutsViewFlags {
   showModuleCircles: boolean;
@@ -32,6 +32,7 @@ export interface MainBoutsViewFlags {
 })
 
 export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
+  protected readonly pal = ThemeService.getPalette('classicCremona');
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'renderOuterPath'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;

@@ -31,7 +31,7 @@ import { Pt } from '../../models/types';
 import { scrollBackInPlan, scrollBackViewStrokes, scrollFrontInPlan } from '../calculation/neck/ceruti-scroll-views';
 import { sideViewOffsetX } from '../renders/body-side-profile.render';
 import { STROKE_WEIGHT } from '../../theme/palettes';
-import { Theme } from '../../theme/theme.service';
+import { ThemeService } from '../../theme/theme.service';
 import { labelTheme, nightTheme } from '../../theme/theme-fixtures';
 
 /**
@@ -55,13 +55,13 @@ const theme = nightTheme();
 const flags = (over: Partial<CerutiViewFlags> = {}): CerutiViewFlags =>
   ({ ...DEFAULT_CERUTI_VIEW_FLAGS, ...over });
 
-type AnyPanel = { params: EnricoCerutiParams; theme: Theme; flags: CerutiViewFlags; paths?: PathEntry[]; buildRun(): any[] };
+type AnyPanel = { params: EnricoCerutiParams; flags: CerutiViewFlags; paths?: PathEntry[]; buildRun(): any[] };
 
-/** Builds a panel with its inputs filled, the way the template's bindings would. */
+/** Builds a panel with its inputs filled, the way the template's bindings would, drawing in the night theme. */
 function panel<T extends AnyPanel>(Ctor: new () => T, p: EnricoCerutiParams, f = flags()): T {
+  ThemeService.useTheme(theme);
   const instance = new Ctor();
   instance.params = p;
-  instance.theme = theme;
   instance.flags = f;
   if ('paths' in instance) instance.paths = [];
   return instance;
@@ -287,7 +287,7 @@ describe('the scroll panel', () => {
   it('draws the nut on the neck\'s front and the neck below it, stopping short, with nothing across its top', () => {
     const p = defaultViolin();
     const instance = panel(ScrollPanel, p, flags({ showVoluteConstruction: false, showModuleArcs: false }));
-    instance.theme = labelTheme();
+    ThemeService.useTheme(labelTheme());
     instance.buildRun();
     // with the nape unsolved the neck's back stops at the nut's level
     p.scroll!.nape.r = 0;
@@ -311,7 +311,7 @@ describe('the scroll panel', () => {
     // the plain spiral unless a test asks for module arcs, each colour drawn as its own name so the
     // plain profile under it can be told apart
     const named = labelTheme();
-    const withNames = <T extends ScrollPanel | VolutePanel>(instance: T) => Object.assign(instance, { theme: named });
+    const withNames = <T extends ScrollPanel | VolutePanel>(instance: T) => (ThemeService.useTheme(named), instance);
     const scroll = (p: EnricoCerutiParams, over: Partial<CerutiViewFlags> = {}) => withNames(panel(ScrollPanel, p, flags({ showModuleArcs: false, ...over })));
     const volute = (p: EnricoCerutiParams, over: Partial<CerutiViewFlags> = {}) => withNames(panel(VolutePanel, p, flags({ showModuleArcs: false, ...over })));
     const isArc = (el: ReturnType<typeof recordLayers>['elements'][number]) => typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(' A ');
@@ -622,7 +622,7 @@ describe('the scroll widths panel', () => {
 
   it('draws each view as it is seen: a turn\'s far side only as far as the next turn lets it show, and the hollow dashed in the side view', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.theme = labelTheme();
+    ThemeService.useTheme(labelTheme());
     instance.buildRun();
     const p = instance.params;
     const on = scrollPathStretches(p);
@@ -679,7 +679,7 @@ describe('the scroll widths panel', () => {
 
   it('shows the pegbox\'s cheeks above the first turn\'s bottom only where they stand out past the volute', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.theme = labelTheme();
+    ThemeService.useTheme(labelTheme());
     instance.buildRun();
     const p = instance.params;
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
@@ -712,7 +712,7 @@ describe('the scroll widths panel', () => {
 
   it('starts the back as wide as its foot, a wider foot meeting the round along level shoulders', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.theme = labelTheme();
+    ThemeService.useTheme(labelTheme());
     instance.buildRun();
     const p = instance.params;
     const v = p.scroll!;
@@ -734,7 +734,7 @@ describe('the scroll widths panel', () => {
     const p = defaultViolin();
     const draw = (showModuleArcs: boolean) => {
       const instance = panel(ScrollWidthsPanel as any, p, flags({ showModuleArcs, showModuleGuides: false })) as unknown as ScrollWidthsPanel;
-      instance.theme = labelTheme();
+      ThemeService.useTheme(labelTheme());
       return recordLayers(instance.buildRun()).elements;
     };
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
@@ -775,7 +775,7 @@ describe('the scroll widths panel', () => {
 
   it('draws a level shoulder on the round\'s top where the neck stands wider than it, out from the round or from cheeks wider still, and none for a narrower neck', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.theme = labelTheme();
+    ThemeService.useTheme(labelTheme());
     instance.buildRun();
     const p = instance.params;
     const v = p.scroll!;
@@ -806,7 +806,7 @@ describe('the scroll widths panel', () => {
 
   it('runs the front view down to the foot of the nut and closes it level there, whatever the duck tail', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.theme = labelTheme();
+    ThemeService.useTheme(labelTheme());
     instance.buildRun();
     const p = instance.params;
     // the nut's corners cut the closing where it crosses them, and walls narrower than the nut pass
@@ -821,7 +821,7 @@ describe('the scroll widths panel', () => {
 
   it('shows the pegbox\'s front from behind, in its colour, wherever it stands out past the back, and none of it behind a wider back', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.theme = labelTheme();
+    ThemeService.useTheme(labelTheme());
     instance.buildRun();
     const p = instance.params;
     const v = p.scroll!;
@@ -869,7 +869,7 @@ describe('the scroll widths panel', () => {
 
   it('shows a cello\'s cheeks from behind down to hips on the pegbox\'s foot, and the foot\'s edge in to the neck', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.theme = labelTheme();
+    ThemeService.useTheme(labelTheme());
     instance.buildRun();
     const p = instance.params;
     const v = p.scroll!;
@@ -936,7 +936,7 @@ describe('the scroll widths panel', () => {
 
   it('joins the neck to the front\'s walls from behind along the front\'s foot, in its colour, where the nut is wider than the neck', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.theme = labelTheme();
+    ThemeService.useTheme(labelTheme());
     instance.buildRun();
     const p = instance.params;
     p.neck!.nutWidth = p.neck!.topWidth + 6;
@@ -963,7 +963,7 @@ describe('the scroll widths panel', () => {
 
   it('carries the neck on below both views, widening down it: in front up to the nut over it, behind up to where it meets the scroll', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
-    instance.theme = labelTheme();
+    ThemeService.useTheme(labelTheme());
     instance.buildRun();
     const p = instance.params;
     const drawn = recordLayers(instance.buildRun()).elements;
@@ -1027,7 +1027,7 @@ describe('the outer path panel', () => {
   const named = labelTheme();
   const build = (p: EnricoCerutiParams, over: Partial<CerutiViewFlags> = {}) => {
     const instance = panel(OuterTracePanel, p, flags({ showModuleArcs: false, showAllArcs: false, ...over }));
-    instance.theme = named;
+    ThemeService.useTheme(named);
     return recordLayers(instance.buildRun()).elements;
   };
 
@@ -1078,7 +1078,7 @@ describe('the f-hole contours panel lays the front profile under its own work', 
   it('draws the outline and purfling in grey, leaving the holes to its own colours', () => {
     const p = archedViolin();
     const instance = panel(FHoleContoursPanel, p);
-    instance.theme = labelTheme();
+    ThemeService.useTheme(labelTheme());
     const drawn = recordLayers(instance.buildRun()).elements;
     const d = drawn.map(el => el.attrs['d']);
     expect(d).toContain(defineOuterPath(p, undefined, true, false));
@@ -1271,7 +1271,7 @@ describe('the long arching panel lays the neck the user has set under the body',
   const named = labelTheme();
   const build = (p: EnricoCerutiParams, showNeck = true) => {
     const instance = panel(LongArchingPanel, p);
-    instance.theme = named;
+    ThemeService.useTheme(named);
     instance.showNeck = showNeck;
     return recordLayers(instance.buildRun()).elements;
   };
@@ -1552,7 +1552,7 @@ describe('arching panels — arranging spline rows', () => {
     await TestBed.configureTestingModule({ imports: [LongArchingPanel] }).compileComponents();
     const fixture = TestBed.createComponent(LongArchingPanel);
     fixture.componentRef.setInput('params', archedViolin());
-    fixture.componentRef.setInput('theme', theme);
+    ThemeService.useTheme(theme);
     fixture.componentRef.setInput('flags', flags());
 
     const panelUnderTest = fixture.componentInstance;
@@ -1645,7 +1645,7 @@ describe('arching panels — arranging spline rows', () => {
     await TestBed.configureTestingModule({ imports: [CrossArchingPanel] }).compileComponents();
     const fixture = TestBed.createComponent(CrossArchingPanel);
     fixture.componentRef.setInput('params', archedViolin());
-    fixture.componentRef.setInput('theme', theme);
+    ThemeService.useTheme(theme);
     fixture.componentRef.setInput('flags', flags());
 
     const panelUnderTest = fixture.componentInstance;

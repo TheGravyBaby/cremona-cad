@@ -1,24 +1,10 @@
 import { DOCUMENT } from '@angular/common';
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { ALERT, NEUTRAL, PALETTES, Palette } from './palettes';
+import { Injectable, effect, inject, signal } from '@angular/core';
+import { ALERT, CANVAS, NEUTRAL, PALETTES, Palette, PaletteId } from './palettes';
 
 export type ThemeMode = 'day' | 'night';
+export type Ink = string & { mod(lightness?: number, fade?: number): string };
 
-// an ink is its hex, so it goes wherever a colour string goes, and `mod` is a modified hex. Each
-// argument is in [-1, 1], 0 leaving the ink alone: lightness is the fraction of the way to the
-// edge of the band that reads against the canvas, +1 as light as that allows and -1 as dark;
-// saturation runs -1 grey to +1 fully saturated; fade is toward the canvas, whichever side that
-// is in this mode, so a guide behind its subject fades the same way by day and by night
-export type Ink = string & { mod(lightness?: number, saturation?: number, fade?: number): string };
-
-// a String object, not a primitive, since a primitive can't carry `mod`. It coerces wherever it's
-// used as a colour, but it compares by identity: test it with String(ink), never ===
-function ink(css: string, mod: Ink['mod']): Ink {
-  return Object.assign(new String(css), { mod }) as unknown as Ink;
-}
-
-// what a panel draws with: the palette it named, read by position and wrapping past its end,
-// plus the theme's own trace grey and solve-failure red, the same whichever palette it took
 export interface PanelPalette {
   id: string;
   inks: Ink[];
@@ -27,7 +13,6 @@ export interface PanelPalette {
   alert: Ink;
 }
 
-// every palette resolved for the mode; `palette(id)` is what a panel reads
 export interface Theme {
   mode: ThemeMode;
   neutral: Ink;
@@ -38,23 +23,62 @@ export interface Theme {
 interface Rgb { r: number; g: number; b: number }
 interface Hsl { h: number; s: number; l: number }
 
-export function parseColor(s: string): (Rgb & { a: number }) | null {
-  const text = s.trim();
-  const hexShort = /^#([0-9a-f]{3})$/i.exec(text);
-  if (hexShort) {
-    const [r, g, b] = hexShort[1].split('').map(c => parseInt(c + c, 16));
-    return { r, g, b, a: 1 };
+// the mode the app draws in and the theme resolved for it, cached since resolving scans contrast
+// for every ink; a spec puts its own labelled theme in front with `ThemeService.useTheme`
+let currentMode: ThemeMode = 'night';
+let override: Theme | undefined;
+const resolved: Partial<Record<ThemeMode, Theme>> = {};
+const current = (): Theme => override ?? (resolved[currentMode] ??= resolveTheme(PALETTES, currentMode));
+
+@Injectable({ providedIn: 'root' })
+export class ThemeService {
+  // what a panel draws with: `protected readonly pal = ThemeService.getPalette('varnish')`. The
+  // palette is live, every read resolving against the mode at that moment, so a field set once
+  // follows a day/night flip
+  static getPalette(id: PaletteId): PanelPalette {
+    return {
+      id,
+      get inks() { return current().palette(id).inks; },
+      ink: i => current().palette(id).ink(i),
+      get neutral() { return current().neutral; },
+      get alert() { return current().alert; },
+    };
   }
-  const hexLong = /^#([0-9a-f]{6})([0-9a-f]{2})?$/i.exec(text);
-  if (hexLong) {
-    const byte = (i: number) => parseInt(hexLong[1].substring(i, i + 2), 16);
-    return { r: byte(0), g: byte(2), b: byte(4), a: hexLong[2] ? parseInt(hexLong[2], 16) / 255 : 1 };
+
+  static useTheme(theme: Theme): void {
+    override = theme;
   }
-  const rgb = /^rgba?\(\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.exec(text);
-  if (rgb) {
-    return { r: +rgb[1], g: +rgb[2], b: +rgb[3], a: rgb[4] !== undefined ? Math.max(0, Math.min(1, parseFloat(rgb[4]))) : 1 };
+
+  // the Angular side: the mode as a signal a recipe redraws on, and the canvas and the theme's
+  // own two inks on :root so a stylesheet draws on the same ground
+  private readonly doc = inject(DOCUMENT);
+  readonly mode = signal<ThemeMode>('night');
+
+  constructor() {
+    effect(() => {
+      const mode = this.mode();
+      const root = this.doc.documentElement;
+      root.classList.toggle('day-mode', mode === 'day');
+      root.style.setProperty('--ui-bg-canvas', CANVAS[mode]);
+      root.style.setProperty('--ink-neutral', current().neutral);
+      root.style.setProperty('--ink-alert', current().alert);
+    });
   }
-  return null;
+
+  setMode(mode: ThemeMode): void {
+    currentMode = mode;
+    this.mode.set(mode);
+  }
+}
+
+function ink(css: string, mod: Ink['mod']): Ink {
+  return Object.assign(new String(css), { mod }) as unknown as Ink;
+}
+
+
+export function parseHex(hex: string): Rgb {
+  const byte = (i: number) => parseInt(hex.substring(i, i + 2), 16) || 0;
+  return { r: byte(1), g: byte(3), b: byte(5) };
 }
 
 export function rgbToHsl({ r, g, b }: Rgb): Hsl {
@@ -102,9 +126,6 @@ export function contrastRatio(a: Rgb, b: Rgb): number {
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
-// what the canvas is when no stylesheet answers, as in a test
-export const CANVAS_FALLBACK: Record<ThemeMode, string> = { night: '#1e1e1e', day: '#c3bfb3' };
-
 // the contrast a stroke needs against the canvas. A base tone clears WCAG's 3:1 non-text floor by
 // day; its ramp may run on to 2:1, since the day canvas is mid-toned and holding a light sibling
 // to 3:1 would land it on its mid sibling. By night a dark tone on a near-black canvas was never
@@ -136,10 +157,9 @@ function legibleBand(h: number, s: number, canvas: Rgb, floor: number): Band {
   return { ...best, canvasSide: canvasL > (best.lo + best.hi) / 2 ? 1 : -1 };
 }
 
-export function makeInk(color: string, mode: ThemeMode, canvasBg: string): Ink {
-  const rgb = parseColor(color) ?? { r: 128, g: 128, b: 128 };
-  const canvas = parseColor(canvasBg) ?? parseColor(CANVAS_FALLBACK[mode])!;
-  const { h, s: s0, l: l0 } = rgbToHsl(rgb);
+export function makeInk(color: string, mode: ThemeMode): Ink {
+  const canvas = parseHex(CANVAS[mode]);
+  const { h, s: s0, l: l0 } = rgbToHsl(parseHex(color));
   // the day canvas is mid-toned, so colours darken to clear it and would go muddy unsaturated
   const s = mode === 'day' && s0 > 0.1 ? Math.min(1, s0 + DAY_SATURATION_BOOST) : s0;
   const band = legibleBand(h, s, canvas, RAMP_FLOOR);
@@ -148,55 +168,19 @@ export function makeInk(color: string, mode: ThemeMode, canvasBg: string): Ink {
   const lo = Math.max(band.lo + margin, base.lo), hi = Math.min(band.hi - margin, base.hi);
   const l = lo <= hi ? Math.max(lo, Math.min(hi, l0)) : (base.lo + base.hi) / 2;
   const ramp = (from: number, t: number) => (t >= 0 ? from + t * (band.hi - from) : from + t * (from - band.lo));
-  const hex = (sat: number, light: number) => toHex(hslToRgb({ h, s: sat, l: light }));
-  return ink(hex(s, l), (lightness = 0, saturation = 0, fade = 0) => {
-    const k = unit(saturation);
-    return hex(k >= 0 ? s + k * (1 - s) : s * (1 + k), ramp(ramp(l, unit(lightness)), band.canvasSide * Math.max(0, unit(fade))));
-  });
+  const hex = (light: number) => toHex(hslToRgb({ h, s, l: light }));
+  return ink(hex(l), (lightness = 0, fade = 0) =>
+    hex(ramp(ramp(l, unit(lightness)), band.canvasSide * Math.max(0, unit(fade)))));
 }
 
-export function resolveTheme(palettes: Record<string, Palette>, mode: ThemeMode, canvasBg: string): Theme {
-  const neutral = makeInk(NEUTRAL, mode, canvasBg);
-  const alert = makeInk(ALERT, mode, canvasBg);
+export function resolveTheme(palettes: Record<string, Palette>, mode: ThemeMode): Theme {
+  const neutral = makeInk(NEUTRAL, mode);
+  const alert = makeInk(ALERT, mode);
   const resolved: Record<string, PanelPalette> = {};
   for (const [id, palette] of Object.entries(palettes)) {
-    const inks = palette.inks.map(color => makeInk(color, mode, canvasBg));
+    const inks = palette.inks.map(color => makeInk(color, mode));
     resolved[id] = { id, inks, ink: i => inks[((i % inks.length) + inks.length) % inks.length], neutral, alert };
   }
-  const first = Object.values(resolved)[0];
-  return { mode, neutral, alert, palette: id => resolved[id] ?? first };
+  return { mode, neutral, alert, palette: id => resolved[id] };
 }
 
-@Injectable({ providedIn: 'root' })
-export class ThemeService {
-  private readonly doc = inject(DOCUMENT);
-
-  readonly mode = signal<ThemeMode>('night');
-  readonly theme = computed<Theme>(() => resolveTheme(PALETTES, this.mode(), this.canvasBackground(this.mode())));
-
-  constructor() {
-    // the theme's own two inks on :root, so a stylesheet can draw in them too
-    effect(() => {
-      const theme = this.theme();
-      const root = this.doc.documentElement;
-      root.style.setProperty('--ink-neutral', theme.neutral);
-      root.style.setProperty('--ink-alert', theme.alert);
-    });
-  }
-
-  // the day-mode class first, so the canvas colour read for the theme is the one being shown
-  setMode(mode: ThemeMode): void {
-    this.doc.documentElement.classList.toggle('day-mode', mode === 'day');
-    this.mode.set(mode);
-  }
-
-  private canvasBackground(mode: ThemeMode): string {
-    try {
-      const view = this.doc.defaultView;
-      const value = view?.getComputedStyle(this.doc.documentElement).getPropertyValue('--ui-bg-canvas').trim();
-      return value || CANVAS_FALLBACK[mode];
-    } catch {
-      return CANVAS_FALLBACK[mode];
-    }
-  }
-}

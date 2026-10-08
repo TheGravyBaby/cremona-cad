@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { CerutiViewFlags, DefaultParams, EnricoCerutiParams, FholeParams, FholeStem, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderSegment, renderPath, renderRect, renderSmallCrosshair } from '../../../helpers/renderFuncs';
-import { DASH, PaletteId, STROKE_WEIGHT } from '../../../theme/palettes';
+import { DASH, STROKE_WEIGHT } from '../../../theme/palettes';
 import { calculateOuterArcs, ensureFrontProfilePaths, getPathOrNull } from '../../calculation/outline/ceruti-calcs';
 import { renderFrontProfile } from '../../renders/front-profile.render';
 import { Arc, Circle, Pt, Rectangle } from '../../../models/types';
@@ -13,7 +13,7 @@ import { circleCircleIntersections } from '../../../helpers/math/draftMath';
 import { defineInnerArcs } from '../../calculation/outline/ceruti-paths';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { renderBoutBouts } from '../main-bouts-panel/main-bouts-panel';
-import { PanelPalette } from '../../../theme/theme.service';
+import { PanelPalette, ThemeService } from '../../../theme/theme.service';
 
 /** Where the two f-holes sit on the plate — the eyes first, everything else hung off them. */
 @Component({
@@ -23,7 +23,7 @@ import { PanelPalette } from '../../../theme/theme.service';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
-  protected override readonly paletteId: PaletteId = 'varnish';
+  protected readonly pal = ThemeService.getPalette('varnish');
   static readonly renderToggles: readonly RenderToggleKey[] = ['showFholeBounds', 'showFholePlacementGuides', 'showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
@@ -278,9 +278,9 @@ export const renderFholeEyePlacementGuides = (p: EnricoCerutiParams, pal: PanelP
   let distToUpperEyeFromTangent = dist(p.fHoles.UEye, waistMidPt);
   let upperEyeGuide = new Arc(waistMidPt.x, waistMidPt.y, distToUpperEyeFromTangent, 150 * Math.PI / 180, 210 * Math.PI / 180);
   // draw a fancy arc that spans 135 - 225 degrees
-  renderArcFromArcFancy(upperEyeGuide, pal.neutral.mod(0, 0, 0.5))(g, ui);
+  renderArcFromArcFancy(upperEyeGuide, pal.neutral.mod(0, 0.5))(g, ui);
 
   let distBetweenEyes = dist(p.fHoles.UEye, p.fHoles.LEye);
   let upperEyeGuideTwo = new Arc(p.fHoles.LEye.x, p.fHoles.LEye.y, distBetweenEyes, Math.PI, Math.PI / 2);
-  renderArcFromArcFancy(upperEyeGuideTwo, pal.neutral.mod(0, 0, 0.5))(g, ui);
+  renderArcFromArcFancy(upperEyeGuideTwo, pal.neutral.mod(0, 0.5))(g, ui);
 }

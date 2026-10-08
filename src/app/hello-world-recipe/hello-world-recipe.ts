@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
@@ -40,11 +40,7 @@ export class HelloWorldRecipe extends RecipeComponentBase {
 
   flags: FourCirclesViewFlags = { showCircles: false, showArcs: true };
 
-  private readonly themeService = inject(ThemeService);
-
-  get pal(): PanelPalette {
-    return this.themeService.theme().palette('classicCremona');
-  }
+  protected readonly pal = ThemeService.getPalette('classicCremona');
 
   constructor() {
     super();

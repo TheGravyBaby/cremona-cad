@@ -2,7 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { renderFilledPath } from '../../../helpers/renderFuncs';
-import { PaletteId, STROKE_WEIGHT } from '../../../theme/palettes';
+import { STROKE_WEIGHT } from '../../../theme/palettes';
 import { translatePath } from '../../../helpers/math/pathMath';
 import { calculateOuterArcs, ensureFholePath, ensureOuterTracePaths } from '../../calculation/outline/ceruti-calcs';
 import { renderPlatePair } from '../../renders/front-profile.render';
@@ -12,6 +12,7 @@ import { defaultFlutingParams, effectiveCBoutSweep, channelAreaPath, channelPath
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { TooltipDirective } from '../../../docs/tooltips';
+import { ThemeService } from '../../../theme/theme.service';
 
 @Component({
   selector: 'app-ceruti-fluting-panel',
@@ -20,7 +21,7 @@ import { TooltipDirective } from '../../../docs/tooltips';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FlutingPanel extends CerutiPanelBase implements OnInit {
-  protected override readonly paletteId: PaletteId = 'varnish';
+  protected readonly pal = ThemeService.getPalette('varnish');
   static readonly renderToggles: readonly RenderToggleKey[] = [];
 
   @Input({ required: true }) params!: EnricoCerutiParams;

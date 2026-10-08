@@ -8,6 +8,7 @@ import { calculateNeck, defaultNeckParams, defaultStringSetup } from '../../calc
 import { defaultFlutingParams, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
 import { defaultVoluteParams, scrollBackStrip, scrollCompassWalk } from '../../calculation/neck/ceruti-scroll';
 import { nightTheme } from '../../../theme/theme-fixtures';
+import { ThemeService } from '../../../theme/theme.service';
 
 /**
  * The export panel — the last step, and the one whose output leaves the app.
@@ -49,9 +50,9 @@ function moulded(): EnricoCerutiParams {
 }
 
 function makePanel(p: EnricoCerutiParams, fileName = 'test-violin'): ExportPanel {
+  ThemeService.useTheme(theme);
   const panel = new ExportPanel();
   panel.params = p;
-  panel.theme = theme;
   panel.paths = [] as PathEntry[];
   panel.fileName = fileName;
   return panel;

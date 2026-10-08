@@ -4,6 +4,7 @@
   --app-bar-height: 44px;
 
   --ui-bg-app: #1e1e1e;
+  /* the theme service overwrites this from palettes.ts CANVAS once it runs; this is the pre-boot default */
   --ui-bg-canvas: #1e1e1e;
   --ui-bg-sidebar: #252526;
   --ui-bg-panel: #2d2d30;

@@ -15,7 +15,7 @@ import { renderBodySideProfile, sideViewOffsetX } from '../../renders/body-side-
 import { HighlightedSplinePoint } from '../../renders/render-constants';
 import { ribTaperExceeded } from '../../../docs/conditions';
 import { TooltipDirective } from '../../../docs/tooltips';
-import { PaletteId } from '../../../theme/palettes';
+import { ThemeService } from '../../../theme/theme.service';
 
 /** One row of a plate's spline table: a control point, or the peak among them. */
 interface SplineRow {
@@ -38,7 +38,7 @@ interface SplineRow {
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class LongArchingPanel extends CerutiPanelBase implements OnInit {
-  protected override readonly paletteId: PaletteId = 'varnish';
+  protected readonly pal = ThemeService.getPalette('varnish');
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;

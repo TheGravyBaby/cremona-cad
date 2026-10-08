@@ -17,7 +17,7 @@ import { defaultCrossArchParams, defaultFlutingParams } from '../../calculation/
 import { buildPlateSurfaceModel, buildPlateStl, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../calculation/arching/ceruti-surface';
 import { EnricoCerutiParams, PathEntry, PathKey } from '../../ceruti-types';
 import { EXPORT_DESCRIPTIONS } from '../../../docs/export-descriptions';
-import { PanelPalette, Theme } from '../../../theme/theme.service';
+import { ThemeService } from '../../../theme/theme.service';
 
 type ScrollExportType = 'neckTemplate' | 'scrollFrontView' | 'scrollBackView' | 'scrollBack' | 'scrollCompass';
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate' | 'fholeTemplateNoEyes' | ScrollExportType;
@@ -61,12 +61,8 @@ export class ExportPanel implements OnInit {
   protected readonly describe = (id: string): string => EXPORT_DESCRIPTIONS[id] ?? '';
 
   @Input({ required: true }) params!: EnricoCerutiParams;
-  @Input({ required: true }) theme!: Theme;
-
   // the previews draw in the trace grey alone, so any palette serves
-  get pal(): PanelPalette {
-    return this.theme.palette('classicCremona');
-  }
+  private readonly pal = ThemeService.getPalette('classicCremona');
   @Input({ required: true }) paths!: PathEntry[];
   @Input() fileName = '';
   @Input() description = '';
