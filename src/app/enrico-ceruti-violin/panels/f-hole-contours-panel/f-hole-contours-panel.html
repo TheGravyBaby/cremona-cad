@@ -4,15 +4,15 @@
         <label class="field-cell">
             <span class="field-title">U1 Radius<span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0"
-                [ngModel]="round2(params.fHoles!.U1!.r)" (ngModelChange)="params.fHoles!.U1!.r = $event; onChange(); onArcFocus('U1', pal.ink(2).mod(-0.6))"
-                [style.borderColor]="pal.ink(2).mod(-0.6)" (focus)="onArcFocus('U1', pal.ink(2).mod(-0.6))" (blur)="onArcBlur()" />
+                [ngModel]="round2(params.fHoles!.U1!.r)" (ngModelChange)="params.fHoles!.U1!.r = $event; onChange(); onArcFocus('U1', pal.ink(2).faint(3))"
+                [style.borderColor]="pal.ink(2).faint(3)" (focus)="onArcFocus('U1', pal.ink(2).faint(3))" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title">End Angle<span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1"
                 [ngModel]="getArcEndDeg(params.fHoles!.U1!)"
                 (ngModelChange)="setArcEndDeg(params.fHoles!.U1!, $event, onChange.bind(this)); onArcFocus('U1', pal.ink(2))"
-                (focus)="onArcFocus('U1', pal.ink(2).mod(0.6))" (blur)="onArcBlur()" />
+                (focus)="onArcFocus('U1', pal.ink(2).faint(-3))" (blur)="onArcBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
@@ -34,15 +34,15 @@
         <label class="field-cell">
             <span class="field-title">U21 Radius<span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0"
-                [ngModel]="round2(params.fHoles!.U21!.r)" (ngModelChange)="params.fHoles!.U21!.r = $event; onChange(); onArcFocus('U21', pal.ink(2).mod(-0.6))"
-                [style.borderColor]="pal.ink(2).mod(-0.6)" (focus)="onArcFocus('U21', pal.ink(2).mod(-0.6))" (blur)="onArcBlur()" />
+                [ngModel]="round2(params.fHoles!.U21!.r)" (ngModelChange)="params.fHoles!.U21!.r = $event; onChange(); onArcFocus('U21', pal.ink(2).faint(3))"
+                [style.borderColor]="pal.ink(2).faint(3)" (focus)="onArcFocus('U21', pal.ink(2).faint(3))" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Split Angle<span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1"
                 [ngModel]="getArcStartDeg(params.fHoles!.U21!)"
-                (ngModelChange)="setArcStartDeg(params.fHoles!.U21!, $event, onChange.bind(this)); onArcFocus('U21', pal.ink(2).mod(-0.6))"
-                (focus)="onArcFocus('U21', pal.ink(2).mod(-0.6))" (blur)="onArcBlur()" />
+                (ngModelChange)="setArcStartDeg(params.fHoles!.U21!, $event, onChange.bind(this)); onArcFocus('U21', pal.ink(2).faint(3))"
+                (focus)="onArcFocus('U21', pal.ink(2).faint(3))" (blur)="onArcBlur()" />
         </label>
     </div>
     }
@@ -50,15 +50,15 @@
         <label class="field-cell">
             <span class="field-title">U3 Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0"
-                [ngModel]="round2(params.fHoles!.U3!.r)" (ngModelChange)="params.fHoles!.U3!.r = $event; onChange(); onArcFocus('U3', pal.ink(2).mod(0.6))"
-                [style.borderColor]="pal.ink(2).mod(0.6)" (focus)="onArcFocus('U3', pal.ink(2).mod(0.6))" (blur)="onArcBlur()" />
+                [ngModel]="round2(params.fHoles!.U3!.r)" (ngModelChange)="params.fHoles!.U3!.r = $event; onChange(); onArcFocus('U3', pal.ink(2).faint(-3))"
+                [style.borderColor]="pal.ink(2).faint(-3)" (focus)="onArcFocus('U3', pal.ink(2).faint(-3))" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title">U3 End Angle <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1"
                 [ngModel]="getArcEndDeg(params.fHoles!.U3!)"
-                (ngModelChange)="setArcEndDeg(params.fHoles!.U3!, $event, onChange.bind(this)); onArcFocus('U3', pal.ink(2).mod(0.6))"
-                (focus)="onArcFocus('U3', pal.ink(2).mod(0.6))" (blur)="onArcBlur()" 
+                (ngModelChange)="setArcEndDeg(params.fHoles!.U3!, $event, onChange.bind(this)); onArcFocus('U3', pal.ink(2).faint(-3))"
+                (focus)="onArcFocus('U3', pal.ink(2).faint(-3))" (blur)="onArcBlur()" 
                 />
         </label>
     </div>
@@ -148,15 +148,15 @@
         <label class="field-cell">
             <span class="field-title">L1 Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0"
-                [ngModel]="round2(params.fHoles!.L1!.r)" (ngModelChange)="params.fHoles!.L1!.r = $event; onChange(); onArcFocus('L1', pal.ink(0).mod(-0.5))"
-                [style.borderColor]="pal.ink(0).mod(-0.5)" (focus)="onArcFocus('L1', pal.ink(0).mod(-0.5))" (blur)="onArcBlur()" />
+                [ngModel]="round2(params.fHoles!.L1!.r)" (ngModelChange)="params.fHoles!.L1!.r = $event; onChange(); onArcFocus('L1', pal.ink(0).faint(3))"
+                [style.borderColor]="pal.ink(0).faint(3)" (focus)="onArcFocus('L1', pal.ink(0).faint(3))" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title">End Angle<span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1"
                 [ngModel]="getArcEndDeg(params.fHoles!.L1!)"
                 (ngModelChange)="setArcEndDeg(params.fHoles!.L1!, $event, onChange.bind(this)); onArcFocus('L1', pal.ink(2))"
-                (focus)="onArcFocus('L1', pal.ink(0).mod(-0.5))" (blur)="onArcBlur()" />
+                (focus)="onArcFocus('L1', pal.ink(0).faint(3))" (blur)="onArcBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
@@ -178,15 +178,15 @@
         <label class="field-cell">
             <span class="field-title">L21 Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0"
-                [ngModel]="round2(params.fHoles!.L21!.r)" (ngModelChange)="params.fHoles!.L21!.r = $event; onChange(); onArcFocus('L21', pal.ink(0).mod(-0.5))"
-                [style.borderColor]="pal.ink(0).mod(-0.5)" (focus)="onArcFocus('L21', pal.ink(0).mod(-0.5))" (blur)="onArcBlur()" />
+                [ngModel]="round2(params.fHoles!.L21!.r)" (ngModelChange)="params.fHoles!.L21!.r = $event; onChange(); onArcFocus('L21', pal.ink(0).faint(3))"
+                [style.borderColor]="pal.ink(0).faint(3)" (focus)="onArcFocus('L21', pal.ink(0).faint(3))" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Split Angle <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1"
                 [ngModel]="getArcStartDeg(params.fHoles!.L21!)"
-                (ngModelChange)="setArcStartDeg(params.fHoles!.L21!, $event, onChange.bind(this)); onArcFocus('L21', pal.ink(0).mod(-0.5))"
-                (focus)="onArcFocus('L21', pal.ink(0).mod(-0.5))" (blur)="onArcBlur()" />
+                (ngModelChange)="setArcStartDeg(params.fHoles!.L21!, $event, onChange.bind(this)); onArcFocus('L21', pal.ink(0).faint(3))"
+                (focus)="onArcFocus('L21', pal.ink(0).faint(3))" (blur)="onArcBlur()" />
         </label>
     </div>
     }
@@ -194,15 +194,15 @@
         <label class="field-cell">
             <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0"
-                [ngModel]="round2(params.fHoles!.L3!.r)" (ngModelChange)="params.fHoles!.L3!.r = $event; onChange(); onArcFocus('L3', pal.ink(0).mod(0.6))"
-                [style.borderColor]="pal.ink(0).mod(0.6)" (focus)="onArcFocus('L3', pal.ink(0).mod(0.6))" (blur)="onArcBlur()" />
+                [ngModel]="round2(params.fHoles!.L3!.r)" (ngModelChange)="params.fHoles!.L3!.r = $event; onChange(); onArcFocus('L3', pal.ink(0).faint(-3))"
+                [style.borderColor]="pal.ink(0).faint(-3)" (focus)="onArcFocus('L3', pal.ink(0).faint(-3))" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title">L3 End Angle <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1"
                 [ngModel]="getArcEndDeg(params.fHoles!.L3!)"
-                (ngModelChange)="setArcEndDeg(params.fHoles!.L3!, $event, onChange.bind(this)); onArcFocus('L3', pal.ink(0).mod(0.6))"
-                (focus)="onArcFocus('L3', pal.ink(0).mod(0.6))" (blur)="onArcBlur()" />
+                (ngModelChange)="setArcEndDeg(params.fHoles!.L3!, $event, onChange.bind(this)); onArcFocus('L3', pal.ink(0).faint(-3))"
+                (focus)="onArcFocus('L3', pal.ink(0).faint(-3))" (blur)="onArcBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">

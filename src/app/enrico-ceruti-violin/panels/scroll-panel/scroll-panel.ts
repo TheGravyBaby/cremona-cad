@@ -118,17 +118,17 @@ export const renderScroll = (
     for (let i = 0; i < 4; i++) renderDashLine(corners[i], corners[(i + 1) % 4], pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   }
 
-  solved('S2') && scrollArc(v.S2, pal.ink(1).mod(0.6), fancy)(g, ui);
-  solved('S3') && scrollArc(v.S3, pal.ink(1).mod(0.2), fancy)(g, ui);
-  solved('nape') && scrollArc(v.nape, pal.ink(1).mod(-0.3), fancy)(g, ui);
+  solved('S2') && scrollArc(v.S2, pal.ink(1).faint(-3), fancy)(g, ui);
+  solved('S3') && scrollArc(v.S3, pal.ink(1).faint(-1), fancy)(g, ui);
+  solved('nape') && scrollArc(v.nape, pal.ink(1).faint(5), fancy)(g, ui);
   solved('F0') && scrollArc(v.F0, pal.ink(4), fancy)(g, ui);
-  solved('F1') && scrollArc(v.F1, pal.ink(4).mod(0.55), fancy)(g, ui);
+  solved('F1') && scrollArc(v.F1, pal.ink(4).faint(-3), fancy)(g, ui);
 
   // a straight of no length, or a duck tail already at the nape, has nothing to draw
   const line = ([a, b]: [Pt, Pt], color: string) => dist(a, b) > 1e-9 && renderSegment(a, b, color, STROKE_WEIGHT.trace)(g, ui);
   const lines = scrollLines(p);
-  solved('backStraight') && line(lines.backStraight, pal.ink(1).mod(0.6));
-  solved('nape') && line(lines.square, pal.ink(1).mod(-0.3));
-  solved('flat') && line(lines.flat, pal.ink(4).mod(0.55));
+  solved('backStraight') && line(lines.backStraight, pal.ink(1).faint(-3));
+  solved('nape') && line(lines.square, pal.ink(1).faint(5));
+  solved('flat') && line(lines.flat, pal.ink(4).faint(-3));
   solved('frontStraight') && line(lines.frontStraight, pal.ink(4));
 };

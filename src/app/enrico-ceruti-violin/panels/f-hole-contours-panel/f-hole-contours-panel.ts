@@ -114,16 +114,16 @@ export const renderFholeContours = (
   }
 
   let arcColors: Record<FholeArcKey, string> = {
-    U1: pal.ink(2).mod(-0.6),
+    U1: pal.ink(2).faint(3),
     U2: pal.ink(2),
-    U21: pal.ink(2).mod(-0.6),
-    U3: pal.ink(2).mod(0.6),
+    U21: pal.ink(2).faint(3),
+    U3: pal.ink(2).faint(-3),
     S2: pal.ink(1),
     S1: pal.ink(1),
-    L1: pal.ink(0).mod(-0.5),
+    L1: pal.ink(0).faint(3),
     L2: pal.ink(0),
-    L21: pal.ink(0).mod(-0.5),
-    L3: pal.ink(0).mod(0.6),
+    L21: pal.ink(0).faint(3),
+    L3: pal.ink(0).faint(-3),
     S4: pal.ink(1),
     S3: pal.ink(1),
   };

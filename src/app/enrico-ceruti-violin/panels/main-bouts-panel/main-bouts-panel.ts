@@ -195,21 +195,21 @@ export const renderMainBouts = (
       } else {
         renderArcFromArcFancy(wideTopArc, pal.ink(2))(g, ui);
       }
-      renderArcFromArcFancy(p.bouts.U1!, pal.ink(2).mod(0.45))(g, ui);
-      renderArcFromArcFancy(mirroredU1Arc, pal.ink(2).mod(0.45))(g, ui);
+      renderArcFromArcFancy(p.bouts.U1!, pal.ink(2).faint(-2))(g, ui);
+      renderArcFromArcFancy(mirroredU1Arc, pal.ink(2).faint(-2))(g, ui);
     }
 
     if (lower) {
       renderArcFromArcFancy(wideBottomArc, pal.ink(1))(g, ui);
-      renderArcFromArcFancy(p.bouts.L1!, pal.ink(1).mod(0.45))(g, ui);
-      renderArcFromArcFancy(mirroredL1Arc, pal.ink(1).mod(0.45))(g, ui);
+      renderArcFromArcFancy(p.bouts.L1!, pal.ink(1).faint(-2))(g, ui);
+      renderArcFromArcFancy(mirroredL1Arc, pal.ink(1).faint(-2))(g, ui);
     }
   } else {
     // in their own colours on this panel, where their fields are; grey under a later panel's work
     const top = currentModule ? pal.ink(2) : pal.neutral;
-    const topSide = currentModule ? pal.ink(2).mod(0.45) : pal.neutral;
+    const topSide = currentModule ? pal.ink(2).faint(-2) : pal.neutral;
     const bottom = currentModule ? pal.ink(1) : pal.neutral;
-    const bottomSide = currentModule ? pal.ink(1).mod(0.45) : pal.neutral;
+    const bottomSide = currentModule ? pal.ink(1).faint(-2) : pal.neutral;
     if (params.options.useViolNeck) renderViolNeck(p, 0, currentModule ? pal.ink(0) : pal.neutral)(g, ui);
 
     if (upper) {
@@ -232,9 +232,9 @@ export const renderMainBouts = (
 
   if (flags.renderOuterPath) {
     const outerTopColor = currentModule ? pal.ink(2) : pal.neutral;
-    const outerTopSideColor = currentModule ? pal.ink(2).mod(0.45) : pal.neutral;
+    const outerTopSideColor = currentModule ? pal.ink(2).faint(-2) : pal.neutral;
     const outerBotColor = currentModule ? pal.ink(1) : pal.neutral;
-    const outerBotSideColor = currentModule ? pal.ink(1).mod(0.45) : pal.neutral;
+    const outerBotSideColor = currentModule ? pal.ink(1).faint(-2) : pal.neutral;
     const violNeckColor = currentModule ? pal.ink(0) : pal.neutral;
     if (params.options.useViolNeck) renderViolNeck(p, inset, violNeckColor)(g, ui);
 
@@ -277,10 +277,10 @@ export const renderBoutBouts = (params: EnricoCerutiParams, pal: PanelPalette, r
   let upperBoutSquare = new Rectangle({ x: -p.bouts.UBW / 2, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2, y: p.height });
   const inset = params.overhang + params.rib;
 
-  renderRect(lowerBoutSquare, pal.ink(1).mod(0.45))(g, ui);
-  renderSegment({ x: -p.bouts.LBW / 2 + inset, y: 0 }, { x: -p.bouts.LBW / 2 + inset, y: p.bouts.LBW }, pal.ink(1).mod(0.45))(g, ui);
-  renderSegment({ x: p.bouts.LBW / 2 - inset, y: 0 }, { x: p.bouts.LBW / 2 - inset, y: p.bouts.LBW }, pal.ink(1).mod(0.45))(g, ui);
-  renderRect(upperBoutSquare, pal.ink(2).mod(0.45))(g, ui);
-  renderSegment({ x: -p.bouts.UBW / 2 + inset, y: p.height - p.bouts.UBW }, { x: -p.bouts.UBW / 2 + inset, y: p.height }, pal.ink(2).mod(0.45))(g, ui);
-  renderSegment({ x: p.bouts.UBW / 2 - inset, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2 - inset, y: p.height }, pal.ink(2).mod(0.45))(g, ui);
+  renderRect(lowerBoutSquare, pal.ink(1).faint(-2))(g, ui);
+  renderSegment({ x: -p.bouts.LBW / 2 + inset, y: 0 }, { x: -p.bouts.LBW / 2 + inset, y: p.bouts.LBW }, pal.ink(1).faint(-2))(g, ui);
+  renderSegment({ x: p.bouts.LBW / 2 - inset, y: 0 }, { x: p.bouts.LBW / 2 - inset, y: p.bouts.LBW }, pal.ink(1).faint(-2))(g, ui);
+  renderRect(upperBoutSquare, pal.ink(2).faint(-2))(g, ui);
+  renderSegment({ x: -p.bouts.UBW / 2 + inset, y: p.height - p.bouts.UBW }, { x: -p.bouts.UBW / 2 + inset, y: p.height }, pal.ink(2).faint(-2))(g, ui);
+  renderSegment({ x: p.bouts.UBW / 2 - inset, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2 - inset, y: p.height }, pal.ink(2).faint(-2))(g, ui);
 };

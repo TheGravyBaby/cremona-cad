@@ -58,7 +58,7 @@ export class CenterBoutPanel extends CerutiPanelBase implements OnInit {
     const upper = this.highlightedCorner === 'upper';
     const point = upper ? this.params.bouts.UCr : this.params.bouts.LCr;
     if (!point) return null;
-    return { point, color: upper ? this.pal.ink(5) : this.pal.ink(3) };
+    return { point, color: upper ? this.pal.ink(5).faint(5) : this.pal.ink(3).faint(5) };
   }
 
   ngOnInit(): void {
@@ -181,10 +181,10 @@ export const renderCenterBout = (
   }
 
   if (currentModule && flags.showModuleArcs) {
-    renderCrosshair(p.bouts.UCr!, pal.ink(5))(g, ui);
-    renderCrosshair(p.bouts.LCr!, pal.ink(3))(g, ui);
-    renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, pal.ink(5))(g, ui);
-    renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, pal.ink(3))(g, ui);
+    renderCrosshair(p.bouts.UCr!, pal.ink(5).faint(5))(g, ui);
+    renderCrosshair(p.bouts.LCr!, pal.ink(3).faint(5))(g, ui);
+    renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, pal.ink(5).faint(5))(g, ui);
+    renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, pal.ink(3).faint(5))(g, ui);
   }
 
   if ((currentModule && flags.showModuleArcs) || flags.showAllArcs) {

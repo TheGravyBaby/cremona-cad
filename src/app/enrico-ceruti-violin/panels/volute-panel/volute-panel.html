@@ -24,7 +24,7 @@
                 <span class="field-title" docTip="volute.eyeY">Y <span class="unit-label">mm</span></span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Eye position"
-                [style.borderColor]="pal.ink(2)"
+                [style.borderColor]="pal.ink(2).faint(5)"
                 title="Arrow keys move the eye from either box">
                 <input type="number" class="basic-input" step="0.25" data-step-shift="1" data-step-fine="0.1" data-xy="x" aria-label="Eye X"
                     [disabled]="scroll.flushWithNeck" [ngModel]="round2(scroll.eye.x)" (ngModelChange)="scroll.eye.x = $event; onChange()" />
@@ -75,16 +75,16 @@
     <div class="ui-group-title">Crown</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(4).mod(0.55)" docTip="volute.s0">S0 R <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(4).mod(0.55)"
-                [(ngModel)]="scroll.S0.r" (input)="onChange(); onArcFocus('S0', pal.ink(4).mod(0.55))"
-                (focus)="onArcFocus('S0', pal.ink(4).mod(0.55))" (blur)="onArcBlur()" />
+            <span class="field-title" [style.color]="pal.ink(4).faint(-3)" docTip="volute.s0">S0 R <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(4).faint(-3)"
+                [(ngModel)]="scroll.S0.r" (input)="onChange(); onArcFocus('S0', pal.ink(4).faint(-3))"
+                (focus)="onArcFocus('S0', pal.ink(4).faint(-3))" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" docTip="volute.s0End">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="getFieldDeg(scroll.S0, 'end')" (ngModelChange)="setFieldDeg(scroll.S0, 'end', $event, onChange.bind(this)); onArcFocus('S0', pal.ink(4).mod(0.55))"
-                (focus)="onArcFocus('S0', pal.ink(4).mod(0.55))" (blur)="onArcBlur()" />
+                [ngModel]="getFieldDeg(scroll.S0, 'end')" (ngModelChange)="setFieldDeg(scroll.S0, 'end', $event, onChange.bind(this)); onArcFocus('S0', pal.ink(4).faint(-3))"
+                (focus)="onArcFocus('S0', pal.ink(4).faint(-3))" (blur)="onArcBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">

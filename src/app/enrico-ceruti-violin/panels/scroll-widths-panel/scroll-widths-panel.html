@@ -39,10 +39,10 @@
                 [(ngModel)]="nk.nutWidth" (input)="onChange()" (focus)="onPointFocus('nut')" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(4).mod(0.55)"
+            <span class="field-title" [style.color]="pal.ink(4).faint(-3)"
                 docTip="scrollWidths.wall">Wall
                 <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(4).mod(0.55)"
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(4).faint(-3)"
                 [(ngModel)]="v.pegbox.wall" (input)="onChange()" />
         </label>
     </div>

@@ -4,44 +4,44 @@
     <div class="ui-group-title">Back</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).mod(0.6)" docTip="scroll.s2">S2 R <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(1).mod(0.6)"
-                [(ngModel)]="scroll.S2.r" (input)="onChange(); onArcFocus('S2', pal.ink(1).mod(0.6))"
-                (focus)="onArcFocus('S2', pal.ink(1).mod(0.6))" (blur)="onArcBlur()" />
+            <span class="field-title" [style.color]="pal.ink(1).faint(-3)" docTip="scroll.s2">S2 R <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(1).faint(-3)"
+                [(ngModel)]="scroll.S2.r" (input)="onChange(); onArcFocus('S2', pal.ink(1).faint(-3))"
+                (focus)="onArcFocus('S2', pal.ink(1).faint(-3))" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" docTip="scroll.s2End">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="getFieldDeg(scroll.S2, 'end')" (ngModelChange)="setFieldDeg(scroll.S2, 'end', $event, onChange.bind(this)); onArcFocus('S2', pal.ink(1).mod(0.6))"
-                (focus)="onArcFocus('S2', pal.ink(1).mod(0.6))" (blur)="onArcBlur()" />
+                [ngModel]="getFieldDeg(scroll.S2, 'end')" (ngModelChange)="setFieldDeg(scroll.S2, 'end', $event, onChange.bind(this)); onArcFocus('S2', pal.ink(1).faint(-3))"
+                (focus)="onArcFocus('S2', pal.ink(1).faint(-3))" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).mod(0.6)" docTip="scroll.backStraight">Straight <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(1).mod(0.6)"
-                [(ngModel)]="scroll.backStraight" (input)="onChange(); onArcFocus('backStraight', pal.ink(1).mod(0.6))"
-                (focus)="onArcFocus('backStraight', pal.ink(1).mod(0.6))" (blur)="onArcBlur()" />
+            <span class="field-title" [style.color]="pal.ink(1).faint(-3)" docTip="scroll.backStraight">Straight <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(1).faint(-3)"
+                [(ngModel)]="scroll.backStraight" (input)="onChange(); onArcFocus('backStraight', pal.ink(1).faint(-3))"
+                (focus)="onArcFocus('backStraight', pal.ink(1).faint(-3))" (blur)="onArcBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).mod(0.2)" docTip="scroll.s3">S3 R <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(1).mod(0.2)"
-                [(ngModel)]="scroll.S3.r" (input)="onChange(); onArcFocus('S3', pal.ink(1).mod(0.2))"
-                (focus)="onArcFocus('S3', pal.ink(1).mod(0.2))" (blur)="onArcBlur()" />
+            <span class="field-title" [style.color]="pal.ink(1).faint(-1)" docTip="scroll.s3">S3 R <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(1).faint(-1)"
+                [(ngModel)]="scroll.S3.r" (input)="onChange(); onArcFocus('S3', pal.ink(1).faint(-1))"
+                (focus)="onArcFocus('S3', pal.ink(1).faint(-1))" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" docTip="scroll.hang">Hang <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [(ngModel)]="scroll.hang" (input)="onChange(); onArcFocus('S3', pal.ink(1).mod(0.2))"
-                (focus)="onArcFocus('S3', pal.ink(1).mod(0.2))" (blur)="onArcBlur()" />
+                [(ngModel)]="scroll.hang" (input)="onChange(); onArcFocus('S3', pal.ink(1).faint(-1))"
+                (focus)="onArcFocus('S3', pal.ink(1).faint(-1))" (blur)="onArcBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).mod(-0.3)" docTip="scroll.nape">Nape R <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(1).mod(-0.3)"
-                [(ngModel)]="scroll.nape.r" (input)="onChange(); onArcFocus('nape', pal.ink(1).mod(-0.3))"
-                (focus)="onArcFocus('nape', pal.ink(1).mod(-0.3))" (blur)="onArcBlur()" />
+            <span class="field-title" [style.color]="pal.ink(1).faint(5)" docTip="scroll.nape">Nape R <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(1).faint(5)"
+                [(ngModel)]="scroll.nape.r" (input)="onChange(); onArcFocus('nape', pal.ink(1).faint(5))"
+                (focus)="onArcFocus('nape', pal.ink(1).faint(5))" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <div class="toggle" docTip="scroll.napeCircle">
@@ -72,10 +72,10 @@
     <div class="ui-group-title">Front</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(4).mod(0.55)" docTip="scroll.flat">Flat <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(4).mod(0.55)"
-                [(ngModel)]="scroll.flat" (input)="onChange(); onArcFocus('flat', pal.ink(4).mod(0.55))"
-                (focus)="onArcFocus('flat', pal.ink(4).mod(0.55))" (blur)="onArcBlur()" />
+            <span class="field-title" [style.color]="pal.ink(4).faint(-3)" docTip="scroll.flat">Flat <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(4).faint(-3)"
+                [(ngModel)]="scroll.flat" (input)="onChange(); onArcFocus('flat', pal.ink(4).faint(-3))"
+                (focus)="onArcFocus('flat', pal.ink(4).faint(-3))" (blur)="onArcBlur()" />
         </label>
         @if (params.neck; as nk) {
         <label class="field-cell">
@@ -107,10 +107,10 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(4).mod(0.55)" docTip="scroll.f1">F1 R <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(4).mod(0.55)"
-                [(ngModel)]="scroll.F1.r" (input)="onChange(); onArcFocus('F1', pal.ink(4).mod(0.55))"
-                (focus)="onArcFocus('F1', pal.ink(4).mod(0.55))" (blur)="onArcBlur()" />
+            <span class="field-title" [style.color]="pal.ink(4).faint(-3)" docTip="scroll.f1">F1 R <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="pal.ink(4).faint(-3)"
+                [(ngModel)]="scroll.F1.r" (input)="onChange(); onArcFocus('F1', pal.ink(4).faint(-3))"
+                (focus)="onArcFocus('F1', pal.ink(4).faint(-3))" (blur)="onArcBlur()" />
         </label>
     </div>
 </section>
