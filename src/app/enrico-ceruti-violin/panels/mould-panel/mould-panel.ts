@@ -53,15 +53,15 @@ export const renderMould = (
   mouldPath: string,
   innerPath: string,
 ) => (g: any, ui: any): void => {
-  showInnerPath && renderPath(innerPath, pal.neutral.css)(g, ui);
-  renderPath(mouldPath, pal.neutral.css)(g, ui);
+  showInnerPath && renderPath(innerPath, pal.neutral)(g, ui);
+  renderPath(mouldPath, pal.neutral)(g, ui);
 
   if (showBlocks) {
-    renderRect(params.blocks.U!, pal.ink(1).css)(g, ui);
-    renderRect(params.blocks.CU!, pal.ink(0).css)(g, ui);
-    renderRect(flipRectAboutY(params.blocks.CU!), pal.ink(0).css)(g, ui);
-    renderRect(params.blocks.CL!, pal.ink(0).lightness(0.5).css)(g, ui);
-    renderRect(flipRectAboutY(params.blocks.CL!), pal.ink(0).lightness(0.5).css)(g, ui);
-    renderRect(params.blocks.L!, pal.ink(2).css)(g, ui);
+    renderRect(params.blocks.U!, pal.ink(2))(g, ui);
+    renderRect(params.blocks.CU!, pal.ink(5))(g, ui);
+    renderRect(flipRectAboutY(params.blocks.CU!), pal.ink(5))(g, ui);
+    renderRect(params.blocks.CL!, pal.ink(3))(g, ui);
+    renderRect(flipRectAboutY(params.blocks.CL!), pal.ink(3))(g, ui);
+    renderRect(params.blocks.L!, pal.ink(1))(g, ui);
   }
 };

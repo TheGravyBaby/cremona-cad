@@ -20,7 +20,7 @@ import { TooltipDirective } from '../../../docs/tooltips';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FlutingPanel extends CerutiPanelBase implements OnInit {
-  protected override readonly paletteId: PaletteId = 'plates';
+  protected override readonly paletteId: PaletteId = 'varnish';
   static readonly renderToggles: readonly RenderToggleKey[] = [];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
@@ -64,7 +64,7 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
     const renders: RenderLayer[] = renderPlatePair(p, this.paths, this.pal, STROKE_WEIGHT.guide);
     for (const plate of ['top', 'bottom'] as const) {
       const g = plate === 'top' ? top : back;
-      const color = plate === 'top' ? this.pal.ink(0).css : this.pal.ink(2).css;
+      const color = plate === 'top' ? this.pal.ink(4) : this.pal.ink(1);
       const dx = plateLayoutOffset(p, plate);
       const at = (path: string): string => translatePath(path, dx, 0);
 

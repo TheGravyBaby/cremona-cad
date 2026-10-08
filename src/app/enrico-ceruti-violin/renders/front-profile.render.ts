@@ -16,7 +16,7 @@ type Layer = (g: any, ui: any) => void;
 // be later work getting in the way of the shape being set.
 export function renderFrontInnerProfile(p: EnricoCerutiParams, pal: PanelPalette, failures: SolveFailure[] = []): Layer[] {
   const inner = defineInnerPath(p, failures.flatMap(f => f.unsolved));
-  return inner ? [renderPath(inner, pal.neutral.css)] : [];
+  return inner ? [renderPath(inner, pal.neutral)] : [];
 }
 
 // the top plate from its plan, the neck laid over it once the solve reached it and the scroll's front
@@ -25,11 +25,11 @@ export function renderFrontInnerProfile(p: EnricoCerutiParams, pal: PanelPalette
 function renderTopPlate(p: EnricoCerutiParams, plan: PlatePlan, pal: PanelPalette, weight: number, holes: { ink: string; weight: number }, solve: NeckProfileSolve): Layer[] {
   const front = solve.neck ? defineFrontProfilePath(p, plan) : null;
   const body = front ? front.body : plan;
-  const layers = [renderPath(body.outline, pal.neutral.css, weight)];
-  for (const d of body.purfling) layers.push(renderPath(d, pal.neutral.css, STROKE_WEIGHT.guide));
+  const layers = [renderPath(body.outline, pal.neutral, weight)];
+  for (const d of body.purfling) layers.push(renderPath(d, pal.neutral, STROKE_WEIGHT.guide));
   for (const d of body.fHoles) layers.push(renderPath(d, holes.ink, holes.weight));
-  if (front) layers.push(renderPath(front.neck, pal.neutral.css), renderPath(front.nut, pal.neutral.css));
-  if (front && solve.scroll) for (const stroke of scrollFrontInPlan(p)) layers.push(renderStroke(stroke, pal.neutral.css));
+  if (front) layers.push(renderPath(front.neck, pal.neutral), renderPath(front.nut, pal.neutral));
+  if (front && solve.scroll) for (const stroke of scrollFrontInPlan(p)) layers.push(renderStroke(stroke, pal.neutral));
   return layers;
 }
 
@@ -45,7 +45,7 @@ export function renderFrontProfile(
   let plan = topPlatePaths(p, paths);
   if (opts.fHoles === false) plan = { ...plan, fHoles: [] };
   if (opts.purfling === false) plan = { ...plan, purfling: [] };
-  return renderTopPlate(p, plan, pal, STROKE_WEIGHT.trace, { ink: pal.neutral.css, weight: STROKE_WEIGHT.trace }, solve);
+  return renderTopPlate(p, plan, pal, STROKE_WEIGHT.trace, { ink: pal.neutral, weight: STROKE_WEIGHT.trace }, solve);
 }
 
 // both plates in plan from the path cache, for the panels that work on the plates themselves: the top
@@ -60,14 +60,14 @@ export function renderPlatePair(p: EnricoCerutiParams, paths: PathEntry[], pal: 
   const top = topPlatePaths(p, paths);
   const backOutline = getPath(paths, 'back');
   const layers = [
-    ...renderTopPlate(p, top, pal, weight, { ink: pal.neutral.css, weight: STROKE_WEIGHT.guide }, solve),
-    renderPath(back(backOutline), pal.neutral.css, weight),
-    ...top.purfling.map(d => renderPath(back(d), pal.neutral.css, STROKE_WEIGHT.guide)),
+    ...renderTopPlate(p, top, pal, weight, { ink: pal.neutral, weight: STROKE_WEIGHT.guide }, solve),
+    renderPath(back(backOutline), pal.neutral, weight),
+    ...top.purfling.map(d => renderPath(back(d), pal.neutral, STROKE_WEIGHT.guide)),
   ];
   if (solve.neck) {
     const neck = defineBackNeckPath(p, backOutline);
-    if (neck) layers.push(renderPath(back(neck), pal.neutral.css));
-    if (solve.scroll) for (const stroke of scrollBackInPlan(p, dx)) layers.push(renderStroke(stroke, pal.neutral.css));
+    if (neck) layers.push(renderPath(back(neck), pal.neutral));
+    if (solve.scroll) for (const stroke of scrollBackInPlan(p, dx)) layers.push(renderStroke(stroke, pal.neutral));
   }
   return layers;
 }

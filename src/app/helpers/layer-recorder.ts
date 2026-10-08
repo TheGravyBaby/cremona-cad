@@ -37,13 +37,14 @@ class FakeSelection {
     return new FakeSelection(this.sink, this.layer, element);
   }
 
+  // an Ink is a String object; the DOM would coerce it, and a spec compares strokes with ===
   attr(key: string, value: unknown): FakeSelection {
-    if (this.element) this.element.attrs[key] = value;
+    if (this.element) this.element.attrs[key] = value instanceof String ? value.valueOf() : value;
     return this;
   }
 
   style(key: string, value: unknown): FakeSelection {
-    if (this.element) this.element.attrs[`style:${key}`] = value;
+    if (this.element) this.element.attrs[`style:${key}`] = value instanceof String ? value.valueOf() : value;
     return this;
   }
 

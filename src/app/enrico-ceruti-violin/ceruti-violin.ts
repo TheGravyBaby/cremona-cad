@@ -179,9 +179,9 @@ export class CerutiViolin extends RecipeComponentBase {
   private renderInstrumentProfile(): Array<(g: any, ui: any) => void> {
     const p = this.d.params;
     const failures = calculateMainBouts(p);
-    if (failures.length) return [renderSolveFailures(failures, this.pal.alert.css)];
+    if (failures.length) return [renderSolveFailures(failures, this.pal.alert)];
     const downstream = ensureFrontProfilePaths(p, this.d.paths);
-    return [...renderFrontProfile(p, this.d.paths, this.pal, downstream), renderSolveFailures(downstream.failures, this.pal.alert.css)];
+    return [...renderFrontProfile(p, this.d.paths, this.pal, downstream), renderSolveFailures(downstream.failures, this.pal.alert)];
   }
 
   loadTemplate(key: string): void {

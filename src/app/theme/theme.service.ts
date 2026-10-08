@@ -4,16 +4,17 @@ import { ALERT, NEUTRAL, PALETTES, Palette } from './palettes';
 
 export type ThemeMode = 'day' | 'night';
 
-export interface Ink {
-  // t in [-1, 1], the fraction of the way from this tone to the band's edge: +1 is as light as the
-  // canvas allows, -1 as dark, so no step ever leaves the legible band in either mode
-  lightness(t: number): Ink;
-  // t in [-1, 1]: -1 is grey, +1 fully saturated
-  saturation(t: number): Ink;
-  // toward the canvas, whichever side that is in this mode: a guide that should sit behind the
-  // subject fades the same way by day and by night
-  fade(t: number): Ink;
-  readonly css: string;
+// an ink is its hex, so it goes wherever a colour string goes, and `mod` is a modified hex. Each
+// argument is in [-1, 1], 0 leaving the ink alone: lightness is the fraction of the way to the
+// edge of the band that reads against the canvas, +1 as light as that allows and -1 as dark;
+// saturation runs -1 grey to +1 fully saturated; fade is toward the canvas, whichever side that
+// is in this mode, so a guide behind its subject fades the same way by day and by night
+export type Ink = string & { mod(lightness?: number, saturation?: number, fade?: number): string };
+
+// a String object, not a primitive, since a primitive can't carry `mod`. It coerces wherever it's
+// used as a colour, but it compares by identity: test it with String(ink), never ===
+function ink(css: string, mod: Ink['mod']): Ink {
+  return Object.assign(new String(css), { mod }) as unknown as Ink;
 }
 
 // what a panel draws with: the palette it named, read by position and wrapping past its end,
@@ -117,33 +118,7 @@ const BASE_MARGIN = 0.1;
 
 interface Band { lo: number; hi: number; canvasSide: -1 | 1 }
 
-class RampInk implements Ink {
-  constructor(private readonly h: number, private readonly s: number, private readonly l: number, private readonly band: Band) {}
-
-  lightness(t: number): Ink {
-    const k = Math.max(-1, Math.min(1, t));
-    const l = k >= 0 ? this.l + k * (this.band.hi - this.l) : this.l + k * (this.l - this.band.lo);
-    return new RampInk(this.h, this.s, l, this.band);
-  }
-
-  saturation(t: number): Ink {
-    const k = Math.max(-1, Math.min(1, t));
-    const s = k >= 0 ? this.s + k * (1 - this.s) : this.s * (1 + k);
-    return new RampInk(this.h, s, this.l, this.band);
-  }
-
-  fade(t: number): Ink {
-    return this.lightness(this.band.canvasSide * Math.max(0, Math.min(1, t)));
-  }
-
-  get css(): string {
-    return toHex(hslToRgb({ h: this.h, s: this.s, l: this.l }));
-  }
-
-  toString(): string {
-    return this.css;
-  }
-}
+const unit = (t: number) => Math.max(-1, Math.min(1, t));
 
 // the run of lightness, at this hue and saturation, that clears `floor` against the canvas: the
 // longest such run when the canvas is mid-toned enough to allow one on each side. A hue that
@@ -172,7 +147,12 @@ export function makeInk(color: string, mode: ThemeMode, canvasBg: string): Ink {
   const margin = BASE_MARGIN * (band.hi - band.lo);
   const lo = Math.max(band.lo + margin, base.lo), hi = Math.min(band.hi - margin, base.hi);
   const l = lo <= hi ? Math.max(lo, Math.min(hi, l0)) : (base.lo + base.hi) / 2;
-  return new RampInk(h, s, l, band);
+  const ramp = (from: number, t: number) => (t >= 0 ? from + t * (band.hi - from) : from + t * (from - band.lo));
+  const hex = (sat: number, light: number) => toHex(hslToRgb({ h, s: sat, l: light }));
+  return ink(hex(s, l), (lightness = 0, saturation = 0, fade = 0) => {
+    const k = unit(saturation);
+    return hex(k >= 0 ? s + k * (1 - s) : s * (1 + k), ramp(ramp(l, unit(lightness)), band.canvasSide * Math.max(0, unit(fade))));
+  });
 }
 
 export function resolveTheme(palettes: Record<string, Palette>, mode: ThemeMode, canvasBg: string): Theme {
@@ -199,8 +179,8 @@ export class ThemeService {
     effect(() => {
       const theme = this.theme();
       const root = this.doc.documentElement;
-      root.style.setProperty('--ink-neutral', theme.neutral.css);
-      root.style.setProperty('--ink-alert', theme.alert.css);
+      root.style.setProperty('--ink-neutral', theme.neutral);
+      root.style.setProperty('--ink-alert', theme.alert);
     });
   }
 

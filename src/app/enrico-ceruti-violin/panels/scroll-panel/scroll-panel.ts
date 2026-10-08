@@ -28,7 +28,7 @@ export type ScrollHighlightKey = 'S2' | 'S3' | 'nape' | 'F0' | 'F1' | 'backStrai
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class ScrollPanel extends CerutiPanelBase implements OnInit {
-  protected override readonly paletteId: PaletteId = 'scroll';
+  protected override readonly paletteId: PaletteId = 'workshop';
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
@@ -86,9 +86,9 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
       renderScrollNeck(p, this.pal, false, failures),
       failures.length
         ? renderVolute(p, this.pal, this.flags, false, null, failures)
-        : renderPath(defineSideScrollPath(p), this.pal.neutral.css, STROKE_WEIGHT.trace),
+        : renderPath(defineSideScrollPath(p), this.pal.neutral, STROKE_WEIGHT.trace),
       renderScroll(p, this.pal, this.flags, true, highlighted, highlightedLine, failures),
-      renderSolveFailures(failures, this.pal.alert.css),
+      renderSolveFailures(failures, this.pal.alert),
     ];
   }
 }
@@ -115,20 +115,20 @@ export const renderScroll = (
   if (currentModule && flags.showModuleGuides && solved('S3')) {
     const { height, width } = scrollExtent(v);
     const corners = [new Pt(0, 0), new Pt(0, height), new Pt(-width, height), new Pt(-width, 0)];
-    for (let i = 0; i < 4; i++) renderDashLine(corners[i], corners[(i + 1) % 4], pal.ink(0).saturation(-0.25).css, STROKE_WEIGHT.guide)(g, ui);
+    for (let i = 0; i < 4; i++) renderDashLine(corners[i], corners[(i + 1) % 4], pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   }
 
-  solved('S2') && scrollArc(v.S2, pal.ink(2).lightness(0.6).css, fancy)(g, ui);
-  solved('S3') && scrollArc(v.S3, pal.ink(2).lightness(0.2).css, fancy)(g, ui);
-  solved('nape') && scrollArc(v.nape, pal.ink(2).lightness(-0.3).css, fancy)(g, ui);
-  solved('F0') && scrollArc(v.F0, pal.ink(0).saturation(0.4).lightness(0.15).css, fancy)(g, ui);
-  solved('F1') && scrollArc(v.F1, pal.ink(0).lightness(0.55).css, fancy)(g, ui);
+  solved('S2') && scrollArc(v.S2, pal.ink(1).mod(0.6), fancy)(g, ui);
+  solved('S3') && scrollArc(v.S3, pal.ink(1).mod(0.2), fancy)(g, ui);
+  solved('nape') && scrollArc(v.nape, pal.ink(1).mod(-0.3), fancy)(g, ui);
+  solved('F0') && scrollArc(v.F0, pal.ink(4), fancy)(g, ui);
+  solved('F1') && scrollArc(v.F1, pal.ink(4).mod(0.55), fancy)(g, ui);
 
   // a straight of no length, or a duck tail already at the nape, has nothing to draw
   const line = ([a, b]: [Pt, Pt], color: string) => dist(a, b) > 1e-9 && renderSegment(a, b, color, STROKE_WEIGHT.trace)(g, ui);
   const lines = scrollLines(p);
-  solved('backStraight') && line(lines.backStraight, pal.ink(2).lightness(0.6).css);
-  solved('nape') && line(lines.square, pal.ink(2).lightness(-0.3).css);
-  solved('flat') && line(lines.flat, pal.ink(0).lightness(0.55).css);
-  solved('frontStraight') && line(lines.frontStraight, pal.ink(0).saturation(0.4).lightness(0.15).css);
+  solved('backStraight') && line(lines.backStraight, pal.ink(1).mod(0.6));
+  solved('nape') && line(lines.square, pal.ink(1).mod(-0.3));
+  solved('flat') && line(lines.flat, pal.ink(4).mod(0.55));
+  solved('frontStraight') && line(lines.frontStraight, pal.ink(4));
 };
