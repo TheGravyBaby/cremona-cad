@@ -9,7 +9,7 @@
             <span class="field-title">Land Edge <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0"
                 [(ngModel)]="params.outerFlutingDepth" (input)="onChange()"
-                [style.border-color]="pal.neutral.css"
+                [style.border-color]="pal.neutral"
                 docTip="fluting.landEdge" />
         </label>
         <button type="button" class="info-icon" (click)="help('gougeCenterline')" title="More information">ⓘ</button>
@@ -25,21 +25,21 @@
     </div>
 </section>
 
-<section class="ui-group" [style.border-color]="pal.ink(0).css">
+<section class="ui-group" [style.border-color]="pal.ink(4)">
     <div class="ui-group-title">Top Plate</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0.1"
                 [(ngModel)]="top.sweepRadius" (input)="onChange()"
-                [style.border-color]="pal.ink(0).css"
+                [style.border-color]="pal.ink(4)"
                 docTip="fluting.sweep" />
         </label>
         <label class="field-cell">
             <span class="field-title">Depth <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0"
                 [(ngModel)]="top.depth" (input)="onChange()"
-                [style.border-color]="pal.ink(0).css"
+                [style.border-color]="pal.ink(4)"
                 docTip="fluting.depth" />
         </label>
         <label class="field-cell">
@@ -60,7 +60,7 @@
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0.1"
                 [(ngModel)]="top.sweepRadius_cBout" (input)="onChange()"
-                [style.border-color]="pal.ink(0).css"
+                [style.border-color]="pal.ink(4)"
                 docTip="fluting.cBoutSweep" />
         </label>
         <label class="field-cell">
@@ -73,21 +73,21 @@
     </div>
 </section>
 
-<section class="ui-group" [style.border-color]="pal.ink(2).css">
+<section class="ui-group" [style.border-color]="pal.ink(1)">
     <div class="ui-group-title">Back Plate</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0.1"
                 [(ngModel)]="back.sweepRadius" (input)="onChange()"
-                [style.border-color]="pal.ink(2).css"
+                [style.border-color]="pal.ink(1)"
                 docTip="fluting.sweep" />
         </label>
         <label class="field-cell">
             <span class="field-title">Depth <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0"
                 [(ngModel)]="back.depth" (input)="onChange()"
-                [style.border-color]="pal.ink(2).css"
+                [style.border-color]="pal.ink(1)"
                 docTip="fluting.depth" />
         </label>
         <label class="field-cell">
@@ -109,7 +109,7 @@
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0.1"
                 [(ngModel)]="back.sweepRadius_cBout" (input)="onChange()"
-                [style.border-color]="pal.ink(2).css"
+                [style.border-color]="pal.ink(1)"
                 docTip="fluting.cBoutSweep" />
         </label>
         <label class="field-cell">

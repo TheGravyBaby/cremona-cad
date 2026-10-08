@@ -1,51 +1,43 @@
 // every colour and stroke the drawing uses. A palette is a list of inks, any length, that a panel
 // reads by position (`pal.ink(1)`) wrapping past the end, so a panel wanting two inks can take a
-// palette of six. Inks are picked for the night canvas; `theme.service.ts` remaps each into the
-// band that reads by day. The names say where each palette was lifted from, not who may read it:
-// a panel names any of them in its `paletteId`. Add a palette here and it's available
+// palette of six. Each distinct part a panel draws takes its own ink, added here when the palette
+// runs short; an ink's `lightness` and `fade` only tell siblings of one part apart (the arcs of
+// one bout, the turns of a spiral, a guide behind its subject), never stand in for another
+// colour. Inks are picked for the night canvas; `theme.service.ts` remaps each into the band that
+// reads by day. The names say where each palette was lifted from, not who may read it: a panel
+// names any of them in its `paletteId`
 export interface Palette {
   name: string;
   inks: readonly string[];
 }
 
+// the trace grey for earlier work and construction, and the solve-failure red, belong to the
+// theme rather than any palette, so they read the same whichever palette a panel took
+export const NEUTRAL = '#868484';
+export const ALERT = '#d62828';
+
+// every palette has the same six slots, cool to hot by descending hue: violet, blue, green, yellow,
+// orange, red. A panel reads a part's slot, so it draws the same part in the same slot whichever
+// palette it names. Varnish and workshop take their colours from Sanzo Wada's dictionary
 export const PALETTES = {
-  // the outline's colours from the app's first years: the corners' orange, the upper bout's green,
-  // the lower bout's blue, and a violet for whatever a fourth part needs
   classicCremona: {
     name: 'Classic Cremona',
-    inks: ['#d38032', '#4d8660', '#4d74a8', '#e1bf50ff', '#C24B2E', '#a969b4', ],
+    inks: ['#a969b4', '#4d74a8', '#4d8660', '#e1bf50ff', '#d38032', '#C24B2E'],
   },
-  // the two plates as the arching panels first drew them: the top's warm, the fluting's green, the
-  // back's blue
-  plates: {
-    name: 'Plates',
-    inks: ['#c47b3a', '#478968', '#4d74a8', '#9a66b4'],
+  // blue violet, blue, diamine green, orange yellow, orange, red orange
+  varnish: {
+    name: 'Varnish',
+    inks: ['#6450a1', '#006eb8', '#1a7444', '#fcb315', '#f37420', '#dd4027'],
   },
-  // the f-holes' first colours: the cut's orange, the upper eye's green, a blue, the lower eye's
-  // violet. The stem draws in the neutral
-  fHoles: {
-    name: 'F-Holes',
-    inks: ['#e08a1e', '#3fa568', '#4d74a8', '#a969b4'],
-  },
-  // the neck set's first colours: the neck's tan, the fret marks' green, the back plate's blue for
-  // the button, the fingerboard's violet
-  neck: {
-    name: 'Neck',
-    inks: ['#b07a3c', '#2e9e44', '#4d74a8', '#8a6cb8'],
-  },
-  // the scroll's first colours: the front's warm, the turns' green, the back's blue, the nut's violet
-  scroll: {
-    name: 'Scroll',
-    inks: ['#e8952f', '#3aa58a', '#5c82d6', '#6f4d9a'],
+  // dull blue violet, olympic blue, pistachio green, olive ocher, cinnamon rufous, etruscan red
+  workshop: {
+    name: 'Workshop',
+    inks: ['#80719e', '#5a82b3', '#648f7b', '#d6b43e', '#c27544', '#c55347'],
   },
 } as const satisfies Record<string, Palette>;
 
 export type PaletteId = keyof typeof PALETTES;
 
-// the trace grey for earlier work and construction, and the solve-failure red, belong to the
-// theme rather than any palette, so they read the same whichever palette a panel took
-export const NEUTRAL = '#868484';
-export const ALERT = '#d62828';
 
 // the toolbox's own colours: the pen a new shape is stamped with, the preview of a shape being
 // drawn, and the selection, snap and grabber marks over it. Fixed in both modes, since a pen

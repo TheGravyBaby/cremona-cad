@@ -27,7 +27,7 @@ The folders are reading groups, not dependency layers — `ceruti-calcs` reaches
 | `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `source` link and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
 | `templates/local/` | Gitignored developer scratch space — traces and theories with no provenance to check, never shipped, never swept by the suite. Shows up in the picker only on a local dev build. See that folder's `README.md`. |
 | `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. The ⓘ write-ups, explanatory tooltips and condition messages live under `src/app/docs/` (root CLAUDE.md), not in the panel; `panels/render-toggles/` is the strip of per-panel view toggles. |
-| `renders/` | Violin drawing several panels share. `front-profile.render.ts` is the instrument as far as it's been taken, see *The front profile* below; `body-side-profile.render.ts` the side elevation both the long-arching and neck panels draw on; `render-constants.ts` the highlight types. Colour comes in as the panel's `PanelPalette` (`src/app/theme/`, root CLAUDE.md) and is read by position, `pal.ink(2).lightness(0.6).css`. A panel's own renders live in its panel file. |
+| `renders/` | Violin drawing several panels share. `front-profile.render.ts` is the instrument as far as it's been taken, see *The front profile* below; `body-side-profile.render.ts` the side elevation both the long-arching and neck panels draw on; `render-constants.ts` the highlight types. Colour comes in as the panel's `PanelPalette` (`src/app/theme/`, root CLAUDE.md) and is read by position, `pal.ink(2)` or `pal.ink(2).mod(0.6)`. A panel's own renders live in its panel file. |
 
 `ceruti-calcs.ts` → `ceruti-paths.ts` is the 2D outline pipeline; `ceruti-arching.ts` →
 `ceruti-arch-geometry.ts` → `ceruti-surface.ts` is the 3D one. The split between the last two is
@@ -52,15 +52,18 @@ section first → long arch carved to a template → crown across. The panel ord
 - **Colour is positional: a panel names a palette and reads `pal.ink(i)`, never a part's name**
   (2026-10-07). Sixty hand-picked hexes became a `CerutiColors` role map for a day, then went
   entirely: `CerutiPanelBase` takes the `Theme` as its input, `paletteId` says which palette this
-  panel reads (the outline panels `classicCremona`, the plate panels `plates`, the f-hole panels
-  `fHoles`, the neck set `neck`, the scroll panels `scroll`, each lifted from the colours those
-  panels first had), and `pal` is that palette resolved, which every render function takes too. Palettes are interchangeable lists of any length, read wrapping,
-  so a panel's colours change by naming another palette, not by changing keys. Shared parts keep
+  panel reads (the outline and outer trace panels `classicCremona`, the plate and f-hole panels
+  `varnish`, the neck set and scroll panels `workshop`), and `pal` is that palette resolved, which
+  every render function takes too. Every palette has the same six slots, cool to hot (violet,
+  blue, green, yellow, orange, red), so a panel's colours change by naming another palette, not by
+  changing keys. A distinct part takes a distinct slot (the corners' yellow and red, the stem's
+  blue, the nut, root and bridge; 2026-10-08); `mod`'s lightness only separates siblings of one
+  part, the fret ticks on the fingerboard's ink for one. Shared parts keep
   one colour because one render function draws them (the front profile, the neck, the scroll
   views). The scroll views emit part tokens (`front`, `back`, `turns`, `neck`…) that `viewInk` in
   the widths panel maps to inks. The `Off`/`Off2`/`Muted` greyings are gone (root CLAUDE.md, *Colour
-  has two tiers*). Specs that need to tell strokes apart use `labelTheme()`, whose inks' `css` is
-  their recipe (`ink2+0.6`, `neutral-0.3`), so a tone change shows up as a label change in the spec.
+  has two tiers*). Specs that need to tell strokes apart use `labelTheme()`, whose inks are their
+  recipe (`ink2+0.6`, `neutral-0.3`), so a tone change shows up as a label change in the spec.
 - **A reference image can be scoped to particular panels**, via `scope` on
   `ReferenceImage`/`ImageShape` — full mechanics are in `draft-canvas/tools/CLAUDE.md`. What's
   specific to this model: `initializePanelFlow` hands `panelOrder` down to

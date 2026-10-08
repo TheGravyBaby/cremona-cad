@@ -123,9 +123,9 @@ export function solveFourCircles(p: FourCirclesParams): FourCircles {
   };
 }
 
-// the three circles on the palette's second, first and third inks, as the violin's bouts are
+// the three circles on the upper bout's green, the centre's orange and the lower bout's blue, as the violin's bouts are
 export const renderFourCircles = (s: FourCircles, flags: FourCirclesViewFlags, pal: PanelPalette) => (g: any, ui: any): void => {
-  const [upper, center, lower] = [pal.ink(1).css, pal.ink(0).css, pal.ink(2).css];
+  const [upper, center, lower] = [pal.ink(2), pal.ink(4), pal.ink(1)];
   const arcs: Array<[Arc, string]> = [[s.upper, upper], [s.center, center], [s.lower, lower]];
 
   if (flags.showCircles) {
@@ -136,8 +136,8 @@ export const renderFourCircles = (s: FourCircles, flags: FourCirclesViewFlags, p
     renderCrosshair(flipCircleAboutY(s.center), center)(g, ui);
     // where the circles touch: the upper arc starts there and the lower arc ends there
     for (const t of [pointOnCircle(s.upper, s.upper.start), pointOnCircle(s.lower, s.lower.end)]) {
-      renderSmallCrosshair(t, pal.neutral.css)(g, ui);
-      renderSmallCrosshair(flipPointAboutY(t), pal.neutral.css)(g, ui);
+      renderSmallCrosshair(t, pal.neutral)(g, ui);
+      renderSmallCrosshair(flipPointAboutY(t), pal.neutral)(g, ui);
     }
   }
 

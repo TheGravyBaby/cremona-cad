@@ -6,8 +6,8 @@
         <label class="field-cell">
             <span class="field-title">U2 Join Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.U2!.r"
-                (input)="onChange(); onArcFocus(params.bouts.U2!, pal.ink(1).css)" [style.borderColor]="pal.ink(1).css"
-                (focus)="onArcFocus(params.bouts.U2!, pal.ink(1).css)" (blur)="onArcBlur()" />
+                (input)="onChange(); onArcFocus(params.bouts.U2!, pal.ink(2))" [style.borderColor]="pal.ink(2)"
+                (focus)="onArcFocus(params.bouts.U2!, pal.ink(2))" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title"> <span class="unit-label"></span></span>
@@ -30,7 +30,7 @@
                 <span class="field-title">Y <span class="unit-label">mm</span></span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Upper corner position"
-                [style.borderColor]="pal.ink(4).css"
+                [style.borderColor]="pal.ink(5)"
                 title="Arrow keys move the corner from either box">
                 <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Upper corner X"
                     [(ngModel)]="params.bouts.UCr!.x"
@@ -55,8 +55,8 @@
             <label class="field-cell">
                 <span class="field-title">U3 Corner Radius <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.U3!.r"
-                    (input)="onChange(); onArcFocus(params.bouts.U3!, pal.ink(4).css)" [style.borderColor]="pal.ink(4).css"
-                    (focus)="onArcFocus(params.bouts.U3!, pal.ink(4).css)" (blur)="onArcBlur()" />
+                    (input)="onChange(); onArcFocus(params.bouts.U3!, pal.ink(5))" [style.borderColor]="pal.ink(5)"
+                    (focus)="onArcFocus(params.bouts.U3!, pal.ink(5))" (blur)="onArcBlur()" />
             </label>
             <label class="field-cell">
                 <div class="toggle">
@@ -77,15 +77,15 @@
                 <label class="field-cell">
                     <span class="field-title">U31 Radius <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.U31!.r"
-                        (input)="onChange(); onArcFocus(params.bouts.U31!, pal.ink(4).css)" [style.borderColor]="pal.ink(4).css"
-                        (focus)="onArcFocus(params.bouts.U31!, pal.ink(4).css)" (blur)="onArcBlur()" />
+                        (input)="onChange(); onArcFocus(params.bouts.U31!, pal.ink(5))" [style.borderColor]="pal.ink(5)"
+                        (focus)="onArcFocus(params.bouts.U31!, pal.ink(5))" (blur)="onArcBlur()" />
                 </label>
                 <label class="field-cell">
                     <span class="field-title">Split Angle <span class="unit-label">°</span></span>
                     <input type="number" class="basic-input" step="1" [ngModel]="params.bouts.U31!.degreeDiff"
-                        (ngModelChange)="adjustArcStart(params.bouts.U31!, $event, onChange.bind(this)); onArcFocus(params.bouts.U31!, pal.ink(4).css)"
-                        [style.borderColor]="pal.ink(4).css"
-                        (focus)="onArcFocus(params.bouts.U31!, pal.ink(4).css)" (blur)="onArcBlur()" />
+                        (ngModelChange)="adjustArcStart(params.bouts.U31!, $event, onChange.bind(this)); onArcFocus(params.bouts.U31!, pal.ink(5))"
+                        [style.borderColor]="pal.ink(5)"
+                        (focus)="onArcFocus(params.bouts.U31!, pal.ink(5))" (blur)="onArcBlur()" />
                 </label>
                 <label class="field-cell">
                     <span class="field-title">U31 to LBW</span>
@@ -118,7 +118,7 @@
                 <span class="field-title">Y <span class="unit-label">mm</span></span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Lower corner position"
-                [style.borderColor]="pal.ink(3).css"
+                [style.borderColor]="pal.ink(3)"
                 title="Arrow keys move the corner from either box">
                 <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Lower corner X"
                     [(ngModel)]="params.bouts.LCr!.x"
@@ -142,8 +142,8 @@
             <label class="field-cell">
                 <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.L3!.r"
-                    (input)="onChange(); onArcFocus(params.bouts.L3!, pal.ink(3).css)" [style.borderColor]="pal.ink(3).css"
-                    (focus)="onArcFocus(params.bouts.L3!, pal.ink(3).css)" (blur)="onArcBlur()" />
+                    (input)="onChange(); onArcFocus(params.bouts.L3!, pal.ink(3))" [style.borderColor]="pal.ink(3)"
+                    (focus)="onArcFocus(params.bouts.L3!, pal.ink(3))" (blur)="onArcBlur()" />
             </label>
             <label class="field-cell">
                 <div class="toggle">
@@ -164,15 +164,15 @@
                 <label class="field-cell">
                     <span class="field-title">L31 Radius <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.L31!.r"
-                        (input)="onChange(); onArcFocus(params.bouts.L31!, pal.ink(3).css)" [style.borderColor]="pal.ink(3).css"
-                        (focus)="onArcFocus(params.bouts.L31!, pal.ink(3).css)" (blur)="onArcBlur()" />
+                        (input)="onChange(); onArcFocus(params.bouts.L31!, pal.ink(3))" [style.borderColor]="pal.ink(3)"
+                        (focus)="onArcFocus(params.bouts.L31!, pal.ink(3))" (blur)="onArcBlur()" />
                 </label>
                 <label class="field-cell">
                     <span class="field-title">Split Angle <span class="unit-label">°</span></span>
                     <input type="number" class="basic-input" step="1" [ngModel]="params.bouts.L31!.degreeDiff"
-                        (ngModelChange)="adjustArcStart(params.bouts.L31!, $event, onChange.bind(this)); onArcFocus(params.bouts.L31!, pal.ink(3).css)"
-                        [style.borderColor]="pal.ink(3).css"
-                        (focus)="onArcFocus(params.bouts.L31!, pal.ink(3).css)" (blur)="onArcBlur()" />
+                        (ngModelChange)="adjustArcStart(params.bouts.L31!, $event, onChange.bind(this)); onArcFocus(params.bouts.L31!, pal.ink(3))"
+                        [style.borderColor]="pal.ink(3)"
+                        (focus)="onArcFocus(params.bouts.L31!, pal.ink(3))" (blur)="onArcBlur()" />
                 </label>
                 <label class="field-cell">
                     <span class="field-title">L31 to LBW</span>
@@ -203,8 +203,8 @@
         <label class="field-cell">
             <span class="field-title">L2 Join Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.L2!.r"
-                (input)="onChange(); onArcFocus(params.bouts.L2!, pal.ink(2).css)" [style.borderColor]="pal.ink(2).css"
-                (focus)="onArcFocus(params.bouts.L2!, pal.ink(2).css)" (blur)="onArcBlur()" />
+                (input)="onChange(); onArcFocus(params.bouts.L2!, pal.ink(1))" [style.borderColor]="pal.ink(1)"
+                (focus)="onArcFocus(params.bouts.L2!, pal.ink(1))" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title"> <span class="unit-label"></span></span>
@@ -223,7 +223,7 @@
             <label class="field-cell">
                 <span class="field-title">L2 Radius <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.L2!.r"
-                    (input)="onChange(); onArcFocus(params.bouts.L2!, pal.ink(2).css);" disabled [style.borderColor]="pal.ink(2).css" />
+                    (input)="onChange(); onArcFocus(params.bouts.L2!, pal.ink(1));" disabled [style.borderColor]="pal.ink(1)" />
             </label>
             <label class="field-cell">
                 <span class="field-title"> <span class="unit-label"></span></span>

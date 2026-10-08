@@ -38,7 +38,7 @@ interface SplineRow {
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class LongArchingPanel extends CerutiPanelBase implements OnInit {
-  protected override readonly paletteId: PaletteId = 'plates';
+  protected override readonly paletteId: PaletteId = 'varnish';
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
@@ -233,7 +233,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
 
   private splineHighlightFor(plate: 'top' | 'bottom'): HighlightedSplinePoint | null {
     return this.highlightedPlate === plate
-      ? { source: this.highlightedSource, color: plate === 'top' ? this.pal.ink(0).css : this.pal.ink(2).css }
+      ? { source: this.highlightedSource, color: plate === 'top' ? this.pal.ink(4) : this.pal.ink(1) }
       : null;
   }
 
@@ -260,7 +260,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
         g: g.append('g').attr('transform', `translate(${sideX},0)`),
         ui: ui.append('g').attr('transform', `translate(${sideX},0)`),
       };
-      if (neck) renderNeck(p, this.pal, { strings: false, bridge: false, scroll, ground: this.pal.neutral.lightness(-0.3).css })(side.g, side.ui);
+      if (neck) renderNeck(p, this.pal, { strings: false, bridge: false, scroll, ground: this.pal.neutral.mod(-0.3) })(side.g, side.ui);
       section(side.g, side.ui);
     }];
   }

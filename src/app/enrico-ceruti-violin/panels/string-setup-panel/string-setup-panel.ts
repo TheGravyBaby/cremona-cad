@@ -22,7 +22,7 @@ import { PaletteId } from '../../../theme/palettes';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class StringSetupPanel extends CerutiPanelBase implements OnInit {
-  protected override readonly paletteId: PaletteId = 'neck';
+  protected override readonly paletteId: PaletteId = 'workshop';
   static readonly renderToggles: readonly RenderToggleKey[] = ['showFingerboard', 'showFretMarks'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
@@ -86,10 +86,10 @@ export class StringSetupPanel extends CerutiPanelBase implements OnInit {
           g: g.append('g').attr('transform', `translate(${sideX},0)`),
           ui: ui.append('g').attr('transform', `translate(${sideX},0)`),
         };
-        renderBodySideProfile(p, this.pal, { solved, gouge, color: this.pal.neutral.css })(side.g, side.ui);
+        renderBodySideProfile(p, this.pal, { solved, gouge, color: this.pal.neutral })(side.g, side.ui);
         renderNeck(p, this.pal, { fingerboard: this.flags.showFingerboard, fretMarks: this.flags.showFretMarks, scroll, panel: 'stringSetup' })(side.g, side.ui);
         renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'side')(side.g, side.ui);
-        renderSolveFailures(failures, this.pal.alert.css)(side.g, side.ui);
+        renderSolveFailures(failures, this.pal.alert)(side.g, side.ui);
       },
       renderFrontView(p, this.paths, this.pal, 'stringSetup', this.flags.showFingerboard, scroll),
       renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'front'),

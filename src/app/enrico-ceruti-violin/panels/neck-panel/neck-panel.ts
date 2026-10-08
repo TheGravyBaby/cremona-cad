@@ -34,7 +34,7 @@ export type NeckSetPanel = 'neck' | 'stringSetup';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class NeckPanel extends CerutiPanelBase implements OnInit {
-  protected override readonly paletteId: PaletteId = 'neck';
+  protected override readonly paletteId: PaletteId = 'workshop';
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides', 'showFingerboard'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
@@ -104,11 +104,11 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
           g: g.append('g').attr('transform', `translate(${sideX},0)`),
           ui: ui.append('g').attr('transform', `translate(${sideX},0)`),
         };
-        renderBodySideProfile(p, this.pal, { solved, gouge, color: this.pal.neutral.css })(side.g, side.ui);
+        renderBodySideProfile(p, this.pal, { solved, gouge, color: this.pal.neutral })(side.g, side.ui);
         // the bridge and strings are the string setup's alone; this panel shows the board and nut it sits under
         renderNeck(p, this.pal, { guides: this.flags.showModuleGuides, fingerboard: this.flags.showFingerboard, strings: false, bridge: false, scroll, panel: 'neck' })(side.g, side.ui);
         renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'side')(side.g, side.ui);
-        renderSolveFailures(failures, this.pal.alert.css)(side.g, side.ui);
+        renderSolveFailures(failures, this.pal.alert)(side.g, side.ui);
       },
       renderFrontView(p, this.paths, this.pal, 'neck', this.flags.showFingerboard, scroll),
       renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'front'),
@@ -133,16 +133,16 @@ export interface NeckRenderOptions {
 
 // each panel draws the other's parts as plain profile
 function neckSetPalette(pal: PanelPalette, panel?: NeckSetPanel, ground?: string) {
-  const paint = (owner: NeckSetPanel, on: string) => ground ?? (panel && panel !== owner ? pal.neutral.css : on);
+  const paint = (owner: NeckSetPanel, on: string) => ground ?? (panel && panel !== owner ? pal.neutral : on);
   return {
-    neck: paint('neck', pal.ink(0).saturation(-0.25).css),
+    neck: paint('neck', pal.ink(4)),
     // the neck's length is entered on both panels
-    length: ground ?? pal.ink(0).saturation(-0.25).css,
-    neckRoot: paint('neck', pal.ink(0).saturation(0.5).lightness(-0.1).css),
-    button: paint('neck', pal.ink(2).css),
-    fingerboard: paint('stringSetup', pal.ink(3).lightness(0.15).css),
-    nut: paint('stringSetup', pal.ink(3).lightness(-0.3).css),
-    bridge: paint('stringSetup', pal.ink(0).saturation(-0.5).lightness(0.55).css),
+    length: ground ?? pal.ink(4),
+    neckRoot: paint('neck', pal.ink(5)),
+    button: paint('neck', pal.ink(2)),
+    fingerboard: paint('stringSetup', pal.ink(1)),
+    nut: paint('stringSetup', pal.ink(0)),
+    bridge: paint('stringSetup', pal.ink(3)),
   };
 }
 
@@ -204,7 +204,7 @@ export function renderNeck(p: EnricoCerutiParams, pal: PanelPalette, opts: NeckR
     }
 
     // the neck itself: the scroll or the nut-end wall, the back, and the heel down to the button
-    if (scroll) renderPath(definePlacedSideScrollPath(p), paint(pal.neutral.css), STROKE_WEIGHT.section)(g, ui);
+    if (scroll) renderPath(definePlacedSideScrollPath(p), paint(pal.neutral), STROKE_WEIGHT.section)(g, ui);
     else seg(nk.neckTop!, nk.backNut!);
     const heel = nk.heel;
     if (heelStands(p)) {
@@ -217,12 +217,12 @@ export function renderNeck(p: EnricoCerutiParams, pal: PanelPalette, opts: NeckR
     }
 
     if (ss && fbEnd && strings) {
-      seg(ss.nutTop!, ss.bridgeTop!, paint(pal.neutral.css));
+      seg(ss.nutTop!, ss.bridgeTop!, paint(pal.neutral));
       if (fretMarks) renderFretTicks(ss.nutTop!, ss.bridgeTop!, dist(nk.neckTop!, fbEnd), pal)(g, ui);
     }
 
     if (!guides) return;
-    const guide = pal.neutral.css;
+    const guide = pal.neutral;
     const rootPlaneY = p.height - p.overhang;
     // offsets scale with the neck's own wood thickness rather than a fixed mm, so the parked
     // dimension lines clear the drawing the same way on a cello neck as on a violin's
@@ -283,8 +283,8 @@ export function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], pal: 
   const part = neckSetPalette(pal, panel);
 
   return (g: any, ui: any): void => {
-    renderPath(profile.body.outline, pal.neutral.css, STROKE_WEIGHT.trace)(g, ui);
-    for (const d of [...profile.body.purfling, ...profile.body.fHoles]) renderPath(d, pal.neutral.css, STROKE_WEIGHT.guide)(g, ui);
+    renderPath(profile.body.outline, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
+    for (const d of [...profile.body.purfling, ...profile.body.fHoles]) renderPath(d, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
 
     if (p.stringSetup && panel === 'stringSetup') {
       const [footA, footB] = bridgeWedge(p);
@@ -302,7 +302,7 @@ export function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], pal: 
     renderPath(profile.neck, showFingerboard && p.stringSetup ? part.fingerboard : part.neckRoot, STROKE_WEIGHT.section)(g, ui);
     if (p.stringSetup) renderPath(profile.nut, part.nut, STROKE_WEIGHT.section)(g, ui);
     else if (scroll) renderPath(profile.nut, part.neck, STROKE_WEIGHT.section)(g, ui);
-    if (scroll) for (const stroke of scrollFrontInPlan(p)) renderStroke(stroke, pal.neutral.css)(g, ui);
+    if (scroll) for (const stroke of scrollFrontInPlan(p)) renderStroke(stroke, pal.neutral)(g, ui);
   };
 }
 
@@ -317,7 +317,7 @@ const FRET_TICK_HALF_LENGTH_MM = 1;
 const LANDMARK_TICK_HALF_LENGTH_MM = 3;
 // the intervals worth calling out against the plain fret colour, above the open string: perfect
 // fourth, perfect fifth, octave
-const landmarkColors = (pal: PanelPalette): Record<number, string> => ({ 5: pal.ink(0).lightness(-0.1).css, 7: pal.alert.saturation(-0.3).css, 12: pal.ink(2).css });
+const landmarkColors = (pal: PanelPalette): Record<number, string> => ({ 5: pal.ink(1).mod(0.3), 7: pal.ink(1).mod(0.9), 12: pal.ink(1).mod(-0.5) });
 
 /** Twelve-tone equal temperament: each semitone shortens the vibrating length by a factor of the
  * 12th root of 2, so fret n sits `stringLength * (1 - 2^(-n/12))` from the nut. Returns one
@@ -346,7 +346,7 @@ function renderFretTicks(nut: Pt, bridge: Pt, maxDistance: number, pal: PanelPal
       const center = moveInVectorSpace(nut, [{ ...along, mag: d }]);
       const a = moveInVectorSpace(center, [{ ...across, mag: halfLength }]);
       const b = moveInVectorSpace(center, [{ ...across, mag: -halfLength }]);
-      renderSegment(a, b, landmarkColor ?? pal.ink(1).saturation(0.3).css, STROKE_WEIGHT.guide)(g, ui);
+      renderSegment(a, b, landmarkColor ?? pal.ink(1).mod(0.6), STROKE_WEIGHT.guide)(g, ui);
     });
   };
 }

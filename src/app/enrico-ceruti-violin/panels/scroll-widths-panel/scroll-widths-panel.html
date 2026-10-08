@@ -35,14 +35,14 @@
             <span class="field-title" [style.color]="pointColor('nut')"
                 docTip="scrollWidths.nutWidth">Nut <span
                     class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(3).lightness(-0.3).css"
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="nk.nutWidth" (input)="onChange()" (focus)="onPointFocus('nut')" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(0).lightness(0.55).css"
+            <span class="field-title" [style.color]="pal.ink(4).mod(0.55)"
                 docTip="scrollWidths.wall">Wall
                 <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(0).lightness(0.55).css"
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(4).mod(0.55)"
                 [(ngModel)]="v.pegbox.wall" (input)="onChange()" />
         </label>
     </div>

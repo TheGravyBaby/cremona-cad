@@ -49,12 +49,12 @@ export function renderBodySideProfile(p: EnricoCerutiParams, pal: PanelPalette, 
   return (g: any, ui: any): void => {
     renderPath(
       `M 0 ${rib.yLow} L ${rib.zLow} ${rib.yLow} L ${rib.zHigh} ${rib.yHigh} L 0 ${rib.yHigh} Z`,
-      paint(pal.neutral.css), STROKE_WEIGHT.guide,
+      paint(pal.neutral), STROKE_WEIGHT.guide,
     )(g, ui);
     for (const corner of [p.bouts.UCr, p.bouts.LCr]) {
       if (corner) {
         renderSegment(
-          new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), paint(pal.neutral.css), STROKE_WEIGHT.guide,
+          new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), paint(pal.neutral), STROKE_WEIGHT.guide,
         )(g, ui);
       }
     }
@@ -78,9 +78,9 @@ export function renderBodySideProfile(p: EnricoCerutiParams, pal: PanelPalette, 
     const thickness = isTop ? a.top.thickness : a.bottom.thickness;
     const innerZ = isTop ? taper.zLower : 0;
     const outerZ = innerZ + sign * thickness;
-    const color = paint(isTop ? pal.ink(0).css : pal.ink(2).css);
-    const edge = paint(pal.neutral.css);
-    const channel = paint(pal.ink(1).lightness(-0.15).css);
+    const color = paint(isTop ? pal.ink(4) : pal.ink(1));
+    const edge = paint(pal.neutral);
+    const channel = paint(pal.ink(2));
     const gouge = opts.gouge[plate];
     const solved = opts.solved[plate];
     const landEdge = p.outerFlutingDepth ?? 0;
