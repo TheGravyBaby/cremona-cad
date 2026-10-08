@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { CerutiViewFlags, DefaultParams, EnricoCerutiParams, FholeParams, FholeStem, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderSegment, renderPath, renderRect, renderSmallCrosshair } from '../../../helpers/renderFuncs';
-import { DASH, STROKE_WEIGHT } from '../../../theme/strokes';
+import { DASH, PaletteId, STROKE_WEIGHT } from '../../../theme/palettes';
 import { calculateOuterArcs, ensureFrontProfilePaths, getPathOrNull } from '../../calculation/outline/ceruti-calcs';
 import { renderFrontProfile } from '../../renders/front-profile.render';
 import { Arc, Circle, Pt, Rectangle } from '../../../models/types';
@@ -13,7 +13,7 @@ import { circleCircleIntersections } from '../../../helpers/math/draftMath';
 import { defineInnerArcs } from '../../calculation/outline/ceruti-paths';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { renderBoutBouts } from '../main-bouts-panel/main-bouts-panel';
-import { PanelPalette } from '../../../theme/palette';
+import { PanelPalette } from '../../../theme/theme.service';
 
 /** Where the two f-holes sit on the plate — the eyes first, everything else hung off them. */
 @Component({
@@ -23,6 +23,7 @@ import { PanelPalette } from '../../../theme/palette';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
+  protected override readonly paletteId: PaletteId = 'fHoles';
   static readonly renderToggles: readonly RenderToggleKey[] = ['showFholeBounds', 'showFholePlacementGuides', 'showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;

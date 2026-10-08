@@ -3,8 +3,7 @@ import { Pt } from '../../models/types';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape } from './toolbox-shape';
 import { snapToAngle, snapToLockedAngle } from './angle-lock';
-import { CANVAS_COLORS } from '../../theme/canvas-colors';
-import { DASH } from '../../theme/strokes';
+import { CANVAS_COLORS, DASH } from '../../theme/palettes';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 

@@ -13,7 +13,7 @@ import { clamp, normalizeDegrees, pointAtDistanceToward } from '../../helpers/ma
 import { shapeBounds, unionBounds } from '../tools/shape-hit-test';
 import { translateShape } from '../tools/shape-transform';
 import { TooltipDirective } from '../../docs/tooltips';
-import { CANVAS_COLORS } from '../../theme/canvas-colors';
+import { CANVAS_COLORS } from '../../theme/palettes';
 
 /**
  * The Inkscape-style contextual settings strip along the bottom bar: color, then whichever

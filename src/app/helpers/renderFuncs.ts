@@ -1,7 +1,7 @@
 import { Pt, Circle, Line, Rectangle, Arc } from "../models/types";
 import { normalizeRadians, pointOnCircle, TURN } from "./math/simpleGeometry";
 import { SolveFailure } from "./validators";
-import { DASH, STROKE_WEIGHT } from "../theme/strokes";
+import { DASH, STROKE_WEIGHT } from "../theme/palettes";
 
 // - number[] => segment weights (e.g. [3,4,3])
 export const renderBoxLine = (

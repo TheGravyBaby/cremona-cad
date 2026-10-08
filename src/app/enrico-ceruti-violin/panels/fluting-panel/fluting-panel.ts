@@ -2,7 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { renderFilledPath } from '../../../helpers/renderFuncs';
-import { STROKE_WEIGHT } from '../../../theme/strokes';
+import { PaletteId, STROKE_WEIGHT } from '../../../theme/palettes';
 import { translatePath } from '../../../helpers/math/pathMath';
 import { calculateOuterArcs, ensureFholePath, ensureOuterTracePaths } from '../../calculation/outline/ceruti-calcs';
 import { renderPlatePair } from '../../renders/front-profile.render';
@@ -20,6 +20,7 @@ import { TooltipDirective } from '../../../docs/tooltips';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FlutingPanel extends CerutiPanelBase implements OnInit {
+  protected override readonly paletteId: PaletteId = 'plates';
   static readonly renderToggles: readonly RenderToggleKey[] = [];
 
   @Input({ required: true }) params!: EnricoCerutiParams;

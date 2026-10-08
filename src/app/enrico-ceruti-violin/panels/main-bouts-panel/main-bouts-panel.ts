@@ -4,7 +4,7 @@ import { getArcEndDeg, getArcStartDeg, setArcEndDeg, setArcStartDeg } from '../.
 import { flipAngleAboutYAxis, flipArcAboutY, offsetArcRadius } from '../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderSegment, renderSolveFailures, renderRect } from '../../../helpers/renderFuncs';
-import { STROKE_WEIGHT } from '../../../theme/strokes';
+import { STROKE_WEIGHT } from '../../../theme/palettes';
 import { arcFromCircle, Arc, Rectangle } from '../../../models/types';
 import { calculateInnerOutline, calculateMainBouts, MainBoutFailure, violNeckJoinLimit } from '../../calculation/outline/ceruti-calcs';
 import { violNeckCap } from '../../calculation/outline/ceruti-paths';
@@ -14,7 +14,7 @@ import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { HighlightedArc } from '../../renders/render-constants';
 import { violNeckJoinExceeded } from '../../../docs/conditions';
-import { PanelPalette } from '../../../theme/palette';
+import { PanelPalette } from '../../../theme/theme.service';
 
 export interface MainBoutsViewFlags {
   showModuleCircles: boolean;

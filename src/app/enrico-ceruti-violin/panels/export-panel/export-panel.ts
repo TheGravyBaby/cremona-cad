@@ -6,7 +6,7 @@ import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFil
 import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import { renderPath, renderText } from '../../../helpers/renderFuncs';
-import { STROKE_WEIGHT } from '../../../theme/strokes';
+import { STROKE_WEIGHT } from '../../../theme/palettes';
 import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureFrontProfilePaths, FrontProfileSolve, getPath, getPathOrNull, hasOuterTrace, solveNeckForProfile } from '../../calculation/outline/ceruti-calcs';
 import { defineNeckTemplate, NeckTemplate, neckTemplatePath } from '../../calculation/neck/ceruti-neck-template';
 import { calculateScroll, calculateScrollWidths, scrollBackStrip, scrollCompassWalk } from '../../calculation/neck/ceruti-scroll';
@@ -17,7 +17,7 @@ import { defaultCrossArchParams, defaultFlutingParams } from '../../calculation/
 import { buildPlateSurfaceModel, buildPlateStl, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../calculation/arching/ceruti-surface';
 import { EnricoCerutiParams, PathEntry, PathKey } from '../../ceruti-types';
 import { EXPORT_DESCRIPTIONS } from '../../../docs/export-descriptions';
-import { PanelPalette, Theme } from '../../../theme/palette';
+import { PanelPalette, Theme } from '../../../theme/theme.service';
 
 type ScrollExportType = 'neckTemplate' | 'scrollFrontView' | 'scrollBackView' | 'scrollBack' | 'scrollCompass';
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate' | 'fholeTemplateNoEyes' | ScrollExportType;

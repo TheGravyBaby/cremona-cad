@@ -2,8 +2,7 @@ import { ChangeDetectorRef, Component, ViewChild, effect, inject } from '@angula
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { renderSolveFailures } from '../helpers/renderFuncs';
-import { PanelPalette, Theme } from '../theme/palette';
-import { ThemeService } from '../theme/theme.service';
+import { PanelPalette, Theme, ThemeService } from '../theme/theme.service';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiPanelId, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './templates/ceruti-templates';
