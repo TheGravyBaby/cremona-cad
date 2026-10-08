@@ -289,7 +289,7 @@ export interface ScrollParams {
   flushWithNeck: boolean;
   hang: number; // how far the duck tail hangs below the nut's lower edge; S3 ends where it comes down to it
   hipHeight: number; // where the pegbox's front is widest, up from the nut's top; seeded to the round's top
-  backHipHeight: number; // where the back's slope turns, up from the nut's top; 0 is no hip
+  backHipHeight: number; // where the back's slope turns, up from the foot at the round's top; 0 is no hip
   compassSteps: number; // how many equal compass steps the walk takes from the poll to the second turn's bottom
   pitch: number; // archemedean spiral: distance between successive turns (mm)
   seedLength: number; // kelly volute allows for variable seed size relative to the eye

@@ -643,33 +643,31 @@ describe('the scroll widths', () => {
     expect(v.widths).toEqual(settled);
   });
 
-  it('turns the back\'s slope at a hip measured up from the nut\'s top, none at 0 or on the round, and runs parallel up to a hip as wide as the foot', () => {
+  it('turns the back\'s slope at a hip measured up from the foot, none at 0, and runs parallel up to a hip as wide as the foot', () => {
     const { p, v } = solved();
     v.widths.duckTail = v.widths.foot = 20;
     v.widths.backHip = 28;
     v.widths.poll = 24;
     calculateScrollWidths(p);
-    const { nutHeight } = p.neck!;
     const station = (key: string) => scrollWidthStations(p).find(st => st.key === key)!.at;
     const start = scrollBackWidths(p)[0].y;
     const pollY = station('poll').y;
-    expect(start).toBeGreaterThan(nutHeight);
     // none: one slope from the foot to the poll, whatever the hip's width
     const oneSlope = () => {
       for (const pt of scrollPathStretches(p).back.filter(pt => pt.y <= pollY)) expect(pt.x).toBeCloseTo((20 + 4 * (pt.y - start) / (pollY - start)) / 2, 9);
       expect(station('backHip').y).toBeCloseTo(start, 9);
     };
-    for (const none of [0, -3, (start - nutHeight) / 2]) {
+    for (const none of [0, -3]) {
       v.backHipHeight = none;
       oneSlope();
     }
     // past the poll it is the poll, and the field keeps what was typed
-    v.backHipHeight = pollY - nutHeight + 5;
+    v.backHipHeight = pollY - start + 5;
     calculateScrollWidths(p);
     expect(station('backHip').y).toBeCloseTo(pollY, 6);
-    expect(v.backHipHeight).toBeCloseTo(pollY - nutHeight + 5, 9);
+    expect(v.backHipHeight).toBeCloseTo(pollY - start + 5, 9);
     const hipY = (start + pollY) / 2;
-    v.backHipHeight = hipY - nutHeight;
+    v.backHipHeight = hipY - start;
     calculateScrollWidths(p);
     expect(station('backHip').y).toBeCloseTo(hipY, 6);
     // the back's own stretch, since the turns come back down through these heights
@@ -778,7 +776,7 @@ describe('the scroll widths', () => {
     // a wider foot rings the duck tail, and a hip takes a station of its own
     v.widths.foot = v.widths.duckTail + 6;
     v.widths.backHip = v.widths.foot;
-    v.backHipHeight = (station('duckTail').at.y + station('poll').at.y) / 2 - p.neck!.nutHeight;
+    v.backHipHeight = (station('poll').at.y - station('duckTail').at.y) / 2;
     calculateScrollWidths(p);
     const celloed = scrollCompassWalk(p, 12).stations;
     expect(celloed[1].along).toBe(0);
