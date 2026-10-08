@@ -21,13 +21,13 @@ export function renderFrontInnerProfile(p: EnricoCerutiParams, pal: PanelPalette
 
 // the top plate from its plan, the neck laid over it once the solve reached it and the scroll's front
 // on the neck's end once that's drawn, both in the trace grey. `weight` is the outline's; the
-// purfling is context at guide weight, the f-holes drawn as the caller says
-function renderTopPlate(p: EnricoCerutiParams, plan: PlatePlan, pal: PanelPalette, weight: number, holes: { ink: string; weight: number }, solve: NeckProfileSolve): Layer[] {
+// purfling is context at guide weight, the f-holes at `holesWeight`
+function renderTopPlate(p: EnricoCerutiParams, plan: PlatePlan, pal: PanelPalette, weight: number, holesWeight: number, solve: NeckProfileSolve): Layer[] {
   const front = solve.neck ? defineFrontProfilePath(p, plan) : null;
   const body = front ? front.body : plan;
   const layers = [renderPath(body.outline, pal.neutral, weight)];
   for (const d of body.purfling) layers.push(renderPath(d, pal.neutral, STROKE_WEIGHT.guide));
-  for (const d of body.fHoles) layers.push(renderPath(d, holes.ink, holes.weight));
+  for (const d of body.fHoles) layers.push(renderPath(d, pal.neutral, holesWeight));
   if (front) layers.push(renderPath(front.neck, pal.neutral), renderPath(front.nut, pal.neutral));
   if (front && solve.scroll) for (const stroke of scrollFrontInPlan(p)) layers.push(renderStroke(stroke, pal.neutral));
   return layers;
@@ -45,7 +45,7 @@ export function renderFrontProfile(
   let plan = topPlatePaths(p, paths);
   if (opts.fHoles === false) plan = { ...plan, fHoles: [] };
   if (opts.purfling === false) plan = { ...plan, purfling: [] };
-  return renderTopPlate(p, plan, pal, STROKE_WEIGHT.trace, { ink: pal.neutral, weight: STROKE_WEIGHT.trace }, solve);
+  return renderTopPlate(p, plan, pal, STROKE_WEIGHT.trace, STROKE_WEIGHT.trace, solve);
 }
 
 // both plates in plan from the path cache, for the panels that work on the plates themselves: the top
@@ -60,7 +60,7 @@ export function renderPlatePair(p: EnricoCerutiParams, paths: PathEntry[], pal: 
   const top = topPlatePaths(p, paths);
   const backOutline = getPath(paths, 'back');
   const layers = [
-    ...renderTopPlate(p, top, pal, weight, { ink: pal.neutral, weight: STROKE_WEIGHT.guide }, solve),
+    ...renderTopPlate(p, top, pal, weight, STROKE_WEIGHT.guide, solve),
     renderPath(back(backOutline), pal.neutral, weight),
     ...top.purfling.map(d => renderPath(back(d), pal.neutral, STROKE_WEIGHT.guide)),
   ];

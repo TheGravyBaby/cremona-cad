@@ -349,7 +349,7 @@ export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   showAllArcs: false,
   showAllCircles: false,
   showModuleGuides: false,
-  showFingerboard: true,
+  showFingerboard: false,
   showFretMarks: false,
   showFholeBounds: true,
   showFholeArcs: false,

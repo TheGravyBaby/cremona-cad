@@ -9,7 +9,7 @@ import { EnricoCerutiParams } from '../../ceruti-types';
 import { duckTailRadius, pegboxHipHeight, pegboxWidth, scrollPathStretches, ScrollStretches, scrollFrontTop, scrollFrontWidths, scrollLines, scrollNeckHalfWidth } from './ceruti-scroll';
 import { scrollOnNeck } from '../outline/ceruti-paths';
 
-// the scroll seen from behind and from in front, as strokes with ink names, for the widths panel and
+// the scroll seen from behind and from in front, as strokes by part, for the widths panel and
 // set on the neck's end in the plan profiles. Drawn the way a draughtsman would, not projected: the
 // volute's turns stand out further the nearer the eye, so each stretch of the path is drawn as far as
 // the next turn nearer the viewer lets it be seen, and nothing hidden is drawn.
@@ -62,42 +62,43 @@ function pegboxFrontOutline(p: EnricoCerutiParams) {
   return { foot, walls, cheeks, bottom };
 }
 
-export type ScrollViewInk = 'front' | 'back' | 'frontLight' | 'backLight' | 'turns' | 'crown' | 'nut' | 'neck';
+export type ScrollViewStroke = { weight: number } & StrokeShape;
 
-export type ScrollViewStroke = { ink: ScrollViewInk; weight: number } & StrokeShape;
+export type ScrollView = Record<'front' | 'back' | 'frontLight' | 'backLight' | 'turns' | 'crown' | 'nut' | 'neck', ScrollViewStroke[]>;
+type ScrollViewPart = keyof ScrollView;
 
 // the strokes of a view, each point put where `place` says: x across from the centreline, y up the
 // neck. What hides what is worked out looking along the neck's own normal, as the scroll widths
 // panel shows it; a view tilted off that by the neck angle would see a sliver more or less of a
 // turn, not worth a second pass
 function viewStrokes(place: (x: number, y: number) => Pt) {
-  const strokes: ScrollViewStroke[] = [];
+  const parts: ScrollView = { neck: [], nut: [], back: [], front: [], turns: [], backLight: [], frontLight: [], crown: [] };
   const at = (pt: { x: number; y: number }, side: number) => place(side * pt.x, pt.y);
-  const stroke = (d: string, ink: ScrollViewInk, weight: number, cover: string | string[] | null) => {
+  const stroke = (d: string, part: ScrollViewPart, weight: number, cover: string | string[] | null) => {
     const shown = cover ? occludePath(d, cover).visible : d;
-    if (shown) strokes.push({ d: shown, ink, weight });
+    if (shown) parts[part].push({ d: shown, weight });
   };
   // a half outline, x out from the centreline, drawn on both sides of it
-  const contour = (pts: { x: number; y: number }[], ink: ScrollViewInk, cover: string | string[] | null = null) => {
+  const contour = (pts: { x: number; y: number }[], part: ScrollViewPart, cover: string | string[] | null = null) => {
     if (pts.length < 2) return;
-    for (const side of [1, -1]) stroke(pathFromPolyline(pts.map(pt => at(pt, side))), ink, STROKE_WEIGHT.trace, cover);
+    for (const side of [1, -1]) stroke(pathFromPolyline(pts.map(pt => at(pt, side))), part, STROKE_WEIGHT.trace, cover);
   };
   const closed = (pts: { x: number; y: number }[]) =>
     pathFromPolygon([...pts.map(pt => at(pt, 1)), ...pts.map(pt => at(pt, -1)).reverse()]);
-  const line = (a: Pt, b: Pt, ink: ScrollViewInk) => strokes.push({ line: [a, b], ink, weight: STROKE_WEIGHT.trace });
+  const line = (a: Pt, b: Pt, part: ScrollViewPart) => parts[part].push({ line: [a, b], weight: STROKE_WEIGHT.trace });
   // a turn's face, seen edge on where the path turns over: level from the turn's own half-width in
   // to whatever stands nearer the viewer at that height, or right across where nothing does
-  const face = (y: number, from: number, to: number | null, ink: ScrollViewInk) => {
-    if (to === null) line(place(-from, y), place(from, y), ink);
-    else if (to < from) for (const side of [1, -1]) line(place(side * from, y), place(side * to, y), ink);
+  const face = (y: number, from: number, to: number | null, part: ScrollViewPart) => {
+    if (to === null) line(place(-from, y), place(from, y), part);
+    else if (to < from) for (const side of [1, -1]) line(place(side * from, y), place(side * to, y), part);
   };
-  return { strokes, at, stroke, contour, closed, line, face };
+  return { parts, at, stroke, contour, closed, line, face };
 }
 
 // the scroll from behind, the neck's sides running on up from `neckFrom` until they meet it. The
 // pegbox's sawn front shows wherever it stands out past the back, so a back narrower than the front
 // is seen to be; `front: false` leaves it off, for a sheet that is the back alone
-export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, y: number) => Pt, neckFrom: number, opts: { front?: boolean } = {}): ScrollViewStroke[] {
+export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, y: number) => Pt, neckFrom: number, opts: { front?: boolean } = {}): ScrollView {
   const front = opts.front ?? true;
   const v = p.scroll!;
   const eyeHalf = v.widths.eye / 2;
@@ -112,7 +113,7 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   const turn3Top = on.turn3Back.at(-1)!;
   const { foot, cheeks, bottom } = pegboxFrontOutline(p);
   const seen = (pts: Pt3D[]) => seenRuns(on, pts, true);
-  const { strokes, stroke, contour, closed, line, face } = viewStrokes(place);
+  const { parts, stroke, contour, closed, line, face } = viewStrokes(place);
 
   // the back starts in the duck tail's round, the neck's back carried on round, and its own edges
   // run up from the round's top. The pegbox's sawn front stands nearer the eye than nothing, so its
@@ -138,7 +139,7 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   for (const run of seen(on.turn3Back)) contour(run, 'turns');
   for (const run of seen(on.turn3Front)) contour(run, 'turns');
 
-  if (r > 0) strokes.push({ d: pathFromPolyline(round), ink: 'back', weight: STROKE_WEIGHT.trace });
+  if (r > 0) parts.back.push({ d: pathFromPolyline(round), weight: STROKE_WEIGHT.trace });
   // the front's bottom shows only where it overhangs the neck; over the neck it's smoothed in
   const neck = closed([{ x: scrollNeckHalfWidth(p, neckFrom), y: neckFrom }, { x: scrollNeckHalfWidth(p, start.y), y: start.y }]);
   if (front) {
@@ -169,11 +170,11 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   if (neckHalf > cheek + 1e-6) {
     for (const side of [1, -1]) line(place(side * cheek, start.y), place(side * neckHalf, start.y), 'backLight');
   }
-  return strokes;
+  return parts;
 }
 
 // the scroll from in front, the neck's sides running on up from `neckFrom` to the nut
-export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number, y: number) => Pt, neckFrom: number): ScrollViewStroke[] {
+export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number, y: number) => Pt, neckFrom: number): ScrollView {
   const v = p.scroll!;
   const { nutHeight } = p.neck!;
   const nutHalf = p.neck!.nutWidth / 2;
@@ -188,7 +189,7 @@ export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number,
   const turn3Top = on.turn3Back.at(-1)!;
   const { walls, bottom } = pegboxFrontOutline(p);
   const seen = (pts: Pt3D[]) => seenRuns(on, pts, false);
-  const { strokes, at, stroke, contour, line, face } = viewStrokes(place);
+  const { parts, at, stroke, contour, line, face } = viewStrokes(place);
 
   // the round is hidden, and the nut stands nearest, hiding whatever of the pegbox is narrower than it
   const nut = [place(-nutHalf, 0), place(nutHalf, 0), place(nutHalf, nutHeight), place(-nutHalf, nutHeight)];
@@ -196,7 +197,7 @@ export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number,
   for (const side of [1, -1]) {
     stroke(pathFromLine(place(side * scrollNeckHalfWidth(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidth(p, 0), 0)), 'neck', STROKE_WEIGHT.section, null);
   }
-  strokes.push({ polygon: nut, ink: 'nut', weight: STROKE_WEIGHT.section });
+  parts.nut.push({ polygon: nut, weight: STROKE_WEIGHT.section });
   contour([...walls, ...bottom.slice(1)], 'front', overPegbox);
 
   // the pegbox runs in under the volute at the first turn's bottom, and its back is hidden all the
@@ -230,7 +231,7 @@ export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number,
     const right = mouth.map(pt => at(pt, 1));
     const left = mouth.map(pt => at(pt, -1));
     const d = hollowTop <= pegboxTop ? pathFromPolygon([...right, ...left.reverse()]) : pathFromPolyline([...right.reverse(), ...left]);
-    strokes.push({ d, ink: 'frontLight', weight: STROKE_WEIGHT.trace });
+    parts.frontLight.push({ d, weight: STROKE_WEIGHT.trace });
   }
 
   // each face runs in to the front of the turn outside it. The first turn has none outside it, so
@@ -244,7 +245,7 @@ export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number,
   face(eyeBottom, eyeHalf, halfWidthAtHeight(on.turn2Front, eyeBottom), 'turns');
   // the eye stands out as a cylinder to the last width
   for (const side of [1, -1]) line(place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'turns');
-  return strokes;
+  return parts;
 }
 
 // a view set on the end of the neck in the plan, `dx` across from the plan's centreline: the neck's
@@ -257,12 +258,12 @@ const onNeckInPlan = (p: EnricoCerutiParams, dx: number) => {
 
 // the front view as the front profile shows it: the nut and the neck below are the profile's own
 export function scrollFrontInPlan(p: EnricoCerutiParams): ScrollViewStroke[] {
-  return scrollFrontViewStrokes(p, onNeckInPlan(p, 0), 0)
-    .filter(stroke => stroke.ink !== 'nut' && stroke.ink !== 'neck');
+  const { nut, neck, ...head } = scrollFrontViewStrokes(p, onNeckInPlan(p, 0), 0);
+  return Object.values(head).flat();
 }
 
 // the back view as the back profile shows it, the neck's sides carried on from the nut up to the
 // scroll; below the nut they're the profile's own
 export function scrollBackInPlan(p: EnricoCerutiParams, dx: number): ScrollViewStroke[] {
-  return scrollBackViewStrokes(p, onNeckInPlan(p, dx), 0);
+  return Object.values(scrollBackViewStrokes(p, onNeckInPlan(p, dx), 0)).flat();
 }

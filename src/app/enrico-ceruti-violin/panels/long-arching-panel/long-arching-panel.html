@@ -16,7 +16,7 @@
     </div>
 </section>
 
-<section class="ui-group" [style.border-color]="pal.ink(4)">
+<section class="ui-group" [style.border-color]="pal.ink(1)">
     <div class="ui-group-title">Top Plate</div>
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
@@ -38,7 +38,7 @@
             <span class="field-title">Arch Height <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0"
                 [ngModel]="topArch.archHeight" (ngModelChange)="setArchHeight('top', $event)"
-                [style.border-color]="pal.ink(4)" />
+                [style.border-color]="pal.ink(1)" />
         </label>
         <button type="button" class="info-icon" (click)="help('archHeight')" title="More information">ⓘ</button>
     </div>
@@ -84,7 +84,7 @@
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="0"
                     [ngModel]="topSpline.archHeight" (ngModelChange)="setArchHeight('top', $event)"
-                    [style.border-color]="pal.ink(4)"
+                    [style.border-color]="pal.ink(1)"
                     (focus)="onSplinePointFocus('top', peakSource)" (blur)="onSplinePointBlur()" />
             </div>
             <span>Peak</span>
@@ -121,7 +121,7 @@
     }
 </section>
 
-<section class="ui-group" [style.border-color]="pal.ink(1)">
+<section class="ui-group" [style.border-color]="pal.ink(2)">
     <div class="ui-group-title">Back Plate</div>
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
@@ -143,7 +143,7 @@
             <span class="field-title">Arch Height <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0"
                 [ngModel]="bottomArch.archHeight" (ngModelChange)="setArchHeight('bottom', $event)"
-                [style.border-color]="pal.ink(1)" />
+                [style.border-color]="pal.ink(2)" />
         </label>
         <button type="button" class="info-icon" (click)="help('archHeight')" title="More information">ⓘ</button>
     </div>
@@ -189,7 +189,7 @@
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="0"
                     [ngModel]="bottomSpline.archHeight" (ngModelChange)="setArchHeight('bottom', $event)"
-                    [style.border-color]="pal.ink(1)"
+                    [style.border-color]="pal.ink(2)"
                     (focus)="onSplinePointFocus('bottom', peakSource)" (blur)="onSplinePointBlur()" />
             </div>
             <span>Peak</span>

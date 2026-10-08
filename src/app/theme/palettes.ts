@@ -20,23 +20,26 @@ export const ALERT = '#d62828';
 // against it
 export const CANVAS = { night: '#1e1e1e', day: '#d8cfb1' } as const;
 
-// every palette has the same six slots, cool to hot by descending hue: violet, blue, green, yellow,
-// orange, red. A panel reads a part's slot, so it draws the same part in the same slot whichever
-// palette it names. Varnish and workshop take their colours from Sanzo Wada's dictionary
 export const PALETTES = {
   classicCremona: {
     name: 'Classic Cremona',
-    inks: ['#a969b4', '#4d74a8', '#4d8660', '#ffdf75', '#d38032', '#C24B2E'],
+    inks: ['#6450a1', '#4d74a8', '#4d8660', '#ffdf75', '#d38032', '#C24B2E'],
   },
-  // blue violet, blue, diamine green, orange yellow, orange, red orange
+  iceAndFire: {
+    name: 'Ice and Fire',
+    inks: ['#648f7b', '#e49338', '#7c95da'],
+  },
+  orchid: {
+    name: 'Orchid',
+    inks: ['#64ac70', '#d6b78e', '#6450a1', '#e49338'],
+  },
+  stones: {
+    name: 'Stones',
+    inks: ['#c57453', '#80719e', '#5a82b3', '#648f7b',],
+  },
   varnish: {
     name: 'Varnish',
-    inks: ['#6450a1', '#006eb8', '#1a7444', '#fcb315', '#f37420', '#dd4027'],
-  },
-  // dull blue violet, olympic blue, pistachio green, olive ocher, cinnamon rufous, etruscan red
-  workshop: {
-    name: 'Workshop',
-    inks: ['#80719e', '#5a82b3', '#648f7b', '#d6b43e', '#c27544', '#c55347'],
+    inks: ['#d0803f', '#b4473c', '#e2bd9f'],
   },
 } as const satisfies Record<string, Palette>;
 

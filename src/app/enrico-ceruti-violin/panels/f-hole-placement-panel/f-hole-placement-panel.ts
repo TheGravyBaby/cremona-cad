@@ -23,7 +23,7 @@ import { PanelPalette, ThemeService } from '../../../theme/theme.service';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
-  protected readonly pal = ThemeService.getPalette('varnish');
+  protected readonly pal = ThemeService.getPalette('orchid');
   static readonly renderToggles: readonly RenderToggleKey[] = ['showFholeBounds', 'showFholePlacementGuides', 'showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
@@ -185,7 +185,7 @@ export const renderFholeBounds = (p: EnricoCerutiParams, pal: PanelPalette) => (
 
 export const renderFholeRise = (p: EnricoCerutiParams, pal: PanelPalette) => (g: any, ui: any) => {
   const f = p.fHoles!;
-  for (const [eye, rise, side, color] of [[f.UEye!, f.URise!, 1, pal.ink(2)], [f.LEye!, f.LRise!, -1, pal.ink(0)]] as const) {
+  for (const [eye, rise, side, color] of [[f.UEye!, f.URise!, 1, pal.ink(0)], [f.LEye!, f.LRise!, -1, pal.ink(2)]] as const) {
     const boundY = eye.y + side * (eye.r + rise);
     const boundLeft = new Pt(eye.x - eye.r, boundY);
     const boundRight = new Pt(eye.x + eye.r, boundY);
@@ -226,10 +226,10 @@ export const renderFholeStem = (p: EnricoCerutiParams, pal: PanelPalette) => (g:
 
 export const renderFholeEyes = (p: EnricoCerutiParams, pal: PanelPalette) => (g: any, ui: any) => {
   const f = p.fHoles!;
-  renderCircle(f.UEye!, pal.ink(2))(g, ui);
-  renderCircle(flipCircleAboutY(f.UEye!), pal.ink(2))(g, ui);
-  renderCircle(f.LEye!, pal.ink(0))(g, ui);
-  renderCircle(flipCircleAboutY(f.LEye!), pal.ink(0))(g, ui);
+  renderCircle(f.UEye!, pal.ink(0))(g, ui);
+  renderCircle(flipCircleAboutY(f.UEye!), pal.ink(0))(g, ui);
+  renderCircle(f.LEye!, pal.ink(2))(g, ui);
+  renderCircle(flipCircleAboutY(f.LEye!), pal.ink(2))(g, ui);
 }
 
 export const renderFholeEyePlacementGuides = (p: EnricoCerutiParams, pal: PanelPalette) => (g: any, ui: any) => {
