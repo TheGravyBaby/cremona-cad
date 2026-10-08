@@ -79,7 +79,7 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
 
     this.flags.showFholePlacementGuides && renders.push(renderFholeEyePlacementGuides(p, this.pal));
     this.flags.showFholeBounds && renders.push(renderFholeBounds(p, this.pal));
-    this.flags.showModuleGuides && renders.push(renderBoutBouts(p, this.pal, true));
+    this.flags.showModuleGuides && renders.push(renderBoutBouts(p, ThemeService.getPalette('classicCremona'), true));
     renders.push(renderFholeRise(p, this.pal));
     renders.push(renderFholeStem(p, this.pal));
     renders.push(renderFholeEyes(p, this.pal));
@@ -175,8 +175,8 @@ export const renderFholeBounds = (p: EnricoCerutiParams, pal: PanelPalette) => (
     const xBase = stem.center!.x + side * stem.width! / 2;
     const edgeTop = edgeAt(xBase, topLeftPt.y);
     const edgeBottom = edgeAt(xBase, lowerRightPt.y);
-    renderDashedLine(edgeTop, edgeBottom, pal.ink(1), DASH.hidden, STROKE_WEIGHT.guide)(g, ui);
-    renderDashedLine(flipPointAboutY(edgeTop), flipPointAboutY(edgeBottom), pal.ink(1), DASH.hidden, STROKE_WEIGHT.guide)(g, ui);
+    renderDashedLine(edgeTop, edgeBottom, pal.ink(2), DASH.hidden, STROKE_WEIGHT.guide)(g, ui);
+    renderDashedLine(flipPointAboutY(edgeTop), flipPointAboutY(edgeBottom), pal.ink(2), DASH.hidden, STROKE_WEIGHT.guide)(g, ui);
   }
 
   renderRect(rect, pal.neutral, 'none', STROKE_WEIGHT.guide, DASH.hidden)(g, ui);
@@ -185,7 +185,7 @@ export const renderFholeBounds = (p: EnricoCerutiParams, pal: PanelPalette) => (
 
 export const renderFholeRise = (p: EnricoCerutiParams, pal: PanelPalette) => (g: any, ui: any) => {
   const f = p.fHoles!;
-  for (const [eye, rise, side, color] of [[f.UEye!, f.URise!, 1, pal.ink(0)], [f.LEye!, f.LRise!, -1, pal.ink(2)]] as const) {
+  for (const [eye, rise, side, color] of [[f.UEye!, f.URise!, 1, pal.ink(1)], [f.LEye!, f.LRise!, -1, pal.ink(0)]] as const) {
     const boundY = eye.y + side * (eye.r + rise);
     const boundLeft = new Pt(eye.x - eye.r, boundY);
     const boundRight = new Pt(eye.x + eye.r, boundY);
@@ -210,26 +210,26 @@ export const renderFholeStem = (p: EnricoCerutiParams, pal: PanelPalette) => (g:
 
   const centerLeft = new Pt(c.x - half, c.y);
   const centerRight = new Pt(c.x + half, c.y);
-  renderSegment(centerLeft, centerRight, pal.ink(1), STROKE_WEIGHT.guide)(g, ui);
-  renderSegment(flipPointAboutY(centerLeft), flipPointAboutY(centerRight), pal.ink(1), STROKE_WEIGHT.guide)(g, ui);
+  renderSegment(centerLeft, centerRight, pal.ink(2), STROKE_WEIGHT.guide)(g, ui);
+  renderSegment(flipPointAboutY(centerLeft), flipPointAboutY(centerRight), pal.ink(2), STROKE_WEIGHT.guide)(g, ui);
   for (const side of [-1, 1]) {
     const xBase = c.x + side * half;
     const edgeTop = edgeAt(xBase, c.y - reach);
     const edgeBottom = edgeAt(xBase, c.y + reach);
-    renderSegment(edgeTop, edgeBottom, pal.ink(1), 1.5)(g, ui);
-    renderSegment(flipPointAboutY(edgeTop), flipPointAboutY(edgeBottom), pal.ink(1), 1.5)(g, ui);
+    renderSegment(edgeTop, edgeBottom, pal.ink(2), 1.5)(g, ui);
+    renderSegment(flipPointAboutY(edgeTop), flipPointAboutY(edgeBottom), pal.ink(2), 1.5)(g, ui);
   }
-  renderSmallCrosshair(f.stem.center!, pal.ink(1).faint(5))(g, ui);
-  renderSmallCrosshair(flipPointAboutY(f.stem.center!), pal.ink(1).faint(5))(g, ui);
+  renderSmallCrosshair(f.stem.center!, pal.ink(2).faint(5))(g, ui);
+  renderSmallCrosshair(flipPointAboutY(f.stem.center!), pal.ink(2).faint(5))(g, ui);
 
 }
 
 export const renderFholeEyes = (p: EnricoCerutiParams, pal: PanelPalette) => (g: any, ui: any) => {
   const f = p.fHoles!;
-  renderCircle(f.UEye!, pal.ink(0))(g, ui);
-  renderCircle(flipCircleAboutY(f.UEye!), pal.ink(0))(g, ui);
-  renderCircle(f.LEye!, pal.ink(2))(g, ui);
-  renderCircle(flipCircleAboutY(f.LEye!), pal.ink(2))(g, ui);
+  renderCircle(f.UEye!, pal.ink(1))(g, ui);
+  renderCircle(flipCircleAboutY(f.UEye!), pal.ink(1))(g, ui);
+  renderCircle(f.LEye!, pal.ink(0))(g, ui);
+  renderCircle(flipCircleAboutY(f.LEye!), pal.ink(0))(g, ui);
 }
 
 export const renderFholeEyePlacementGuides = (p: EnricoCerutiParams, pal: PanelPalette) => (g: any, ui: any) => {
@@ -245,7 +245,7 @@ export const renderFholeEyePlacementGuides = (p: EnricoCerutiParams, pal: PanelP
     let intersets = arcHorizontalIntersections(arc, p.fHoles.LEye.y)
     if (intersets.length > 0) {
       intersectionPt = intersets[0];
-      renderSmallCrosshair(intersectionPt, pal.ink(5))(g, ui);
+      renderSmallCrosshair(intersectionPt, pal.ink(2))(g, ui);
       break;
     }
   }
@@ -268,8 +268,8 @@ export const renderFholeEyePlacementGuides = (p: EnricoCerutiParams, pal: PanelP
   if (nearestEdgePt) {
     let radForGuide = nearestEdgeDist - p.fHoles.LEye.r;
     let guideCircle = new Circle(nearestEdgePt.x, nearestEdgePt.y, radForGuide);
-    renderCircle(guideCircle, pal.ink(5))(g, ui);
-    renderSmallCrosshair(nearestEdgePt, pal.ink(5))(g, ui);
+    renderCircle(guideCircle, pal.ink(2))(g, ui);
+    renderSmallCrosshair(nearestEdgePt, pal.ink(2))(g, ui);
   }
 
   // now find the midpoint between the corners

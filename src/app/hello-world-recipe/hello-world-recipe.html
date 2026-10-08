@@ -46,7 +46,7 @@
         <label class="field-cell">
           <span class="field-title">Upper Radius <span class="unit-label">mm</span></span>
           <input class="basic-input" type="number" step="1" min="1"
-            [(ngModel)]="d.params.upperR" (input)="onChange()" [style.border-color]="pal.ink(2)" />
+            [(ngModel)]="d.params.upperR" (input)="onChange()" [style.border-color]="pal.ink(1)" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
@@ -58,7 +58,7 @@
         <label class="field-cell">
           <span class="field-title">Centre Radius <span class="unit-label">mm</span></span>
           <input class="basic-input" type="number" step="1" min="1"
-            [(ngModel)]="d.params.centerR" (input)="onChange()" [style.border-color]="pal.ink(4)" />
+            [(ngModel)]="d.params.centerR" (input)="onChange()" [style.border-color]="pal.ink(3)" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
@@ -70,7 +70,7 @@
         <label class="field-cell">
           <span class="field-title">Lower Radius <span class="unit-label">mm</span></span>
           <input class="basic-input" type="number" step="1" min="1"
-            [(ngModel)]="d.params.lowerR" (input)="onChange()" [style.border-color]="pal.ink(1)" />
+            [(ngModel)]="d.params.lowerR" (input)="onChange()" [style.border-color]="pal.ink(0)" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell"></label>

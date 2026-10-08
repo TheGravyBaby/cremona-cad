@@ -126,14 +126,14 @@ export function renderStringSetup(p: EnricoCerutiParams, pal: PanelPalette, opts
   return (g: any, ui: any): void => {
     const seg = (a: Pt, b: Pt, color: string) => renderSegment(a, b, color, STROKE_WEIGHT.section)(g, ui);
 
-    if (bridge) renderPolygon(bridgeWedge(p), ink(pal.ink(2)), STROKE_WEIGHT.section)(g, ui);
+    if (bridge) renderPolygon(bridgeWedge(p), ink(pal.ink(1)), STROKE_WEIGHT.section)(g, ui);
 
     if (fingerboard) {
       // the board's edges solid, the crown above them faded so the two read apart
       const edgeAt = (at: Pt) => moveInVectorSpace(at, [{ ...normal, mag: ss.fingerboardThickness }]);
-      renderPolygon([nk.neckTop!, edgeAt(nk.neckTop!), edgeAt(fbEnd), fbEnd], ink(pal.ink(1)), STROKE_WEIGHT.section)(g, ui);
+      renderPolygon([nk.neckTop!, edgeAt(nk.neckTop!), edgeAt(fbEnd), fbEnd], ink(pal.ink(0)), STROKE_WEIGHT.section)(g, ui);
       const crown = fingerboardCrownLine(p);
-      renderPath('M ' + crown.map(c => `${c.x} ${c.y}`).join(' L '), ink(pal.ink(1)), STROKE_WEIGHT.section, FINGERBOARD_CROWN_OPACITY)(g, ui);
+      renderPath('M ' + crown.map(c => `${c.x} ${c.y}`).join(' L '), ink(pal.ink(0)), STROKE_WEIGHT.section, FINGERBOARD_CROWN_OPACITY)(g, ui);
     }
 
     // the nut, on the fingerboard plane just past the board
@@ -144,8 +144,8 @@ export function renderStringSetup(p: EnricoCerutiParams, pal: PanelPalette, opts
     // the neck's length is entered here too, so the front it sets keeps its colour over the board's edge
     if (!ground) {
       const mortFboard = mortiseFingerboardIntersect(p);
-      seg(mortFboard, nk.root!, pal.ink(0));
-      seg(nk.root!, nk.neckTop!, pal.ink(0));
+      seg(mortFboard, nk.root!, pal.ink(2));
+      seg(nk.root!, nk.neckTop!, pal.ink(2));
     }
 
     if (strings) {
@@ -199,9 +199,9 @@ function renderStringSetupFrontView(p: EnricoCerutiParams, paths: PathEntry[], p
     renderPolygon([
       new Pt(-bridgeHalfWidth, bridgeY - bridgeHalfDepth), new Pt(bridgeHalfWidth, bridgeY - bridgeHalfDepth),
       new Pt(bridgeHalfWidth, bridgeY + bridgeHalfDepth), new Pt(-bridgeHalfWidth, bridgeY + bridgeHalfDepth),
-    ], pal.ink(2), STROKE_WEIGHT.section)(g, ui);
+    ], pal.ink(1), STROKE_WEIGHT.section)(g, ui);
 
-    renderPath(profile.neck, showFingerboard ? pal.ink(1) : pal.neutral, STROKE_WEIGHT.section)(g, ui);
+    renderPath(profile.neck, showFingerboard ? pal.ink(0) : pal.neutral, STROKE_WEIGHT.section)(g, ui);
     renderPath(profile.nut, pal.ink(0).faint(-3), STROKE_WEIGHT.section)(g, ui);
     if (scroll) for (const stroke of scrollFrontInPlan(p)) renderStroke(stroke, pal.neutral)(g, ui);
   };
@@ -260,10 +260,10 @@ function renderFretTicks(nut: Pt, bridge: Pt, maxDistance: number, pal: PanelPal
       const b = moveInVectorSpace(center, [{ ...across, mag: -halfLength }]);
       renderSegment(a, b, color, STROKE_WEIGHT.guide)(g, ui);
     };
-    for (const semitone of [1, 2, 3, 4, 6, 8, 9, 10, 11]) tick(semitone, FRET_TICK_HALF_LENGTH_MM, pal.ink(1).faint(-3));
+    for (const semitone of [1, 2, 3, 4, 6, 8, 9, 10, 11]) tick(semitone, FRET_TICK_HALF_LENGTH_MM, pal.ink(0).faint(-3));
     // the intervals worth calling out above the open string: perfect fourth, perfect fifth, octave
-    tick(5, LANDMARK_TICK_HALF_LENGTH_MM, pal.ink(1).faint(-2));
-    tick(7, LANDMARK_TICK_HALF_LENGTH_MM, pal.ink(1).faint(-5));
-    tick(12, LANDMARK_TICK_HALF_LENGTH_MM, pal.ink(1).faint(3));
+    tick(5, LANDMARK_TICK_HALF_LENGTH_MM, pal.ink(0).faint(-2));
+    tick(7, LANDMARK_TICK_HALF_LENGTH_MM, pal.ink(0).faint(-5));
+    tick(12, LANDMARK_TICK_HALF_LENGTH_MM, pal.ink(0).faint(3));
   };
 }

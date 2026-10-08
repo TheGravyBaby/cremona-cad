@@ -133,11 +133,11 @@ export function renderNeck(p: EnricoCerutiParams, pal: PanelPalette, opts: NeckR
 
     // the button: the back plate carried on past its edge, the heel's foot on top of it
     const backThickness = p.arching!.bottom.thickness;
-    renderPolygon([new Pt(0, p.height), new Pt(0, tip.y), new Pt(-backThickness, tip.y), new Pt(-backThickness, p.height)], ink(pal.ink(2)), STROKE_WEIGHT.section)(g, ui);
+    renderPolygon([new Pt(0, p.height), new Pt(0, tip.y), new Pt(-backThickness, tip.y), new Pt(-backThickness, p.height)], ink(pal.ink(1)), STROKE_WEIGHT.section)(g, ui);
 
     // the foot from where it comes out of the plate at the mortise floor, then the neck's face on up to
     // the root; the rest of the foot is hidden in the block
-    if (nk.plateAtMortise) seg(nk.plateAtMortise, mortFboard, ink(pal.ink(1).faint(-3)));
+    if (nk.plateAtMortise) seg(nk.plateAtMortise, mortFboard, ink(pal.ink(3).faint(-3)));
 
     // the neck itself: the scroll, running on over the nut's seat, or the nut-end wall; the back, and
     // the heel down to the button
@@ -150,15 +150,15 @@ export function renderNeck(p: EnricoCerutiParams, pal: PanelPalette, opts: NeckR
     const heel = nk.heel;
     if (heelStands(p)) {
       seg(backTop, pointOnCircle(heel, heel.start));
-      renderPath(pathFromArc(heel), ink(pal.ink(1)), STROKE_WEIGHT.section)(g, ui);
+      renderPath(pathFromArc(heel), ink(pal.ink(3)), STROKE_WEIGHT.section)(g, ui);
       const face = heelFace(p);
-      if (face) seg(face[0], face[1], ink(pal.ink(1)));
+      if (face) seg(face[0], face[1], ink(pal.ink(3)));
     } else {
       seg(backTop, nk.backRoot!);
     }
 
-    seg(mortFboard, nk.root!, ink(pal.ink(0)));
-    seg(nk.root!, nk.neckTop!, ink(pal.ink(0)));
+    seg(mortFboard, nk.root!, ink(pal.ink(2)));
+    seg(nk.root!, nk.neckTop!, ink(pal.ink(2)));
 
     if (!guides) return;
     const rootPlaneY = p.height - p.overhang;
@@ -209,7 +209,7 @@ function renderNeckFrontView(p: EnricoCerutiParams, paths: PathEntry[], pal: Pan
 
     // only the two ends a width sets are in colour, the top the neck's and the root the root's, drawn
     // last since the nut and the scroll lie along the top
-    renderSegment(new Pt(-nk.topWidth / 2, nk.neckTop!.y), new Pt(nk.topWidth / 2, nk.neckTop!.y), pal.ink(0).faint(-3), STROKE_WEIGHT.section)(g, ui);
-    renderSegment(new Pt(-nk.rootWidth / 2, mortiseFloorY(p)), new Pt(nk.rootWidth / 2, mortiseFloorY(p)), pal.ink(1).faint(3), STROKE_WEIGHT.section)(g, ui);
+    renderSegment(new Pt(-nk.topWidth / 2, nk.neckTop!.y), new Pt(nk.topWidth / 2, nk.neckTop!.y), pal.ink(2).faint(-3), STROKE_WEIGHT.section)(g, ui);
+    renderSegment(new Pt(-nk.rootWidth / 2, mortiseFloorY(p)), new Pt(nk.rootWidth / 2, mortiseFloorY(p)), pal.ink(3).faint(3), STROKE_WEIGHT.section)(g, ui);
   };
 }

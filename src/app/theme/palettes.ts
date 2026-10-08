@@ -23,23 +23,23 @@ export const CANVAS = { night: '#1e1e1e', day: '#d8cfb1' } as const;
 export const PALETTES = {
   classicCremona: {
     name: 'Classic Cremona',
-    inks: ['#6450a1', '#4d74a8', '#4d8660', '#ffdf75', '#d38032', '#C24B2E'],
+    inks: ['#4d74a8', '#4d8660', '#ffdf75', '#d38032', '#C24B2E'],
   },
   iceAndFire: {
     name: 'Ice and Fire',
-    inks: ['#648f7b', '#e49338', '#7c95da'],
+    inks: ['#7c95da', '#648f7b', '#e49338'],
   },
   orchid: {
     name: 'Orchid',
-    inks: ['#64ac70', '#d6b78e', '#6450a1', '#e49338'],
+    inks: ['#6450a1', '#64ac70', '#d6b78e', '#e49338'],
   },
   stones: {
     name: 'Stones',
-    inks: ['#c57453', '#80719e', '#5a82b3', '#648f7b',],
+    inks: ['#80719e', '#5a82b3', '#648f7b', '#c57453'],
   },
   varnish: {
     name: 'Varnish',
-    inks: ['#d0803f', '#b4473c', '#e2bd9f'],
+    inks: ['#80719e', '#e2bd9f', '#d0803f', '#b4473c'],
   },
 } as const satisfies Record<string, Palette>;
 

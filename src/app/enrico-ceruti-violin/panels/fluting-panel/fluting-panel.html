@@ -32,14 +32,13 @@
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0.1"
                 [(ngModel)]="top.sweepRadius" (input)="onChange()"
-                [style.border-color]="pal.ink(1)"
+                [style.border-color]="pal.ink(2)"
                 docTip="fluting.sweep" />
         </label>
         <label class="field-cell">
             <span class="field-title">Depth <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0"
                 [(ngModel)]="top.depth" (input)="onChange()"
-                [style.border-color]="pal.ink(1)"
                 docTip="fluting.depth" />
         </label>
         <label class="field-cell">
@@ -60,7 +59,7 @@
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0.1"
                 [(ngModel)]="top.sweepRadius_cBout" (input)="onChange()"
-                [style.border-color]="pal.ink(1)"
+                [style.border-color]="pal.ink(2)"
                 docTip="fluting.cBoutSweep" />
         </label>
         <label class="field-cell">
@@ -80,14 +79,13 @@
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0.1"
                 [(ngModel)]="back.sweepRadius" (input)="onChange()"
-                [style.border-color]="pal.ink(2)"
+                [style.border-color]="pal.ink(0)"
                 docTip="fluting.sweep" />
         </label>
         <label class="field-cell">
             <span class="field-title">Depth <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0"
                 [(ngModel)]="back.depth" (input)="onChange()"
-                [style.border-color]="pal.ink(2)"
                 docTip="fluting.depth" />
         </label>
         <label class="field-cell">
@@ -109,7 +107,7 @@
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0.1"
                 [(ngModel)]="back.sweepRadius_cBout" (input)="onChange()"
-                [style.border-color]="pal.ink(2)"
+                [style.border-color]="pal.ink(0)"
                 docTip="fluting.cBoutSweep" />
         </label>
         <label class="field-cell">

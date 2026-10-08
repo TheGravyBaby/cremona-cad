@@ -121,7 +121,7 @@ export function solveFourCircles(p: FourCirclesParams): FourCircles {
 
 // the three circles on the upper bout's green, the centre's orange and the lower bout's blue, as the violin's bouts are
 export const renderFourCircles = (s: FourCircles, flags: FourCirclesViewFlags, pal: PanelPalette) => (g: any, ui: any): void => {
-  const [upper, center, lower] = [pal.ink(2), pal.ink(4), pal.ink(1)];
+  const [upper, center, lower] = [pal.ink(1), pal.ink(3), pal.ink(0)];
   const arcs: Array<[Arc, string]> = [[s.upper, upper], [s.center, center], [s.lower, lower]];
 
   if (flags.showCircles) {
