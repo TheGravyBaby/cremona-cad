@@ -1,8 +1,8 @@
-import { Ink, PanelPalette, Theme, resolveTheme } from './palette';
-import { PALETTE_LIST } from './palettes';
+import { PALETTES } from './palettes';
+import { Ink, PanelPalette, Theme, resolveTheme } from './theme.service';
 
 // the night theme as the app resolves it, for a spec that draws and doesn't care which colour
-export const nightTheme = (): Theme => resolveTheme(PALETTE_LIST, 'night', '#1e1e1e');
+export const nightTheme = (): Theme => resolveTheme(PALETTES, 'night', '#1e1e1e');
 
 // an ink whose css is its own recipe, `ink2+0.6`, `neutral-0.3`, `ink0s0.4+0.15`, so a spec can
 // tell one stroke from another by the ink and tone it was drawn with

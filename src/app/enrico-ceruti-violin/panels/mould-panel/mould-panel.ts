@@ -6,7 +6,7 @@ import { calculateMould, ensureCenterBoutInnerPath, getPath } from '../../calcul
 import { CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
-import { PanelPalette } from '../../../theme/palette';
+import { PanelPalette } from '../../../theme/theme.service';
 
 @Component({
   selector: 'app-ceruti-mould-panel',

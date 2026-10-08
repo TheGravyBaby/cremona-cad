@@ -2,7 +2,7 @@ import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Circle, Pt, Pt3D, Rectangle } from '../../../models/types';
 import { renderCircle, renderSegment, renderPath, renderPointHalo, renderRect, renderGuideBaseline, renderGuideKnot, renderGuideMeasure } from '../../../helpers/renderFuncs';
-import { DASH, STROKE_WEIGHT } from '../../../theme/strokes';
+import { DASH, PaletteId, STROKE_WEIGHT } from '../../../theme/palettes';
 import { clamp } from '../../../helpers/math/simpleGeometry';
 import { projectedPath, samplePathToPolyline } from '../../../helpers/math/pathMath';
 import { buildProjection, projectedBounds } from '../../../helpers/math/vibeMath';
@@ -19,7 +19,7 @@ import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { applyRowMove, RowMove, RowReorderDirective } from '../../../shared/row-reorder';
 import { crownCannotMeetChannel } from '../../../docs/conditions';
 import { TooltipDirective } from '../../../docs/tooltips';
-import { PanelPalette } from '../../../theme/palette';
+import { PanelPalette } from '../../../theme/theme.service';
 
 /** Range-thumb width, in the px the browser actually draws it — see `stationLandmarks`. */
 const TICK_THUMB_PX = 14;
@@ -131,6 +131,7 @@ interface CrossSplineRow {
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDestroy {
+  protected override readonly paletteId: PaletteId = 'plates';
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;

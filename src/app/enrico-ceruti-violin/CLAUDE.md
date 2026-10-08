@@ -52,8 +52,9 @@ section first → long arch carved to a template → crown across. The panel ord
 - **Colour is positional: a panel names a palette and reads `pal.ink(i)`, never a part's name**
   (2026-10-07). Sixty hand-picked hexes became a `CerutiColors` role map for a day, then went
   entirely: `CerutiPanelBase` takes the `Theme` as its input, `paletteId` says which palette this
-  panel reads (every panel on `classicCremona` so far), and `pal` is that palette resolved, which
-  every render function takes too. Palettes are interchangeable lists of any length, read wrapping,
+  panel reads (the outline panels `classicCremona`, the plate panels `plates`, the f-hole panels
+  `fHoles`, the neck set `neck`, the scroll panels `scroll`, each lifted from the colours those
+  panels first had), and `pal` is that palette resolved, which every render function takes too. Palettes are interchangeable lists of any length, read wrapping,
   so a panel's colours change by naming another palette, not by changing keys. Shared parts keep
   one colour because one render function draws them (the front profile, the neck, the scroll
   views). The scroll views emit part tokens (`front`, `back`, `turns`, `neck`…) that `viewInk` in

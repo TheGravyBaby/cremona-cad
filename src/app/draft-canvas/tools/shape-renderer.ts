@@ -9,8 +9,7 @@ import { pointOnCircle } from '../../helpers/math/simpleGeometry';
 import { arcPathData, pathFromPolyline } from '../../helpers/math/pathMath';
 import { pointAtPolylineLength, polylineCumulativeLengths } from '../../helpers/math/vibeMath';
 import { GrabberKind } from './shape-grabbers';
-import { CANVAS_COLORS } from '../../theme/canvas-colors';
-import { DASH } from '../../theme/strokes';
+import { CANVAS_COLORS, DASH } from '../../theme/palettes';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 

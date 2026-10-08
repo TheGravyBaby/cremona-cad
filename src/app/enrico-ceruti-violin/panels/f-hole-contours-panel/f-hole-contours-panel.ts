@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { renderArcFromArc, renderArcHalo, renderSegment, renderPointHalo, renderArcFromArcFancy, renderCircle, renderSolveFailures } from '../../../helpers/renderFuncs';
-import { STROKE_WEIGHT } from '../../../theme/strokes';
+import { PaletteId, STROKE_WEIGHT } from '../../../theme/palettes';
 import { ensureFholePath, ensureFrontProfilePaths, calculateOuterArcs, FholeArcKey, FholeFailure } from '../../calculation/outline/ceruti-calcs';
 import { renderFrontProfile } from '../../renders/front-profile.render';
 import { getArcEndDeg, getArcStartDeg, getFieldDeg, setArcEndDeg, setArcStartDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
@@ -13,7 +13,7 @@ import { angleFromCenter, dist, flipArcAboutY, flipPointAboutY, pointOnCircle } 
 import { Arc } from '../../../models/types';
 import { renderBoutBouts } from '../main-bouts-panel/main-bouts-panel';
 import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
-import { PanelPalette } from '../../../theme/palette';
+import { PanelPalette } from '../../../theme/theme.service';
 
 // UCut/LCut take a point halo; the rest take an arc halo
 export type FholeHighlightKey = FholeArcKey | 'UCut' | 'LCut';
@@ -26,6 +26,7 @@ export type FholeHighlightKey = FholeArcKey | 'UCut' | 'LCut';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
+  protected override readonly paletteId: PaletteId = 'fHoles';
   static readonly renderToggles: readonly RenderToggleKey[] = ['showFholeBounds', 'showFholeArcs', 'showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;

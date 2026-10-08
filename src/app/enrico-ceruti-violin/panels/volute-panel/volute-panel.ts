@@ -2,7 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { getFieldDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
 import { renderPath, renderSolveFailures, renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashLine, renderPolygon, renderSegment } from '../../../helpers/renderFuncs';
-import { STROKE_WEIGHT } from '../../../theme/strokes';
+import { PaletteId, STROKE_WEIGHT } from '../../../theme/palettes';
 import { CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, ScrollParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams, defaultStringSetup } from '../../calculation/neck/ceruti-neck';
@@ -14,7 +14,7 @@ import { Arc, Pt } from '../../../models/types';
 import { scrollNeckStub } from '../../calculation/neck/ceruti-scroll-views';
 import { HighlightedArc } from '../../renders/render-constants';
 import { TooltipDirective } from '../../../docs/tooltips';
-import { PanelPalette } from '../../../theme/palette';
+import { PanelPalette } from '../../../theme/theme.service';
 
 // a four point arc by its index innermost first, or a crown arc by name
 export type VoluteHighlightKey = number | 'S0' | 'S1';
@@ -26,6 +26,7 @@ export type VoluteHighlightKey = number | 'S0' | 'S1';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class VolutePanel extends CerutiPanelBase implements OnInit {
+  protected override readonly paletteId: PaletteId = 'scroll';
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'showVoluteConstruction'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;

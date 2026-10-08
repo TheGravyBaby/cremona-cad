@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { flipArcAboutY, flipCircleAboutY } from '../../../helpers/math/simpleGeometry';
 import { adjustArcEnd } from '../../../helpers/math/arcDegrees';
 import { renderArcFromArc, renderArcFromArcFancy, renderCircle, renderPath } from '../../../helpers/renderFuncs';
-import { STROKE_WEIGHT } from '../../../theme/strokes';
+import { PaletteId, STROKE_WEIGHT } from '../../../theme/palettes';
 import { translatePath } from '../../../helpers/math/pathMath';
 import { Arc, arcFromCircle } from '../../../models/types';
 import { calculateOuterArcs, ensureFholePath, ensureOuterTracePaths } from '../../calculation/outline/ceruti-calcs';
@@ -13,7 +13,7 @@ import { plateLayoutOffset } from '../../calculation/arching/ceruti-arch-geometr
 import { CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
-import { PanelPalette } from '../../../theme/palette';
+import { PanelPalette } from '../../../theme/theme.service';
 
 export interface OuterTraceViewFlags {
   showModuleArcs: boolean;
@@ -29,6 +29,7 @@ export interface OuterTraceViewFlags {
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class OuterTracePanel extends CerutiPanelBase implements OnInit {
+  protected override readonly paletteId: PaletteId = 'plates';
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;

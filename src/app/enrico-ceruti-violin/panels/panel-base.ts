@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { PanelRenderRequest } from '../ceruti-types';
 import { showFieldHelp } from '../../docs/field-help';
-import { PanelPalette, Theme } from '../../theme/palette';
+import { PanelPalette, Theme } from '../../theme/theme.service';
 import { PaletteId } from '../../theme/palettes';
 
 export type RenderLayer = (g: any, ui: any) => void;

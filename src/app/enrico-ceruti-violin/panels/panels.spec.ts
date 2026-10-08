@@ -30,8 +30,8 @@ import { VolutePanel } from './volute-panel/volute-panel';
 import { Pt } from '../../models/types';
 import { scrollBackInPlan, scrollBackViewStrokes, scrollFrontInPlan } from '../calculation/neck/ceruti-scroll-views';
 import { sideViewOffsetX } from '../renders/body-side-profile.render';
-import { STROKE_WEIGHT } from '../../theme/strokes';
-import { Theme } from '../../theme/palette';
+import { STROKE_WEIGHT } from '../../theme/palettes';
+import { Theme } from '../../theme/theme.service';
 import { labelTheme, nightTheme } from '../../theme/theme-fixtures';
 
 /**

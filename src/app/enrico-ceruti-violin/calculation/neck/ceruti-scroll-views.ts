@@ -3,7 +3,7 @@ import { occludePath } from '../../../helpers/math/pathVibes';
 import { pathFromLine, pathFromPolygon, pathFromPolyline } from '../../../helpers/math/pathMath';
 import { clipPolylineAtY, polylinePointAtY } from '../../../helpers/math/vibeMath';
 import { StrokeShape } from '../../../helpers/renderFuncs';
-import { STROKE_WEIGHT } from '../../../theme/strokes';
+import { STROKE_WEIGHT } from '../../../theme/palettes';
 import { Pt, Pt3D } from '../../../models/types';
 import { EnricoCerutiParams } from '../../ceruti-types';
 import { duckTailRadius, pegboxHipHeight, pegboxWidth, scrollPathStretches, ScrollStretches, scrollFrontTop, scrollFrontWidths, scrollLines, scrollNeckHalfWidth } from './ceruti-scroll';

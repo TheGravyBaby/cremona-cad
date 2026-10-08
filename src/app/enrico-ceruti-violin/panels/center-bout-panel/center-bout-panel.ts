@@ -4,7 +4,7 @@ import { adjustArcStart } from '../../../helpers/math/arcDegrees';
 import { flipArcAboutY, flipCircleAboutY, offsetArcRadius } from '../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderPointHalo, renderSolveFailures } from '../../../helpers/renderFuncs';
-import { STROKE_WEIGHT } from '../../../theme/strokes';
+import { STROKE_WEIGHT } from '../../../theme/palettes';
 import { Arc } from '../../../models/types';
 import { SolveFailure } from '../../../helpers/validators';
 import { ensureCenterBoutInnerPath } from '../../calculation/outline/ceruti-calcs';
@@ -15,7 +15,7 @@ import { renderCorners } from '../corners-panel/corners-panel';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
-import { PanelPalette } from '../../../theme/palette';
+import { PanelPalette } from '../../../theme/theme.service';
 
 export interface CenterBoutViewFlags {
   showModuleCircles: boolean;

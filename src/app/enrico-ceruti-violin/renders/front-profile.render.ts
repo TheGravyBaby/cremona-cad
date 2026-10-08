@@ -1,5 +1,5 @@
 import { renderPath, renderStroke } from '../../helpers/renderFuncs';
-import { STROKE_WEIGHT } from '../../theme/strokes';
+import { STROKE_WEIGHT } from '../../theme/palettes';
 import { translatePath } from '../../helpers/math/pathMath';
 import { EnricoCerutiParams, PathEntry } from '../ceruti-types';
 import { FrontProfileSolve, getPath, getPathOrNull, hasOuterTrace, NeckProfileSolve, topPlatePaths } from '../calculation/outline/ceruti-calcs';
@@ -7,7 +7,7 @@ import { plateLayoutOffset } from '../calculation/arching/ceruti-arch-geometry';
 import { defineBackNeckPath, defineFrontProfilePath, defineInnerPath, PlatePlan } from '../calculation/outline/ceruti-paths';
 import { SolveFailure } from '../../helpers/validators';
 import { scrollBackInPlan, scrollFrontInPlan } from '../calculation/neck/ceruti-scroll-views';
-import { PanelPalette } from '../../theme/palette';
+import { PanelPalette } from '../../theme/theme.service';
 
 type Layer = (g: any, ui: any) => void;
 

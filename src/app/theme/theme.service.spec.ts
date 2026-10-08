@@ -1,10 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { contrastRatio, parseColor, rgbToHsl } from './color-math';
-import { makeInk, resolveTheme } from './palette';
-import { classicCremona } from './palettes/classic-cremona';
+import { ALERT, NEUTRAL, PALETTES } from './palettes';
+import { contrastRatio, makeInk, parseColor, resolveTheme, rgbToHsl } from './theme.service';
 
-const CREMONA = { ...classicCremona, neutral: '#868484', alert: '#d62828' };
+const CREMONA = { ...PALETTES.classicCremona, neutral: NEUTRAL, alert: ALERT };
 
 const NIGHT = '#1e1e1e';
 const DAY = '#c3bfb3';
@@ -58,17 +57,17 @@ describe('an ink', () => {
 });
 
 describe('a theme', () => {
-  const short = { id: 'short', name: 'Short', inks: ['#c97a35', '#3f9a63'] };
+  const short = { name: 'Short', inks: ['#c97a35', '#3f9a63'] };
 
   it('wraps a palette read past its end, so a panel wanting six inks can take two', () => {
-    const pal = resolveTheme([short], 'night', NIGHT).palette('short');
+    const pal = resolveTheme({ short }, 'night', NIGHT).palette('short');
     expect(pal.inks).toHaveLength(2);
     expect(pal.ink(2).css).toBe(pal.ink(0).css);
     expect(pal.ink(5).css).toBe(pal.ink(1).css);
   });
 
   it('resolves every palette by id, the first standing in for an unknown one, and shares the neutral and alert', () => {
-    const theme = resolveTheme([classicCremona, short], 'night', NIGHT);
+    const theme = resolveTheme({ classicCremona: PALETTES.classicCremona, short }, 'night', NIGHT);
     expect(theme.palette('short').ink(1).css).toBe(theme.palette('short').inks[1].css);
     expect(theme.palette('nope').id).toBe('classicCremona');
     expect(theme.palette('short').neutral.css).toBe(theme.neutral.css);

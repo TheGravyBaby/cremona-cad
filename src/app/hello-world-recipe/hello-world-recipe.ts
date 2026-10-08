@@ -9,8 +9,7 @@ import {
   angleFromCenter, flipArcAboutY, flipCircleAboutY, flipPointAboutY, offsetCircleRadius, pointOnCircle,
 } from '../helpers/math/simpleGeometry';
 import { renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderSmallCrosshair } from '../helpers/renderFuncs';
-import { PanelPalette } from '../theme/palette';
-import { ThemeService } from '../theme/theme.service';
+import { PanelPalette, ThemeService } from '../theme/theme.service';
 import { RECIPE_KEY, writeWorkingState } from '../helpers/workingStorage';
 import { error } from '../shared/message-emitter';
 import { FOUR_CIRCLES_DEFAULTS, FourCircles, FourCirclesParams, FourCirclesViewFlags } from './hello-world-types';

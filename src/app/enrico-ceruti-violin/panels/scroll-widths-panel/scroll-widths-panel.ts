@@ -1,7 +1,7 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { renderCircle, renderDashLine, renderPath, renderSolveFailures, renderCrosshair, renderPointHalo, renderStroke } from '../../../helpers/renderFuncs';
-import { STROKE_WEIGHT } from '../../../theme/strokes';
+import { PaletteId, STROKE_WEIGHT } from '../../../theme/palettes';
 import { CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { defaultNeckParams, defaultStringSetup } from '../../calculation/neck/ceruti-neck';
 import { calculateScroll, calculateScrollWidths, ScrollStationKey, pegboxCavity, scrollCompassWalk, scrollExtent, scrollWidthStations } from '../../calculation/neck/ceruti-scroll';
@@ -14,7 +14,7 @@ import { pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
 import { scrollNeckStub, scrollBackViewStrokes, scrollFrontViewStrokes, ScrollViewInk } from '../../calculation/neck/ceruti-scroll-views';
 import { renderScrollNeck } from '../volute-panel/volute-panel';
 import { TooltipDirective } from '../../../docs/tooltips';
-import { Ink, PanelPalette } from '../../../theme/palette';
+import { Ink, PanelPalette } from '../../../theme/theme.service';
 
 @Component({
   selector: 'app-ceruti-scroll-widths-panel',
@@ -23,6 +23,7 @@ import { Ink, PanelPalette } from '../../../theme/palette';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
+  protected override readonly paletteId: PaletteId = 'scroll';
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;

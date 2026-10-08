@@ -1,6 +1,6 @@
 import { Pt } from '../../models/types';
 import { renderPath, renderPointHalo, renderSegment, renderGuideBaseline, renderGuideKnot, renderGuideMeasure } from '../../helpers/renderFuncs';
-import { STROKE_WEIGHT } from '../../theme/strokes';
+import { STROKE_WEIGHT } from '../../theme/palettes';
 import { archSplineKnots } from '../../helpers/math/vibeMath';
 import { occludePath } from '../../helpers/math/pathVibes';
 import { ArchCurve, EnricoCerutiParams, FlutingParams } from '../ceruti-types';
@@ -9,7 +9,7 @@ import { channelCapPath, LongArchSolve } from '../calculation/arching/ceruti-arc
 import { defaultStringSetup } from '../calculation/neck/ceruti-neck';
 import { outerCornerFlats } from '../calculation/outline/ceruti-paths';
 import { HighlightedSplinePoint } from './render-constants';
-import { PanelPalette } from '../../theme/palette';
+import { PanelPalette } from '../../theme/theme.service';
 
 // the body's side profile: the rib between the two plates, the top growing up off it and the back down.
 // Drawn by the long-arching panel cut down the centreline, and by the neck panels seen from the side

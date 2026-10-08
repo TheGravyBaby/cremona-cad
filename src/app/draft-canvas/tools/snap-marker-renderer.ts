@@ -1,6 +1,6 @@
 import * as d3 from 'd3';
 import { SnapCandidate } from './snap-engine';
-import { CANVAS_COLORS } from '../../theme/canvas-colors';
+import { CANVAS_COLORS } from '../../theme/palettes';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 

@@ -5,7 +5,7 @@ import { PanelScope, scopeShows, scopeWith } from './panel-scope';
 import { ImageAssetStore } from './image-asset-store';
 import { readWorkingState, writeWorkingState } from '../../helpers/workingStorage';
 import { UndoCoordinator, Undoable } from '../../helpers/undoCoordinator';
-import { CANVAS_COLORS } from '../../theme/canvas-colors';
+import { CANVAS_COLORS } from '../../theme/palettes';
 
 const STORAGE_KEY = 'draft-canvas-toolbox-shapes';
 const MAX_HISTORY = 50;

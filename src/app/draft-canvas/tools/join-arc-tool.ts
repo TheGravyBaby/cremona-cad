@@ -5,8 +5,7 @@ import { findAllJoiningArcsFromTangents, fitTangentArc } from '../../helpers/mat
 import { arcPathData } from '../../helpers/math/pathMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { makeShapeId } from './toolbox-shape';
-import { CANVAS_COLORS } from '../../theme/canvas-colors';
-import { DASH } from '../../theme/strokes';
+import { CANVAS_COLORS, DASH } from '../../theme/palettes';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
