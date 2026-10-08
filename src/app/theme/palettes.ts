@@ -13,7 +13,7 @@ export const PALETTES = {
   // the lower bout's blue, and a violet for whatever a fourth part needs
   classicCremona: {
     name: 'Classic Cremona',
-    inks: ['#c2642e', '#4d8660', '#4d74a8', '#a969b4'],
+    inks: ['#d38032', '#4d8660', '#4d74a8', '#e1bf50ff', '#C24B2E', '#a969b4', ],
   },
   // the two plates as the arching panels first drew them: the top's warm, the fluting's green, the
   // back's blue

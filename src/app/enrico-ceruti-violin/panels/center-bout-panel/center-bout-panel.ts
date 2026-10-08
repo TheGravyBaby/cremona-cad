@@ -158,52 +158,52 @@ export const renderCenterBout = (
   }
 
   if ((currentModule && flags.showModuleCircles) || flags.showAllCircles) {
-    renderCircle(p.bouts.C0!, pal.ink(0).saturation(-0.5).lightness(-0.2).css)(g, ui);
-    upper && renderCircle(p.bouts.C2!, pal.ink(0).css)(g, ui);
-    lower && renderCircle(p.bouts.C1!, pal.ink(0).lightness(0.5).css)(g, ui);
-    upper && renderCircle(flipCircleAboutY(p.bouts.C2!), pal.ink(0).css)(g, ui);
-    lower && renderCircle(flipCircleAboutY(p.bouts.C1!), pal.ink(0).lightness(0.5).css)(g, ui);
-    renderCircle(flipCircleAboutY(p.bouts.C0!), pal.ink(0).saturation(-0.5).lightness(-0.2).css)(g, ui);
+    renderCircle(p.bouts.C0!, pal.ink(0).css)(g, ui);
+    upper && renderCircle(p.bouts.C2!, pal.ink(4).css)(g, ui);
+    lower && renderCircle(p.bouts.C1!, pal.ink(3).css)(g, ui);
+    upper && renderCircle(flipCircleAboutY(p.bouts.C2!), pal.ink(4).css)(g, ui);
+    lower && renderCircle(flipCircleAboutY(p.bouts.C1!), pal.ink(3).css)(g, ui);
+    renderCircle(flipCircleAboutY(p.bouts.C0!), pal.ink(0).css)(g, ui);
 
-    upper && p.options.C21DoubleArc && renderCircle(p.bouts.C21!, pal.ink(0).css)(g, ui);
-    upper && p.options.C21DoubleArc && renderCircle(flipCircleAboutY(p.bouts.C21!), pal.ink(0).css)(g, ui);
-    lower && p.options.C11DoubleArc && renderCircle(p.bouts.C11!, pal.ink(0).lightness(0.5).css)(g, ui);
-    lower && p.options.C11DoubleArc && renderCircle(flipCircleAboutY(p.bouts.C11!), pal.ink(0).lightness(0.5).css)(g, ui);
-    solved('L3') && p.options.L31DoubleArc && renderCircle(p.bouts.L31!, pal.ink(0).lightness(0.5).css)(g, ui);
-    solved('L3') && p.options.L31DoubleArc && renderCircle(flipCircleAboutY(p.bouts.L31!), pal.ink(0).lightness(0.5).css)(g, ui);
-    solved('U3') && p.options.U31DoubleArc && renderCircle(p.bouts.U31!, pal.ink(0).css)(g, ui);
-    solved('U3') && p.options.U31DoubleArc && renderCircle(flipCircleAboutY(p.bouts.U31!), pal.ink(0).css)(g, ui);
+    upper && p.options.C21DoubleArc && renderCircle(p.bouts.C21!, pal.ink(4).css)(g, ui);
+    upper && p.options.C21DoubleArc && renderCircle(flipCircleAboutY(p.bouts.C21!), pal.ink(4).css)(g, ui);
+    lower && p.options.C11DoubleArc && renderCircle(p.bouts.C11!, pal.ink(3).css)(g, ui);
+    lower && p.options.C11DoubleArc && renderCircle(flipCircleAboutY(p.bouts.C11!), pal.ink(3).css)(g, ui);
+    solved('L3') && p.options.L31DoubleArc && renderCircle(p.bouts.L31!, pal.ink(3).css)(g, ui);
+    solved('L3') && p.options.L31DoubleArc && renderCircle(flipCircleAboutY(p.bouts.L31!), pal.ink(3).css)(g, ui);
+    solved('U3') && p.options.U31DoubleArc && renderCircle(p.bouts.U31!, pal.ink(4).css)(g, ui);
+    solved('U3') && p.options.U31DoubleArc && renderCircle(flipCircleAboutY(p.bouts.U31!), pal.ink(4).css)(g, ui);
   }
 
   if (currentModule && flags.showModuleGuides) {
-    renderDashedLine({ x: -1000, y: p.bouts.C0!.y }, { x: 1000, y: p.bouts.C0!.y }, pal.ink(0).saturation(-0.5).lightness(-0.2).css)(g, ui);
+    renderDashedLine({ x: -1000, y: p.bouts.C0!.y }, { x: 1000, y: p.bouts.C0!.y }, pal.ink(0).css)(g, ui);
   }
 
   if (currentModule && flags.showModuleArcs) {
-    renderCrosshair(p.bouts.UCr!, pal.ink(0).css)(g, ui);
-    renderCrosshair(p.bouts.LCr!, pal.ink(0).lightness(0.5).css)(g, ui);
-    renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, pal.ink(0).css)(g, ui);
-    renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, pal.ink(0).lightness(0.5).css)(g, ui);
+    renderCrosshair(p.bouts.UCr!, pal.ink(4).css)(g, ui);
+    renderCrosshair(p.bouts.LCr!, pal.ink(3).css)(g, ui);
+    renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, pal.ink(4).css)(g, ui);
+    renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, pal.ink(3).css)(g, ui);
   }
 
   if ((currentModule && flags.showModuleArcs) || flags.showAllArcs) {
-    upper && renderArcFromArcFancy(p.bouts.C2!, pal.ink(0).css)(g, ui);
-    upper && p.options.C21DoubleArc && renderArcFromArcFancy(p.bouts.C21!, pal.ink(0).css)(g, ui);
+    upper && renderArcFromArcFancy(p.bouts.C2!, pal.ink(4).css)(g, ui);
+    upper && p.options.C21DoubleArc && renderArcFromArcFancy(p.bouts.C21!, pal.ink(4).css)(g, ui);
 
-    lower && renderArcFromArcFancy(p.bouts.C1!, pal.ink(0).lightness(0.5).css)(g, ui);
-    lower && p.options.C11DoubleArc && renderArcFromArcFancy(p.bouts.C11!, pal.ink(0).lightness(0.5).css)(g, ui);
-    upper && lower && renderArcFromArcFancy(p.bouts.C0!, pal.ink(0).saturation(-0.5).lightness(-0.2).css)(g, ui);
-    upper && renderArcFromArcFancy(flipArcAboutY(p.bouts.C2!), pal.ink(0).css)(g, ui);
-    upper && p.options.C21DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.C21!), pal.ink(0).css)(g, ui);
-    lower && renderArcFromArcFancy(flipArcAboutY(p.bouts.C1!), pal.ink(0).lightness(0.5).css)(g, ui);
-    lower && p.options.C11DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.C11!), pal.ink(0).lightness(0.5).css)(g, ui);
-    upper && lower && renderArcFromArcFancy(flipArcAboutY(p.bouts.C0!), pal.ink(0).saturation(-0.5).lightness(-0.2).css)(g, ui);
+    lower && renderArcFromArcFancy(p.bouts.C1!, pal.ink(3).css)(g, ui);
+    lower && p.options.C11DoubleArc && renderArcFromArcFancy(p.bouts.C11!, pal.ink(3).css)(g, ui);
+    upper && lower && renderArcFromArcFancy(p.bouts.C0!, pal.ink(0).css)(g, ui);
+    upper && renderArcFromArcFancy(flipArcAboutY(p.bouts.C2!), pal.ink(4).css)(g, ui);
+    upper && p.options.C21DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.C21!), pal.ink(4).css)(g, ui);
+    lower && renderArcFromArcFancy(flipArcAboutY(p.bouts.C1!), pal.ink(3).css)(g, ui);
+    lower && p.options.C11DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.C11!), pal.ink(3).css)(g, ui);
+    upper && lower && renderArcFromArcFancy(flipArcAboutY(p.bouts.C0!), pal.ink(0).css)(g, ui);
   } else {
     // in their own colours on this panel, where their fields are; grey under a later panel's work.
     // L31 and U31 are the corners' and stay grey here
-    const cBoutUp = currentModule ? pal.ink(0).css : pal.neutral.css;
-    const cBout = currentModule ? pal.ink(0).saturation(-0.5).lightness(-0.2).css : pal.neutral.css;
-    const cBoutLow = currentModule ? pal.ink(0).lightness(0.5).css : pal.neutral.css;
+    const cBoutUp = currentModule ? pal.ink(4).css : pal.neutral.css;
+    const cBout = currentModule ? pal.ink(0).css : pal.neutral.css;
+    const cBoutLow = currentModule ? pal.ink(3).css : pal.neutral.css;
     upper && renderArcFromArc(p.bouts.C2!, cBoutUp, STROKE_WEIGHT.trace)(g, ui);
     lower && renderArcFromArc(p.bouts.C1!, cBoutLow, STROKE_WEIGHT.trace)(g, ui);
     upper && lower && renderArcFromArc(p.bouts.C0!, cBout, STROKE_WEIGHT.trace)(g, ui);
@@ -222,9 +222,9 @@ export const renderCenterBout = (
   }
 
   if (flags.renderOuterPath && renderOuterPathCorners) {
-    const cBoutUp = currentModule ? pal.ink(0).css : pal.neutral.css;
-    const cBout = currentModule ? pal.ink(0).saturation(-0.5).lightness(-0.2).css : pal.neutral.css;
-    const cBoutLow = currentModule ? pal.ink(0).lightness(0.5).css : pal.neutral.css;
+    const cBoutUp = currentModule ? pal.ink(4).css : pal.neutral.css;
+    const cBout = currentModule ? pal.ink(0).css : pal.neutral.css;
+    const cBoutLow = currentModule ? pal.ink(3).css : pal.neutral.css;
     const inset = p.overhang + p.rib;
 
     upper && renderArcFromArc(offsetArcRadius(p.bouts.C2!, cornerOffsetSign(p, 'C2') * inset), cBoutUp, STROKE_WEIGHT.trace)(g, ui);
