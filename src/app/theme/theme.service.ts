@@ -3,7 +3,7 @@ import { Injectable, effect, inject, signal } from '@angular/core';
 import { ALERT, CANVAS, NEUTRAL, PALETTES, Palette, PaletteId } from './palettes';
 
 export type ThemeMode = 'day' | 'night';
-export type Ink = string & { mod(lightness?: number, fade?: number): string };
+export type Ink = string & { faint(steps?: number): string };
 
 export interface PanelPalette {
   id: string;
@@ -71,8 +71,8 @@ export class ThemeService {
   }
 }
 
-function ink(css: string, mod: Ink['mod']): Ink {
-  return Object.assign(new String(css), { mod }) as unknown as Ink;
+function ink(css: string, faint: Ink['faint']): Ink {
+  return Object.assign(new String(css), { faint }) as unknown as Ink;
 }
 
 
@@ -126,20 +126,22 @@ export function contrastRatio(a: Rgb, b: Rgb): number {
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
-// the contrast a stroke needs against the canvas. A base tone clears WCAG's 3:1 non-text floor by
-// day; its ramp may run on to 2:1, since the day canvas is mid-toned and holding a light sibling
-// to 3:1 would land it on its mid sibling. By night a dark tone on a near-black canvas was never
-// held to a floor and 3:1 would lift every one of them, so 2:1 only stops black on black
-const BASE_FLOOR: Record<ThemeMode, number> = { day: 3, night: 2 };
-const RAMP_FLOOR = 2;
-const DAY_SATURATION_BOOST = 0.4;
+// the contrast a stroke needs against the canvas, low enough that an ink which already reads stays
+// where the palette put it. WCAG's 3:1 by day dragged every yellow down to brown, no yellow paler
+// than the mid-toned day canvas reaching it. By day the ramp runs on to 1.5:1, since a base sitting
+// on the 2:1 edge would leave its siblings nowhere to go
+const BASE_FLOOR = 2;
+const RAMP_FLOOR: Record<ThemeMode, number> = { day: 1.5, night: 2 };
 const LIGHTNESS_LIMITS = { lo: 0.05, hi: 0.94 };
 // the base sits at least this far inside the ramp's band, so a ramp has somewhere to go both ways
 const BASE_MARGIN = 0.1;
+// `faint(n)` takes whole steps, so one step fainter is the same nudge on every panel; five reach
+// the band's edge
+const FAINT_STEPS = 5;
 
 interface Band { lo: number; hi: number; canvasSide: -1 | 1 }
 
-const unit = (t: number) => Math.max(-1, Math.min(1, t));
+const wholeSteps = (n: number) => Math.max(-FAINT_STEPS, Math.min(FAINT_STEPS, Math.sign(n) * Math.round(Math.abs(n))));
 
 // the run of lightness, at this hue and saturation, that clears `floor` against the canvas: the
 // longest such run when the canvas is mid-toned enough to allow one on each side. A hue that
@@ -159,18 +161,15 @@ function legibleBand(h: number, s: number, canvas: Rgb, floor: number): Band {
 
 export function makeInk(color: string, mode: ThemeMode): Ink {
   const canvas = parseHex(CANVAS[mode]);
-  const { h, s: s0, l: l0 } = rgbToHsl(parseHex(color));
-  // the day canvas is mid-toned, so colours darken to clear it and would go muddy unsaturated
-  const s = mode === 'day' && s0 > 0.1 ? Math.min(1, s0 + DAY_SATURATION_BOOST) : s0;
-  const band = legibleBand(h, s, canvas, RAMP_FLOOR);
-  const base = legibleBand(h, s, canvas, BASE_FLOOR[mode]);
+  const { h, s, l: l0 } = rgbToHsl(parseHex(color));
+  const band = legibleBand(h, s, canvas, RAMP_FLOOR[mode]);
+  const base = legibleBand(h, s, canvas, BASE_FLOOR);
   const margin = BASE_MARGIN * (band.hi - band.lo);
   const lo = Math.max(band.lo + margin, base.lo), hi = Math.min(band.hi - margin, base.hi);
   const l = lo <= hi ? Math.max(lo, Math.min(hi, l0)) : (base.lo + base.hi) / 2;
   const ramp = (from: number, t: number) => (t >= 0 ? from + t * (band.hi - from) : from + t * (from - band.lo));
   const hex = (light: number) => toHex(hslToRgb({ h, s, l: light }));
-  return ink(hex(l), (lightness = 0, fade = 0) =>
-    hex(ramp(ramp(l, unit(lightness)), band.canvasSide * Math.max(0, unit(fade)))));
+  return ink(hex(l), (steps = 0) => hex(ramp(l, band.canvasSide * wholeSteps(steps) / FAINT_STEPS)));
 }
 
 export function resolveTheme(palettes: Record<string, Palette>, mode: ThemeMode): Theme {

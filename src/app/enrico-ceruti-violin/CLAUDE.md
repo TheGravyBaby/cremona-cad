@@ -57,7 +57,7 @@ section first → long arch carved to a template → crown across. The panel ord
   every render function takes too. Every palette has the same six slots, cool to hot (violet,
   blue, green, yellow, orange, red), so a panel's colours change by naming another palette, not by
   changing keys. A distinct part takes a distinct slot (the corners' yellow and red, the stem's
-  blue, the nut, root and bridge; 2026-10-08); `mod`'s lightness only separates siblings of one
+  blue, the nut, root and bridge; 2026-10-08); `faint(n)` only separates siblings of one
   part, the fret ticks on the fingerboard's ink for one. Shared parts keep
   one colour because one render function draws them (the front profile, the neck, the scroll
   views). The scroll views emit part tokens (`front`, `back`, `turns`, `neck`…) that `viewInk` in

@@ -55,7 +55,7 @@ export class CornersPanel extends CerutiPanelBase implements OnInit {
     const upper = this.highlightedCorner === 'upper';
     const point = upper ? this.params.bouts.UCr : this.params.bouts.LCr;
     if (!point) return null;
-    return { point, color: upper ? this.pal.ink(5) : this.pal.ink(3) };
+    return { point, color: upper ? this.pal.ink(5).faint(5) : this.pal.ink(3).faint(5) };
   }
 
   ngOnInit(): void {
@@ -151,50 +151,50 @@ export const renderCorners = (
   }
 
   if ((currentModule && flags.showModuleCircles) || flags.showAllCircles) {
-    lower && renderCircle(p.bouts.L2!, pal.ink(1).mod(0.45))(g, ui);
+    lower && renderCircle(p.bouts.L2!, pal.ink(1).faint(-2))(g, ui);
     lower && renderCircle(p.bouts.L3!, pal.ink(3))(g, ui);
     lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderCircle(p.bouts.L31!, pal.ink(3))(g, ui);
-    lower && renderCircle(flipCircleAboutY(p.bouts.L2!), pal.ink(1).mod(0.45))(g, ui);
+    lower && renderCircle(flipCircleAboutY(p.bouts.L2!), pal.ink(1).faint(-2))(g, ui);
     lower && renderCircle(flipCircleAboutY(p.bouts.L3!), pal.ink(3))(g, ui);
     lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderCircle(flipCircleAboutY(p.bouts.L31!), pal.ink(3))(g, ui);
-    upper && renderCircle(p.bouts.U2!, pal.ink(2).mod(0.45))(g, ui);
+    upper && renderCircle(p.bouts.U2!, pal.ink(2).faint(-2))(g, ui);
     upper && renderCircle(p.bouts.U3!, pal.ink(5))(g, ui);
     upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderCircle(p.bouts.U31!, pal.ink(5))(g, ui);
-    upper && renderCircle(flipCircleAboutY(p.bouts.U2!), pal.ink(2).mod(0.45))(g, ui);
+    upper && renderCircle(flipCircleAboutY(p.bouts.U2!), pal.ink(2).faint(-2))(g, ui);
     upper && renderCircle(flipCircleAboutY(p.bouts.U3!), pal.ink(5))(g, ui);
     upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderCircle(flipCircleAboutY(p.bouts.U31!), pal.ink(5))(g, ui);
   }
   if (currentModule && flags.showModuleArcs) {
-    renderCrosshair(p.bouts.UCr!, pal.ink(5))(g, ui);
-    renderCrosshair(p.bouts.LCr!, pal.ink(3))(g, ui);
-    renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, pal.ink(5))(g, ui);
-    renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, pal.ink(3))(g, ui);
+    renderCrosshair(p.bouts.UCr!, pal.ink(5).faint(5))(g, ui);
+    renderCrosshair(p.bouts.LCr!, pal.ink(3).faint(5))(g, ui);
+    renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, pal.ink(5).faint(5))(g, ui);
+    renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, pal.ink(3).faint(5))(g, ui);
   }
 
   if ((currentModule && flags.showModuleArcs) || flags.showAllArcs) {
-    lower && !p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L2!, pal.ink(1).mod(0.45))(g, ui);
+    lower && !p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L2!, pal.ink(1).faint(-2))(g, ui);
     lower && !p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L3!, pal.ink(3))(g, ui);
     lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArcFancy(p.bouts.L31!, pal.ink(3))(g, ui);
-    lower && !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L2!), pal.ink(1).mod(0.45))(g, ui);
+    lower && !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L2!), pal.ink(1).faint(-2))(g, ui);
     lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.L31!), pal.ink(3))(g, ui);
     lower && !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L3!), pal.ink(3))(g, ui);
-    lower && p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L4!, pal.ink(1).mod(0.45))(g, ui);
-    lower && p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L4!), pal.ink(1).mod(0.45))(g, ui);
+    lower && p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L4!, pal.ink(1).faint(-2))(g, ui);
+    lower && p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L4!), pal.ink(1).faint(-2))(g, ui);
 
-    upper && !p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U2!, pal.ink(2).mod(0.45))(g, ui);
+    upper && !p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U2!, pal.ink(2).faint(-2))(g, ui);
     upper && !p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U3!, pal.ink(5))(g, ui);
     upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArcFancy(p.bouts.U31!, pal.ink(5))(g, ui);
-    upper && !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U2!), pal.ink(2).mod(0.45))(g, ui);
+    upper && !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U2!), pal.ink(2).faint(-2))(g, ui);
     upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.U31!), pal.ink(5))(g, ui);
 
     upper && !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U3!), pal.ink(5))(g, ui);
-    upper && p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U4!, pal.ink(2).mod(0.45))(g, ui);
-    upper && p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U4!), pal.ink(2).mod(0.45))(g, ui);
+    upper && p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U4!, pal.ink(2).faint(-2))(g, ui);
+    upper && p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U4!), pal.ink(2).faint(-2))(g, ui);
   } else {
     // in their own colours on this panel, where their fields are; grey under a later panel's work
-    const lBoutSide = currentModule ? pal.ink(1).mod(0.45) : pal.neutral;
+    const lBoutSide = currentModule ? pal.ink(1).faint(-2) : pal.neutral;
     const cBoutLow = currentModule ? pal.ink(3) : pal.neutral;
-    const uBoutSide = currentModule ? pal.ink(2).mod(0.45) : pal.neutral;
+    const uBoutSide = currentModule ? pal.ink(2).faint(-2) : pal.neutral;
     const cBoutUp = currentModule ? pal.ink(5) : pal.neutral;
     lower && !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L2!, lBoutSide, STROKE_WEIGHT.trace)(g, ui);
     lower && !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L3!, cBoutLow, STROKE_WEIGHT.trace)(g, ui);
@@ -216,9 +216,9 @@ export const renderCorners = (
   }
 
   if (flags.renderOuterPath && renderOuterPathCorners) {
-    const lBoutSide = currentModule ? pal.ink(1).mod(0.45) : pal.neutral;
+    const lBoutSide = currentModule ? pal.ink(1).faint(-2) : pal.neutral;
     const cBoutLow = currentModule ? pal.ink(3) : pal.neutral;
-    const uBoutSide = currentModule ? pal.ink(2).mod(0.45) : pal.neutral;
+    const uBoutSide = currentModule ? pal.ink(2).faint(-2) : pal.neutral;
     const cBoutUp = currentModule ? pal.ink(5) : pal.neutral;
     const inset = p.overhang + p.rib;
 

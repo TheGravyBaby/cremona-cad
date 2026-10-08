@@ -317,7 +317,7 @@ const FRET_TICK_HALF_LENGTH_MM = 1;
 const LANDMARK_TICK_HALF_LENGTH_MM = 3;
 // the intervals worth calling out against the plain fret colour, above the open string: perfect
 // fourth, perfect fifth, octave
-const landmarkColors = (pal: PanelPalette): Record<number, string> => ({ 5: pal.ink(1).mod(0.3), 7: pal.ink(1).mod(0.9), 12: pal.ink(1).mod(-0.5) });
+const landmarkColors = (pal: PanelPalette): Record<number, string> => ({ 5: pal.ink(1).faint(-2), 7: pal.ink(1).faint(-5), 12: pal.ink(1).faint(3) });
 
 /** Twelve-tone equal temperament: each semitone shortens the vibrating length by a factor of the
  * 12th root of 2, so fret n sits `stringLength * (1 - 2^(-n/12))` from the nut. Returns one
@@ -346,7 +346,7 @@ function renderFretTicks(nut: Pt, bridge: Pt, maxDistance: number, pal: PanelPal
       const center = moveInVectorSpace(nut, [{ ...along, mag: d }]);
       const a = moveInVectorSpace(center, [{ ...across, mag: halfLength }]);
       const b = moveInVectorSpace(center, [{ ...across, mag: -halfLength }]);
-      renderSegment(a, b, landmarkColor ?? pal.ink(1).mod(0.6), STROKE_WEIGHT.guide)(g, ui);
+      renderSegment(a, b, landmarkColor ?? pal.ink(1).faint(-3), STROKE_WEIGHT.guide)(g, ui);
     });
   };
 }

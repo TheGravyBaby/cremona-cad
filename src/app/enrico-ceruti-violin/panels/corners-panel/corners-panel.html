@@ -30,7 +30,7 @@
                 <span class="field-title">Y <span class="unit-label">mm</span></span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Upper corner position"
-                [style.borderColor]="pal.ink(5)"
+                [style.borderColor]="pal.ink(5).faint(5)"
                 title="Arrow keys move the corner from either box">
                 <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Upper corner X"
                     [(ngModel)]="params.bouts.UCr!.x"
@@ -118,7 +118,7 @@
                 <span class="field-title">Y <span class="unit-label">mm</span></span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Lower corner position"
-                [style.borderColor]="pal.ink(3)"
+                [style.borderColor]="pal.ink(3).faint(5)"
                 title="Arrow keys move the corner from either box">
                 <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Lower corner X"
                     [(ngModel)]="params.bouts.LCr!.x"

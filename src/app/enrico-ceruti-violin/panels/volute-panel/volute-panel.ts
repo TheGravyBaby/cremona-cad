@@ -123,9 +123,9 @@ export type ScrollViewFlags = Pick<CerutiViewFlags, 'showModuleArcs' | 'showAllA
 // tones alternating arc by arc, the turns coming round again past three
 export function arcColor(pal: PanelPalette, i: number): string {
   const turns = [
-    [pal.ink(2).mod(0.8), pal.ink(2).mod(-0.2)],
-    [pal.ink(2).mod(0.6), pal.ink(2).mod(-0.3)],
-    [pal.ink(2).mod(0.4), pal.ink(2).mod(-0.4)],
+    [pal.ink(2).faint(-4), pal.ink(2).faint(1)],
+    [pal.ink(2).faint(-3), pal.ink(2).faint(5)],
+    [pal.ink(2).faint(-2), pal.ink(2).faint(3)],
   ];
   return turns[Math.floor(i / 4) % 3][i % 2];
 }
@@ -147,17 +147,17 @@ export const renderScrollNeck = (p: EnricoCerutiParams, pal: PanelPalette, showG
   const stub = scrollNeckStub(p);
 
   renderPolygon([new Pt(0, 0), new Pt(0, nutHeight), new Pt(nutThickness, nutHeight), new Pt(nutThickness, 0)], pal.ink(0), STROKE_WEIGHT.section)(g, ui);
-  renderSegment(new Pt(0, -stub), new Pt(0, 0), pal.neutral.mod(-0.3), STROKE_WEIGHT.section)(g, ui);
+  renderSegment(new Pt(0, -stub), new Pt(0, 0), pal.neutral.faint(5), STROKE_WEIGHT.section)(g, ui);
   // the neck's back runs on up to where the nape meets it, or to the nut's level while the nape is unsolved
   const backTop = failures.some(f => f.unsolved.includes('nape')) ? 0 : v.nape.y;
-  if (backTop > -stub) renderSegment(new Pt(-thickness, -stub), new Pt(-thickness, backTop), pal.neutral.mod(-0.3), STROKE_WEIGHT.section)(g, ui);
+  if (backTop > -stub) renderSegment(new Pt(-thickness, -stub), new Pt(-thickness, backTop), pal.neutral.faint(5), STROKE_WEIGHT.section)(g, ui);
 
   if (!showGuides) return;
   const crownTop = Math.max(...[v.S0, v.S1].flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y));
   const S1Back = Math.min(...arcReach(v.S1, TURN.half).map(pt => pt.x));
   if (!Number.isFinite(crownTop) || !Number.isFinite(S1Back)) return;
-  renderDashLine(new Pt(0, 0), new Pt(0, crownTop), pal.ink(4).mod(0, 0.5), STROKE_WEIGHT.guide)(g, ui);
-  renderDashLine(new Pt(0, crownTop), new Pt(S1Back, crownTop), pal.ink(4).mod(0, 0.5), STROKE_WEIGHT.guide)(g, ui);
+  renderDashLine(new Pt(0, 0), new Pt(0, crownTop), pal.ink(4).faint(3), STROKE_WEIGHT.guide)(g, ui);
+  renderDashLine(new Pt(0, crownTop), new Pt(S1Back, crownTop), pal.ink(4).faint(3), STROKE_WEIGHT.guide)(g, ui);
 };
 
 // the eye, the spiral and the crown (S0, S1). The construction toggle adds the figure the spiral's
@@ -182,7 +182,7 @@ export const renderVolute = (
   if (currentModule && flags.showVoluteConstruction) {
     for (const line of voluteConstruction(v)) {
       const placed = line.map(pt => new Pt(v.eye.x + pt.x, v.eye.y + pt.y));
-      for (let i = 1; i < placed.length; i++) renderSegment(placed[i - 1], placed[i], pal.ink(2).mod(0, 0.5), STROKE_WEIGHT.guide, true)(g, ui);
+      for (let i = 1; i < placed.length; i++) renderSegment(placed[i - 1], placed[i], pal.ink(2).faint(3), STROKE_WEIGHT.guide, true)(g, ui);
     }
   }
 
@@ -190,6 +190,6 @@ export const renderVolute = (
   for (let i = 0; i < inward.length; i++) scrollArc(inward[i], arcColor(pal, i), fancy)(g, ui);
 
   // the crown keeps the warm pair though it runs on into the back, which is cool
-  solved('S0') && scrollArc(v.S0, pal.ink(4).mod(0.55), fancy)(g, ui);
+  solved('S0') && scrollArc(v.S0, pal.ink(4).faint(-3), fancy)(g, ui);
   solved('S1') && scrollArc(v.S1, pal.ink(4), fancy)(g, ui);
 };

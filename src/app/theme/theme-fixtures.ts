@@ -4,13 +4,11 @@ import { Ink, PanelPalette, Theme, resolveTheme } from './theme.service';
 // the night theme as the app resolves it, for a spec that draws and doesn't care which colour
 export const nightTheme = (): Theme => resolveTheme(PALETTES, 'night');
 
-// an ink that is its own recipe, `ink2+0.6`, `neutral-0.3`, `ink0+0.15f0.5`, so a spec can tell
-// one stroke from another by the ink and tone it was drawn with
+// an ink that is its own recipe, `ink2.faint(-3)`, `neutral.faint(5)`, so a spec can tell one
+// stroke from another by the ink and tone it was drawn with
 export function labelInk(name: string): Ink {
-  const signed = (t: number) => `${t < 0 ? '' : '+'}${t}`;
-  const mod = (lightness = 0, fade = 0) =>
-    `${name}${lightness ? signed(lightness) : ''}${fade ? `f${fade}` : ''}`;
-  return Object.assign(new String(name), { mod }) as unknown as Ink;
+  const faint = (steps = 0) => (steps ? `${name}.faint(${steps})` : name);
+  return Object.assign(new String(name), { faint }) as unknown as Ink;
 }
 
 // every palette the same six labelled inks, so a spec reads the same labels whichever a panel named

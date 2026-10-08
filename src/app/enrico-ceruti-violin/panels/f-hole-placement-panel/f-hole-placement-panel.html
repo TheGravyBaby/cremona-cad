@@ -21,7 +21,7 @@
                 <span class="field-title">Y <span class="unit-label">mm</span></span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Upper eye position"
-                [style.borderColor]="pal.ink(2)"
+                [style.borderColor]="pal.ink(2).faint(5)"
                 title="Arrow keys move the eye from either box">
                 <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Upper eye X"
                     [ngModel]="round2(params.fHoles!.UEye!.x)" (ngModelChange)="params.fHoles!.UEye!.x = $event; onChange()" />
@@ -77,7 +77,7 @@
                 <span class="field-title">Y <span class="unit-label">mm</span></span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Stem centre position"
-                [style.borderColor]="pal.ink(1)"
+                [style.borderColor]="pal.ink(1).faint(5)"
                 title="Arrow keys move the stem from either box">
                 <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Stem centre X"
                     [ngModel]="round2(params.fHoles!.stem.center!.x)" (ngModelChange)="params.fHoles!.stem.center!.x = $event; onChange()" />
@@ -112,7 +112,7 @@
                 <span class="field-title">Y <span class="unit-label">mm</span></span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Lower eye position"
-                [style.borderColor]="pal.ink(0)"
+                [style.borderColor]="pal.ink(0).faint(5)"
                 title="Arrow keys move the eye from either box">
                 <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Lower eye X"
                     [ngModel]="round2(params.fHoles!.LEye!.x)" (ngModelChange)="params.fHoles!.LEye!.x = $event; onChange()" />

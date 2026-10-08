@@ -80,10 +80,10 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
 // pegbox's front on the top plate's warm, everything past the crown on the turns' green
 export function viewInk(pal: PanelPalette, ink: ScrollViewInk): string {
   const inks: Record<ScrollViewInk, string> = {
-    front: pal.ink(4), frontLight: pal.ink(4).mod(0.55),
-    back: pal.ink(1), backLight: pal.ink(1).mod(0.6), crown: pal.ink(1).mod(-0.4),
+    front: pal.ink(4), frontLight: pal.ink(4).faint(-3),
+    back: pal.ink(1), backLight: pal.ink(1).faint(-3), crown: pal.ink(1).faint(5),
     turns: pal.ink(2),
-    nut: pal.ink(0), neck: pal.neutral.mod(-0.3),
+    nut: pal.ink(0), neck: pal.neutral.faint(5),
   };
   return inks[ink];
 }
@@ -91,10 +91,10 @@ export function viewInk(pal: PanelPalette, ink: ScrollViewInk): string {
 // a width's colour on canvas and in its field
 export function stationColor(pal: PanelPalette, key: ScrollStationKey): string {
   const inks: Record<ScrollStationKey, string> = {
-    nut: pal.ink(4).mod(0.25), hip: pal.ink(4).mod(0.6), throat: pal.ink(4).mod(-0.25),
-    duckTail: pal.ink(1).mod(-0.6), foot: pal.ink(1).mod(0.75), backHip: pal.ink(1).mod(-0.2), poll: pal.ink(1).mod(0.5), crown: pal.ink(1).mod(-0.4),
-    turn1Bottom: pal.ink(2).mod(-0.5), turn2Top: pal.ink(2).mod(0.6),
-    turn2Bottom: pal.ink(2).mod(-0.1), eye: pal.ink(2).mod(0.85),
+    nut: pal.ink(4).faint(-1), hip: pal.ink(4).faint(-3), throat: pal.ink(4).faint(1),
+    duckTail: pal.ink(1).faint(3), foot: pal.ink(1).faint(-4), backHip: pal.ink(1).faint(1), poll: pal.ink(1).faint(-3), crown: pal.ink(1).faint(5),
+    turn1Bottom: pal.ink(2).faint(3), turn2Top: pal.ink(2).faint(-3),
+    turn2Bottom: pal.ink(2).faint(1), eye: pal.ink(2).faint(-4),
   };
   return inks[key];
 }
@@ -128,7 +128,7 @@ export const renderScrollWidths = (p: EnricoCerutiParams, pal: PanelPalette, foc
 
   // in the side view the hollow is inside the wood
   const cavity = pegboxCavity(p);
-  if (cavity) renderPath(pathFromPolyline(cavity), pal.ink(4).mod(0.55), STROKE_WEIGHT.trace, 1, '4,4')(g, ui);
+  if (cavity) renderPath(pathFromPolyline(cavity), pal.ink(4).faint(-3), STROKE_WEIGHT.trace, 1, '4,4')(g, ui);
   const frontStations: ScrollStationKey[] = ['nut', 'hip', 'throat'];
   if (showArcs) {
     // only the widths a maker sets out with compasses: behind, the crown, the poll and the duck
@@ -150,8 +150,8 @@ export const renderScrollWidths = (p: EnricoCerutiParams, pal: PanelPalette, foc
       if (half) renderPath(pathFromPolyline(Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: center, y: station.at.y, r }, TURN.half + TURN.half * i / 32))), ink, STROKE_WEIGHT.guide)(g, ui);
       else renderCircle(new Circle(center, station.at.y, r), ink)(g, ui);
     }
-    renderDashLine(new Pt(back, -stub), new Pt(back, scrollExtent(v).height), pal.ink(1).mod(0, 0.5), STROKE_WEIGHT.guide)(g, ui);
-    renderDashLine(new Pt(front, -stub), new Pt(front, scrollExtent(v).height), pal.ink(4).mod(0, 0.5), STROKE_WEIGHT.guide)(g, ui);
+    renderDashLine(new Pt(back, -stub), new Pt(back, scrollExtent(v).height), pal.ink(1).faint(3), STROKE_WEIGHT.guide)(g, ui);
+    renderDashLine(new Pt(front, -stub), new Pt(front, scrollExtent(v).height), pal.ink(4).faint(3), STROKE_WEIGHT.guide)(g, ui);
   }
   // a crosshair on each width's point in the side view, and on both its edges in its own view
   if (showGuides) {

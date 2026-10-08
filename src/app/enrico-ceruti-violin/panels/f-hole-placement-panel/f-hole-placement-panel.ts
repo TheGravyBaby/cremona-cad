@@ -219,8 +219,8 @@ export const renderFholeStem = (p: EnricoCerutiParams, pal: PanelPalette) => (g:
     renderSegment(edgeTop, edgeBottom, pal.ink(1), 1.5)(g, ui);
     renderSegment(flipPointAboutY(edgeTop), flipPointAboutY(edgeBottom), pal.ink(1), 1.5)(g, ui);
   }
-  renderSmallCrosshair(f.stem.center!, pal.ink(1))(g, ui);
-  renderSmallCrosshair(flipPointAboutY(f.stem.center!), pal.ink(1))(g, ui);
+  renderSmallCrosshair(f.stem.center!, pal.ink(1).faint(5))(g, ui);
+  renderSmallCrosshair(flipPointAboutY(f.stem.center!), pal.ink(1).faint(5))(g, ui);
 
 }
 
@@ -278,9 +278,9 @@ export const renderFholeEyePlacementGuides = (p: EnricoCerutiParams, pal: PanelP
   let distToUpperEyeFromTangent = dist(p.fHoles.UEye, waistMidPt);
   let upperEyeGuide = new Arc(waistMidPt.x, waistMidPt.y, distToUpperEyeFromTangent, 150 * Math.PI / 180, 210 * Math.PI / 180);
   // draw a fancy arc that spans 135 - 225 degrees
-  renderArcFromArcFancy(upperEyeGuide, pal.neutral.mod(0, 0.5))(g, ui);
+  renderArcFromArcFancy(upperEyeGuide, pal.neutral.faint(3))(g, ui);
 
   let distBetweenEyes = dist(p.fHoles.UEye, p.fHoles.LEye);
   let upperEyeGuideTwo = new Arc(p.fHoles.LEye.x, p.fHoles.LEye.y, distBetweenEyes, Math.PI, Math.PI / 2);
-  renderArcFromArcFancy(upperEyeGuideTwo, pal.neutral.mod(0, 0.5))(g, ui);
+  renderArcFromArcFancy(upperEyeGuideTwo, pal.neutral.faint(3))(g, ui);
 }

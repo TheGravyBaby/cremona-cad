@@ -297,7 +297,7 @@ describe('the scroll panel', () => {
     expect(Math.max(...nut.map(c => c[0]))).toBeCloseTo(defaultStringSetup(p).nutThickness, 9);
     expect(Math.min(...nut.map(c => c[1]))).toBe(0);
 
-    const lines = drawn.elements.filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neutral-0.3').map(el => el.attrs);
+    const lines = drawn.elements.filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neutral.faint(5)').map(el => el.attrs);
     expect(lines.length).toBe(2);
     expect(lines.every(l => l['x1'] === l['x2'])).toBe(true);
     const lowest = Math.min(...lines.flatMap(l => [l['y1'] as number, l['y2'] as number]));
@@ -432,7 +432,7 @@ describe('the scroll panel', () => {
       p.scroll!.F1.r = 0;
       for (const instance of [volute(p), scroll(p)]) expect(recordLayers(instance.buildRun()).elements.filter(isProfile)).toEqual([]);
       // the scroll panel falls back to the volute in its own colours
-      expect(spiralArcs(scroll(p)).map(el => el.attrs['stroke'])).toContain('ink2+0.8');
+      expect(spiralArcs(scroll(p)).map(el => el.attrs['stroke'])).toContain('ink2.faint(-4)');
     });
 
     it('seeds the four point radii from Kelly\'s once, then leaves them to the user', () => {
@@ -544,7 +544,7 @@ describe('the scroll panel', () => {
         const instance = scroll(p, { showModuleGuides: false, showVoluteConstruction: false });
         return recordLayers(instance.buildRun()).elements.filter(el => el.tag === 'line' && el.attrs['stroke-width'] === 2).map(el => el.attrs);
       };
-      expect(traced().map(l => l['stroke'])).toEqual(['ink1+0.6', 'ink1-0.3', 'ink4+0.55', 'ink4']);
+      expect(traced().map(l => l['stroke'])).toEqual(['ink1.faint(-3)', 'ink1.faint(5)', 'ink4.faint(-3)', 'ink4']);
       const [, square] = traced();
       expect(square['y1']).toBeCloseTo(square['y2'] as number, 9);
 
@@ -569,11 +569,11 @@ describe('the scroll panel', () => {
       const instance = scroll(p, { showModuleArcs: true, showModuleGuides: false, showVoluteConstruction: false });
       const drawn = () => recordLayers(instance.buildRun()).elements;
       const backTop = (els: ReturnType<typeof drawn>) => els
-        .filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neutral-0.3' && el.attrs['x1'] === -p.neck!.thickness && el.attrs['x2'] === -p.neck!.thickness)
+        .filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neutral.faint(5)' && el.attrs['x1'] === -p.neck!.thickness && el.attrs['x2'] === -p.neck!.thickness)
         .map(el => Math.max(el.attrs['y1'] as number, el.attrs['y2'] as number));
       // the duck tail hangs no higher than the nut line, so the nape meets the neck's back below it
       const naped = drawn();
-      const nape = naped.filter(el => el.attrs['stroke'] === 'ink1-0.3' && String(el.attrs['d'] ?? '').includes(' A '));
+      const nape = naped.filter(el => el.attrs['stroke'] === 'ink1.faint(5)' && String(el.attrs['d'] ?? '').includes(' A '));
       expect(nape).toHaveLength(1);
       expect(p.scroll!.nape.y).toBeLessThan(0);
       expect(backTop(naped)).toEqual([p.scroll!.nape.y]);
@@ -582,7 +582,7 @@ describe('the scroll panel', () => {
       expect(p.scroll!.nape.y).toBeLessThan(-8);
       p.scroll!.nape.r = 1000;
       const unfit = drawn();
-      expect(unfit.filter(el => el.attrs['stroke'] === 'ink1-0.3')).toEqual([]);
+      expect(unfit.filter(el => el.attrs['stroke'] === 'ink1.faint(5)')).toEqual([]);
       expect(backTop(unfit)).toEqual([0]);
     });
   });
@@ -652,7 +652,7 @@ describe('the scroll widths panel', () => {
     const frontView = paths('archTop').filter(pts => pts[0].x > 0);
     expect(frontView.filter(pts => pts[0].y < turn1Bottom.y - 1e-9).every(pts => pts.every(pt => pt.y <= turn1Bottom.y + 1e-9))).toBe(true);
 
-    const mouth = drawn.filter(el => el.attrs['stroke'] === 'ink4+0.55' && !el.attrs['stroke-dasharray']);
+    const mouth = drawn.filter(el => el.attrs['stroke'] === 'ink4.faint(-3)' && !el.attrs['stroke-dasharray']);
     expect(mouth).toHaveLength(1);
     const hidden = scrollLines(p).frontStraight[1].y > turn1Bottom.y;
     expect(/Z$/.test(mouth[0].attrs['d'] as string)).toBe(!hidden);
@@ -952,7 +952,7 @@ describe('the scroll widths panel', () => {
     expect(joins).toHaveLength(2);
     const walls = front.filter(pts => !joins.includes(pts));
     const center = (walls[0][0].x + walls[1][0].x) / 2;
-    const neckTops = fromBehind('neutral-0.3').map(pts => pts.at(-1)!);
+    const neckTops = fromBehind('neutral.faint(5)').map(pts => pts.at(-1)!);
     for (const join of joins) {
       const [outer, inner] = [...join].sort((a, b) => Math.abs(b.x - center) - Math.abs(a.x - center));
       expect(Math.abs(outer.x - center)).toBeCloseTo(p.neck!.nutWidth / 2, 6);
@@ -968,7 +968,7 @@ describe('the scroll widths panel', () => {
     const p = instance.params;
     const drawn = recordLayers(instance.buildRun()).elements;
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
-    const sides = drawn.filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neutral-0.3').map(el => points(el.attrs['d'] as string));
+    const sides = drawn.filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neutral.faint(5)').map(el => points(el.attrs['d'] as string));
     expect(sides).toHaveLength(4);
     for (const [bottom] of sides) expect(bottom.y).toBeCloseTo(-2 * p.neck!.thickness, 9);
 
@@ -996,7 +996,7 @@ describe('the scroll widths panel', () => {
     p.scroll!.hang = p.scroll!.widths.hip / 2 + 1;
     instance.buildRun();
     const lowered = recordLayers(instance.buildRun()).elements
-      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neutral-0.3').map(el => points(el.attrs['d'] as string))
+      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neutral.faint(5)').map(el => points(el.attrs['d'] as string))
       .filter(s => s[0].x < 0);
     const { y } = scrollBackWidths(p)[0];
     expect(y).toBeLessThanOrEqual(0);
@@ -1287,12 +1287,12 @@ describe('the long arching panel lays the neck the user has set under the body',
   it('draws no neck before the neck panel is visited, and the neck in grey after', () => {
     const p = archedViolin();
     const before = build(p);
-    expect(before.some(el => el.attrs['stroke'] === 'neutral-0.3')).toBe(false);
+    expect(before.some(el => el.attrs['stroke'] === 'neutral.faint(5)')).toBe(false);
 
     const neck = panel(NeckPanel, p);
     neck.buildRun();
     const after = build(p);
-    const grey = after.filter(el => el.attrs['stroke'] === 'neutral-0.3');
+    const grey = after.filter(el => el.attrs['stroke'] === 'neutral.faint(5)');
     expect(grey.length).toBeGreaterThan(0);
     expect(after.length - before.length).toBe(grey.length);
   });
