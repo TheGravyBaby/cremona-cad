@@ -499,14 +499,12 @@ export function pegboxHipHeight(p: EnricoCerutiParams): number {
   return p.neck!.nutHeight + p.scroll!.hipHeight;
 }
 
-// the back's hip, in this frame, or null for none: 0 or less is none, and so is one at or below the
-// round's top, where the back's slope starts from the foot. Past the poll it is the poll. Read
-// here rather than clamped onto params, so the field doesn't jump under the user's typing
+// the back's hip, in this frame, or null for none: 0 or less is none. Past the poll it is the poll.
+// Read here rather than clamped onto params, so the field doesn't jump under the user's typing
 function backHipY(p: EnricoCerutiParams, path: ScrollPath): number | null {
   let v = p.scroll!;
   if (!(v.backHipHeight > 0)) return null;
-  let y = Math.min(p.neck!.nutHeight + v.backHipHeight, path.at(path.poll ?? path.crown).y);
-  return y > path.at(0).y + 1e-9 ? y : null;
+  return Math.min(path.at(0).y + v.backHipHeight, path.at(path.poll ?? path.crown).y);
 }
 
 // "the path": the back from the top of the duck tail's round, over the crown and round the spiral
