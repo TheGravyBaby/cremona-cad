@@ -20,7 +20,7 @@ The folders are reading groups, not dependency layers — `ceruti-calcs` reaches
 | `calculation/arching/ceruti-surface.ts` | The evaluable height field z(x,y) over the plan view. Cross-arch templates, STL. |
 | `calculation/neck/ceruti-neck.ts` | The neck set in the side elevation: `calculateNeck` places the neck wood's four corners, the heel arc and the bridge on `p.neck`, and the functions beside it read the dressing (button, nut block, fingerboard, bridge wedge, guides, the neck's own path) off those for the render. Hangs off the top plate's edge via `topPlatePlacement`, so the rib taper carries through. |
 | `calculation/neck/ceruti-scroll.ts` | The scroll in its own side-view frame: the volute's spiral styles about the eye, and `calculateScroll`, which lays the spiral out and runs the back and front off it, writing every arc onto `p.scroll` the way `calculateNeck` writes `p.neck`. Three panels edit it, each drawing its own part: volute (the spiral and the crown, S0–S1), scroll (the back from S2 on, and the front), and scroll widths (the back and front views beside the side profile, see *The scroll's widths* below). |
-| `calculation/neck/ceruti-scroll-views.ts` | The scroll seen from behind and in front, as strokes with ink names: the scroll widths panel draws them beside the side profile, and the plan profiles set them on the neck's end. See *The scroll's widths* below. |
+| `calculation/neck/ceruti-scroll-views.ts` | The scroll seen from behind and in front, as strokes grouped by part (`ScrollView`): the scroll widths panel draws them beside the side profile, and the plan profiles set them on the neck's end. See *The scroll's widths* below. |
 | `calculation/neck/ceruti-neck-template.ts` | The neck and scroll template for the export panel: the side outline as one closed loop, neck foot to duck tail, and the volute inside it as a slotted stencil. See *The neck template* below. |
 | `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. View flags. Stays at the top level with `ceruti-serialization.spec.ts`, which tests its save-and-reopen contract, and `ceruti-fixtures.ts`, the test fixtures every group's specs share. |
 | `templates/ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
@@ -52,16 +52,16 @@ section first → long arch carved to a template → crown across. The panel ord
 - **Colour is positional: a panel names a palette and reads `pal.ink(i)`, never a part's name**
   (2026-10-07). Sixty hand-picked hexes became a `CerutiColors` role map for a day, then went
   entirely: `CerutiPanelBase` takes the `Theme` as its input, `paletteId` says which palette this
-  panel reads (the outline and outer trace panels `classicCremona`, the plate and f-hole panels
-  `varnish`, the neck set and scroll panels `workshop`), and `pal` is that palette resolved, which
+  panel reads (the outline and outer trace panels `classicCremona`, the arching panels
+  `iceAndFire`, the f-hole panels `orchid`, the scroll panels `stones`, the neck set `workshop`), and `pal` is that palette resolved, which
   every render function takes too. Every palette has the same six slots, cool to hot (violet,
   blue, green, yellow, orange, red), so a panel's colours change by naming another palette, not by
   changing keys. A distinct part takes a distinct slot (the corners' yellow and red, the stem's
   blue, the nut, root and bridge; 2026-10-08); `faint(n)` only separates siblings of one
   part, the fret ticks on the fingerboard's ink for one. Shared parts keep
   one colour because one render function draws them (the front profile, the neck, the scroll
-  views). The scroll views emit part tokens (`front`, `back`, `turns`, `neck`…) that `viewInk` in
-  the widths panel maps to inks. The `Off`/`Off2`/`Muted` greyings are gone (root CLAUDE.md, *Colour
+  views). The scroll views return their strokes grouped by part (`front`, `back`, `turns`, `neck`…), and
+  the widths panel draws each group with its own `pal.ink(n)`. The `Off`/`Off2`/`Muted` greyings are gone (root CLAUDE.md, *Colour
   has two tiers*). Specs that need to tell strokes apart use `labelTheme()`, whose inks are their
   recipe (`ink2+0.6`, `neutral-0.3`), so a tone change shows up as a label change in the spec.
 - **A reference image can be scoped to particular panels**, via `scope` on
@@ -246,16 +246,19 @@ section first → long arch carved to a template → crown across. The panel ord
   fingerboard and the string length readout were a "String Setup" section of the neck panel from
   2026-09-20; they moved out so the setup can grow without crowding the neck, since none of them
   feed the neck's own template geometry (previous bullet). Only the string setup panel seeds
-  `p.stringSetup`, so its presence means the panel has been visited: until then the neck panel, the
-  front profile and the long arching panel's neck draw the bare neck, with no bridge, board, nut
-  or strings, and the neck runs on over the nut's seat to the scroll. Once set, the neck panel
-  draws the board and nut as plain grey profile, a later panel's work, and never the bridge or
-  strings. The string setup panel draws its own parts in colour over a neck in plain grey, all but
-  the line the neck's length runs along, since that field is entered on both panels
-  (`neckSetPalette`). Its sections are Neck (length and nut thickness), Fingerboard, and Bridge
-  with the string length readout. Each panel's `buildRun` solves and draws the scene
-  itself, from the renders `neck-panel.ts` exports. The fret marks toggle went with the strings; the neck's dimension guides
-  stayed with the neck. The scroll panels still draw the nut, at the default thickness until set.
+  `p.stringSetup`, so its presence means the panel has been visited: until then the front profile
+  and the long arching panel's neck draw the bare neck, with no bridge, board, nut or strings, and
+  the neck runs on over the nut's seat to the scroll. The neck panel draws the bare neck always
+  (2026-10-08): nothing in `neck-panel.ts` reads `p.stringSetup`, and the fingerboard toggle left
+  it. Each panel owns its own renders: `renderNeck` the neck wood, `renderStringSetup` (in
+  `string-setup-panel.ts`) the bridge, board, nut, strings and fret marks over it, each with a
+  `ground` option for drawing in grey under another panel's work. The string setup panel draws
+  `renderNeck` as ground and its own parts in colour, plus the line the neck's length runs along,
+  since that field is entered on both panels. Its sections are Neck (length and nut thickness),
+  Fingerboard, and Bridge with the string length readout. `calculateNeck` still solves the setup's
+  points alongside the neck's, and its failures are all the setup's, so only the string setup panel
+  draws them. The neck's dimension guides stayed with the neck. The scroll panels still draw the
+  nut, at the default thickness until set.
 - **The button draws in the back plate's own color, not the neck's.** The button profile is carved
   from the back plate carried on past its edge (see the button bullet above), so it renders in
   `colors.archBack` — the same color the long-/cross-arching panels already use for "Back Plate" —
@@ -274,12 +277,12 @@ section first → long arch carved to a template → crown across. The panel ord
   rest of the foot is inside the block and can't be seen from the side. `defineNeckPath` still
   traces the whole foot, since that's wood a neck template has to cut.
 - **Fingerboard length defaults to a standard size by instrument, and the board is a view
-  toggle, defaulted on.** `standardFingerboardLength(p.height)` uses the same body-height
+  toggle, defaulted off.** `standardFingerboardLength(p.height)` uses the same body-height
   thresholds `calculateMould` uses to tell violin/viola/cello/bass apart (`<400`/`<500`/`<800`/else
   — 270/310/580/850 mm), since modern boards come in a handful of stock lengths. It was the only
   source of the length from 2026-09-20 until 2026-10-05, when `stringSetup.fingerboardLength` came
   back as an entered field seeded from it. The board draws behind the `showFingerboard` toggle
-  (`CerutiViewFlags`/`RenderToggleKey`, default `true` in `DEFAULT_CERUTI_VIEW_FLAGS`), so it can be
+  (`CerutiViewFlags`/`RenderToggleKey`, default `false` in `DEFAULT_CERUTI_VIEW_FLAGS` since 2026-10-08, when it covered the neck's coloured front), so it can be
   hidden without losing any geometry that depends on it. In the front view the board replaces the
   neck's outline rather than drawing over it. The board has its own colour, a shade lighter than
   `colors.nut`, which the nut uses in every view including the scroll's.
@@ -457,8 +460,8 @@ section first → long arch carved to a template → crown across. The panel ord
   entries over again; `defineFrontProfilePath` cuts and returns the same shape.
 - **Long Arching can lay the neck under the body once the neck panel has set it** (2026-10-06),
   re-solving `calculateNeck` off its own arch so the neck follows the arch and the rib taper, and
-  drawing it in grey through `renderNeck`'s `ground` option, without the strings or the bridge,
-  which are set-up rather than the instrument's own profile. The fingerboard always shows there.
+  drawing it in grey with `ground`, and `renderStringSetup` once set without the strings or the
+  bridge, which are set-up rather than the instrument's own profile. The fingerboard always shows there.
   `showNeck` is off as of the same day, for the reason the f-hole panels leave it off.
 - **The scroll sits on the neck's end in the body's side elevation** once its panels have started it
   and `calculateScroll` solves it whole (2026-10-06). Its frame's origin is the nut on the neck's

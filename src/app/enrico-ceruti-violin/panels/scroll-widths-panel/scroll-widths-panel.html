@@ -6,20 +6,20 @@
     <div class="ui-group-title">Front</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('throat')"
+            <span class="field-title" [style.color]="pal.ink(0).faint(1)"
                 docTip="scrollWidths.throat">Throat
                 <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('throat')"
-                [(ngModel)]="w.throat" (input)="onChange()" (focus)="onPointFocus('throat')" (blur)="onPointBlur()" />
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(0).faint(1)"
+                [(ngModel)]="w.throat" (input)="onChange()" (focus)="onPointFocus('throat', pal.ink(0).faint(1))" (blur)="onPointBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('hip')"
+            <span class="field-title" [style.color]="pal.ink(0).faint(-3)"
                 docTip="scrollWidths.hip">Hip
                 <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('nut')" min="0"
-                [disabled]="v.hipHeight === 0" [(ngModel)]="w.hip" (input)="onChange()" (focus)="onPointFocus('hip')"
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(0).faint(-3)" min="0"
+                [disabled]="v.hipHeight === 0" [(ngModel)]="w.hip" (input)="onChange()" (focus)="onPointFocus('hip', pal.ink(0).faint(-3))"
                 (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
@@ -27,22 +27,22 @@
                 docTip="scrollWidths.hipY">Hip
                 Y <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" [(ngModel)]="v.hipHeight" (input)="onChange()" min="0"
-                (focus)="onPointFocus('hip')" (blur)="onPointBlur()" />
+                (focus)="onPointFocus('hip', pal.ink(0).faint(-3))" (blur)="onPointBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('nut')"
+            <span class="field-title" [style.color]="pal.ink(0).faint(-1)"
                 docTip="scrollWidths.nutWidth">Nut <span
                     class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="nk.nutWidth" (input)="onChange()" (focus)="onPointFocus('nut')" (blur)="onPointBlur()" />
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(1)"
+                [(ngModel)]="nk.nutWidth" (input)="onChange()" (focus)="onPointFocus('nut', pal.ink(0).faint(-1))" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(4).faint(-3)"
+            <span class="field-title" [style.color]="pal.ink(0).faint(-3)"
                 docTip="scrollWidths.wall">Wall
                 <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(4).faint(-3)"
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(0).faint(-3)"
                 [(ngModel)]="v.pegbox.wall" (input)="onChange()" />
         </label>
     </div>
@@ -55,50 +55,50 @@
 
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('crown')"
+            <span class="field-title" [style.color]="pal.ink(2).faint(5)"
                 docTip="scrollWidths.crown">Crown <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('crown')"
-                [(ngModel)]="w.crown" (input)="onChange()" (focus)="onPointFocus('crown')" (blur)="onPointBlur()" />
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(2).faint(5)"
+                [(ngModel)]="w.crown" (input)="onChange()" (focus)="onPointFocus('crown', pal.ink(2).faint(5))" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('poll')"
+            <span class="field-title" [style.color]="pal.ink(2).faint(-3)"
                 docTip="scrollWidths.poll">Poll
                 <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('poll')"
-                [(ngModel)]="w.poll" (input)="onChange()" (focus)="onPointFocus('poll')" (blur)="onPointBlur()" />
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(2).faint(-3)"
+                [(ngModel)]="w.poll" (input)="onChange()" (focus)="onPointFocus('poll', pal.ink(2).faint(-3))" (blur)="onPointBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('backHip')"
+            <span class="field-title" [style.color]="pal.ink(2).faint(1)"
                 docTip="scrollWidths.backHip">Hip
                 <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('backHip')"
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(2).faint(1)"
                 [disabled]="!(v.backHipHeight > 0)" [(ngModel)]="w.backHip" (input)="onChange()"
-                (focus)="onPointFocus('backHip')" (blur)="onPointBlur()" />
+                (focus)="onPointFocus('backHip', pal.ink(2).faint(1))" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title"
                 docTip="scrollWidths.backHipY">Hip
                 Y <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" [(ngModel)]="v.backHipHeight" (input)="onChange()"
-                min="0" (focus)="onPointFocus('backHip')" (blur)="onPointBlur()" />
+                min="0" (focus)="onPointFocus('backHip', pal.ink(2).faint(1))" (blur)="onPointBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('foot')"
+            <span class="field-title" [style.color]="pal.ink(2).faint(-4)"
                 docTip="scrollWidths.foot">Foot
                 <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('foot')"
-                [(ngModel)]="w.foot" (input)="onChange()" (focus)="onPointFocus('foot')" (blur)="onPointBlur()" />
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(2).faint(-4)"
+                [(ngModel)]="w.foot" (input)="onChange()" (focus)="onPointFocus('foot', pal.ink(2).faint(-4))" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('duckTail')"
+            <span class="field-title" [style.color]="pal.ink(2).faint(3)"
                 docTip="scrollWidths.duckTail">Duck
                 Tail <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('duckTail')"
-                [(ngModel)]="w.duckTail" (input)="onChange()" (focus)="onPointFocus('duckTail')"
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(2).faint(3)"
+                [(ngModel)]="w.duckTail" (input)="onChange()" (focus)="onPointFocus('duckTail', pal.ink(2).faint(3))"
                 (blur)="onPointBlur()" />
         </label>
     </div>
@@ -124,36 +124,36 @@
     <div class="ui-group-title">Turns</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('turn1Bottom')">Turn 1 Bottom <span
+            <span class="field-title" [style.color]="pal.ink(3).faint(3)">Turn 1 Bottom <span
                     class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('turn1Bottom')"
-                [(ngModel)]="w.turn1Bottom" (input)="onChange()" (focus)="onPointFocus('turn1Bottom')"
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(3).faint(3)"
+                [(ngModel)]="w.turn1Bottom" (input)="onChange()" (focus)="onPointFocus('turn1Bottom', pal.ink(3).faint(3))"
                 (blur)="onPointBlur()" />
         </label>
     </div>
 
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('turn2Top')">Turn 2 Top <span
+            <span class="field-title" [style.color]="pal.ink(3).faint(-3)">Turn 2 Top <span
                     class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('turn2Top')"
-                [(ngModel)]="w.turn2Top" (input)="onChange()" (focus)="onPointFocus('turn2Top')"
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(3).faint(-3)"
+                [(ngModel)]="w.turn2Top" (input)="onChange()" (focus)="onPointFocus('turn2Top', pal.ink(3).faint(-3))"
                 (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('turn2Bottom')">Turn 2 Bottom <span
+            <span class="field-title" [style.color]="pal.ink(3).faint(1)">Turn 2 Bottom <span
                     class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('turn2Bottom')"
-                [(ngModel)]="w.turn2Bottom" (input)="onChange()" (focus)="onPointFocus('turn2Bottom')"
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(3).faint(1)"
+                [(ngModel)]="w.turn2Bottom" (input)="onChange()" (focus)="onPointFocus('turn2Bottom', pal.ink(3).faint(1))"
                 (blur)="onPointBlur()" />
         </label>
     </div>
 
     <label class="field-cell">
-        <span class="field-title" [style.color]="pointColor('eye')"
+        <span class="field-title" [style.color]="pal.ink(3).faint(-4)"
             docTip="scrollWidths.lastTurn">Eye <span class="unit-label">mm</span></span>
-        <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('eye')"
-            [(ngModel)]="w.eye" (input)="onChange()" (focus)="onPointFocus('eye')" (blur)="onPointBlur()" />
+        <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(3).faint(-4)"
+            [(ngModel)]="w.eye" (input)="onChange()" (focus)="onPointFocus('eye', pal.ink(3).faint(-4))" (blur)="onPointBlur()" />
     </label>
 </section>
 

@@ -35,7 +35,7 @@
     </div>
     @if (cycloidStations('top'); as stations) {
     @if (stations.length) {
-    <div class="station-table" [style.border-color]="pal.ink(4)"
+    <div class="station-table" [style.border-color]="pal.ink(1)"
         style="grid-template-columns: minmax(30px,auto) minmax(26px,auto) minmax(26px,auto) auto;">
         <div class="station-table-row station-table-row--header">
             <span>mm</span><span>d</span><span>%</span><span></span>
@@ -53,7 +53,7 @@
 
     @if (splineStations('top'); as stations) {
     @if (stations.length) {
-    <div class="station-table" [style.border-color]="pal.ink(4)"
+    <div class="station-table" [style.border-color]="pal.ink(1)"
         style="grid-template-columns: minmax(30px,auto) minmax(26px,auto) minmax(26px,auto) auto;">
         <div class="station-table-row station-table-row--header">
             <span>mm</span><span>Peak</span><span>Pts</span><span></span>
@@ -71,7 +71,7 @@
 
     @if (cycloidStations('bottom'); as stations) {
     @if (stations.length) {
-    <div class="station-table" [style.border-color]="pal.ink(1)"
+    <div class="station-table" [style.border-color]="pal.ink(2)"
         style="grid-template-columns: minmax(30px,auto) minmax(26px,auto) minmax(26px,auto) auto;">
         <div class="station-table-row station-table-row--header">
             <span>mm</span><span>d</span><span>%</span><span></span>
@@ -89,7 +89,7 @@
 
     @if (splineStations('bottom'); as stations) {
     @if (stations.length) {
-    <div class="station-table" [style.border-color]="pal.ink(1)"
+    <div class="station-table" [style.border-color]="pal.ink(2)"
         style="grid-template-columns: minmax(30px,auto) minmax(26px,auto) minmax(26px,auto) auto;">
         <div class="station-table-row station-table-row--header">
             <span>mm</span><span>Peak</span><span>Pts</span><span></span>
@@ -124,7 +124,7 @@
     </div>
 </section> -->
 
-<section class="ui-group" [style.border-color]="pal.ink(4)">
+<section class="ui-group" [style.border-color]="pal.ink(1)">
     <div class="ui-group-title">Top Plate</div>
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
@@ -150,12 +150,12 @@
         <label class="field-cell">
             <span class="field-title">Cycloid Factor <span class="unit-label"></span></span>
             <input class="basic-input" type="number" step="5" min="0" max="100" [ngModel]="cycloidDPct('top')"
-                (ngModelChange)="setCycloidDPct('top', $event)" [style.border-color]="pal.ink(4)" />
+                (ngModelChange)="setCycloidDPct('top', $event)" [style.border-color]="pal.ink(1)" />
         </label>
         <label class="field-cell">
             <span class="field-title">Percent <span class="unit-label">%</span></span>
             <input class="basic-input" type="number" step="1" min="5" [max]="cycloidPctMax('top')" [ngModel]="cycloidPct('top')"
-                (ngModelChange)="setCycloidPct('top', $event)" [style.border-color]="pal.ink(4)" />
+                (ngModelChange)="setCycloidPct('top', $event)" [style.border-color]="pal.ink(1)" />
         </label>
         <button type="button" class="info-icon" (click)="help('crossArchCycloidControls')" title="More information">ⓘ</button>
     </div>
@@ -242,7 +242,7 @@
 
 </section>
 
-<section class="ui-group" [style.border-color]="pal.ink(1)">
+<section class="ui-group" [style.border-color]="pal.ink(2)">
     <div class="ui-group-title">Back Plate</div>
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
@@ -270,12 +270,12 @@
         <label class="field-cell">
             <span class="field-title">Cycloid Factor <span class="unit-label">%</span></span>
             <input class="basic-input" type="number" step="1" min="0" max="100" [ngModel]="cycloidDPct('bottom')"
-                (ngModelChange)="setCycloidDPct('bottom', $event)" [style.border-color]="pal.ink(1)" />
+                (ngModelChange)="setCycloidDPct('bottom', $event)" [style.border-color]="pal.ink(2)" />
         </label>
         <label class="field-cell">
             <span class="field-title">Percent <span class="unit-label">%</span></span>
             <input class="basic-input" type="number" step="1" min="5" [max]="cycloidPctMax('bottom')" [ngModel]="cycloidPct('bottom')"
-                (ngModelChange)="setCycloidPct('bottom', $event)" [style.border-color]="pal.ink(1)" />
+                (ngModelChange)="setCycloidPct('bottom', $event)" [style.border-color]="pal.ink(2)" />
         </label>
         <button type="button" class="info-icon" (click)="help('crossArchCycloidControls')" title="More information">ⓘ</button>
     </div>

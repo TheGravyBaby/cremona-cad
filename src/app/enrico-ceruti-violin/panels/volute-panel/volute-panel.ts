@@ -26,7 +26,7 @@ export type VoluteHighlightKey = number | 'S0' | 'S1';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class VolutePanel extends CerutiPanelBase implements OnInit {
-  protected readonly pal = ThemeService.getPalette('workshop');
+  protected readonly pal = ThemeService.getPalette('stones');
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'showVoluteConstruction'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
@@ -45,7 +45,6 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
   get custom(): boolean { return this.scroll.style === 'fourPoint'; }
   get archimedean(): boolean { return this.scroll.style === 'archimedean'; }
   get kelly(): boolean { return this.scroll.style === 'kelly'; }
-  arcColor(i: number): string { return arcColor(this.pal, i); }
 
   // the arc fields four to a row, a turn of the spiral each
   get arcRows(): number[][] {
@@ -63,7 +62,7 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
     radii[i] = radius;
     if (Number.isFinite(radius)) for (let j = i + 1; j < radii.length && radii[j] < radius; j++) radii[j] = radius;
     this.onChange();
-    this.onArcFocus(i, this.arcColor(i));
+    this.onArcFocus(i, i % 2 ? this.pal.ink(3).faint(1) : this.pal.ink(3).faint(-3));
   }
 
   ngOnInit(): void {
@@ -119,17 +118,6 @@ const turnsLabel = (turns: number) => {
 
 export type ScrollViewFlags = Pick<CerutiViewFlags, 'showModuleArcs' | 'showAllArcs' | 'showModuleGuides' | 'showVoluteConstruction'>;
 
-// a spiral arc's colour on canvas and in the four point's fields, innermost first: each turn's two
-// tones alternating arc by arc, the turns coming round again past three
-export function arcColor(pal: PanelPalette, i: number): string {
-  const turns = [
-    [pal.ink(2).faint(-4), pal.ink(2).faint(1)],
-    [pal.ink(2).faint(-3), pal.ink(2).faint(5)],
-    [pal.ink(2).faint(-2), pal.ink(2).faint(3)],
-  ];
-  return turns[Math.floor(i / 4) % 3][i % 2];
-}
-
 // a scroll arc runs counterclockwise from start to end, so one past a half turn is the long way round
 export const longArc = (arc: Arc) => normalizeRadians(arc.end - arc.start) > TURN.half;
 
@@ -146,7 +134,7 @@ export const renderScrollNeck = (p: EnricoCerutiParams, pal: PanelPalette, showG
   const { nutThickness } = p.stringSetup ?? defaultStringSetup(p);
   const stub = scrollNeckStub(p);
 
-  renderPolygon([new Pt(0, 0), new Pt(0, nutHeight), new Pt(nutThickness, nutHeight), new Pt(nutThickness, 0)], pal.ink(0), STROKE_WEIGHT.section)(g, ui);
+  renderPolygon([new Pt(0, 0), new Pt(0, nutHeight), new Pt(nutThickness, nutHeight), new Pt(nutThickness, 0)], pal.ink(1), STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(0, -stub), new Pt(0, 0), pal.neutral.faint(5), STROKE_WEIGHT.section)(g, ui);
   // the neck's back runs on up to where the nape meets it, or to the nut's level while the nape is unsolved
   const backTop = failures.some(f => f.unsolved.includes('nape')) ? 0 : v.nape.y;
@@ -156,8 +144,8 @@ export const renderScrollNeck = (p: EnricoCerutiParams, pal: PanelPalette, showG
   const crownTop = Math.max(...[v.S0, v.S1].flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y));
   const S1Back = Math.min(...arcReach(v.S1, TURN.half).map(pt => pt.x));
   if (!Number.isFinite(crownTop) || !Number.isFinite(S1Back)) return;
-  renderDashLine(new Pt(0, 0), new Pt(0, crownTop), pal.ink(4).faint(3), STROKE_WEIGHT.guide)(g, ui);
-  renderDashLine(new Pt(0, crownTop), new Pt(S1Back, crownTop), pal.ink(4).faint(3), STROKE_WEIGHT.guide)(g, ui);
+  renderDashLine(new Pt(0, 0), new Pt(0, crownTop), pal.ink(2).faint(4), STROKE_WEIGHT.guide)(g, ui);
+  renderDashLine(new Pt(0, crownTop), new Pt(S1Back, crownTop), pal.ink(2).faint(4), STROKE_WEIGHT.guide)(g, ui);
 };
 
 // the eye, the spiral and the crown (S0, S1). The construction toggle adds the figure the spiral's
@@ -178,18 +166,18 @@ export const renderVolute = (
   if (highlighted) renderArcHalo(highlighted.arc, highlighted.color, undefined, undefined, longArc(highlighted.arc))(g, ui);
 
   if (!solved('spiral')) return;
-  renderCircle(v.eye, pal.ink(2))(g, ui);
+  renderCircle(v.eye, pal.ink(3))(g, ui);
   if (currentModule && flags.showVoluteConstruction) {
     for (const line of voluteConstruction(v)) {
       const placed = line.map(pt => new Pt(v.eye.x + pt.x, v.eye.y + pt.y));
-      for (let i = 1; i < placed.length; i++) renderSegment(placed[i - 1], placed[i], pal.ink(2).faint(3), STROKE_WEIGHT.guide, true)(g, ui);
+      for (let i = 1; i < placed.length; i++) renderSegment(placed[i - 1], placed[i], pal.ink(3).faint(3), STROKE_WEIGHT.guide, true)(g, ui);
     }
   }
 
   const inward = [...v.spiral!].reverse();
-  for (let i = 0; i < inward.length; i++) scrollArc(inward[i], arcColor(pal, i), fancy)(g, ui);
+  // innermost first, two tones alternating arc by arc, the same as the four point's fields
+  for (let i = 0; i < inward.length; i++) scrollArc(inward[i], i % 2 ? pal.ink(3).faint(1) : pal.ink(3).faint(-3), fancy)(g, ui);
 
-  // the crown keeps the warm pair though it runs on into the back, which is cool
-  solved('S0') && scrollArc(v.S0, pal.ink(4).faint(-3), fancy)(g, ui);
-  solved('S1') && scrollArc(v.S1, pal.ink(4), fancy)(g, ui);
+  solved('S0') && scrollArc(v.S0, pal.ink(2).faint(3), fancy)(g, ui);
+  solved('S1') && scrollArc(v.S1, pal.ink(2), fancy)(g, ui);
 };

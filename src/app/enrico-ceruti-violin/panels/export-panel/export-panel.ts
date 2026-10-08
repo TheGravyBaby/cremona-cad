@@ -146,7 +146,7 @@ export class ExportPanel implements OnInit {
     if (!this.scrollWidthsSolved()) return null;
     const place = (x: number, y: number) => new Pt(x, y);
     const strokes = type === 'scrollFrontView' ? scrollFrontViewStrokes(this.params, place, 0) : scrollBackViewStrokes(this.params, place, 0, { front: false });
-    const d = combinePathStrings(strokes.map(s => 'line' in s ? pathFromLine(...s.line) : 'polygon' in s ? pathFromPolygon(s.polygon) : s.d));
+    const d = combinePathStrings(Object.values(strokes).flat().map(s => 'line' in s ? pathFromLine(...s.line) : 'polygon' in s ? pathFromPolygon(s.polygon) : s.d));
     return translatePath(d, 0, -pathsBounds([d]).minY);
   }
 

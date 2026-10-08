@@ -1,10 +1,10 @@
-<section class="ui-group" [style.border-color]="pal.ink(2)">
+<section class="ui-group" [style.border-color]="pal.ink(0)">
     <div class="ui-group-title">Upper Eye</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [ngModel]="round2(params.fHoles!.UEye!.r)"
-                (ngModelChange)="params.fHoles!.UEye!.r = $event; onChange()" [style.borderColor]="pal.ink(2)" />
+                (ngModelChange)="params.fHoles!.UEye!.r = $event; onChange()" [style.borderColor]="pal.ink(0)" />
         </label>
         <label class="field-cell"></label>
         <label class='field-cell'>
@@ -21,7 +21,7 @@
                 <span class="field-title">Y <span class="unit-label">mm</span></span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Upper eye position"
-                [style.borderColor]="pal.ink(2).faint(5)"
+                [style.borderColor]="pal.ink(0).faint(5)"
                 title="Arrow keys move the eye from either box">
                 <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Upper eye X"
                     [ngModel]="round2(params.fHoles!.UEye!.x)" (ngModelChange)="params.fHoles!.UEye!.x = $event; onChange()" />
@@ -89,14 +89,14 @@
 </section>
 
 
-<section class="ui-group" [style.border-color]="pal.ink(0)">
+<section class="ui-group" [style.border-color]="pal.ink(2)">
     <div class="ui-group-title">Lower Eye</div>
     <div class="input-group basic-row field-row" role="group">
 
         <label class="field-cell">
             <span class="field-title">Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [ngModel]="round2(params.fHoles!.LEye!.r)"
-                (ngModelChange)="params.fHoles!.LEye!.r = $event; onChange()" [style.borderColor]="pal.ink(0)" />
+                (ngModelChange)="params.fHoles!.LEye!.r = $event; onChange()" [style.borderColor]="pal.ink(2)" />
         </label>
         <label class="field-cell"></label>
         <!-- <label class='field-cell'>
@@ -112,7 +112,7 @@
                 <span class="field-title">Y <span class="unit-label">mm</span></span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Lower eye position"
-                [style.borderColor]="pal.ink(0).faint(5)"
+                [style.borderColor]="pal.ink(2).faint(5)"
                 title="Arrow keys move the eye from either box">
                 <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Lower eye X"
                     [ngModel]="round2(params.fHoles!.LEye!.x)" (ngModelChange)="params.fHoles!.LEye!.x = $event; onChange()" />

@@ -8,6 +8,7 @@ import { clampSplinePointHeights, defaultArchingParams, maxRibTaperMm, splinePea
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
 import { calculateOuterArcs, solveNeckForProfile } from '../../calculation/outline/ceruti-calcs';
 import { renderNeck } from '../neck-panel/neck-panel';
+import { renderStringSetup } from '../string-setup-panel/string-setup-panel';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { applyRowMove, RowMove, RowReorderDirective } from '../../../shared/row-reorder';
@@ -38,7 +39,7 @@ interface SplineRow {
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class LongArchingPanel extends CerutiPanelBase implements OnInit {
-  protected readonly pal = ThemeService.getPalette('varnish');
+  protected readonly pal = ThemeService.getPalette('iceAndFire');
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
@@ -233,7 +234,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
 
   private splineHighlightFor(plate: 'top' | 'bottom'): HighlightedSplinePoint | null {
     return this.highlightedPlate === plate
-      ? { source: this.highlightedSource, color: plate === 'top' ? this.pal.ink(4) : this.pal.ink(1) }
+      ? { source: this.highlightedSource, color: plate === 'top' ? this.pal.ink(1) : this.pal.ink(2) }
       : null;
   }
 
@@ -260,7 +261,10 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
         g: g.append('g').attr('transform', `translate(${sideX},0)`),
         ui: ui.append('g').attr('transform', `translate(${sideX},0)`),
       };
-      if (neck) renderNeck(p, this.pal, { strings: false, bridge: false, scroll, ground: this.pal.neutral.faint(5) })(side.g, side.ui);
+      if (neck) {
+        renderNeck(p, this.pal, { scroll, ground: true })(side.g, side.ui);
+        if (p.stringSetup) renderStringSetup(p, this.pal, { strings: false, bridge: false, ground: true })(side.g, side.ui);
+      }
       section(side.g, side.ui);
     }];
   }

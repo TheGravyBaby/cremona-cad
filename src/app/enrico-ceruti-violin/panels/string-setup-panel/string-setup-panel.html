@@ -1,19 +1,19 @@
 @if (params.stringSetup) {
 
-<section class="ui-group" [style.border-color]="pal.ink(4)">
+<section class="ui-group" [style.border-color]="pal.ink(0)">
     <div class="ui-group-title">Neck</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Length <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="1" [style.border-color]="pal.ink(4)"
+            <input class="basic-input" type="number" step="1" min="1" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="params.neck!.length" (input)="onChange()"
-                (focus)="onFieldFocus('length', pal.ink(4))" (blur)="onFieldBlur()" />
+                (focus)="onFieldFocus('length', pal.ink(0))" (blur)="onFieldBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" docTip="stringSetup.nutThickness">Nut Thickness <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(0)"
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(0).faint(-3)"
                 [(ngModel)]="stringSetup.nutThickness" (input)="onChange()"
-                (focus)="onFieldFocus('nutThickness', pal.ink(0))" (blur)="onFieldBlur()" />
+                (focus)="onFieldFocus('nutThickness', pal.ink(0).faint(-3))" (blur)="onFieldBlur()" />
         </label>
     </div>
 </section>
@@ -42,20 +42,20 @@
     </div>
 </section>
 
-<section class="ui-group" [style.border-color]="pal.ink(3)">
+<section class="ui-group" [style.border-color]="pal.ink(2)">
     <div class="ui-group-title">Bridge</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Stop <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="1" [style.border-color]="pal.ink(3)"
+            <input class="basic-input" type="number" step="1" min="1" [style.border-color]="pal.ink(2)"
                 [(ngModel)]="stringSetup.bodyStop" (input)="onChange()"
-                (focus)="onFieldFocus('bodyStop', pal.ink(3))" (blur)="onFieldBlur()" />
+                (focus)="onFieldFocus('bodyStop', pal.ink(2))" (blur)="onFieldBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(3)"
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pal.ink(2)"
                 [(ngModel)]="stringSetup.bridgeHeight" (input)="onChange()"
-                (focus)="onFieldFocus('bridgeHeight', pal.ink(3))" (blur)="onFieldBlur()" />
+                (focus)="onFieldFocus('bridgeHeight', pal.ink(2))" (blur)="onFieldBlur()" />
         </label>
         @if (stringLength != null) {
         <label class="field-cell">

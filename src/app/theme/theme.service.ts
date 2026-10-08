@@ -32,7 +32,7 @@ const current = (): Theme => override ?? (resolved[currentMode] ??= resolveTheme
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  // what a panel draws with: `protected readonly pal = ThemeService.getPalette('varnish')`. The
+  // what a panel draws with: `protected readonly pal = ThemeService.getPalette('orchid')`. The
   // palette is live, every read resolving against the mode at that moment, so a field set once
   // follows a day/night flip
   static getPalette(id: PaletteId): PanelPalette {

@@ -21,7 +21,7 @@ import { ThemeService } from '../../../theme/theme.service';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FlutingPanel extends CerutiPanelBase implements OnInit {
-  protected readonly pal = ThemeService.getPalette('varnish');
+  protected readonly pal = ThemeService.getPalette('iceAndFire');
   static readonly renderToggles: readonly RenderToggleKey[] = [];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
@@ -65,7 +65,7 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
     const renders: RenderLayer[] = renderPlatePair(p, this.paths, this.pal, STROKE_WEIGHT.guide);
     for (const plate of ['top', 'bottom'] as const) {
       const g = plate === 'top' ? top : back;
-      const color = plate === 'top' ? this.pal.ink(4) : this.pal.ink(1);
+      const color = plate === 'top' ? this.pal.ink(1) : this.pal.ink(2);
       const dx = plateLayoutOffset(p, plate);
       const at = (path: string): string => translatePath(path, dx, 0);
 

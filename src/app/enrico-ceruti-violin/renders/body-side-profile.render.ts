@@ -35,26 +35,25 @@ export interface BodySideProfileOptions {
   // cut down the centreline so the channel shows, for the long arching panel; otherwise the plate's
   // edge stands its full length and hides the channel and the arch below it
   showChannel?: boolean;
-  // one colour for the whole section, for a panel where the body is the ground rather than the subject
-  color?: string;
+  // the whole section in neutral, for a panel where the body is the ground rather than the subject
+  ground?: boolean;
 }
 
 export function renderBodySideProfile(p: EnricoCerutiParams, pal: PanelPalette, opts: BodySideProfileOptions) {
   const taper = solveRibTaper(p);
   const rib = ribLine(p, taper);
   const placement = topPlatePlacement(p, taper);
-  const paint = (c: string) => opts.color ?? c;
   const { upper, lower } = opts.showChannel ? { upper: null, lower: null } : outerCornerFlats(p);
   const flatEnds = [...(upper ?? []), ...(lower ?? [])].map(pt => pt.y);
   return (g: any, ui: any): void => {
     renderPath(
       `M 0 ${rib.yLow} L ${rib.zLow} ${rib.yLow} L ${rib.zHigh} ${rib.yHigh} L 0 ${rib.yHigh} Z`,
-      paint(pal.neutral), STROKE_WEIGHT.guide,
+      pal.neutral, STROKE_WEIGHT.guide,
     )(g, ui);
     for (const corner of [p.bouts.UCr, p.bouts.LCr]) {
       if (corner) {
         renderSegment(
-          new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), paint(pal.neutral), STROKE_WEIGHT.guide,
+          new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), pal.neutral, STROKE_WEIGHT.guide,
         )(g, ui);
       }
     }
@@ -78,29 +77,28 @@ export function renderBodySideProfile(p: EnricoCerutiParams, pal: PanelPalette, 
     const thickness = isTop ? a.top.thickness : a.bottom.thickness;
     const innerZ = isTop ? taper.zLower : 0;
     const outerZ = innerZ + sign * thickness;
-    const color = paint(isTop ? pal.ink(4) : pal.ink(1));
-    const edge = paint(pal.neutral);
-    const channel = paint(pal.ink(2));
+    const color = opts.ground ? pal.neutral : isTop ? pal.ink(1) : pal.ink(2);
+    const channel = opts.ground ? pal.neutral : pal.ink(3);
     const gouge = opts.gouge[plate];
     const solved = opts.solved[plate];
     const landEdge = p.outerFlutingDepth ?? 0;
 
-    renderSegment(new Pt(innerZ, 0), new Pt(innerZ, p.height), edge, STROKE_WEIGHT.guide)(g, ui);
+    renderSegment(new Pt(innerZ, 0), new Pt(innerZ, p.height), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
     const slab = `M ${innerZ} 0 L ${outerZ} 0 L ${outerZ} ${p.height} L ${innerZ} ${p.height} Z`;
     if (opts.showChannel) {
       for (const [yEnd, yLand] of [[0, landEdge], [p.height, p.height - landEdge]] as const) {
-        renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), edge, STROKE_WEIGHT.guide)(g, ui);
-        renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), edge, STROKE_WEIGHT.guide)(g, ui);
+        renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+        renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
       }
       // the channel is the tool, not a curve fitted to the arch, so it's the same at both caps
       renderPath(channelCapPath(p, gouge, outerZ, sign, true, solved?.takeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
       renderPath(channelCapPath(p, gouge, outerZ, sign, false, solved?.farTakeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
     } else {
-      renderSegment(new Pt(innerZ, 0), new Pt(outerZ, 0), edge, STROKE_WEIGHT.guide)(g, ui);
-      renderSegment(new Pt(innerZ, p.height), new Pt(outerZ, p.height), edge, STROKE_WEIGHT.guide)(g, ui);
+      renderSegment(new Pt(innerZ, 0), new Pt(outerZ, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+      renderSegment(new Pt(innerZ, p.height), new Pt(outerZ, p.height), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
       renderSegment(new Pt(outerZ, 0), new Pt(outerZ, p.height), color, STROKE_WEIGHT.section)(g, ui);
       // where the corners' flats end on the outer path, across the edge
-      for (const y of flatEnds) renderSegment(new Pt(innerZ, y), new Pt(outerZ, y), edge, STROKE_WEIGHT.guide)(g, ui);
+      for (const y of flatEnds) renderSegment(new Pt(innerZ, y), new Pt(outerZ, y), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
     }
 
     if (!solved) return;
