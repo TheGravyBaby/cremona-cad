@@ -77,8 +77,8 @@ export function renderBodySideProfile(p: EnricoCerutiParams, pal: PanelPalette, 
     const thickness = isTop ? a.top.thickness : a.bottom.thickness;
     const innerZ = isTop ? taper.zLower : 0;
     const outerZ = innerZ + sign * thickness;
-    const color = opts.ground ? pal.neutral : isTop ? pal.ink(1) : pal.ink(2);
-    const channel = opts.ground ? pal.neutral : pal.ink(3);
+    const color = opts.ground ? pal.neutral : isTop ? pal.ink(2) : pal.ink(0);
+    const channel = opts.ground ? pal.neutral : pal.ink(1);
     const gouge = opts.gouge[plate];
     const solved = opts.solved[plate];
     const landEdge = p.outerFlutingDepth ?? 0;

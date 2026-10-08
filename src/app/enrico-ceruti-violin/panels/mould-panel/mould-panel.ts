@@ -58,11 +58,11 @@ export const renderMould = (
   renderPath(mouldPath, pal.neutral)(g, ui);
 
   if (showBlocks) {
-    renderRect(params.blocks.U!, pal.ink(2))(g, ui);
-    renderRect(params.blocks.CU!, pal.ink(5))(g, ui);
-    renderRect(flipRectAboutY(params.blocks.CU!), pal.ink(5))(g, ui);
-    renderRect(params.blocks.CL!, pal.ink(3))(g, ui);
-    renderRect(flipRectAboutY(params.blocks.CL!), pal.ink(3))(g, ui);
-    renderRect(params.blocks.L!, pal.ink(1))(g, ui);
+    renderRect(params.blocks.U!, pal.ink(1))(g, ui);
+    renderRect(params.blocks.CU!, pal.ink(4))(g, ui);
+    renderRect(flipRectAboutY(params.blocks.CU!), pal.ink(4))(g, ui);
+    renderRect(params.blocks.CL!, pal.ink(2))(g, ui);
+    renderRect(flipRectAboutY(params.blocks.CL!), pal.ink(2))(g, ui);
+    renderRect(params.blocks.L!, pal.ink(0))(g, ui);
   }
 };

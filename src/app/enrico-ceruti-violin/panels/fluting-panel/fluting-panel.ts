@@ -65,7 +65,7 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
     const renders: RenderLayer[] = renderPlatePair(p, this.paths, this.pal, STROKE_WEIGHT.guide);
     for (const plate of ['top', 'bottom'] as const) {
       const g = plate === 'top' ? top : back;
-      const color = plate === 'top' ? this.pal.ink(1) : this.pal.ink(2);
+      const color = plate === 'top' ? this.pal.ink(2) : this.pal.ink(0);
       const dx = plateLayoutOffset(p, plate);
       const at = (path: string): string => translatePath(path, dx, 0);
 

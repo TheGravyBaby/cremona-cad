@@ -424,7 +424,7 @@ describe('the scroll panel', () => {
       p.scroll!.F1.r = 0;
       for (const instance of [volute(p), scroll(p)]) expect(recordLayers(instance.buildRun()).elements.filter(isProfile)).toEqual([]);
       // the scroll panel falls back to the volute in its own colours
-      expect(spiralArcs(scroll(p)).map(el => el.attrs['stroke'])).toContain('ink3.faint(-3)');
+      expect(spiralArcs(scroll(p)).map(el => el.attrs['stroke'])).toContain('ink2.faint(-3)');
     });
 
     it('seeds the four point radii from Kelly\'s once, then leaves them to the user', () => {
@@ -536,7 +536,7 @@ describe('the scroll panel', () => {
         const instance = scroll(p, { showModuleGuides: false, showVoluteConstruction: false });
         return recordLayers(instance.buildRun()).elements.filter(el => el.tag === 'line' && el.attrs['stroke-width'] === 2).map(el => el.attrs);
       };
-      expect(traced().map(l => l['stroke'])).toEqual(['ink2.faint(-3)', 'ink2.faint(5)', 'ink0.faint(-3)', 'ink0']);
+      expect(traced().map(l => l['stroke'])).toEqual(['ink1.faint(-3)', 'ink1.faint(5)', 'ink3.faint(-3)', 'ink3']);
       const [, square] = traced();
       expect(square['y1']).toBeCloseTo(square['y2'] as number, 9);
 
@@ -565,7 +565,7 @@ describe('the scroll panel', () => {
         .map(el => Math.max(el.attrs['y1'] as number, el.attrs['y2'] as number));
       // the duck tail hangs no higher than the nut line, so the nape meets the neck's back below it
       const naped = drawn();
-      const nape = naped.filter(el => el.attrs['stroke'] === 'ink2.faint(5)' && String(el.attrs['d'] ?? '').includes(' A '));
+      const nape = naped.filter(el => el.attrs['stroke'] === 'ink1.faint(5)' && String(el.attrs['d'] ?? '').includes(' A '));
       expect(nape).toHaveLength(1);
       expect(p.scroll!.nape.y).toBeLessThan(0);
       expect(backTop(naped)).toEqual([p.scroll!.nape.y]);
@@ -574,7 +574,7 @@ describe('the scroll panel', () => {
       expect(p.scroll!.nape.y).toBeLessThan(-8);
       p.scroll!.nape.r = 1000;
       const unfit = drawn();
-      expect(unfit.filter(el => el.attrs['stroke'] === 'ink2.faint(5)')).toEqual([]);
+      expect(unfit.filter(el => el.attrs['stroke'] === 'ink1.faint(5)')).toEqual([]);
       expect(backTop(unfit)).toEqual([0]);
     });
   });
@@ -628,7 +628,7 @@ describe('the scroll widths panel', () => {
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
     const paths = (stroke: string) => drawn.filter(el => el.attrs['stroke'] === stroke && !el.attrs['stroke-dasharray']).map(el => points(el.attrs['d'] as string));
     // the turns draw in one ink in both views, the back view left of the side view and the front right
-    const turns = (behind: boolean) => paths('ink3').filter(pts => (pts[0].x < 0) === behind);
+    const turns = (behind: boolean) => paths('ink2').filter(pts => (pts[0].x < 0) === behind);
     // each line is drawn once on each side, and known here by the height it stops at
     const stoppingAt = (behind: boolean, y: number) => turns(behind).filter(pts => Math.abs(pts.at(-1)!.y - y) < 1e-9);
 
@@ -644,7 +644,7 @@ describe('the scroll widths panel', () => {
     const frontView = paths('archTop').filter(pts => pts[0].x > 0);
     expect(frontView.filter(pts => pts[0].y < turn1Bottom.y - 1e-9).every(pts => pts.every(pt => pt.y <= turn1Bottom.y + 1e-9))).toBe(true);
 
-    const mouth = drawn.filter(el => el.attrs['stroke'] === 'ink0.faint(-3)' && !el.attrs['stroke-dasharray']);
+    const mouth = drawn.filter(el => el.attrs['stroke'] === 'ink3.faint(-3)' && !el.attrs['stroke-dasharray']);
     expect(mouth).toHaveLength(1);
     const hidden = scrollLines(p).frontStraight[1].y > turn1Bottom.y;
     expect(/Z$/.test(mouth[0].attrs['d'] as string)).toBe(!hidden);
@@ -652,7 +652,7 @@ describe('the scroll widths panel', () => {
 
     // the volute's bottom closes right across the pegbox running in under it
     const across = recordLayers(instance.buildRun()).elements.filter(el =>
-      el.tag === 'line' && el.attrs['stroke'] === 'ink3' && (el.attrs['x1'] as number) > 0 && el.attrs['y1'] === turn1Bottom.y && el.attrs['y2'] === turn1Bottom.y);
+      el.tag === 'line' && el.attrs['stroke'] === 'ink2' && (el.attrs['x1'] as number) > 0 && el.attrs['y1'] === turn1Bottom.y && el.attrs['y2'] === turn1Bottom.y);
     expect(across).toHaveLength(1);
     expect(Math.abs((across[0].attrs['x1'] as number) - (across[0].attrs['x2'] as number))).toBeCloseTo(2 * turn1Bottom.x, 9);
 
@@ -663,7 +663,7 @@ describe('the scroll widths panel', () => {
     // shows from behind, down to the second turn's top
     p.scroll!.widths.poll = 14;
     const narrowed = recordLayers(instance.buildRun()).elements
-      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'ink3')
+      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'ink2')
       .map(el => points(el.attrs['d'] as string))
       .filter(pts => pts[0].x < 0);
     expect(narrowed.filter(pts => Math.abs(pts.at(-1)!.y - turn2Top.y) < 1e-9)).toHaveLength(4);
@@ -679,7 +679,7 @@ describe('the scroll widths panel', () => {
     const cheeks = () => {
       const turn1Bottom = scrollPathStretches(p).turn1Front.at(-1)!;
       const paths = recordLayers(instance.buildRun()).elements
-        .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'ink0')
+        .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'ink3')
         .map(el => points(el.attrs['d'] as string))
         .filter(pts => pts[0].x > 0);
       const center = (Math.min(...paths.flat().map(pt => pt.x)) + Math.max(...paths.flat().map(pt => pt.x))) / 2;
@@ -710,7 +710,7 @@ describe('the scroll widths panel', () => {
     const v = p.scroll!;
     const shoulders = () => recordLayers(instance.buildRun()).elements.filter(el => {
       const start = scrollBackWidths(p)[0];
-      return el.tag === 'line' && el.attrs['y1'] === start.y && el.attrs['y2'] === start.y && el.attrs['stroke'] === 'ink2';
+      return el.tag === 'line' && el.attrs['y1'] === start.y && el.attrs['y2'] === start.y && el.attrs['stroke'] === 'ink1';
     });
     p.neck!.topWidth = v.widths.duckTail - 4;
     expect(shoulders()).toEqual([]);
@@ -756,11 +756,11 @@ describe('the scroll widths panel', () => {
     };
     const crown = stations.find(st => st.key === 'crown')!;
     const throat = stations.find(st => st.key === 'throat')!;
-    const crowns = halves(on, 'ink2.faint(5)');
+    const crowns = halves(on, 'ink1.faint(5)');
     expect(crowns).toHaveLength(2);
     hanging(crowns.find(pts => pts[0].x < 0)!, behind, crown);
     hanging(crowns.find(pts => pts[0].x > 0)!, inFront, crown);
-    const throats = halves(on, 'ink0.faint(1)');
+    const throats = halves(on, 'ink3.faint(1)');
     expect(throats).toHaveLength(1);
     hanging(throats[0], inFront, throat);
   });
@@ -804,7 +804,7 @@ describe('the scroll widths panel', () => {
     // the nut's corners cut the closing where it crosses them, and walls narrower than the nut pass
     // behind it, so only the level run at the end is read
     const closings = () => recordLayers(instance.buildRun()).elements.filter(el =>
-      el.tag === 'path' && el.attrs['stroke'] === 'ink0' && /^M [^-]/.test(el.attrs['d'] as string) && / \S+ 0 L \S+ 0$/.test(el.attrs['d'] as string));
+      el.tag === 'path' && el.attrs['stroke'] === 'ink3' && /^M [^-]/.test(el.attrs['d'] as string) && / \S+ 0 L \S+ 0$/.test(el.attrs['d'] as string));
     expect(scrollBackWidths(p)[0].y).toBeGreaterThan(0);
     expect(closings()).toHaveLength(2);
     instance.params.neck!.topWidth -= 10;
@@ -819,7 +819,7 @@ describe('the scroll widths panel', () => {
     const v = p.scroll!;
     // the back view stands left of the side view, the front view right of it
     const fromBehind = () => recordLayers(instance.buildRun()).elements.filter(el =>
-      el.tag === 'path' && el.attrs['stroke'] === 'ink0' && /^M -/.test(el.attrs['d'] as string));
+      el.tag === 'path' && el.attrs['stroke'] === 'ink3' && /^M -/.test(el.attrs['d'] as string));
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
     const nutTop = p.neck!.nutHeight;
 
@@ -874,7 +874,7 @@ describe('the scroll widths panel', () => {
     expect(roundTop).toBeGreaterThan(0);
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
     const fromBehind = drawn
-      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'ink0' && /^M -/.test(el.attrs['d'] as string))
+      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'ink3' && /^M -/.test(el.attrs['d'] as string))
       .map(el => points(el.attrs['d'] as string));
     // the cheeks come out past the back above the round's top and run down to the hips on the foot
     const cheeks = fromBehind.filter(pts => pts.length === 2 && pts[0].y > roundTop && Math.abs(pts[1].y) < 1e-6);
@@ -938,7 +938,7 @@ describe('the scroll widths panel', () => {
       .filter(el => el.tag === 'path' && el.attrs['stroke'] === stroke && /^M -/.test(el.attrs['d'] as string))
       .map(el => points(el.attrs['d'] as string));
 
-    const front = fromBehind('ink0');
+    const front = fromBehind('ink3');
     const joins = front.filter(pts => pts.every(pt => Math.abs(pt.y) < 1e-9));
     expect(front).toHaveLength(4);
     expect(joins).toHaveLength(2);
@@ -979,7 +979,7 @@ describe('the scroll widths panel', () => {
       expect(Math.abs(top.x - center(behind))).toBeCloseTo(p.neck!.nutWidth / 2, 6);
     }
 
-    const nut = drawn.filter(el => el.attrs['stroke'] === 'ink1').map(el => points(el.attrs['d'] as string));
+    const nut = drawn.filter(el => el.attrs['stroke'] === 'ink0').map(el => points(el.attrs['d'] as string));
     const front = nut.find(corners => corners.every(c => c.x > center(inFront) - p.neck!.nutWidth))!;
     expect(Math.max(...front.map(c => c.x)) - Math.min(...front.map(c => c.x))).toBeCloseTo(p.neck!.nutWidth, 9);
     expect([Math.min(...front.map(c => c.y)), Math.max(...front.map(c => c.y))]).toEqual([0, p.neck!.nutHeight]);
@@ -1031,7 +1031,7 @@ describe('the outer path panel', () => {
     expect(d).toContain(defineOuterPath(p, undefined, true, false));
     for (const hole of splitPathStrings(defineFholePath(p))) expect(d).toContain(hole);
 
-    const button = drawn.filter(el => el.attrs['stroke'] === 'ink1');
+    const button = drawn.filter(el => el.attrs['stroke'] === 'ink0');
     expect(button.length).toBeGreaterThan(0);
     for (const el of button) expect(xRange(el.attrs['d'] as string).max).toBeLessThan(0);
   });

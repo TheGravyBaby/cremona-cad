@@ -1,79 +1,79 @@
-<section class="ui-group" [style.border-color]="pal.ink(2)">
+<section class="ui-group" [style.border-color]="pal.ink(1)">
     <div class="ui-group-title">Upper Block</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.U!.height"
-                (input)="onChange()" [style.borderColor]="pal.ink(2)" />
+                (input)="onChange()" [style.borderColor]="pal.ink(1)" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.U!.width"
-                (input)="onChange()" [style.borderColor]="pal.ink(2)" />
+                (input)="onChange()" [style.borderColor]="pal.ink(1)" />
         </label>
     </div>
 </section>
 
-<section class="ui-group" [style.border-color]="pal.ink(5)">
+<section class="ui-group" [style.border-color]="pal.ink(4)">
     <div class="ui-group-title">Upper Corner Block</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CU!.height"
-                (input)="onChange()" [style.borderColor]="pal.ink(5)" />
+                (input)="onChange()" [style.borderColor]="pal.ink(4)" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CU!.width"
-                (input)="onChange()" [style.borderColor]="pal.ink(5)" />
+                (input)="onChange()" [style.borderColor]="pal.ink(4)" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Pad <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CUPad"
-                (input)="onChange()" [style.borderColor]="pal.ink(5)" />
+                (input)="onChange()" [style.borderColor]="pal.ink(4)" />
         </label>
     </div>
 </section>
 
-<section class="ui-group" [style.border-color]="pal.ink(3)">
+<section class="ui-group" [style.border-color]="pal.ink(2)">
     <div class="ui-group-title">Lower Corner Block</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CL!.height"
-                (input)="onChange()" [style.borderColor]="pal.ink(3)" />
+                (input)="onChange()" [style.borderColor]="pal.ink(2)" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CL!.width"
-                (input)="onChange()" [style.borderColor]="pal.ink(3)" />
+                (input)="onChange()" [style.borderColor]="pal.ink(2)" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Pad <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CLPad"
-                (input)="onChange()" [style.borderColor]="pal.ink(3)" />
+                (input)="onChange()" [style.borderColor]="pal.ink(2)" />
         </label>
     </div>
 </section>
 
-<section class="ui-group" [style.border-color]="pal.ink(1)">
+<section class="ui-group" [style.border-color]="pal.ink(0)">
     <div class="ui-group-title">Lower Block</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.L!.height"
-                (input)="onChange()" [style.borderColor]="pal.ink(1)" />
+                (input)="onChange()" [style.borderColor]="pal.ink(0)" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.L!.width"
-                (input)="onChange()" [style.borderColor]="pal.ink(1)" />
+                (input)="onChange()" [style.borderColor]="pal.ink(0)" />
         </label>
     </div>
 </section>

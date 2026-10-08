@@ -276,8 +276,8 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   get stationMarks(): { key: string; y: number; title: string; left: string; plates: { name: string; color: string }[] }[] {
     if (this.params.height <= 0) return [];
     const plates = [
-      ['top', 'Top Plate', this.pal.ink(1)],
-      ['bottom', 'Back Plate', this.pal.ink(2)],
+      ['top', 'Top Plate', this.pal.ink(2)],
+      ['bottom', 'Back Plate', this.pal.ink(0)],
     ] as const;
     const byY = new Map<string, { y: number; plates: { name: string; color: string }[] }>();
     for (const [plate, name, color] of plates) {
@@ -833,7 +833,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
       const p = c.params;
       // the back plate's height field folds downward
       const proj = buildProjection(yOffset, p.height / 2, this.flags.plateRotXDeg ?? 0, this.flags.plateRotYDeg ?? 0, this.flags.plateRotZDeg ?? 0, plate === 'top' ? 1 : -1);
-      const color = plate === 'top' ? pal.ink(1) : pal.ink(2);
+      const color = plate === 'top' ? pal.ink(2) : pal.ink(0);
       const arch = plate === 'top' ? a.top.arch : a.bottom.arch;
       const { stationStepMm, sampleStepMm } = wireframeSampleSteps(p);
       let bounds;
@@ -853,7 +853,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
         // channel levels fainter than the arch's
         for (const { level, rings } of levels) {
           const d = rings.map(ring => projectedPath(proj, ring, true)).join(' ');
-          layers.push(renderPath(d, level <= 0 ? pal.ink(3) : color, STROKE_WEIGHT.guide, level <= 0 ? 0.9 : 0.7));
+          layers.push(renderPath(d, level <= 0 ? pal.ink(1) : color, STROKE_WEIGHT.guide, level <= 0 ? 0.9 : 0.7));
         }
         bounds = projectedBounds(proj, levels.flatMap(l => l.rings.flat()));
       } else {
@@ -862,7 +862,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
         for (const rib of ribs) layers.push(renderPath(projectedPath(proj, rib), pal.neutral, STROKE_WEIGHT.guide * 0.6, 0.45));
         for (const strip of strips) {
           const channel = strip.maxZ < -0.01;
-          layers.push(renderPath(projectedPath(proj, strip.pts), channel ? pal.ink(3) : color, STROKE_WEIGHT.guide * 0.75, channel ? 0.5 : 0.65));
+          layers.push(renderPath(projectedPath(proj, strip.pts), channel ? pal.ink(1) : color, STROKE_WEIGHT.guide * 0.75, channel ? 0.5 : 0.65));
         }
         bounds = projectedBounds(proj, [...strips.flatMap(st => st.pts), ...ribs.flat()]);
       }
@@ -936,7 +936,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const thickness = isTop ? a.top.thickness : a.bottom.thickness;
     const innerZ = isTop ? ribZ : 0;
     const zBase = innerZ + sign * thickness;
-    const color = isTop ? this.pal.ink(1) : this.pal.ink(2);
+    const color = isTop ? this.pal.ink(2) : this.pal.ink(0);
     const section = this.section[plate];
     const parts: RenderLayer[] = [];
 
@@ -952,7 +952,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     if (c?.model) {
       const pen = {
         land: [this.pal.neutral, STROKE_WEIGHT.guide],
-        channel: [this.pal.ink(3), STROKE_WEIGHT.section],
+        channel: [this.pal.ink(1), STROKE_WEIGHT.section],
         arch: [color, STROKE_WEIGHT.section],
       } as const;
       for (const run of sampleArchSectionRuns(c.params, c.model, y)) {

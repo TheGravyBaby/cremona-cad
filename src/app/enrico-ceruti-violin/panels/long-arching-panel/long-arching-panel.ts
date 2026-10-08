@@ -234,7 +234,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
 
   private splineHighlightFor(plate: 'top' | 'bottom'): HighlightedSplinePoint | null {
     return this.highlightedPlate === plate
-      ? { source: this.highlightedSource, color: plate === 'top' ? this.pal.ink(1) : this.pal.ink(2) }
+      ? { source: this.highlightedSource, color: plate === 'top' ? this.pal.ink(2) : this.pal.ink(0) }
       : null;
   }
 

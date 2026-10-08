@@ -102,17 +102,17 @@ export const renderScrollWidths = (p: EnricoCerutiParams, pal: PanelPalette, foc
   const backView = scrollBackViewStrokes(p, (x, y) => new Pt(back + x, y), -stub);
   const frontView = scrollFrontViewStrokes(p, (x, y) => new Pt(front + x, y), -stub);
   for (const stroke of [...backView.neck, ...frontView.neck]) renderStroke(stroke, pal.neutral.faint(5))(g, ui);
-  for (const stroke of [...backView.back, ...frontView.back]) renderStroke(stroke, pal.ink(2))(g, ui);
-  for (const stroke of [...backView.backLight, ...frontView.backLight]) renderStroke(stroke, pal.ink(2).faint(-3))(g, ui);
-  for (const stroke of [...backView.front, ...frontView.front]) renderStroke(stroke, pal.ink(0))(g, ui);
-  for (const stroke of [...backView.frontLight, ...frontView.frontLight]) renderStroke(stroke, pal.ink(0).faint(-3))(g, ui);
-  for (const stroke of [...backView.crown, ...frontView.crown]) renderStroke(stroke, pal.ink(2).faint(5))(g, ui);
-  for (const stroke of [...backView.turns, ...frontView.turns]) renderStroke(stroke, pal.ink(3))(g, ui);
-  for (const stroke of [...backView.nut, ...frontView.nut]) renderStroke(stroke, pal.ink(1))(g, ui);
+  for (const stroke of [...backView.back, ...frontView.back]) renderStroke(stroke, pal.ink(1))(g, ui);
+  for (const stroke of [...backView.backLight, ...frontView.backLight]) renderStroke(stroke, pal.ink(1).faint(-3))(g, ui);
+  for (const stroke of [...backView.front, ...frontView.front]) renderStroke(stroke, pal.ink(3))(g, ui);
+  for (const stroke of [...backView.frontLight, ...frontView.frontLight]) renderStroke(stroke, pal.ink(3).faint(-3))(g, ui);
+  for (const stroke of [...backView.crown, ...frontView.crown]) renderStroke(stroke, pal.ink(1).faint(5))(g, ui);
+  for (const stroke of [...backView.turns, ...frontView.turns]) renderStroke(stroke, pal.ink(2))(g, ui);
+  for (const stroke of [...backView.nut, ...frontView.nut]) renderStroke(stroke, pal.ink(0))(g, ui);
 
   // in the side view the hollow is inside the wood
   const cavity = pegboxCavity(p);
-  if (cavity) renderPath(pathFromPolyline(cavity), pal.ink(0).faint(-3), STROKE_WEIGHT.trace, 1, '4,4')(g, ui);
+  if (cavity) renderPath(pathFromPolyline(cavity), pal.ink(3).faint(-3), STROKE_WEIGHT.trace, 1, '4,4')(g, ui);
   const frontStations: ScrollStationKey[] = ['nut', 'hip', 'throat'];
   if (showArcs) {
     // only the widths a maker sets out with compasses: behind, the crown, the poll and the duck
@@ -125,14 +125,14 @@ export const renderScrollWidths = (p: EnricoCerutiParams, pal: PanelPalette, foc
       if (half) renderPath(pathFromPolyline(Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: center, y: station.at.y, r }, TURN.half + TURN.half * i / 32))), color, STROKE_WEIGHT.guide)(g, ui);
       else renderCircle(new Circle(center, station.at.y, r), color)(g, ui);
     };
-    mark('crown', back, true, pal.ink(2).faint(5));
-    mark('poll', back, false, pal.ink(2).faint(-3));
-    mark('duckTail', back, false, pal.ink(2).faint(3));
-    mark('crown', front, true, pal.ink(2).faint(5));
-    mark('throat', front, true, pal.ink(0).faint(1));
-    mark('hip', front, false, pal.ink(0).faint(-3));
-    renderDashLine(new Pt(back, -stub), new Pt(back, scrollExtent(v).height), pal.ink(2).faint(3), STROKE_WEIGHT.guide)(g, ui);
-    renderDashLine(new Pt(front, -stub), new Pt(front, scrollExtent(v).height), pal.ink(0).faint(3), STROKE_WEIGHT.guide)(g, ui);
+    mark('crown', back, true, pal.ink(1).faint(5));
+    mark('poll', back, false, pal.ink(1).faint(-3));
+    mark('duckTail', back, false, pal.ink(1).faint(3));
+    mark('crown', front, true, pal.ink(1).faint(5));
+    mark('throat', front, true, pal.ink(3).faint(1));
+    mark('hip', front, false, pal.ink(3).faint(-3));
+    renderDashLine(new Pt(back, -stub), new Pt(back, scrollExtent(v).height), pal.ink(1).faint(3), STROKE_WEIGHT.guide)(g, ui);
+    renderDashLine(new Pt(front, -stub), new Pt(front, scrollExtent(v).height), pal.ink(3).faint(3), STROKE_WEIGHT.guide)(g, ui);
   }
   // a crosshair on each width's point in the side view, and on both its edges in its own view
   if (showGuides) {
@@ -143,17 +143,17 @@ export const renderScrollWidths = (p: EnricoCerutiParams, pal: PanelPalette, foc
       const center = frontStations.includes(key) ? front : back;
       for (const side of [1, -1]) renderCrosshair(new Pt(center + side * station.width / 2, station.at.y), color)(g, ui);
     };
-    crosshairs('nut', pal.ink(0).faint(-1));
-    crosshairs('hip', pal.ink(0).faint(-3));
-    crosshairs('throat', pal.ink(0).faint(1));
-    crosshairs('duckTail', pal.ink(2).faint(3));
-    crosshairs('foot', pal.ink(2).faint(-4));
-    crosshairs('backHip', pal.ink(2).faint(1));
-    crosshairs('poll', pal.ink(2).faint(-3));
-    crosshairs('crown', pal.ink(2).faint(5));
-    crosshairs('turn1Bottom', pal.ink(3).faint(3));
-    crosshairs('turn2Top', pal.ink(3).faint(-3));
-    crosshairs('turn2Bottom', pal.ink(3).faint(1));
-    crosshairs('eye', pal.ink(3).faint(-4));
+    crosshairs('nut', pal.ink(3).faint(-1));
+    crosshairs('hip', pal.ink(3).faint(-3));
+    crosshairs('throat', pal.ink(3).faint(1));
+    crosshairs('duckTail', pal.ink(1).faint(3));
+    crosshairs('foot', pal.ink(1).faint(-4));
+    crosshairs('backHip', pal.ink(1).faint(1));
+    crosshairs('poll', pal.ink(1).faint(-3));
+    crosshairs('crown', pal.ink(1).faint(5));
+    crosshairs('turn1Bottom', pal.ink(2).faint(3));
+    crosshairs('turn2Top', pal.ink(2).faint(-3));
+    crosshairs('turn2Bottom', pal.ink(2).faint(1));
+    crosshairs('eye', pal.ink(2).faint(-4));
   }
 };
