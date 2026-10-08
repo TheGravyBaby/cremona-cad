@@ -1,7 +1,7 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { renderCircle, renderDashLine, renderPath, renderSolveFailures, renderCrosshair, renderPointHalo, renderStroke } from '../../../helpers/renderFuncs';
-import { PaletteId, STROKE_WEIGHT } from '../../../theme/palettes';
+import { STROKE_WEIGHT } from '../../../theme/palettes';
 import { CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { defaultNeckParams, defaultStringSetup } from '../../calculation/neck/ceruti-neck';
 import { calculateScroll, calculateScrollWidths, ScrollStationKey, pegboxCavity, scrollCompassWalk, scrollExtent, scrollWidthStations } from '../../calculation/neck/ceruti-scroll';
@@ -14,7 +14,7 @@ import { pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
 import { scrollNeckStub, scrollBackViewStrokes, scrollFrontViewStrokes, ScrollViewInk } from '../../calculation/neck/ceruti-scroll-views';
 import { renderScrollNeck } from '../volute-panel/volute-panel';
 import { TooltipDirective } from '../../../docs/tooltips';
-import { PanelPalette } from '../../../theme/theme.service';
+import { PanelPalette, ThemeService } from '../../../theme/theme.service';
 
 @Component({
   selector: 'app-ceruti-scroll-widths-panel',
@@ -23,7 +23,7 @@ import { PanelPalette } from '../../../theme/theme.service';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
-  protected override readonly paletteId: PaletteId = 'workshop';
+  protected readonly pal = ThemeService.getPalette('workshop');
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
@@ -150,8 +150,8 @@ export const renderScrollWidths = (p: EnricoCerutiParams, pal: PanelPalette, foc
       if (half) renderPath(pathFromPolyline(Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: center, y: station.at.y, r }, TURN.half + TURN.half * i / 32))), ink, STROKE_WEIGHT.guide)(g, ui);
       else renderCircle(new Circle(center, station.at.y, r), ink)(g, ui);
     }
-    renderDashLine(new Pt(back, -stub), new Pt(back, scrollExtent(v).height), pal.ink(1).mod(0, 0, 0.5), STROKE_WEIGHT.guide)(g, ui);
-    renderDashLine(new Pt(front, -stub), new Pt(front, scrollExtent(v).height), pal.ink(4).mod(0, 0, 0.5), STROKE_WEIGHT.guide)(g, ui);
+    renderDashLine(new Pt(back, -stub), new Pt(back, scrollExtent(v).height), pal.ink(1).mod(0, 0.5), STROKE_WEIGHT.guide)(g, ui);
+    renderDashLine(new Pt(front, -stub), new Pt(front, scrollExtent(v).height), pal.ink(4).mod(0, 0.5), STROKE_WEIGHT.guide)(g, ui);
   }
   // a crosshair on each width's point in the side view, and on both its edges in its own view
   if (showGuides) {

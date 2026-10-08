@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, ViewChild, effect, inject } from '@angula
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { renderSolveFailures } from '../helpers/renderFuncs';
-import { PanelPalette, Theme, ThemeService } from '../theme/theme.service';
+import { ThemeService } from '../theme/theme.service';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiPanelId, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './templates/ceruti-templates';
@@ -64,19 +64,13 @@ export class CerutiViolin extends RecipeComponentBase {
 
   private readonly themeService = inject(ThemeService);
 
-  get theme(): Theme {
-    return this.themeService.theme();
-  }
-
   // the base panel's own drawing, the front profile in the trace grey
-  private get pal(): PanelPalette {
-    return this.theme.palette('classicCremona');
-  }
+  private readonly pal = ThemeService.getPalette('classicCremona');
 
   constructor(private readonly cdr: ChangeDetectorRef) {
     super();
     effect(() => {
-      this.themeService.theme();
+      this.themeService.mode();
       this.panelRef?.requestViewRerender();
       this.exportRef?.redrawPreview();
     });

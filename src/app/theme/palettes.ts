@@ -5,7 +5,7 @@
 // one bout, the turns of a spiral, a guide behind its subject), never stand in for another
 // colour. Inks are picked for the night canvas; `theme.service.ts` remaps each into the band that
 // reads by day. The names say where each palette was lifted from, not who may read it: a panel
-// names any of them in its `paletteId`
+// names any of them in `ThemeService.getPalette`
 export interface Palette {
   name: string;
   inks: readonly string[];
@@ -16,13 +16,17 @@ export interface Palette {
 export const NEUTRAL = '#868484';
 export const ALERT = '#d62828';
 
+// the canvas each mode draws on, pushed onto :root by the theme service; every ink is fitted
+// against it
+export const CANVAS = { night: '#1e1e1e', day: '#c3bfb3' } as const;
+
 // every palette has the same six slots, cool to hot by descending hue: violet, blue, green, yellow,
 // orange, red. A panel reads a part's slot, so it draws the same part in the same slot whichever
 // palette it names. Varnish and workshop take their colours from Sanzo Wada's dictionary
 export const PALETTES = {
   classicCremona: {
     name: 'Classic Cremona',
-    inks: ['#a969b4', '#4d74a8', '#4d8660', '#e1bf50ff', '#d38032', '#C24B2E'],
+    inks: ['#a969b4', '#4d74a8', '#4d8660', '#e1bf50', '#d38032', '#C24B2E'],
   },
   // blue violet, blue, diamine green, orange yellow, orange, red orange
   varnish: {

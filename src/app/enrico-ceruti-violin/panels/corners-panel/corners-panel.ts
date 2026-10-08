@@ -14,7 +14,7 @@ import { renderMainBouts, renderBounds, renderBoutBouts } from '../main-bouts-pa
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
-import { PanelPalette } from '../../../theme/theme.service';
+import { PanelPalette, ThemeService } from '../../../theme/theme.service';
 
 export interface CornersViewFlags {
   showModuleCircles: boolean;
@@ -31,6 +31,7 @@ export interface CornersViewFlags {
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class CornersPanel extends CerutiPanelBase implements OnInit {
+  protected readonly pal = ThemeService.getPalette('classicCremona');
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleGuides', 'renderOuterPath'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;

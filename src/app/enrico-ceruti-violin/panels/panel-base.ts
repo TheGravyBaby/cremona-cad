@@ -1,8 +1,6 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { PanelRenderRequest } from '../ceruti-types';
 import { showFieldHelp } from '../../docs/field-help';
-import { PanelPalette, Theme } from '../../theme/theme.service';
-import { PaletteId } from '../../theme/palettes';
 
 export type RenderLayer = (g: any, ui: any) => void;
 
@@ -21,16 +19,6 @@ export type RenderLayer = (g: any, ui: any) => void;
 })
 export abstract class CerutiPanelBase {
   @Output() panelUpdate = new EventEmitter<PanelRenderRequest>();
-
-  @Input({ required: true }) theme!: Theme;
-
-  // the palette this panel draws with, read by position (`pal.ink(1)`); a panel overrides the id
-  // to take another, and any palette will do, since reading past its end wraps
-  protected readonly paletteId: PaletteId = 'classicCremona';
-
-  get pal(): PanelPalette {
-    return this.theme.palette(this.paletteId);
-  }
 
   protected readonly help = showFieldHelp;
 

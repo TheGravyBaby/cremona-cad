@@ -13,7 +13,7 @@ import { plateLayoutOffset } from '../../calculation/arching/ceruti-arch-geometr
 import { CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
-import { PanelPalette } from '../../../theme/theme.service';
+import { PanelPalette, ThemeService } from '../../../theme/theme.service';
 
 export interface OuterTraceViewFlags {
   showModuleArcs: boolean;
@@ -29,6 +29,7 @@ export interface OuterTraceViewFlags {
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class OuterTracePanel extends CerutiPanelBase implements OnInit {
+  protected readonly pal = ThemeService.getPalette('classicCremona');
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;

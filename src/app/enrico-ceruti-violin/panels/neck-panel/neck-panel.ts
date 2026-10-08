@@ -12,11 +12,11 @@ import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { applyMatrix, pathFromArc } from '../../../helpers/math/pathMath';
 import { dist, moveInVectorSpace, pointAtDistanceToward, pointOnCircle, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
 import { renderSegment, renderSegmentHalo, renderArcHalo, renderPolygon, renderPath, renderSolveFailures, renderGuideMeasure, renderGuideBaseline, renderStroke } from '../../../helpers/renderFuncs';
-import { PaletteId, STROKE_WEIGHT } from '../../../theme/palettes';
+import { STROKE_WEIGHT } from '../../../theme/palettes';
 import { Pt, Vect2D } from '../../../models/types';
 import { scrollFrontInPlan } from '../../calculation/neck/ceruti-scroll-views';
 import { renderBodySideProfile, sideViewOffsetX } from '../../renders/body-side-profile.render';
-import { PanelPalette } from '../../../theme/theme.service';
+import { PanelPalette, ThemeService } from '../../../theme/theme.service';
 
 export type NeckHighlightKey =
   | 'length' | 'thickness' | 'topWidth' | 'rootWidth' | 'heel' | 'buttonHeight' | 'mortise' | 'overstand' | 'angle'
@@ -34,7 +34,7 @@ export type NeckSetPanel = 'neck' | 'stringSetup';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class NeckPanel extends CerutiPanelBase implements OnInit {
-  protected override readonly paletteId: PaletteId = 'workshop';
+  protected readonly pal = ThemeService.getPalette('workshop');
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides', 'showFingerboard'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;

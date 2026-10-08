@@ -13,7 +13,7 @@ import { renderSolveFailures } from '../../../helpers/renderFuncs';
 import { renderBodySideProfile, sideViewOffsetX } from '../../renders/body-side-profile.render';
 import { renderFrontView, renderNeck, renderNeckHighlight, StringSetupHighlightKey } from '../neck-panel/neck-panel';
 import { TooltipDirective } from '../../../docs/tooltips';
-import { PaletteId } from '../../../theme/palettes';
+import { ThemeService } from '../../../theme/theme.service';
 
 @Component({
   selector: 'app-ceruti-string-setup-panel',
@@ -22,7 +22,7 @@ import { PaletteId } from '../../../theme/palettes';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class StringSetupPanel extends CerutiPanelBase implements OnInit {
-  protected override readonly paletteId: PaletteId = 'workshop';
+  protected readonly pal = ThemeService.getPalette('workshop');
   static readonly renderToggles: readonly RenderToggleKey[] = ['showFingerboard', 'showFretMarks'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
