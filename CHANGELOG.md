@@ -5,6 +5,10 @@
 TODO: the neck, volute, scroll and scroll widths panels, the string setup, and the five neck and scroll sheets.
 
 - **One palette for the drawing** — the colours on canvas come from five inks and a tone per part rather than a hand-picked hex each, so a part another panel owns draws in plain grey and the day canvas gets the same ramps in a legible band. Some colours have shifted slightly.
+- **Arch templates work from either face** — each long and cross template is now a strip with the arch on both edges, so one edge fits over the outside of the plate and the other into an arch carved from the inside. Templates run from takeoff to takeoff, where the arch meets the fluting.
+- **Bundled SVG exports** — Templates SVG packs the neck template, the scroll's three views, scroll back, compass walk, arch templates and blocks onto one sheet, each set kept together as it previews; Full SVG packs every sheet.
+- **Full plan PDF on one paper size** — every page prints on the same paper, and the templates share pages where they fit, so the small pages are gone.
+- **Scroll side profile export** — the head from the side, as SVG, PDF or DXF, and in the full plan.
 
 ## v0.8.8.0 — Sep 14, 2026
 

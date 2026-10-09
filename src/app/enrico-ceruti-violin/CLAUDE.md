@@ -345,14 +345,18 @@ section first → long arch carved to a template → crown across. The panel ord
   `STATION_MERGE_EPS_MM` from one.
 - **Plan-view sheets carry no channel.** In plan, a channel is two rims with nothing between them
   to say depth or section.
-- **Templates terminate at the bottom of the fluting trough** on each end, via
-  `trimProfileToTroughs` in `ceruti-surface.ts`. The acceptance property is that the cutting edge
-  has **slope 0 at both ends**. Two approaches already failed: sweeping to the plate edge leaves
-  dead flat on every blank; cutting at `section.centerHalf + section.halfWidth` is right along the
-  bouts but wrong at the corners, where the surface reads transverse position off a distance field
-  (`chordTrust`). Read the cut off the sampled surface, never compute it — and parse the profile's
-  own vertices rather than `samplePathToPolyline`, which re-samples by arc length and slides the
-  cut off the vertex it identified.
+- **An arch template is a strip with the arch on both long edges** (2026-10-09), so one edge sits
+  over the outside of the plate and the other in an arch carved from the inside, which is how some
+  Cremonese makers seem to have started. `archTemplate` in `ceruti-surface.ts` joins four paths:
+  the arch, its end, the arch lifted `templateWidth` off the wood, and the other end. The width is
+  15 mm, or the template's length over 18.75 once that is more, so a long strip stays stiff. The
+  cross-arch set takes one width, the longest blank's, across both plates, so it reads as a set. The arch is
+  the one its panel draws, takeoff to takeoff: `buildArchPathFor` for the long arch, and for the
+  cross arch the `arch` run of `sampleArchSectionRuns`, the surface rather than the station solve so
+  the corners are right. Until then a template was a one-sided negative cut on down to the trough's
+  floor (`trimProfileToTroughs`), which a two-sided strip has no use for: the inside has no channel.
+  A plate whose arch runs the other way in its frame is rotated, never mirrored, so an asymmetric
+  crown keeps its hand.
 
 ## The scroll's widths
 
@@ -557,11 +561,28 @@ section first → long arch carved to a template → crown across. The panel ord
   outline, so `scrollBackViewStrokes` takes `{ front: false }` there and draws the back alone, the
   neck's sides running up into the round. The turns' occlusion is kept: it is the volute's shape.
   The front view carries nothing of the back, so it exports unchanged.
-- **All five neck and scroll sheets export as SVG, PDF and DXF** (2026-10-06) through one
+- **All six neck and scroll sheets export as SVG, PDF and DXF** (2026-10-06) through one
   `scrollSheet` in the export panel that builds each sheet's paths once; the SVG keeps the stroke
   weights, the PDF draws every path at one weight and the DXF carries none. The full plan PDF
   carries each that can be built, after the arching templates, and leaves the rest out without a
   word, as it does the arching pages.
+- **Two bundled SVGs pack many sheets onto one** (2026-10-09, a first pass): Templates (the neck
+  template, the scroll's side, front and back views, the back strip, the compass walk, the arch
+  templates and the blocks) and Full (every sheet that can be built). Each sheet packs whole, laid
+  out as its own download lays it out, so like templates stay together: splitting the arch blanks
+  and blocks into separate pieces packed tighter but scattered them across the sheet. `svgSheet`
+  in the export panel is each sheet's paths for the single SVG download and the bundles alike;
+  `packPieces` in `helpers/fileExporter.ts` skyline-packs them, tallest first, each dropped into the
+  lowest place it fits, and moves each by a transform rather than rewriting its path data.
+- **The full plan PDF prints every page on one paper** (2026-10-09): the smallest standard size
+  every page fits on, upright or turned (`paperFor`). Same paper first, packing second. The
+  contours and the mould keep their plan pages; the rest go in as groups (`PDF_GROUPS`: blocks,
+  f-holes, arch templates, neck and scroll), each sheet whole, and `paginatePieces` fills pages of
+  that paper: a group joins the page before it if it fits there, and only a group too big for a page
+  splits. A default violin needs A2, not A3: its plan sheet is 378 mm tall with the button, and an
+  A3 page holds 370 inside its margins and title block.
+- **The scroll's side profile is a sheet of its own** (2026-10-09), `defineSideScrollPath` as the
+  scroll panels draw it, centred, from its lowest point up; the outline only, no hollow.
 
 ## Adding a panel
 

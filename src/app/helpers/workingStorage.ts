@@ -1,10 +1,11 @@
 import { storageFull } from '../docs/conditions';
 
-// per-tab copy of the in-progress design (recipe, open panel, toolbox shapes) — sessionStorage,
+// per-tab copy of the in-progress design (recipe, open panel, view toggles, toolbox shapes) — sessionStorage,
 // so each tab is its own workspace but closing it discards the work. saving to disk is the only durable copy.
 
 export const RECIPE_KEY = 'recipeData';
 export const PANEL_KEY = 'openPanel';
+export const VIEW_FLAGS_KEY = 'viewFlags';
 export const SELECTED_RECIPE_KEY = 'selectedRecipe';
 
 let quotaWarned = false;

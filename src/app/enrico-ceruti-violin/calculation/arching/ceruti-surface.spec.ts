@@ -3,10 +3,10 @@ import { pathsBounds, samplePathToPolyline } from '../../../helpers/math/pathMat
 import { closestPointToPolylineIndexed } from '../../../helpers/math/vibeMath';
 import { archedViolin, templateViolin } from '../../ceruti-fixtures';
 import {
-  buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, trimProfileToTroughs,
-  calculateLongArchTemplates, computeArchContours, computeArchSectionProfile, crossArchTemplateStations,
+  buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates,
+  calculateLongArchTemplates, computeArchContours, crossArchTemplateStations,
   stationChordsAt, topSurfaceZAt, plateHalfChordAtY, PlateSurfaceModel, computeArchContourRings,
-  sampleArchSectionRuns,
+  sampleArchSectionRuns, templateWidth,
 } from './ceruti-surface';
 import {
   defaultCrossArchParams, defaultCrossArchSplineParams, defaultFlutingParams,
@@ -18,7 +18,16 @@ import { EnricoCerutiParams } from '../../ceruti-types';
 
 /** A polyline path's own vertices — not re-sampled, so a cut point stays where it was put. */
 function polyline(path: string): Array<{ x: number; y: number }> {
-  return [...path.matchAll(/[ML]\s*(-?[\d.]+)\s+(-?[\d.]+)/g)].map(m => ({ x: +m[1], y: +m[2] }));
+  return [...path.matchAll(/[ML]\s*(-?[\d.]+(?:e[-+]?\d+)?)\s+(-?[\d.]+(?:e[-+]?\d+)?)/gi)].map(m => ({ x: +m[1], y: +m[2] }));
+}
+
+function expectLiftedCopy(path: string, lift: { x: number; y: number }): void {
+  const pts = polyline(path);
+  const near = (a: { x: number; y: number }, x: number, y: number) => Math.abs(a.x - x) < 1e-6 && Math.abs(a.y - y) < 1e-6;
+  for (const pt of pts) {
+    const partnered = pts.some(q => near(q, pt.x + lift.x, pt.y + lift.y) || near(q, pt.x - lift.x, pt.y - lift.y));
+    expect(partnered).toBe(true);
+  }
 }
 
 /** A fully calculated default violin with arching + fluting configured. */
@@ -115,26 +124,6 @@ describe('arching templates', () => {
     model = buildPlateSurfaceModel(p, 'top')!;
   });
 
-  it('sweeps the full station width in one continuous path, matching the height field', () => {
-    const y = p.height / 2;
-    const profile = computeArchSectionProfile(p, model, y)!;
-    expect(profile).toBeTruthy();
-    expect(profile.startsWith('M')).toBe(true);
-    const chords = stationChordsAt(p, model, y);
-    const z = topSurfaceZAt(p, model, 0, y, chords)!;
-
-    // Compared against the nearest sample rather than by looking for the centreline
-    // coordinate as a substring: the profile is a fixed-step polyline, so no sample is
-    // guaranteed to land exactly on x = 0, and an exact float match would be testing the
-    // sampler's grid alignment rather than whether the path follows the height field.
-    const samples = [...profile.matchAll(/[ML]\s+(-?[\d.]+)\s+(-?[\d.]+)/g)]
-      .map(m => ({ x: +m[1], z: +m[2] }));
-    expect(samples.length).toBeGreaterThan(10);
-    const nearest = samples.reduce((a, b) => Math.abs(b.x) < Math.abs(a.x) ? b : a);
-    expect(nearest.x).toBeCloseTo(0, 0);
-    expect(nearest.z).toBeCloseTo(model.zBase + model.signZ * z, 2);
-  });
-
   it('carries the corner pass into the section, rather than a flat past one gouge width', () => {
     const y = p.bouts.LCr!.y - 5;
     const chords = stationChordsAt(p, model, y);
@@ -155,9 +144,9 @@ describe('arching templates', () => {
     expect(runs.some(r => r.part === 'arch')).toBe(true);
   });
 
-  it('returns null off the plate', () => {
-    expect(computeArchSectionProfile(p, model, -10)).toBeNull();
-    expect(computeArchSectionProfile(p, model, p.height + 50)).toBeNull();
+  it('has no section off the plate', () => {
+    expect(sampleArchSectionRuns(p, model, -10)).toEqual([]);
+    expect(sampleArchSectionRuns(p, model, p.height + 50)).toEqual([]);
   });
 
   it('cuts a template at every body landmark, up the body in order', () => {
@@ -228,80 +217,36 @@ describe('arching templates', () => {
     }
   });
 
-  it('cuts a profile at the trough on each side of the peak, keeping the middle', () => {
-    // A hand-made profile with everything the real ones have and nothing else:
-    // flat land, a trough, a hump, a second and deeper trough, flat land. The
-    // second trough is the deeper one deliberately — a single global minimum
-    // would find only that, and the two channels are free to differ.
-    const shape = [0, 0, 0, -1, -2, -1, 0, 3, 5, 3, 0, -1, -3, -1, 0, 0, 0];
-    const profile = shape.map((z, i) => `${i === 0 ? 'M' : 'L'} ${i} ${100 + z}`).join(' ');
-    const pts = polyline(trimProfileToTroughs(profile, 100, 'y', 1)!);
-
-    // Exactly the vertices it identified — the cut lands on a sample, not near
-    // one, which is what makes the end tangent the trough's own.
-    expect(pts[0]).toEqual({ x: 4, y: 98 });
-    expect(pts[pts.length - 1]).toEqual({ x: 12, y: 97 });
-    expect(Math.max(...pts.map(q => q.y))).toBe(105);
-  });
-
-  it('reads the trough off the surface, so a back plate cuts the same as a top', () => {
-    // Same shape mirrored: on the back plate the wood's low point is the canvas
-    // high point, and a trim that went by canvas coordinates would cut at the
-    // peak instead.
-    const shape = [0, 0, -1, -2, -1, 0, 3, 5, 3, 0, -1, -2, -1, 0, 0];
-    const mirrored = shape.map((z, i) => `${i === 0 ? 'M' : 'L'} ${i} ${100 - z}`).join(' ');
-    const pts = polyline(trimProfileToTroughs(mirrored, 100, 'y', -1)!);
-    expect(pts[0].x).toBe(3);
-    expect(pts[pts.length - 1].x).toBe(11);
-  });
-
-  it('ends every cross-arch blank flat, at the full depth of the gouge', () => {
-    // The property that says the cut reached the trough rather than stopping
-    // somewhere up the flank: the bottom of the gouge's arc is where its tangent
-    // is horizontal, so a blank still on a grade at its end has not got there.
-    // Checked at the corners as much as the bouts — placing the cut
-    // arithmetically instead (channel half-chord plus gouge half-width) is right
-    // along a bout and wrong at a corner, where the surface reads its position
-    // off a distance field rather than off the chord.
-    const gouge = defaultFlutingParams(p);
-    for (const key of ['top', 'bottom'] as const) {
-      const model = buildPlateSurfaceModel(p, key)!;
-      for (const { y } of crossArchTemplateStations(p, p.arching![key])) {
-        const swept = computeArchSectionProfile(p, model, y, 0.25)!;
-        const pts = polyline(trimProfileToTroughs(swept, model.zBase, 'y', model.signZ)!);
-        const n = pts.length;
-        const depth = (pt: { y: number }) => model.signZ * (pt.y - model.zBase);
-
-        // Full gouge depth at both ends — the trough's floor, not the flank.
-        expect(depth(pts[0])).toBeCloseTo(-gouge.depth, 2);
-        expect(depth(pts[n - 1])).toBeCloseTo(-gouge.depth, 2);
-        // And flat there. Measured as a secant over two samples, which on a
-        // curve through its own minimum is bounded by the sample step over the
-        // gouge's radius — hence a tolerance rather than zero.
-        for (const [a, b] of [[pts[0], pts[2]], [pts[n - 3], pts[n - 1]]]) {
-          expect(Math.abs((b.y - a.y) / (b.x - a.x))).toBeLessThan(0.1);
-        }
-      }
-    }
-  });
-
-  it('trims every cross-arch blank clear of the plate edge, corners included', () => {
-    // The corners are the case that used to fail. Placing the cut arithmetically
-    // — channel half-chord plus gouge half-width — is right along a bout and
-    // wrong at a corner, where the surface reads its position off a distance
-    // field instead, so the corner blanks came out carrying flats.
-    const geometry = buildPlateSurfaceModel(p, 'top')!;
+  // the set run takeoff to takeoff with the arch on both edges, every blank as wide as the longest needs
+  function expectCrossSet(p: EnricoCerutiParams): number {
     const blanks = calculateCrossArchTemplates(p);
-    for (const { y, code } of crossArchTemplateStations(p, p.arching!.top)) {
-      const plateEdge = stationChordsAt(p, geometry, y).outerHalf!;
-      const width = pathsBounds([blanks.find(s => s.label === `Top ${code} ${y}mm`)!.path]).width;
-      // Cut at the trough, so each side loses the land plus the channel's outer
-      // flank — comfortably more than the land alone.
-      expect(width).toBeLessThan(2 * (plateEdge - p.outerFlutingDepth!));
-      // But still most of the plate: a blank that had collapsed onto the crown
-      // would pass the bound above while describing nothing.
-      expect(width).toBeGreaterThan(plateEdge);
+    const sections = (['top', 'bottom'] as const).flatMap(key => {
+      const model = buildPlateSurfaceModel(p, key)!;
+      return crossArchTemplateStations(p, p.arching![key]).map(({ y, code }) => ({
+        label: `${key === 'top' ? 'Top' : 'Back'} ${code ? `${code} ` : ''}${y}mm`,
+        pts: sampleArchSectionRuns(p, model, y).find(r => r.part === 'arch')!.pts,
+      }));
+    });
+    const width = templateWidth(Math.max(...sections.map(({ pts }) =>
+      Math.hypot(pts[pts.length - 1].x - pts[0].x, pts[pts.length - 1].y - pts[0].y))));
+    for (const { label, pts } of sections) {
+      const xs = pts.map(pt => pt.x), zs = pts.map(pt => pt.y);
+      const blank = blanks.find(s => s.label === label)!;
+      const b = pathsBounds([blank.path]);
+      expect(b.width).toBeCloseTo(Math.max(...xs) - Math.min(...xs), 0);
+      expect(b.height).toBeCloseTo(Math.max(...zs) - Math.min(...zs) + width, 0);
+      expectLiftedCopy(blank.path, { x: 0, y: width });
     }
+    return width;
+  }
+
+  it('runs every cross-arch blank takeoff to takeoff, the arch on both edges', () => {
+    expectCrossSet(p);
+  });
+
+  it('gives every cross-arch blank the width the longest one needs', () => {
+    // a cello's widest station is long enough to need more than the minimum, its waist not
+    expect(expectCrossSet(templateViolin('stradivari-cello-castelbarco', true))).toBeGreaterThan(templateWidth(0));
   });
 
   it('cross-arch templates are empty without arching configured', () => {
@@ -320,16 +265,20 @@ describe('arching templates', () => {
     }
   });
 
-  it('runs the long-arch blank trough to trough, leaving the flat caps out', () => {
-    // The trough sits a half-width in from the land edge at each cap, so the
-    // blank is that much shorter again than the body between the land edges.
-    const gouge = defaultFlutingParams(p);
-    const trough = p.outerFlutingDepth! + gougeHalfWidth(gouge.sweepRadius, gouge.depth);
-    // Closed against the x axis, so the strip's length is its y extent. Within
-    // a sampling step rather than exactly — closeProfileToBlank re-samples at
-    // fixed arc length, and its last step lands short of the true endpoint.
-    for (const s of calculateLongArchTemplates(p)) {
-      expect(Math.abs(pathsBounds([s.path]).height - (p.height - 2 * trough))).toBeLessThanOrEqual(0.5);
+  it('widens a template as it lengthens, never thinner than the shortest', () => {
+    expect(templateWidth(700)).toBeGreaterThan(templateWidth(350));
+    expect(templateWidth(10)).toBe(templateWidth(100));
+    for (const span of [100, 350, 700, 1400]) expect(span / templateWidth(span)).toBeLessThanOrEqual(18.75);
+  });
+
+  it('runs the long-arch blank takeoff to takeoff, the arch on both edges', () => {
+    const blanks = calculateLongArchTemplates(p);
+    for (const [key, side] of [['top', 'Top'], ['bottom', 'Back']] as const) {
+      const plate = p.arching![key];
+      const la = solveLongArch(p, plate.arch, plate.fluting!)!;
+      const blank = blanks.find(s => s.label === `${side} Long`)!;
+      expect(Math.abs(pathsBounds([blank.path]).height - la.span)).toBeLessThanOrEqual(0.5);
+      expectLiftedCopy(blank.path, { x: templateWidth(Math.hypot(la.span, la.farZ)), y: 0 });
     }
   });
 
@@ -340,19 +289,16 @@ describe('arching templates', () => {
     expect(la).toBeTruthy();
     const z = (y: number) => channelCenterlineZAt(p, gouge, la, y);
 
-    // Plate level right at the land edge, and full depth at the channel's
-    // trough. The first is what makes the land edge the right place to end the
-    // blank: the channel's outer flank arrives there with nothing left to
-    // describe, so everything beyond is the flat the template now omits.
+    // Plate level right at the land edge, and full depth at the channel's trough.
     expect(z(p.outerFlutingDepth!)).toBeCloseTo(0, 9);
     const centerY = p.outerFlutingDepth! + gougeHalfWidth(gouge.sweepRadius, gouge.depth);
     expect(z(centerY)).toBeCloseTo(-gouge.depth, 9);
     // And the arch's own height at the peak, measured from the plate surface.
     expect(z(p.height / 2)).toBeCloseTo(plate.arch.archHeight, 3);
 
-    // The claim the whole model rests on, at the one place a maker would catch
-    // it failing: the arch leaves the channel at the same height *and* the same
-    // grade, so the template's edge has no step and no kink at the takeoff.
+    // The claim the whole model rests on: the arch leaves the channel at the
+    // same height *and* the same grade, so there is no step and no kink at the
+    // takeoff.
     // Height, as a one-sided pair: the channel branch owns the takeoff itself
     // and the arch branch picks up immediately past it, and both are the solved
     // takeoff depth. Compared *at* the join rather than across it — the curve

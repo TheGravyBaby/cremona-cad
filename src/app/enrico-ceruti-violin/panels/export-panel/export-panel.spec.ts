@@ -4,6 +4,7 @@ import { DefaultParams, EnricoCerutiParams, PathEntry } from '../../ceruti-types
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateMould } from '../../calculation/outline/ceruti-calcs';
 import { defaultFHolePlacement } from '../f-hole-placement-panel/f-hole-placement-panel';
 import { ExportPanel } from './export-panel';
+import { pathsBounds } from '../../../helpers/math/pathMath';
 import { calculateNeck, defaultNeckParams, defaultStringSetup } from '../../calculation/neck/ceruti-neck';
 import { defaultFlutingParams, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
 import { defaultVoluteParams, scrollBackStrip, scrollCompassWalk } from '../../calculation/neck/ceruti-scroll';
@@ -388,6 +389,18 @@ describe('the scroll back strip', () => {
     expect(viewBox[3]).toBeGreaterThan(Math.max(...ys));
   });
 
+  it('writes the side profile centred on a sheet that starts at its foot, no text', async () => {
+    const result = await captured(() => makePanel(scrolled()).downloadExport('scrollSide'));
+    expect(result!.name).toBe('test-violin-scrollSide.svg');
+    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    expect(doc.querySelector('parsererror')).toBeNull();
+    expect(doc.querySelectorAll('text')).toHaveLength(0);
+    expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
+    const b = pathsBounds([doc.querySelector('path')!.getAttribute('d')!]);
+    expect(b.minY).toBeCloseTo(0, 1);
+    expect(b.minX + b.maxX).toBeCloseTo(0, 1);
+  });
+
   it('leaves the pegbox\'s front off the back view sheet', async () => {
     const p = scrolled();
     p.scroll!.widths.hip = 46;
@@ -404,7 +417,7 @@ describe('the scroll back strip', () => {
     expect((await xs('scrollBackView')).some(x => Math.abs(x - 23) < 1e-6)).toBe(false);
   });
 
-  it.each(['neckTemplate', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass'] as const)('%s writes a complete DXF in millimetres', async type => {
+  it.each(['neckTemplate', 'scrollSide', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass'] as const)('%s writes a complete DXF in millimetres', async type => {
     const result = await captured(() => makePanel(type === 'neckTemplate' ? necked() : scrolled()).downloadDxf(type));
     expect(result!.name).toBe(`test-violin-${type}.dxf`);
     expect(result!.text).toContain('ENTITIES');
@@ -414,7 +427,7 @@ describe('the scroll back strip', () => {
   });
 
   it('refuses rather than throwing without a scroll, in any format', async () => {
-    for (const type of ['scrollBack', 'scrollCompass', 'scrollFrontView', 'scrollBackView'] as const) {
+    for (const type of ['scrollSide', 'scrollBack', 'scrollCompass', 'scrollFrontView', 'scrollBackView'] as const) {
       expect(await captured(() => makePanel(defaultViolin()).downloadDxf(type))).toBeNull();
       expect(await captured(() => makePanel(defaultViolin()).downloadPdf(type))).toBeNull();
     }
@@ -423,6 +436,7 @@ describe('the scroll back strip', () => {
     expect(await captured(() => makePanel(defaultViolin()).downloadExport('scrollCompass'))).toBeNull();
     expect(await captured(() => makePanel(defaultViolin()).downloadExport('scrollFrontView'))).toBeNull();
     expect(await captured(() => makePanel(defaultViolin()).downloadExport('scrollBackView'))).toBeNull();
+    expect(await captured(() => makePanel(defaultViolin()).downloadExport('scrollSide'))).toBeNull();
     const panel = makePanel(defaultViolin());
     const emitted: any[] = [];
     panel.draftChange.subscribe(layers => emitted.push(layers));
@@ -469,6 +483,46 @@ describe('the STL a download writes', () => {
   // coarsening the grid, which would stop testing what ships.
   it('refuses rather than throwing on a plate with no arching', async () => {
     expect(await captured(() => makePanel(defaultViolin()).downloadStl('top'))).toBeNull();
+  });
+});
+
+describe('the bundled SVGs', () => {
+  // every stage reached: arched, the neck set and the scroll started, the mould seeding the blocks
+  const finished = () => {
+    const p = archedViolin();
+    calculateMould(p, false, false);
+    p.neck = defaultNeckParams(p);
+    p.stringSetup = defaultStringSetup(p);
+    const gouge = (p.arching!.top.fluting ??= defaultFlutingParams(p));
+    calculateNeck(p, solveLongArch(p, p.arching!.top.arch, gouge), gouge);
+    p.scroll = defaultVoluteParams(p);
+    return p;
+  };
+  const groups = (text: string) => text.match(/<g transform="translate\(/g)?.length ?? 0;
+
+  it('packs the templates onto one sheet, like templates kept together', async () => {
+    const result = await captured(() => makePanel(finished()).downloadBundle('templates'));
+    expect(result!.name).toBe('test-violin-templates.svg');
+    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    expect(doc.querySelector('parsererror')).toBeNull();
+    expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
+    // every cross-arch blank of both plates in the one piece, and the long arch's pair in another
+    const pieceOf = (label: RegExp) => new Set([...doc.querySelectorAll('text')].filter(t => label.test(t.textContent!)).map(t => t.parentElement));
+    expect(pieceOf(/^(Top|Back) (LB|LC|C|UC|UB) /).size).toBe(1);
+    expect(pieceOf(/ Long$/).size).toBe(1);
+    expect(pieceOf(/ Long$/)).not.toEqual(pieceOf(/^(Top|Back) LB /));
+  });
+
+  it('packs more into the full sheet than the templates alone', async () => {
+    const templates = await captured(() => makePanel(finished()).downloadBundle('templates'));
+    const full = await captured(() => makePanel(finished()).downloadBundle('full'));
+    expect(full!.name).toBe('test-violin-full.svg');
+    expect(new DOMParser().parseFromString(full!.text, 'image/svg+xml').querySelector('parsererror')).toBeNull();
+    expect(groups(full!.text)).toBeGreaterThan(groups(templates!.text));
+  });
+
+  it('writes no templates sheet for an instrument with none to cut', async () => {
+    expect(await captured(() => makePanel(outlined()).downloadBundle('templates'))).toBeNull();
   });
 });
 

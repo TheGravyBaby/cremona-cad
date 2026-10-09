@@ -10,7 +10,7 @@ import { isLocSourced, thumbnailHref } from './templates/corpus';
 import { LOCAL_TEMPLATES } from './templates/local/generated-index';
 import { calculateMainBouts, ensureFrontProfilePaths, hasCenterBout, hasCorners, hasMainBouts } from './calculation/outline/ceruti-calcs';
 import { renderFrontProfile } from './renders/front-profile.render';
-import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
+import { PANEL_KEY, RECIPE_KEY, VIEW_FLAGS_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
 import { showFieldHelp } from '../docs/field-help';
 import { MainBoutsPanel, renderBounds } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from './panels/corners-panel/corners-panel';
@@ -87,7 +87,7 @@ export class CerutiViolin extends RecipeComponentBase {
     ...CERUTI_TEMPLATES[1],
   };
 
-  viewFlags: CerutiViewFlags = { ...DEFAULT_CERUTI_VIEW_FLAGS };
+  viewFlags: CerutiViewFlags = { ...DEFAULT_CERUTI_VIEW_FLAGS, ...readStoredViewFlags() };
 
   get renderToggleButtons(): readonly RenderToggleKey[] {
     return this.panelOrder.find(panel => panel.id === this.openPanel)?.toggles ?? [];
@@ -337,6 +337,8 @@ export class CerutiViolin extends RecipeComponentBase {
         this.panelFlow?.refreshEnabledPanels();
       }
       this.draftChange.emit(renders);
+      // every flag change — the toggle strip, cross arching's plate view, cursor and drag — redraws through here
+      writeWorkingState(VIEW_FLAGS_KEY, JSON.stringify(this.viewFlags));
       if (request.persistSession !== false) {
         writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
       }
@@ -378,4 +380,13 @@ export class CerutiViolin extends RecipeComponentBase {
     }));
   }
 
+}
+
+// spread over the defaults, so a flag added since the tab last wrote picks up its default
+function readStoredViewFlags(): Partial<CerutiViewFlags> {
+  try {
+    return JSON.parse(readWorkingState(VIEW_FLAGS_KEY) ?? '{}');
+  } catch {
+    return {};
+  }
 }

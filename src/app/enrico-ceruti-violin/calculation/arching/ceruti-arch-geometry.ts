@@ -492,8 +492,7 @@ export function solveLongArch(
  * ends, because there is no seam to stitch: the arch's takeoff was solved to
  * meet the channel's flank at the same height *and* the same slope, so the two
  * branches agree to the tolerance the solve was run to. That is the property
- * the whole model exists for, and the long-arch template is where a maker would
- * first notice if it failed.
+ * the whole model exists for.
  *
  * `la` is the plate's solved long arch; without one the plate is channel and
  * land only, which is what an arch too high to meet its channel leaves.
@@ -511,27 +510,6 @@ export function channelCenterlineZAt(
     return archZAt(la.lowered, la.span, y - la.yStart, la.farZ) - la.takeoff.takeoffDepth;
   }
   return s <= -w ? 0 : gougeProfileZ(Math.min(s, w), g.sweepRadius, g.depth);
-}
-
-/**
- * The centerline elevation as a path, in the long-arch section frame (canvas
- * X = Z, canvas Y = body length) — the long-arch template's cutting edge.
- *
- * Runs the full body length. Where the blank *stops* is decided afterwards, by
- * trimming the flat off what this returns rather than by working out in advance
- * where the flat begins — see `trimProfileFlats`.
- */
-export function longArchProfilePath(
-  p: EnricoCerutiParams, g: FlutingParams, la: LongArchSolve | null,
-  xBase: number, sign: 1 | -1, stepMm = 0.5,
-): string {
-  const n = Math.max(16, Math.ceil(p.height / stepMm));
-  const pts: string[] = [];
-  for (let i = 0; i <= n; i++) {
-    const y = (p.height * i) / n;
-    pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * channelCenterlineZAt(p, g, la, y)} ${y}`);
-  }
-  return pts.join(' ');
 }
 
 /**
