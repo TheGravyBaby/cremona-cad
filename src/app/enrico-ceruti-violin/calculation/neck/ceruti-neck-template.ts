@@ -31,7 +31,7 @@ export interface NeckTemplateSpec {
 // the stencil's cuts scale with the material, not the instrument; the run lengths scale with it
 export function defaultNeckTemplateSpec(p: EnricoCerutiParams): NeckTemplateSpec {
   const k = p.height / 350;
-  return { slotWidth: 1.5, bridgeWidth: 2.5, bridgeEvery: 20 * k, minSlot: 8 * k, minWeb: 2, dotEvery: 4 * k, dotRadius: 0.5 };
+  return { slotWidth: 1, bridgeWidth: 2.5, bridgeEvery: 20 * k, minSlot: 8 * k, minWeb: 2, dotEvery: 4 * k, dotRadius: 0.5 };
 }
 
 export interface NeckTemplate {
@@ -165,18 +165,22 @@ export function defineNeckTemplate(p: EnricoCerutiParams, spec: NeckTemplateSpec
       return { s, r: pc.arc.r, pt: pointOnCircle(pc.arc, pc.from + (s - pc.s0) / pc.arc.r) };
     });
   });
-  const clearance = (s: number): number => {
-    const pt = pointAt(interior, s);
+  // the web a slot here leaves, measured from whichever of its two walls comes nearer: the slot
+  // cuts inward, so the next turn out keeps the whole gap off the true wall and only the turn
+  // within loses the slot's width
+  const web = (s: number): number => {
     const r = pieceAt(interior, s).arc.r;
-    const nearTurn = Math.min(...turns.filter(t => Math.abs(t.s - s) > r * TURN.half).map(t => dist(t.pt, pt)));
-    const nearEdge = Math.min(...others.map(o => dist(o, pt)));
+    const walls = [pointAt(interior, s), pointAt(interior, s, spec.slotWidth)];
+    const near = (o: Pt) => Math.min(...walls.map(w => dist(o, w)));
+    const nearTurn = Math.min(...turns.filter(t => Math.abs(t.s - s) > r * TURN.half).map(t => near(t.pt)));
+    const nearEdge = Math.min(...others.map(near));
     return Math.min(nearTurn, nearEdge);
   };
 
   // a bridge at each end of the stencil, then the run classed millimetre by millimetre: slot where
   // the web holds, dots where it won't
   const length = interior.at(-1)?.s1 ?? 0;
-  const ok = (s: number) => pieceAt(interior, s).arc.r - spec.slotWidth > 0.1 && clearance(s) - spec.slotWidth >= spec.minWeb;
+  const ok = (s: number) => pieceAt(interior, s).arc.r - spec.slotWidth > 0.1 && web(s) >= spec.minWeb - 1e-6;
   const runs: { ok: boolean; a: number; b: number }[] = [];
   const step = 1;
   for (let s = spec.bridgeWidth; s < length - spec.bridgeWidth; s += step) {

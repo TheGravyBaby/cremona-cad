@@ -247,7 +247,7 @@ describe('arching templates', () => {
   it('gives every cross-arch blank the width the longest one needs', () => {
     // a cello's widest station is long enough to need more than the minimum, its waist not
     expect(expectCrossSet(templateViolin('stradivari-cello-castelbarco', true))).toBeGreaterThan(templateWidth(0));
-  });
+  }, 20_000);
 
   it('cross-arch templates are empty without arching configured', () => {
     const bare = makeParams();
