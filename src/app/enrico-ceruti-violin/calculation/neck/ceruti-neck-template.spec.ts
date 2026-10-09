@@ -11,6 +11,7 @@ import { solveNeckForProfile } from '../outline/ceruti-calcs';
 import { defaultNeckTemplateSpec, defineNeckTemplate, NeckTemplateSpec } from './ceruti-neck-template';
 import { scrollOnNeck } from '../outline/ceruti-paths';
 import { applyMatrix } from '../../../helpers/math/pathMath';
+import { pointOnCircle } from '../../../helpers/math/simpleGeometry';
 
 // set as the neck panel would have set it, then re-solved as the export does
 function scrolledViolin(): EnricoCerutiParams {
@@ -79,6 +80,19 @@ describe('the neck and scroll template', () => {
     for (const pts of slotPts) {
       for (const pt of pts) expect(Math.min(...edge.map(e => dist(e, pt)))).toBeGreaterThan(spec.minWeb - 0.3);
     }
+  });
+
+  it('slots the innermost turn when its only neighbour stands outward, the web short of the slot width', () => {
+    const p = scrolledViolin();
+    const spiral = [...p.scroll!.spiral!].reverse();
+    const inner = spiral[0], next = spiral[4];
+    const gap = Math.min(...[0, 0.5, 1].map(f => Math.abs(dist(next, pointOnCircle(inner, inner.start + (inner.end - inner.start) * f)) - next.r)));
+    const spec: NeckTemplateSpec = { ...defaultNeckTemplateSpec(p), minWeb: gap - 0.2 };
+    expect(gap - spec.slotWidth).toBeLessThan(spec.minWeb);
+    const t = defineNeckTemplate(p, spec);
+    const mid = applyMatrix(scrollOnNeck(p), pointOnCircle(inner, (inner.start + inner.end) / 2));
+    const onInner = t.slots.some(d => samplePathToPolyline(d, 0.25, true).some(pt => dist(pt, mid) < 0.3));
+    expect(onInner).toBe(true);
   });
 
   it('pricks dots where two turns run too close for a slot, and the eye at its centre', () => {

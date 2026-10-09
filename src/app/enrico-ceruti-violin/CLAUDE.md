@@ -513,7 +513,13 @@ section first → long arch carved to a template → crown across. The panel ord
   across the junction. Where the web left between a slot and the next turn, or the front's edge,
   would be under `minWeb`, that stretch is pricked instead — unless it's a short one at either end
   of the stencil, where the curve runs on into the eye or into the outline at F1's crossing and
-  needs no marking (the default violin's last few millimetres before the crossing). The eye is a
+  needs no marking (the default violin's last few millimetres before the crossing). The web is
+  measured from whichever wall of the slot comes nearer (2026-10-09): the next turn out stands the
+  whole gap off the true wall, and only the turn within loses the slot's width, so the innermost
+  turn, with nothing inside it but the eye's prick, slots wherever the turn outside clears
+  `minWeb`. Measuring from the curve alone and subtracting the slot's width in every direction
+  pricked the inner turns of a violin at pitch 6.7, whose turns stand 3 mm apart; the slot went
+  from 1.5 mm to 1 the same day, so a turn with 3 mm to the one inside it slots too. The eye is a
   prick at its centre, not a hole, which would leave a thin ring to the innermost turn. `NeckTemplateSpec` holds those numbers; the cuts (`slotWidth`, `bridgeWidth`,
   `minWeb`, `dotRadius`) are the material's and don't scale, the run lengths scale with body length.
   Not on params yet: `defaultNeckTemplateSpec` is the only source until a panel gives them fields.
