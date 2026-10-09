@@ -1,4 +1,5 @@
-import { buildMirroredSvg, PAPER_FORMATS, SvgPathExport } from './fileExporter';
+import { buildMirroredSvg, buildPackedSvg, packPieces, pageContentSize, paginatePieces, PAPER_FORMATS, paperFor, SvgPathExport, SvgPiece } from './fileExporter';
+import { pathsBounds } from './math/pathMath';
 
 /**
  * SVG output — the sheet that gets printed and traced against.
@@ -63,6 +64,88 @@ describe('buildMirroredSvg', () => {
   it('survives an empty sheet rather than emitting broken markup', () => {
     const doc = new DOMParser().parseFromString(buildMirroredSvg(100, 100, []), 'image/svg+xml');
     expect(doc.querySelector('parsererror')).toBeNull();
+  });
+});
+
+describe('buildPackedSvg', () => {
+  const rect = (x: number, y: number, w: number, h: number) => path(`M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`);
+  // each piece in a frame of its own, nowhere near the origin, so a packer that forgot to move
+  // a piece by its own bounds would leave it off the sheet
+  const pieces = [[40, 300], [120, 30], [120, 30], [25, 340], [80, 80], [200, 150], [10, 10], [60, 200]]
+    .map(([w, h], i) => ({ paths: [rect(500 * i - 900, 70 * i - 200, w, h)] }));
+
+  function placed(svg: string) {
+    return [...svg.matchAll(/<g transform="translate\(([^ ]+) ([^)]+)\)"><path d="([^"]+)"/g)].map(m => {
+      const b = pathsBounds([m[3]]);
+      return { minX: b.minX + +m[1], maxX: b.maxX + +m[1], minY: b.minY + +m[2], maxY: b.maxY + +m[2] };
+    });
+  }
+
+  it('lands every piece on the sheet, none over another', () => {
+    const gap = 10;
+    const svg = buildPackedSvg(pieces, gap);
+    const boxes = placed(svg);
+    expect(boxes).toHaveLength(pieces.length);
+    const [vx, vy, vw, vh] = svg.match(/viewBox="([^"]+)"/)![1].split(' ').map(Number);
+    for (const b of boxes) {
+      expect(b.minX).toBeGreaterThanOrEqual(vx - 1e-6);
+      expect(b.maxX).toBeLessThanOrEqual(vx + vw + 1e-6);
+      expect(b.minY).toBeGreaterThanOrEqual(vy - 1e-6);
+      expect(b.maxY).toBeLessThanOrEqual(vy + vh + 1e-6);
+    }
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const [a, b] = [boxes[i], boxes[j]];
+        const apart = a.maxX + gap <= b.minX + 1e-6 || b.maxX + gap <= a.minX + 1e-6
+          || a.maxY + gap <= b.minY + 1e-6 || b.maxY + gap <= a.minY + 1e-6;
+        expect(apart).toBe(true);
+      }
+    }
+  });
+
+  it('keeps each piece\'s labels with it', () => {
+    const svg = buildPackedSvg([{ paths: [rect(0, 0, 50, 20)], texts: [{ text: 'LB', x: 25, y: 10 }] }]);
+    expect(svg).toMatch(/<g transform="translate\([^)]+\)"><path [^>]+\/><text [^>]+>LB<\/text><\/g>/);
+  });
+});
+
+describe('the full plan on one paper', () => {
+  const box = (w: number, h: number): SvgPiece => ({ paths: [path(`M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`)] });
+  const fits = (page: { width: number; height: number }, paper: typeof PAPER_FORMATS[string]) =>
+    [false, true].some(landscape => {
+      const area = pageContentSize(paper, landscape);
+      return page.width <= area.width + 1e-6 && page.height <= area.height + 1e-6;
+    });
+
+  it('picks the smallest paper every drawing fits on, turned if need be', () => {
+    expect(paperFor([{ width: 100, height: 100 }])).toBe(PAPER_FORMATS['A5']);
+    // too tall for A3 upright, and wider than A3 turned is tall
+    expect(paperFor([{ width: 100, height: 100 }, { width: 200, height: 378 }])).toBe(PAPER_FORMATS['A2']);
+    expect(paperFor([{ width: 5000, height: 10 }])).toBeNull();
+  });
+
+  it('fills to the width it is given, never past it', () => {
+    const { width } = packPieces([box(60, 20), box(60, 20), box(60, 20), box(60, 20)], 10, 140);
+    expect(width).toBeLessThanOrEqual(140);
+  });
+
+  it('puts groups that fit together on one page, and starts a page for one that does not', () => {
+    const a4 = PAPER_FORMATS['A4'];
+    const small = { label: 'Small', pieces: [box(40, 40), box(40, 40)] };
+    const tall = { label: 'Tall', pieces: [box(150, 200)] };
+    const pages = paginatePieces([small, { label: 'Also small', pieces: [box(30, 30)] }, tall], a4);
+    expect(pages.map(p => p.label)).toEqual(['Small, Also small', 'Tall']);
+    for (const page of pages) expect(fits(page, a4)).toBe(true);
+  });
+
+  it('splits only a group too big for one page, every piece on some page once', () => {
+    const a4 = PAPER_FORMATS['A4'];
+    const big = { label: 'Big', pieces: [box(150, 200), box(150, 200), box(150, 200)] };
+    const pages = paginatePieces([big], a4);
+    expect(pages.length).toBeGreaterThan(1);
+    expect(pages.every(p => p.label === 'Big')).toBe(true);
+    expect(pages.reduce((n, p) => n + p.paths.length, 0)).toBe(3);
+    for (const page of pages) expect(fits(page, a4)).toBe(true);
   });
 });
 

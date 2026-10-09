@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
 import { combinePathStrings, pathFromCircle, pathFromLine, pathFromPolygon, pathFromPolyline, pathFromRect, pathsBounds, splitPathStrings, translatePath } from '../../../helpers/math/pathMath';
-import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage, SvgPathExport, SvgTextExport } from '../../../helpers/fileExporter';
+import { buildMirroredSvg, buildPackedSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, paginatePieces, paperFor, PdfPage, PieceGroup, SvgPathExport, SvgPiece, SvgTextExport } from '../../../helpers/fileExporter';
 import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import { renderPath, renderText } from '../../../helpers/renderFuncs';
@@ -12,14 +12,14 @@ import { defineNeckTemplate, NeckTemplate, neckTemplatePath } from '../../calcul
 import { calculateScroll, calculateScrollWidths, scrollBackStrip, scrollCompassWalk } from '../../calculation/neck/ceruti-scroll';
 import { scrollBackViewStrokes, scrollFrontViewStrokes } from '../../calculation/neck/ceruti-scroll-views';
 import { Circle, Pt, Rectangle } from '../../../models/types';
-import { defineOneFholePath } from '../../calculation/outline/ceruti-paths';
+import { defineOneFholePath, defineSideScrollPath } from '../../calculation/outline/ceruti-paths';
 import { defaultCrossArchParams, defaultFlutingParams } from '../../calculation/arching/ceruti-arch-geometry';
 import { buildPlateSurfaceModel, buildPlateStl, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../calculation/arching/ceruti-surface';
 import { EnricoCerutiParams, PathEntry, PathKey } from '../../ceruti-types';
 import { EXPORT_DESCRIPTIONS } from '../../../docs/export-descriptions';
 import { ThemeService } from '../../../theme/theme.service';
 
-type ScrollExportType = 'neckTemplate' | 'scrollFrontView' | 'scrollBackView' | 'scrollBack' | 'scrollCompass';
+type ScrollExportType = 'neckTemplate' | 'scrollSide' | 'scrollFrontView' | 'scrollBackView' | 'scrollBack' | 'scrollCompass';
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate' | 'fholeTemplateNoEyes' | ScrollExportType;
 
 // the sheet's title on a PDF page, one at a time or in the full plan
@@ -32,13 +32,26 @@ const SHEET_LABELS: Record<string, string> = {
   crossArchTemplates: 'Cross Arch Templates',
   longArchTemplates: 'Long Arch Templates',
   neckTemplate: 'Neck Template',
+  scrollSide: 'Scroll Side Profile',
   scrollFrontView: 'Scroll Front View',
   scrollBackView: 'Scroll Back View',
   scrollBack: 'Scroll Back',
   scrollCompass: 'Compass Walk',
 };
-const SCROLL_EXPORTS: readonly ScrollExportType[] = ['neckTemplate', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass'];
+const SCROLL_EXPORTS: readonly ScrollExportType[] = ['neckTemplate', 'scrollSide', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass'];
 const EXPORT_TYPES: readonly ExportType[] = ['outerTrace', 'back', 'innerTrace', 'longArchTemplates', 'crossArchTemplates', 'fholeTemplate', 'fholeTemplateNoEyes', ...SCROLL_EXPORTS, 'mould', 'blocks'];
+// drawn on the plan's own sheet, the body's width by its height, rather than sized to themselves
+const PLAN_SHEETS: readonly ExportType[] = ['innerTrace', 'outerTrace', 'back', 'mould', 'blocks'];
+// the full plan's pages past the plan sheets, in order: a group shares a page with the one before it
+// when the two fit together
+const PDF_GROUPS: ReadonlyArray<{ label: string; types: readonly ExportType[] }> = [
+  { label: 'Blocks', types: ['blocks'] },
+  { label: 'F-Hole Templates', types: ['fholeTemplate', 'fholeTemplateNoEyes'] },
+  { label: 'Arch Templates', types: ['longArchTemplates', 'crossArchTemplates'] },
+  { label: 'Neck & Scroll', types: SCROLL_EXPORTS },
+];
+// what the templates SVG gathers: the pieces a maker cuts from card or ply and works to
+const TEMPLATE_BUNDLE: readonly ExportType[] = ['neckTemplate', 'scrollSide', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass', 'longArchTemplates', 'crossArchTemplates', 'blocks'];
 
 /** Templates are laid out in their own coordinate frame (not the violin's plan-view box), so their
  *  export sheet is sized from the actual combined geometry rather than the shared plan dimensions. */
@@ -50,6 +63,8 @@ const TEMPLATE_LABEL_SIZE = 5;
 // times and it reads apart from where a circle crosses the spine; its own path, to etch deeper
 const COMPASS_BOX_MARGIN = 5;
 const COMPASS_STAR = 1;
+
+const black = (d: string, strokeWidth = '.5'): SvgPathExport => ({ d, stroke: 'black', fill: 'none', strokeWidth });
 
 @Component({
   selector: 'app-ceruti-export-panel',
@@ -139,6 +154,15 @@ export class ExportPanel implements OnInit {
     };
   }
 
+  // the scroll from the side as its panels draw it, the volute and the pegbox's back and front, on its
+  // own sheet
+  private scrollSide(): string | null {
+    if (!this.scrollWidthsSolved()) return null;
+    const d = defineSideScrollPath(this.params);
+    const bounds = pathsBounds([d]);
+    return translatePath(d, -(bounds.minX + bounds.maxX) / 2, -bounds.minY);
+  }
+
   // the scroll seen from in front or behind, as the widths panel draws it, on its own sheet: the
   // head and the nut, the neck's sides from the nut up to where they meet it. The back is drawn
   // alone, without the pegbox's front the panel shows standing out past it
@@ -154,11 +178,14 @@ export class ExportPanel implements OnInit {
   // null where the sheet can't be built. The strokes only matter to the SVG; the PDF draws every path at
   // one weight and the DXF carries none
   private scrollSheet(type: ScrollExportType): SvgPathExport[] | null {
-    const black = (d: string, strokeWidth: string): SvgPathExport => ({ d, stroke: 'black', fill: 'none', strokeWidth });
     switch (type) {
       case 'neckTemplate': {
         const t = this.neckTemplate();
         return t && [black(t.outline, '.5'), black(combinePathStrings([...t.slots, ...t.dots, t.eye]), '.5')];
+      }
+      case 'scrollSide': {
+        const side = this.scrollSide();
+        return side && [black(side)];
       }
       case 'scrollFrontView':
       case 'scrollBackView': {
@@ -184,6 +211,7 @@ export class ExportPanel implements OnInit {
   // offered once the panels it's drawn from have been reached; nothing here seeds a stage the user
   // hasn't, so a blank instrument skipped straight to Export offers its inner trace alone
   protected ready = new Set<ExportType | 'stl'>();
+  protected readonly templateBundle = TEMPLATE_BUNDLE;
 
   private refresh(): void {
     const solve = ensureFrontProfilePaths(this.params, this.paths, { neck: false });
@@ -321,6 +349,12 @@ export class ExportPanel implements OnInit {
         this.draftChange.emit([renderPath(strip, this.pal.neutral, STROKE_WEIGHT.trace)]);
         break;
       }
+      case 'scrollSide': {
+        const side = this.scrollSide();
+        if (!side) { this.draftChange.emit([]); return; }
+        this.draftChange.emit([renderPath(side, this.pal.neutral, STROKE_WEIGHT.trace)]);
+        break;
+      }
       case 'scrollFrontView':
       case 'scrollBackView': {
         const view = this.scrollView(type);
@@ -353,73 +387,59 @@ export class ExportPanel implements OnInit {
     this.lastPreview = type;
   }
 
-  downloadExport(type: ExportType): void {
-    this.refresh();
-    if (!this.ready.has(type)) return;
-    const p = this.params;
-    const baseName = this.fileName?.trim() || 'ceruti-violin';
-    const height = this.planHeight();
-
-    let paths: SvgPathExport[];
-    let texts: SvgTextExport[] = [];
-    let sheetWidth = p.width;
-    let sheetHeight = height;
+  // a sheet's paths and labels for the SVG, in the frame its own download draws it in
+  private svgSheet(type: ExportType): SvgPiece | null {
     switch (type) {
       case 'innerTrace':
-        paths = [{ d: this.getPath('inner'), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
-        break;
+        return { paths: [black(this.getPath('inner'))] };
       case 'outerTrace':
       case 'back': {
-        paths = [{ d: this.getPath(type === 'back' ? 'back' : 'top'), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
-        const purflingPath = this.getPathOrNull('purfling');
-        if (purflingPath) paths.push({ d: purflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
-        const outerPurflingPath = this.getPathOrNull('outerPurfling');
-        if (outerPurflingPath) paths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
-        const fHole = this.getPathOrNull('fHole');
-        if (type === 'outerTrace' && fHole) paths.push({ d: fHole, stroke: 'black', fill: 'none', strokeWidth: '.5' });
-        break;
+        const extras = [this.getPathOrNull('purfling'), this.getPathOrNull('outerPurfling'), type === 'outerTrace' ? this.getPathOrNull('fHole') : null];
+        return { paths: [this.getPath(type === 'back' ? 'back' : 'top'), ...extras.filter((d): d is string => !!d)].map(d => black(d)) };
       }
       case 'mould':
-        paths = [{ d: calculateMould(p, true, false), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
-        break;
+        return { paths: [black(calculateMould(this.params, true, false))] };
       case 'blocks':
-        paths = [{ d: combinePathStrings(this.cornerBlocks()), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
-        break;
+        return { paths: [black(combinePathStrings(this.cornerBlocks()))] };
       case 'fholeTemplate':
-      case 'fholeTemplateNoEyes': {
-        const onePath = this.fholeTemplatePath(type === 'fholeTemplate');
-        const bounds = pathsBounds([onePath]);
-        sheetWidth = bounds.width + TEMPLATE_SHEET_PAD;
-        sheetHeight = bounds.height + TEMPLATE_SHEET_PAD;
-        paths = [{ d: onePath, stroke: 'black', fill: 'none', strokeWidth: '.5' }];
-        break;
-      }
-      case 'neckTemplate':
-      case 'scrollFrontView':
-      case 'scrollBackView':
-      case 'scrollBack':
-      case 'scrollCompass': {
-        const sheet = this.scrollSheet(type);
-        if (!sheet) return;
-        const bounds = pathsBounds(sheet.map(s => s.d));
-        sheetWidth = bounds.width + TEMPLATE_SHEET_PAD;
-        sheetHeight = bounds.height + TEMPLATE_SHEET_PAD;
-        paths = sheet;
-        break;
-      }
+      case 'fholeTemplateNoEyes':
+        return { paths: [black(this.fholeTemplatePath(type === 'fholeTemplate'))] };
       case 'crossArchTemplates':
       case 'longArchTemplates': {
         const shapes = this.archTemplates(type);
-        const bounds = pathsBounds(shapes.map(s => s.path));
-        sheetWidth = bounds.width + TEMPLATE_SHEET_PAD;
-        sheetHeight = bounds.height + TEMPLATE_SHEET_PAD;
-        paths = [{ d: combinePathStrings(shapes.map(s => s.path)), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
-        texts = this.toSvgTexts(shapes);
-        break;
+        return { paths: [black(combinePathStrings(shapes.map(s => s.path)))], texts: this.toSvgTexts(shapes) };
+      }
+      default: {
+        const sheet = this.scrollSheet(type);
+        return sheet && { paths: sheet };
       }
     }
+  }
 
-    downloadSvgFile(`${baseName}-${type}.svg`, buildMirroredSvg(sheetWidth, sheetHeight, paths!, texts));
+  downloadExport(type: ExportType): void {
+    this.refresh();
+    const sheet = this.ready.has(type) && this.svgSheet(type);
+    if (!sheet) return;
+    const baseName = this.fileName?.trim() || 'ceruti-violin';
+    let width = this.params.width;
+    let height = this.planHeight();
+    if (!PLAN_SHEETS.includes(type)) {
+      const bounds = pathsBounds(sheet.paths.map(s => s.d));
+      width = bounds.width + TEMPLATE_SHEET_PAD;
+      height = bounds.height + TEMPLATE_SHEET_PAD;
+    }
+    downloadSvgFile(`${baseName}-${type}.svg`, buildMirroredSvg(width, height, sheet.paths, sheet.texts));
+  }
+
+  // every sheet that can be built, or the templates among them, packed onto one SVG. Each sheet
+  // packs whole, laid out as its own download lays it out, so like templates stay together
+  downloadBundle(bundle: 'templates' | 'full'): void {
+    this.refresh();
+    const types = (bundle === 'templates' ? TEMPLATE_BUNDLE : EXPORT_TYPES).filter(type => this.ready.has(type));
+    const pieces = types.map(type => this.svgSheet(type)).filter((sheet): sheet is SvgPiece => !!sheet);
+    if (!pieces.length) return;
+    const baseName = this.fileName?.trim() || 'ceruti-violin';
+    downloadSvgFile(`${baseName}-${bundle}.svg`, buildPackedSvg(pieces));
   }
 
   downloadStl(side: 'top' | 'bottom' = 'top'): void {
@@ -471,6 +491,7 @@ export class ExportPanel implements OnInit {
         pathD = this.fholeTemplatePath(type === 'fholeTemplate');
         break;
       case 'neckTemplate':
+      case 'scrollSide':
       case 'scrollFrontView':
       case 'scrollBackView':
       case 'scrollBack':
@@ -534,6 +555,7 @@ export class ExportPanel implements OnInit {
         break;
       }
       case 'neckTemplate':
+      case 'scrollSide':
       case 'scrollFrontView':
       case 'scrollBackView':
       case 'scrollBack':
@@ -582,35 +604,25 @@ export class ExportPanel implements OnInit {
     if (p.options.useViolNeck)
       height = pointOnCircle(p.viol.V0!, 0).y + 2 * (p.button?.height ?? 0) + inset;
 
-    const pages: PdfPage[] = [];
-    const black = (d: string): SvgPathExport => ({ d, stroke: 'black', fill: 'none' });
-    const planPage = (label: string, paths: SvgPathExport[]) =>
-      pages.push({ label, fileName: baseName, description, width: p.width, height, paths });
-    // a template in its own frame is sized from its own geometry rather than the plan
-    const framedPage = (label: string, paths: SvgPathExport[], texts?: SvgTextExport[]) => {
-      const bounds = pathsBounds(paths.map(s => s.d));
-      pages.push({ label, fileName: baseName, description, width: bounds.width + TEMPLATE_SHEET_PAD, height: bounds.height + TEMPLATE_SHEET_PAD, paths, texts });
-    };
-
-    const purfling = [this.getPathOrNull('purfling'), this.getPathOrNull('outerPurfling')].filter((d): d is string => !!d).map(black);
+    const plans: PdfPage[] = [];
+    const planPage = (label: string, paths: SvgPathExport[]) => plans.push({ label, width: p.width, height, paths });
+    const purfling = [this.getPathOrNull('purfling'), this.getPathOrNull('outerPurfling')].filter((d): d is string => !!d).map(d => black(d));
     const fHole = this.getPathOrNull('fHole');
     if (this.ready.has('outerTrace')) planPage('Top Contour', [black(this.getPath('top')), ...purfling, ...(fHole ? [black(fHole)] : [])]);
     if (this.ready.has('back')) planPage('Back Contour', [black(this.getPath('back')), ...purfling]);
     if (this.ready.has('innerTrace')) planPage('Inner Contour', [black(this.getPath('inner'))]);
     if (this.ready.has('mould')) planPage('Mould', [black(calculateMould(p, true, false))]);
-    if (this.ready.has('blocks')) planPage('Blocks', this.cornerBlocks().map(black));
-    if (this.ready.has('fholeTemplate')) framedPage('F-Hole Template', [black(this.fholeTemplatePath())]);
-    if (this.ready.has('fholeTemplateNoEyes')) framedPage('F-Hole Template (No Eyes)', [black(this.fholeTemplatePath(false))]);
-    for (const type of ['longArchTemplates', 'crossArchTemplates'] as const) {
-      if (!this.ready.has(type)) continue;
-      const shapes = this.archTemplates(type);
-      framedPage(SHEET_LABELS[type], [black(combinePathStrings(shapes.map(s => s.path)))], this.toSvgTexts(shapes));
-    }
-    for (const type of SCROLL_EXPORTS) {
-      const sheet = this.ready.has(type) && this.scrollSheet(type);
-      if (sheet) framedPage(SHEET_LABELS[type], sheet);
-    }
 
-    if (pages.length) downloadFullPlanPdf(`${baseName}-full-plan.pdf`, pages);
+    // the rest in their own frames, each sheet whole, filling pages of the one paper every page prints on
+    const groups: PieceGroup[] = PDF_GROUPS
+      .map(({ label, types }) => ({
+        label,
+        pieces: types.filter(type => this.ready.has(type)).map(type => this.svgSheet(type)).filter((sheet): sheet is SvgPiece => !!sheet),
+      }))
+      .filter(group => group.pieces.length);
+    const paper = paperFor([...plans, ...groups.flatMap(g => g.pieces.map(piece => pathsBounds(piece.paths.map(path => path.d))))]);
+    const pages = [...plans, ...paginatePieces(groups, paper)].map(page => ({ ...page, fileName: baseName, description }));
+
+    if (pages.length) downloadFullPlanPdf(`${baseName}-full-plan.pdf`, pages, paper);
   }
 }

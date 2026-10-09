@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { svg2pdf } from 'svg2pdf.js';
+import { pathsBounds } from './math/pathMath';
 
 export type SvgPathExport = {
   d: string;
@@ -8,6 +9,7 @@ export type SvgPathExport = {
   fillRule?: string;
   fillOpacity?: number;
   strokeWidth?: number | string;
+  transform?: string;
 };
 
 export type SvgTextExport = {
@@ -65,6 +67,7 @@ function buildPathMarkup(paths: SvgPathExport[], strokeWidth: (p: SvgPathExport)
       const extras = [
         p.fillRule ? ` fill-rule="${p.fillRule}"` : '',
         p.fillOpacity != null ? ` fill-opacity="${p.fillOpacity}"` : '',
+        p.transform ? ` transform="${p.transform}"` : '',
       ].join('');
       return `<path d="${p.d}" fill="${p.fill ?? 'none'}" stroke="${p.stroke ?? 'black'}" stroke-width="${strokeWidth(p)}"${extras}/>`;
     })
@@ -93,6 +96,71 @@ export function buildMirroredSvg(
 ): string {
   const markup = buildPathMarkup(paths, p => p.strokeWidth ?? 0.5) + buildTextMarkup(texts);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${sheetViewBox(width, height)}"><g transform="translate(0 ${height}) scale(1 -1)">${markup}</g></svg>`;
+}
+
+export type SvgPiece = { paths: SvgPathExport[]; texts?: SvgTextExport[] };
+
+// many sheets' worth of pieces laid out on one, each still in its own frame, `dx`/`dy` the move
+// that places it, in the sheet frame `sheetViewBox` draws. Skyline packing, tallest first: each piece
+// drops from the top into the lowest place across the sheet it fits, leftmost on a tie, so short
+// pieces fill in under a tall one's neighbours rather than starting a row of their own. The sheet is
+// `maxWidth` wide, or failing that the side of a square that holds them all, and never narrower than
+// the widest piece. A piece is placed by a move rather than by rewriting its path data, so arcs and
+// relative commands come through untouched
+export function packPieces(pieces: SvgPiece[], gap = 10, maxWidth?: number): { width: number; height: number; placed: Array<{ piece: SvgPiece; dx: number; dy: number }> } {
+  const sized = pieces
+    .map(piece => ({ piece, b: pathsBounds(piece.paths.map(p => p.d)) }))
+    .sort((a, b) => b.b.height - a.b.height);
+  const area = sized.reduce((sum, { b }) => sum + (b.width + gap) * (b.height + gap), 0);
+  const limit = Math.max(...sized.map(({ b }) => b.width), maxWidth ?? Math.sqrt(area));
+
+  // y runs down from the sheet's top here; each segment is how far down the sheet is filled over its span
+  let sky = [{ x: 0, w: limit, y: 0 }];
+  const depthOver = (x: number, w: number) =>
+    Math.max(...sky.filter(seg => seg.x < x + w - 1e-9 && seg.x + seg.w > x + 1e-9).map(seg => seg.y));
+  const spots = sized.map(({ piece, b }) => {
+    let best = { x: 0, y: Infinity };
+    for (const seg of sky) {
+      if (seg.x + b.width > limit + 1e-9) break;
+      const y = depthOver(seg.x, Math.min(b.width + gap, limit - seg.x));
+      if (y < best.y - 1e-9) best = { x: seg.x, y };
+    }
+    const end = Math.min(best.x + b.width + gap, limit);
+    sky = [
+      ...sky.flatMap(seg => seg.x < best.x ? [{ ...seg, w: Math.min(seg.w, best.x - seg.x) }] : []),
+      { x: best.x, w: end - best.x, y: best.y + b.height + gap },
+      ...sky.flatMap(seg => seg.x + seg.w > end ? [{ x: Math.max(seg.x, end), w: seg.x + seg.w - Math.max(seg.x, end), y: seg.y }] : []),
+    ].filter(seg => seg.w > 1e-9);
+    return { piece, b, ...best };
+  });
+
+  const width = Math.max(0, ...spots.map(s => s.x + s.b.width));
+  const height = Math.max(0, ...spots.map(s => s.y + s.b.height));
+  return {
+    width,
+    height,
+    placed: spots.map(({ piece, b, x, y }) => ({ piece, dx: x - width / 2 - b.minX, dy: height - y - b.maxY })),
+  };
+}
+
+// the packed pieces as one SVG, each its own group so it moves as one in an editor
+export function buildPackedSvg(pieces: SvgPiece[], gap = 10): string {
+  const { width, height, placed } = packPieces(pieces, gap);
+  const groups = placed.map(({ piece, dx, dy }) =>
+    `<g transform="translate(${dx} ${dy})">${buildPathMarkup(piece.paths, p => p.strokeWidth ?? 0.5)}${buildTextMarkup(piece.texts ?? [])}</g>`);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${sheetViewBox(width, height)}"><g transform="translate(0 ${height}) scale(1 -1)">${groups.join('')}</g></svg>`;
+}
+
+// the packed pieces as one PDF page's content: each path carries its piece's move as a transform,
+// each label is moved outright
+export function packedPage(pieces: SvgPiece[], gap = 10, maxWidth?: number): { width: number; height: number; paths: SvgPathExport[]; texts: SvgTextExport[] } {
+  const { width, height, placed } = packPieces(pieces, gap, maxWidth);
+  return {
+    width,
+    height,
+    paths: placed.flatMap(({ piece, dx, dy }) => piece.paths.map(p => ({ ...p, transform: `translate(${dx} ${dy})` }))),
+    texts: placed.flatMap(({ piece, dx, dy }) => (piece.texts ?? []).map(t => ({ ...t, x: t.x + dx, y: t.y + dy }))),
+  };
 }
 
 function buildScaledSvg(
@@ -199,15 +267,6 @@ function drawDraftingFrame(
       }
     }
 
-    // ── centre-line marker (vertical axis only — violin is left/right symmetric) ──
-    doc.setLineWidth(0.12);
-    doc.setDrawColor(150);
-    const midX = offsetX + pathWidth / 2;
-    const CLgap = 2; // small visual gap between marker and path edge
-    doc.line(midX, cbTop, midX, offsetY - CLgap);
-    doc.line(midX, offsetY + pathHeight + CLgap, midX, cbTop + cbH);
-    doc.setDrawColor(0);
-
   // ── title block cells ─────────────────────────────────────────────────
   // tbX / tbW / tbH / tbY computed above in title block geometry section
   const row1H = tbH * 0.52;
@@ -286,31 +345,76 @@ function drawDraftingFrame(
 
 // ─── standard page selection ─────────────────────────────────────────────────
 
-/**
- * Returns the smallest standard page that can contain the given content
- * dimensions (including all required margins), and whether it should be
- * rendered in landscape orientation. Returns null if no standard size fits.
- */
-function findStandardPage(
-  contentWidth: number,
-  contentHeight: number
-): { format: PaperFormat; landscape: boolean } | null {
-  const minW = contentWidth  + (MARGIN_X + INNER_PAD) * 2;
-  const minH = contentHeight + (MARGIN_TOP + INNER_PAD) + (MARGIN_BOTTOM + INNER_PAD);
+// the drawing a page of this paper holds inside its margins and title block, upright or turned
+export function pageContentSize(format: PaperFormat, landscape: boolean): { width: number; height: number } {
+  const [w, h] = landscape ? [format.height, format.width] : [format.width, format.height];
+  return {
+    width: w - 2 * SHEET_PAD - (MARGIN_X + INNER_PAD) * 2,
+    height: h - 2 * SHEET_PAD - (MARGIN_TOP + INNER_PAD) - (MARGIN_BOTTOM + INNER_PAD),
+  };
+}
 
-  const byArea = Object.values(PAPER_FORMATS)
-    .sort((a, b) => a.width * a.height - b.width * b.height);
-
-  for (const format of byArea) {
-    if (format.width >= minW && format.height >= minH) {
-      return { format, landscape: false };
-    }
-    if (format.height >= minW && format.width >= minH) {
-      return { format, landscape: true };
-    }
+// whether a drawing fits this paper turned, upright first; null if it fits neither way
+function orientationOn(format: PaperFormat, width: number, height: number): boolean | null {
+  for (const landscape of [false, true]) {
+    const area = pageContentSize(format, landscape);
+    if (width <= area.width + 1e-9 && height <= area.height + 1e-9) return landscape;
   }
+  return null;
+}
 
-  return null; // content too large for any standard format
+const FORMATS_BY_AREA = Object.values(PAPER_FORMATS).sort((a, b) => a.width * a.height - b.width * b.height);
+
+// the smallest standard paper every one of these drawings fits on, each upright or turned, or null
+// when one is too large for any
+export function paperFor(sizes: Array<{ width: number; height: number }>): PaperFormat | null {
+  return FORMATS_BY_AREA.find(format => sizes.every(sz => orientationOn(format, sz.width, sz.height) !== null)) ?? null;
+}
+
+function findStandardPage(width: number, height: number): { format: PaperFormat; landscape: boolean } | null {
+  const format = paperFor([{ width, height }]);
+  return format && { format, landscape: orientationOn(format, width, height)! };
+}
+
+export type PieceGroup = { label: string; pieces: SvgPiece[] };
+
+// groups of pieces onto pages of one paper. A group joins the page before it if it fits there beside
+// what's on it and starts a page of its own if not; only a group too big for one page is split, piece
+// by piece. A page is labelled with every group on it. With no paper, each group is a page sized to
+// itself
+export function paginatePieces(groups: PieceGroup[], format: PaperFormat | null, gap = 10): PdfPage[] {
+  if (!format) return groups.map(g => ({ label: g.label, ...packedPage(g.pieces, gap) }));
+  const fit = (pieces: SvgPiece[]) => {
+    for (const landscape of [false, true]) {
+      const area = pageContentSize(format, landscape);
+      const packed = packedPage(pieces, gap, area.width);
+      if (orientationOn(format, packed.width, packed.height) !== null) return packed;
+    }
+    return null;
+  };
+  const pages: PdfPage[] = [];
+  let labels: string[] = [];
+  let pieces: SvgPiece[] = [];
+  const close = () => {
+    if (pieces.length) pages.push({ label: labels.join(', '), ...(fit(pieces) ?? packedPage(pieces, gap)) });
+    labels = [];
+    pieces = [];
+  };
+  for (const group of groups) {
+    if (!fit([...pieces, ...group.pieces])) close();
+    if (!pieces.length && !fit(group.pieces)) {
+      for (const piece of group.pieces) {
+        if (pieces.length && !fit([...pieces, piece])) close();
+        pieces.push(piece);
+        labels = [group.label];
+      }
+      continue;
+    }
+    pieces.push(...group.pieces);
+    labels.push(group.label);
+  }
+  close();
+  return pages;
 }
 
 // ─── public export functions ─────────────────────────────────────────────────
@@ -323,7 +427,7 @@ export async function downloadSvgAsPdf(
   meta?: { fileName?: string; description?: string; sheetLabel?: string },
   texts: SvgTextExport[] = []
 ): Promise<void> {
-  const match = findStandardPage(width + 2 * SHEET_PAD, height + 2 * SHEET_PAD);
+  const match = findStandardPage(width, height);
 
   let pageW: number;
   let pageH: number;
@@ -381,9 +485,12 @@ export async function downloadSvgAsPdf(
   doc.save(filename);
 }
 
+// every page on `paper` when given, upright or turned to fit, and a page too large for it on the
+// smallest paper it fits, as without
 export async function downloadFullPlanPdf(
   filename: string,
-  pages: PdfPage[]
+  pages: PdfPage[],
+  paper: PaperFormat | null = null,
 ): Promise<void> {
   const parser = new DOMParser();
 
@@ -392,7 +499,8 @@ export async function downloadFullPlanPdf(
   for (let i = 0; i < pages.length; i++) {
     const { label, width, height, paths, texts, fileName, description } = pages[i];
 
-    const match = findStandardPage(width + 2 * SHEET_PAD, height + 2 * SHEET_PAD);
+    const onPaper = paper && orientationOn(paper, width, height);
+    const match = paper && onPaper !== null ? { format: paper, landscape: onPaper! } : findStandardPage(width, height);
     let pageW: number;
     let pageH: number;
     let paperFormatName: string;
@@ -422,12 +530,12 @@ export async function downloadFullPlanPdf(
 
     if (!doc) {
       doc = new jsPDF({
-        orientation: width > height ? 'landscape' : 'portrait',
+        orientation: pageW > pageH ? 'landscape' : 'portrait',
         unit: 'mm',
         format: [pageW, pageH],
       });
     } else {
-      doc.addPage([pageW, pageH], width > height ? 'landscape' : 'portrait');
+      doc.addPage([pageW, pageH], pageW > pageH ? 'landscape' : 'portrait');
     }
 
     const svgString = buildScaledSvg(width, height, paths, texts);

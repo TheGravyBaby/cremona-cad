@@ -8,6 +8,7 @@ export const EXPORT_DESCRIPTIONS: Record<string, string> = {
   fholeTemplate: 'Single unmirrored f-hole, for cutting or tracing',
   fholeTemplateNoEyes: 'Single unmirrored f-hole, eyes closed with a short arc for hand-cut eyes',
   neckTemplate: 'Side profile, neck foot to scroll, with the volute as a slotted stencil and the eye pricked',
+  scrollSide: "The head from the side, the volute and the pegbox's back and front, as the scroll panels draw it",
   scrollFrontView: 'The head from in front, the pegbox and the turns as seen, with the nut',
   scrollBackView: "The head from behind, the duck tail's round, the back and the turns as seen",
   scrollBack: "The back unrolled into a strip, duck tail to the second turn's bottom, to lay on the carved back and draw round",

@@ -3,15 +3,15 @@ import * as polygonClipping from 'polygon-clipping';
 import { Pt, Pt3D } from '../../../models/types';
 // polygon-clipping ships as either an ESM default or a CJS namespace depending on bundler.
 const polyClipper: any = (polygonClipping as any).default ?? polygonClipping;
-import { clamp } from '../../../helpers/math/simpleGeometry';
+import { clamp, dist } from '../../../helpers/math/simpleGeometry';
 import { buildPolylineIndex, closestPointToPolylineIndexed, PolylineIndex } from '../../../helpers/math/vibeMath';
 import { buildHeightFieldStl } from '../../../helpers/stlExporter';
-import { closeProfileToBlank } from '../../../helpers/math/pathVibes';
-import { pathsBounds, rotatePath180, samplePathToPolyline, translatePath } from '../../../helpers/math/pathMath';
+import { unifyConnectedSvgPaths } from '../../../helpers/math/pathVibes';
+import { pathFromLine, pathFromPolyline, pathsBounds, rotatePath180, samplePathToPolyline, translatePath } from '../../../helpers/math/pathMath';
 import { ArchCurve, ArchPlate, EnricoCerutiParams } from '../../ceruti-types';
 import { defineInsetPath, defineOuterPath } from '../outline/ceruti-paths';
-import { buildPlateGeometry, defaultCrossArchParams, defaultFlutingParams, chordTrust, cornerSmoothZ, gougeAtY, CrossArchSection, crossArchSectionAt, longArchProfilePath, PlateGeometry, gougeProfileZ, solveLongArch } from './ceruti-arch-geometry';
-import { bodyLandmarks, longArchHeightAt, normalizeCrossArchStations, ribHeightAt, STATION_MERGE_EPS_MM } from './ceruti-arching';
+import { buildPlateGeometry, defaultCrossArchParams, defaultFlutingParams, chordTrust, cornerSmoothZ, gougeAtY, CrossArchSection, crossArchSectionAt, PlateGeometry, gougeProfileZ, solveLongArch } from './ceruti-arch-geometry';
+import { bodyLandmarks, buildArchPathFor, longArchHeightAt, normalizeCrossArchStations, ribHeightAt, STATION_MERGE_EPS_MM } from './ceruti-arching';
 
 // The evaluable plate surface: a height field z(x, y) over the plan view.
 //
@@ -299,34 +299,6 @@ export function topSurfaceZAt(p: EnricoCerutiParams, model: PlateSurfaceModel, x
     return archedZAt(p, model.geometry, chords, model.platformOuterIdx, x, y);
 }
 
-/**
- * Full-width surface profile at station `y` — arch hump, fluting channel, and
- * flat edge land in one continuous sweep from edge to edge, in absolute (x, Z)
- * coordinates. Unlike {@link calculateFlutingSectionTop}, which traces only the
- * channel/land portion, this sweeps the whole half-width in one pass.
- *
- * `halfOverride` stops the sweep short of the full outer edge.
- */
-export function computeArchSectionProfile(
-    p: EnricoCerutiParams, model: PlateSurfaceModel, y: number, stepMm = 0.25, halfOverride?: number,
-): string | null {
-    const chords = stationChordsAt(p, model, y);
-    if (chords.outerHalf === null) return null;
-    // Clamped, so an override may only ever narrow the sweep. Past the plate
-    // edge there is no surface to sample and the points would simply be dropped,
-    // leaving a profile whose extent silently disagreed with what was asked for.
-    const half = halfOverride === undefined ? chords.outerHalf : Math.min(halfOverride, chords.outerHalf);
-    const n = Math.max(8, Math.ceil((2 * half) / stepMm));
-    const pts: string[] = [];
-    for (let i = 0; i <= n; i++) {
-        const x = -half + (2 * half * i) / n;
-        const z = topSurfaceZAt(p, model, x, y, chords);
-        if (z === null) continue;
-        pts.push(`${pts.length === 0 ? 'M' : 'L'} ${x} ${model.zBase + model.signZ * z}`);
-    }
-    return pts.length ? pts.join(' ') : null;
-}
-
 /** What cut a stretch of the surface: the crown, the gouge (channel and corner pass), or neither. */
 export type SurfacePart = 'arch' | 'channel' | 'land';
 
@@ -370,12 +342,17 @@ export function sampleArchSectionRuns(
     return runs;
 }
 
-// Physical cutout templates for traditional hand-carving: a rectangular blank
-// with one edge cut to an arch profile, built from `computeArchSectionProfile`
-// (cross arch) or `calculateLongArch` (long arch) via `closeProfileToBlank`.
+// Physical templates for hand-carving: a strip with the arch along both long edges, so one edge
+// sits over the outside of a carved plate and the other in a hollow carved from the inside.
 
 const TEMPLATE_GAP = 5;    // mm between laid-out template blanks, so a combined export doesn't overlap.
-const TEMPLATE_MARGIN = 10; // mm of backing past the arch's peak — must match closeProfileToBlank's default.
+const TEMPLATE_MIN_WIDTH = 15; // mm across the strip, measured along the arch's height.
+// a longer strip is wider in proportion, length to width at most this, so it holds its shape in the hand
+const TEMPLATE_SLENDERNESS = 18.75;
+
+export function templateWidth(span: number): number {
+    return Math.max(TEMPLATE_MIN_WIDTH, span / TEMPLATE_SLENDERNESS);
+}
 
 /** A closed template blank plus where/how to print its identifying label. */
 export interface TemplateShape {
@@ -389,63 +366,26 @@ export interface TemplateShape {
 /** The vertices of a plain `M x y L x y …` polyline, exactly as written. */
 function parsePolyline(path: string): Pt[] {
     return [...path.matchAll(/[ML]\s*(-?[\d.]+(?:e-?\d+)?)[\s,]+(-?[\d.]+(?:e-?\d+)?)/gi)]
-        .map(m => ({ x: +m[1], y: +m[2] }));
+        .map(m => new Pt(+m[1], +m[2]));
 }
 
-/**
- * Cuts a sampled profile back to the bottom of the fluting trough at each end,
- * keeping the peak and everything between.
- *
- * What a template is for is the run from the high point to the low point, and
- * the trough is where the low point actually is. Everything outboard of it —
- * the channel's outer flank, the land beyond — is either already cut by the time
- * the template is picked up or is flat, and a flat is nothing to sight against.
- *
- * Read off the sampled surface, which is what makes this hold at the corners.
- * Placing the cut arithmetically instead — at the channel centerline's
- * half-chord plus the gouge's half-width — is right along a bout and wrong at a
- * corner, because the surface reads its transverse position there off a
- * distance field rather than off the chord (see `chordTrust`), exactly where a
- * horizontal chord stops describing the plate. An extremum has no such blind
- * spot: it is wherever the surface puts it.
- *
- * The cut therefore lands where the surface's own tangent is horizontal, which
- * is the property to check it by: a blank whose cutting edge leaves the wood at
- * a grade has not reached the trough.
- *
- * `base` and `direction` convert a sample's coordinate to height above the
- * plate surface, so "lowest" means lowest on the wood for either plate rather
- * than lowest on the canvas.
- *
- * Returns null if the profile has no interior at all.
- */
-export function trimProfileToTroughs(
-    profile: string, base: number, heightAxis: 'x' | 'y', direction: 1 | -1,
-): string | null {
-    // Read straight off the profile's own samples rather than re-sampled by arc
-    // length. Both callers hand over a plain polyline, and arc-length sampling
-    // would slide the cut off the vertex it identified — by a fraction of a
-    // millimetre, but onto a part of the arc that is no longer its bottom.
-    const pts = parsePolyline(profile);
-    if (pts.length < 3) return profile;
-    const h = (pt: Pt): number => direction * ((heightAxis === 'x' ? pt.x : pt.y) - base);
+const archSpan = (arch: Pt[]) => dist(arch[0], arch[arch.length - 1]);
 
-    // The peak first, so each trough is sought on its own side of it. A single
-    // global minimum would find only the deeper of the two channels, and the
-    // two are free to differ — the crown is not obliged to sit centred.
-    let peak = 0;
-    for (let i = 1; i < pts.length; i++) if (h(pts[i]) > h(pts[peak])) peak = i;
-
-    // Ties resolved inward, toward the peak: a trough sampled flat across its
-    // bottom then cuts at the innermost of those samples, which keeps the blank
-    // to the shape it is describing rather than a fraction past it.
-    let lo = 0;
-    for (let i = 1; i <= peak; i++) if (h(pts[i]) <= h(pts[lo])) lo = i;
-    let hi = pts.length - 1;
-    for (let i = pts.length - 2; i >= peak; i--) if (h(pts[i]) <= h(pts[hi])) hi = i;
-
-    if (lo >= hi) return null;
-    return pts.slice(lo, hi + 1).map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ');
+// the arch, the same arch lifted off the wood by `lift`, and the two ends joining them. The lifted
+// copy is handed over already walking back, since unify can only turn round a single segment. The
+// label sits at the crown, where the strip runs straightest
+function archTemplate(arch: Pt[], lift: Pt, label: string, labelRotation: number): TemplateShape {
+    const last = arch.length - 1;
+    const lifted = arch.map(pt => new Pt(pt.x + lift.x, pt.y + lift.y));
+    const path = unifyConnectedSvgPaths([
+        pathFromPolyline(arch),
+        pathFromLine(arch[last], lifted[last]),
+        pathFromPolyline([...lifted].reverse()),
+        pathFromLine(lifted[0], arch[0]),
+    ]) + ' Z';
+    const along = (pt: Pt) => pt.x * lift.x + pt.y * lift.y;
+    const crown = arch.reduce((a, b) => along(b) > along(a) ? b : a);
+    return { path, label, labelPos: new Pt(crown.x + lift.x / 2, crown.y + lift.y / 2), labelRotation };
 }
 
 function translateTemplateShape(shape: TemplateShape, dx: number, dy: number): TemplateShape {
@@ -514,48 +454,30 @@ function stackTemplates(shapes: TemplateShape[]): TemplateShape[] {
 }
 
 /**
- * The cross-arch template blanks for one plate side, one per station.
+ * The cross-arch sections for one plate side, one per station: the arch run of the section,
+ * takeoff to takeoff, as the cross-arching panel draws it, its height turned to grow away from the
+ * plate's own surface.
  *
- * Swept the full station width and then cut back to the bottom of the fluting
- * trough at each end: crown, both run-outs, and the inner flank of each channel.
- * What the blank has to describe is the arch from its highest point to its
- * lowest, and the trough is the lowest. The channel is gouged before the arch is
- * carved, so by the time this template is picked up the trough is already there
- * to sit in.
- *
- * Not clipped at the takeoff, which is the other place this could stop: that
- * point is on a curve, and where a curve leaves a curve is exactly what the eye
- * cannot judge. The height field is continuous across it either way — arch and
- * channel are one function here — so the choice is only about what the maker
- * can line up.
- *
- * `model.signZ` picks which side of the cutout curve the backing attaches to —
- * the two plates' mirrored curves are shaped oppositely (valley vs. hump), so
- * they need opposite backing sides to both come out thin at the peak.
+ * Read off the sampled surface rather than the station's own chord-wise solve, which disagrees
+ * with the surface at the corners — the blank has to match what the plate is carved to.
  */
-function calculateCrossArchTemplatesForSide(
+function crossArchesForSide(
     p: EnricoCerutiParams, model: PlateSurfaceModel, sideLabel: string, stations: TemplateStation[],
-): TemplateShape[] {
-    return stations
-        .map(({ y, code }): TemplateShape | null => {
-            const swept = computeArchSectionProfile(p, model, y, 0.25);
-            const profile = swept && trimProfileToTroughs(swept, model.zBase, 'y', model.signZ);
-            if (!profile) return null;
-            const { path, backing, positionMid } = closeProfileToBlank(profile, 'y', model.signZ, TEMPLATE_MARGIN);
-            return {
-                path,
-                label: `${sideLabel} ${code ? `${code} ` : ''}${Math.round(y)}mm`,
-                labelPos: { x: positionMid, y: backing + model.signZ * TEMPLATE_MARGIN / 2 },
-                labelRotation: 0,
-            };
-        })
-        .filter((shape): shape is TemplateShape => shape !== null);
+): Array<{ pts: Pt[]; label: string }> {
+    return stations.flatMap(({ y, code }) => {
+        const arch = sampleArchSectionRuns(p, model, y).find(run => run.part === 'arch');
+        if (!arch) return [];
+        return [{
+            pts: arch.pts.map(pt => new Pt(pt.x, model.signZ * pt.y)),
+            label: `${sideLabel} ${code ? `${code} ` : ''}${Math.round(y)}mm`,
+        }];
+    });
 }
 
 /**
- * Rotates a template blank 180° about the origin, re-orienting which edge faces
- * "up" for presentation. A rotation, not a mirror: it preserves concavity, so
- * the cutout curve keeps its correct hand. `labelRotation` is untouched — text
+ * Rotates a template blank 180° about the origin, so a plate whose arch runs the
+ * other way in its own frame bows the same way on the sheet. A rotation, not a
+ * mirror: an asymmetric arch keeps its hand. `labelRotation` is untouched — text
  * renders upright regardless of the shape's rotation.
  */
 function rotateTemplateShape180(shape: TemplateShape): TemplateShape {
@@ -580,8 +502,8 @@ function ensureArchPlate(p: EnricoCerutiParams, key: 'top' | 'bottom'): ArchPlat
 
 /**
  * Cross-arch template blanks for both plates, stacked into one non-overlapping
- * layout. Both plates present with the flat backing edge up; the top plate's
- * naturally lands at the bottom, so its blanks are rotated 180° after the fact.
+ * layout, all as wide as the longest needs. The back's arch hangs down in its own
+ * frame, so its blanks are turned over to bow the same way as the top's.
  *
  * Each plate is cut at its own stations — the landmarks both share, plus
  * whatever either has been given of its own — so a back with three extra
@@ -589,49 +511,39 @@ function ensureArchPlate(p: EnricoCerutiParams, key: 'top' | 'bottom'): ArchPlat
  */
 export function calculateCrossArchTemplates(p: EnricoCerutiParams): TemplateShape[] {
     if (!p.arching) return [];
-    const templates = TEMPLATE_SIDES.flatMap(({ key, label }) => {
+    const arches = TEMPLATE_SIDES.flatMap(({ key, label }) => {
         const plate = ensureArchPlate(p, key);
         const model = buildPlateSurfaceModel(p, key);
         if (!model) return [];
-        const shapes = calculateCrossArchTemplatesForSide(p, model, label, crossArchTemplateStations(p, plate));
-        return key === 'top' ? shapes.map(rotateTemplateShape180) : shapes;
+        return crossArchesForSide(p, model, label, crossArchTemplateStations(p, plate)).map(arch => ({ ...arch, key, signZ: model.signZ }));
+    });
+    // one width for the whole set, the longest blank's, so they read as a set
+    const width = templateWidth(Math.max(...arches.map(a => archSpan(a.pts))));
+    const templates = arches.map(({ pts, label, key, signZ }) => {
+        const shape = archTemplate(pts, new Pt(0, signZ * width), label, 0);
+        return key === 'bottom' ? rotateTemplateShape180(shape) : shape;
     });
     return stackTemplates(templates);
 }
 
 /**
- * The two long-arch template blanks (top, back), traced from each plate's
- * centerline elevation and placed side by side. Labels run rotated 90° along
- * the strip's length. Both present with the flat backing edge on the left, so
- * the back plate's blank is rotated 180° after the fact.
- *
- * Each plate's arch is terminated against its own channel by
- * {@link solveLongArch} rather than at an entered edge depth, so the two
- * blanks can differ in length as well as in height — a deeper gouge takes off
- * further in.
- *
- * Both stop at the bottom of the channel trough at each cap rather than running
- * the whole body — highest point to lowest, and nothing past it.
+ * The two long-arch template blanks (top, back), placed side by side: each
+ * plate's long arch as the long-arching panel draws it, takeoff to takeoff,
+ * so the two can differ in length as well as height — a deeper gouge takes off
+ * further in. Labels run rotated 90° along the strip's length. The top is
+ * turned over to bow the same way as the back.
  */
 export function calculateLongArchTemplates(p: EnricoCerutiParams): TemplateShape[] {
     if (!p.arching) return [];
     const templates: TemplateShape[] = [];
     for (const { key, label } of TEMPLATE_SIDES) {
         const plate = ensureArchPlate(p, key);
-        const gouge = plate.fluting!;
+        const la = solveLongArch(p, plate.arch, plate.fluting!);
+        if (!la) continue;
         const sign: 1 | -1 = key === 'top' ? 1 : -1;
-        const zBase = key === 'top' ? ribHeightAt(p, 0) + plate.thickness : -plate.thickness;
-        const swept = longArchProfilePath(p, gouge, solveLongArch(p, plate.arch, gouge), zBase, sign);
-        const profile = trimProfileToTroughs(swept, zBase, 'x', sign);
-        if (!profile) continue;
-        const { path, backing, positionMid } = closeProfileToBlank(profile, 'x', sign, TEMPLATE_MARGIN);
-        const shape: TemplateShape = {
-            path,
-            label: `${label} Long`,
-            labelPos: { x: backing + sign * TEMPLATE_MARGIN / 2, y: positionMid },
-            labelRotation: 90,
-        };
-        templates.push(key === 'bottom' ? rotateTemplateShape180(shape) : shape);
+        const arch = parsePolyline(buildArchPathFor(la.lowered, la.span, la.yStart, 0, sign, la.farZ));
+        const shape = archTemplate(arch, new Pt(sign * templateWidth(archSpan(arch)), 0), `${label} Long`, 90);
+        templates.push(key === 'top' ? rotateTemplateShape180(shape) : shape);
     }
     return rowTemplates(templates);
 }

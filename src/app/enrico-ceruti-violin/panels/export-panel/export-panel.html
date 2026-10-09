@@ -2,6 +2,10 @@
     <div class="export-primary">
         <button type="button" class="recipe-btn recipe-btn--primary" [disabled]="!ready.has('innerTrace')" (click)="downloadFullPlan()">Full Plan PDF</button>
     </div>
+    <div class="export-primary">
+        <button type="button" class="recipe-btn recipe-btn--primary" [disabled]="!readyCount(templateBundle)" (click)="downloadBundle('templates')">Templates SVG</button>
+        <button type="button" class="recipe-btn recipe-btn--primary" [disabled]="!ready.has('innerTrace')" (click)="downloadBundle('full')">Full SVG</button>
+    </div>
 </section>
 
 <section class="ui-group">
@@ -114,9 +118,9 @@
             </details>
         }
 
-        @if (readyCount(['neckTemplate', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass'])) {
+        @if (readyCount(['neckTemplate', 'scrollSide', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass'])) {
             <details class="export-group">
-                <summary><span class="export-group__chevron">▶</span>Neck &amp; Scroll<span class="export-group__count">{{ readyCount(['neckTemplate', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass']) }}</span></summary>
+                <summary><span class="export-group__chevron">▶</span>Neck &amp; Scroll<span class="export-group__count">{{ readyCount(['neckTemplate', 'scrollSide', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass']) }}</span></summary>
                 <div class="export-group__body">
                     @if (ready.has('neckTemplate')) {
                         <div class="export-row">
@@ -127,6 +131,18 @@
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('neckTemplate')">SVG</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('neckTemplate')">PDF</button>
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('neckTemplate')">DXF</button>
+                            </div>
+                        </div>
+                    }
+                    @if (ready.has('scrollSide')) {
+                        <div class="export-row">
+                            <span class="export-row__name">Scroll Side Profile</span>
+                            <span class="export-row__desc">{{ describe('scrollSide') }}</span>
+                            <div class="export-row__actions">
+                                <button type="button" class="recipe-btn" (click)="previewExport('scrollSide')">Preview</button>
+                                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('scrollSide')">SVG</button>
+                                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('scrollSide')">PDF</button>
+                                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('scrollSide')">DXF</button>
                             </div>
                         </div>
                     }

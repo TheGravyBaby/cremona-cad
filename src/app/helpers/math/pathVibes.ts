@@ -4,7 +4,7 @@ import * as polygonClipping from 'polygon-clipping';
 import { dist, angleFromCenter, normalizeRadians, TURN, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY, cubicBezierPoint, signedPolygonArea, closestPointOnSegment, pointInPolygon } from './simpleGeometry';
 import { circleCircleIntersections } from './draftMath';
 import { solveCatenaryA, battenBeziers, ArchSplineControlPoint, archSplineKnots, makeArchSplineZOf, trochoidNorm } from './vibeMath';
-import { arcCenterFromEndpoints, combinePathStrings, pathFromArc, pathFromLine, samplePathToPolyline } from './pathMath';
+import { arcCenterFromEndpoints, combinePathStrings, pathFromArc, pathFromLine } from './pathMath';
 
 // path strings past one-at-a-time: joining runs into loops, the area booleans, occlusion,
 // offsetting, and the curve families sampled into paths
@@ -1162,49 +1162,6 @@ export function offsetPath(d: string, distance: number): string | null {
     out.push(`M ${start.x} ${start.y} ${offset.map(pieceToPath).join(' ')}${closed ? ' Z' : ''}`);
   }
   return out.join(' ');
-}
-
-/**
- * Close an open arch profile into a rectangular *negative* template blank — a
- * maker checks a carved convex arch by laying a matching concave cutout against
- * it and reading the light gaps. The profile is mirrored about its height axis
- * *first* and the backing edge built against the mirrored curve; mirroring the
- * already-closed shape instead just moves the backing to the wrong side.
- *
- * `heightAxis` selects which coordinate carries the height the curve varies
- * over: 'y' for a cross-arch profile, 'x' for a long-arch one.
- *
- * `direction` must match the plate's signZ convention (+1 top, −1 back) — on
- * the mirrored curve the peak sits on opposite sides for the two plates. The
- * backing edge is placed `margin` past the peak, keeping material thin there
- * and thicker toward the flat edges.
- *
- * Also returns the backing edge's constant coordinate and the curve's
- * position-axis midpoint, so a caller can place a label `margin/2` in from the
- * backing — always solid material, unlike a bounding-box center.
- */
-export function closeProfileToBlank(path: string, heightAxis: 'x' | 'y', direction: 1 | -1 = 1, margin = 10): { path: string; backing: number; positionMid: number } {
-  const pts = samplePathToPolyline(path, 0.25);
-  // Degenerate input passes straight through. Testing extent rather than point count is the
-  // point: a single-point path like 'M 0 0' samples into a run of *coincident* points, which
-  // clears a length check but would still be closed into a nonsense blank — a baseline `margin`
-  // below a profile that has no height, exported as a real template.
-  if (pts.length < 2) return { path, backing: 0, positionMid: 0 };
-  const spread = Math.max(...pts.map(p => Math.abs(p.x - pts[0].x) + Math.abs(p.y - pts[0].y)));
-  if (spread < 1e-9) return { path, backing: 0, positionMid: 0 };
-  const mirror = (pt: Pt): Pt => heightAxis === 'x' ? { x: -pt.x, y: pt.y } : { x: pt.x, y: -pt.y };
-  const curve = pts.map(mirror);
-  const heights = curve.map(pt => heightAxis === 'x' ? pt.x : pt.y);
-  const positions = curve.map(pt => heightAxis === 'x' ? pt.y : pt.x);
-  const baseline = direction === 1 ? Math.min(...heights) - margin : Math.max(...heights) + margin;
-  const positionMid = (Math.min(...positions) + Math.max(...positions)) / 2;
-  const first = curve[0];
-  const last = curve[curve.length - 1];
-  const atBaseline = (pt: Pt): Pt => heightAxis === 'x' ? { x: baseline, y: pt.y } : { x: pt.x, y: baseline };
-  const b1 = atBaseline(last);
-  const b2 = atBaseline(first);
-  const curveStr = curve.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ');
-  return { path: `${curveStr} L ${b1.x} ${b1.y} L ${b2.x} ${b2.y} Z`, backing: baseline, positionMid };
 }
 
 /**
