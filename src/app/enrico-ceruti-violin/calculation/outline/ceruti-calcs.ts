@@ -1,6 +1,6 @@
 import { circleCircleIntersections, inscribeCircleWithinCircle, interceptCirclesAndPoint, interceptCirclesAndPointCompound, solveTangentCircleAndLine, filletRightAngleCorner } from "../../../helpers/math/draftMath";
 import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, lineCircleIntersection, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, lineFromTwoPoints, moveInVectorSpace, placeCircleOnPointAtAngle, redefineArcCircle, tangentUnitVectorFromLine, TURN, vectorFromSlope } from "../../../helpers/math/simpleGeometry";
-import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, translatePath, splitPathStrings } from "../../../helpers/math/pathMath";
+import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, translatePath, splitPathStrings, pathsBounds } from "../../../helpers/math/pathMath";
 import { differenceFromManyPaths, intersectionFromTwoPaths, mirroredLoop } from "../../../helpers/math/pathVibes";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Line, Pt, Rectangle } from "../../../models/types";
 import { error } from "../../../shared/message-emitter";
@@ -1215,7 +1215,9 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
     return combinePathStrings([...clampBox, mouldPath]);
 }
 
-export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, padding = 5): string[] {
+export type LabelledBlock = { path: string; label: 'U' | 'L'; x: number; y: number };
+
+export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, padding = 5): LabelledBlock[] {
     let result = [];
     // Expand a rect by 1mm on the face that may be flush with the inner path boundary,
     // so polygon-clipping has a clean crossing rather than a tangent touch point.
@@ -1250,14 +1252,15 @@ export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, 
         items.reduce((sum, { rect }) => sum + rect.width, 0) + padding * (items.length - 1);
 
     // Helper: place a row of items horizontally centered on x=0 at the given yOffset.
-    const layoutRow = (items: Array<{ rect: Rectangle; path: string }>, yOffset: number): string[] => {
+    const layoutRow = (items: Array<{ rect: Rectangle; path: string }>, yOffset: number, label: 'U' | 'L'): LabelledBlock[] => {
         let xCursor = -rowWidth(items) / 2;
         return items.map(({ rect, path }) => {
             const dx = xCursor - rectMinX(rect);
             const dy = yOffset - rectMinY(rect);
             const translated = translatePath(path, dx, dy);
             xCursor += rect.width + padding;
-            return translated;
+            const b = pathsBounds([translated]);
+            return { path: translated, label, x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 };
         });
     };
 
@@ -1277,10 +1280,10 @@ export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, 
     const rowHeight = (items: Array<{ rect: Rectangle }>) => Math.max(...items.map(({ rect }) => rect.height));
 
     let yCursor = 0;
-    const r3 = layoutRow(rowLower,        yCursor); yCursor += rowHeight(rowLower)        + padding;
-    const r2 = layoutRow(rowLowerCorners, yCursor); yCursor += rowHeight(rowLowerCorners) + padding;
-    const r1 = layoutRow(rowUpperCorners, yCursor); yCursor += rowHeight(rowUpperCorners) + padding;
-    const r0 = layoutRow(rowUpper,        yCursor); 
+    const r3 = layoutRow(rowLower,        yCursor, 'L'); yCursor += rowHeight(rowLower)        + padding;
+    const r2 = layoutRow(rowLowerCorners, yCursor, 'L'); yCursor += rowHeight(rowLowerCorners) + padding;
+    const r1 = layoutRow(rowUpperCorners, yCursor, 'U'); yCursor += rowHeight(rowUpperCorners) + padding;
+    const r0 = layoutRow(rowUpper,        yCursor, 'U'); 
 
     result.push(...r0, ...r1, ...r2, ...r3);
     return result;

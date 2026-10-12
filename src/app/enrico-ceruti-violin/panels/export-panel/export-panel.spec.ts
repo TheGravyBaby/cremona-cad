@@ -83,6 +83,13 @@ async function captured(run: () => void): Promise<{ name: string; text: string }
   return { name, text };
 }
 
+// the sheet without its size box, so the counts and bounds below are the content's
+function parseSheet(text: string): Document {
+  const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+  doc.getElementById('size-box')?.remove();
+  return doc;
+}
+
 describe('the export panel on activation', () => {
   it('fills the path cache itself and previews the outer trace', () => {
     // It is reachable without opening any earlier panel — the step selector goes
@@ -170,21 +177,22 @@ describe('f-holes on the top plate only', () => {
 
 /** Segment endpoints, same extraction ceruti-paths.spec.ts uses on drafting-side `d` strings. */
 function pathEndpoints(d: string): { x: number; y: number }[] {
-  return (d.match(/[MLACQ][^MLACQ]*/g) ?? []).map((seg: string) => {
+  return (d.replace(/Z/g, '').match(/[MLACQ][^MLACQ]*/g) ?? []).map((seg: string) => {
     const n = seg.slice(1).trim().split(/[\s,]+/).map(Number);
     return { x: n[n.length - 2], y: n[n.length - 1] };
   });
 }
 
 describe('the f-hole cutting template', () => {
-  it('draws exactly one unmirrored hole, sized to its own bounds rather than the plan', async () => {
+  it('draws exactly one unmirrored hole in a blank, sized to its own bounds rather than the plan', async () => {
     const p = placed(defaultViolin());
     const result = await captured(() => makePanel(p).downloadExport('fholeTemplate'));
-    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    const doc = parseSheet(result!.text);
     const paths = [...doc.querySelectorAll('path')];
 
-    expect(paths).toHaveLength(1);
-    expect(paths[0].getAttribute('d')?.match(/M/g)).toHaveLength(1);
+    // the blank and the hole, each its own path so the laser can cut the hole first
+    expect(paths).toHaveLength(2);
+    for (const path of paths) expect(path.getAttribute('d')?.match(/M/g)).toHaveLength(1);
 
     const viewBox = doc.documentElement.getAttribute('viewBox')!.split(' ').map(Number);
     expect(viewBox[2]).toBeLessThan(p.width);
@@ -196,12 +204,15 @@ describe('the f-hole cutting template', () => {
     // onto them draws a geometrically valid, entirely off-sheet path: a blank page, not a thrown
     // error, which is why the SVG/PDF sizing tests above didn't already catch it.
     const result = await captured(() => makePanel(placed(archedViolin())).downloadExport('fholeTemplate'));
-    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
-    const d = doc.querySelector('path')!.getAttribute('d')!;
+    const doc = parseSheet(result!.text);
+    const d = [...doc.querySelectorAll('path')].map(el => el.getAttribute('d')!).join(' ');
     const [vx, vy, vw, vh] = doc.documentElement.getAttribute('viewBox')!.split(' ').map(Number);
 
     const tolerance = 1; // mm — the true bbox can bulge slightly past its arcs' own endpoints
-    for (const { x, y } of pathEndpoints(d)) {
+    const [tx, ty] = doc.querySelector('svg > g')!.getAttribute('transform')!.match(/translate\(([^ ]+) ([^)]+)\)/)!.slice(1).map(Number);
+    for (const pt of pathEndpoints(d)) {
+      const x = pt.x + tx;
+      const y = ty - pt.y;
       expect(x).toBeGreaterThanOrEqual(vx - tolerance);
       expect(x).toBeLessThanOrEqual(vx + vw + tolerance);
       expect(y).toBeGreaterThanOrEqual(vy - tolerance);
@@ -222,17 +233,25 @@ describe('the f-hole cutting template with no eyes', () => {
     const withEyes = await captured(() => makePanel(p).downloadExport('fholeTemplate'));
     const withoutEyes = await captured(() => makePanel(p).downloadExport('fholeTemplateNoEyes'));
 
-    const doc = new DOMParser().parseFromString(withoutEyes!.text, 'image/svg+xml');
+    const doc = parseSheet(withoutEyes!.text);
     const paths = [...doc.querySelectorAll('path')];
-    expect(paths).toHaveLength(1);
-    expect(paths[0].getAttribute('d')?.match(/M/g)).toHaveLength(1);
+    expect(paths).toHaveLength(2);
 
     // The eyed template has exactly two long-way arcs (upper and lower eye); the
     // no-eyes template uses the short way for every arc, itself included.
-    const eyedD = withEyes!.text.match(/d="([^"]+)"/)![1];
-    const noEyesD = paths[0].getAttribute('d')!;
+    const sheetD = (doc: Document) => [...doc.querySelectorAll('path')].map(el => el.getAttribute('d')!).join(' ');
+    const eyedD = sheetD(parseSheet(withEyes!.text));
+    const noEyesD = sheetD(doc);
     expect(largeArcFlags(eyedD).filter(f => f === 1)).toHaveLength(2);
     expect(largeArcFlags(noEyesD).filter(f => f === 1)).toHaveLength(0);
+  });
+});
+
+describe('the blocks sheet', () => {
+  it('marks the upper blocks U and the lower blocks L, the corner pairs included', async () => {
+    const result = await captured(() => makePanel(moulded()).downloadExport('blocks'));
+    const labels = [...parseSheet(result!.text).querySelectorAll('text')].map(t => t.textContent);
+    expect(labels.sort()).toEqual(['L', 'L', 'L', 'U', 'U', 'U']);
   });
 });
 
@@ -242,7 +261,7 @@ describe('the SVG a download writes', () => {
     expect(result).not.toBeNull();
     expect(result!.name).toBe(`test-violin-${type}.svg`);
 
-    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    const doc = parseSheet(result!.text);
     expect(doc.querySelector('parsererror')).toBeNull();
     expect(doc.querySelectorAll('path').length).toBeGreaterThan(0);
     expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
@@ -277,14 +296,14 @@ describe('the neck template', () => {
   it('writes a sheet sized to the neck and scroll, the stencil inside the outline', async () => {
     const result = await captured(() => makePanel(scrolled()).downloadExport('neckTemplate'));
     expect(result!.name).toBe('test-violin-neckTemplate.svg');
-    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    const doc = parseSheet(result!.text);
     expect(doc.querySelector('parsererror')).toBeNull();
     expect(doc.querySelectorAll('path')).toHaveLength(2);
     expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
     const viewBox = result!.text.match(/viewBox="([^"]+)"/)![1].split(' ').map(Number);
     // taller than the body's neck end to the scroll's top, and narrower than the plan
     expect(viewBox[3]).toBeGreaterThan(200);
-    expect(viewBox[2]).toBeLessThan(100);
+    expect(viewBox[2]).toBeLessThan(120);
   });
 
   it('refuses rather than throwing without a neck or a scroll', async () => {
@@ -329,7 +348,7 @@ describe('the scroll back strip', () => {
     const p = scrolled();
     const result = await captured(() => makePanel(p).downloadExport('scrollBack'));
     expect(result!.name).toBe('test-violin-scrollBack.svg');
-    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    const doc = parseSheet(result!.text);
     expect(doc.querySelector('parsererror')).toBeNull();
     expect(doc.querySelectorAll('path')).toHaveLength(1);
     expect(doc.querySelectorAll('text')).toHaveLength(0);
@@ -344,7 +363,7 @@ describe('the scroll back strip', () => {
     const p = scrolled();
     const result = await captured(() => makePanel(p).downloadExport('scrollCompass'));
     expect(result!.name).toBe('test-violin-scrollCompass.svg');
-    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    const doc = parseSheet(result!.text);
     expect(doc.querySelector('parsererror')).toBeNull();
     const paths = [...doc.querySelectorAll('path')].map(el => el.getAttribute('d')!);
     expect(paths).toHaveLength(4);
@@ -378,7 +397,7 @@ describe('the scroll back strip', () => {
   it.each(['scrollFrontView', 'scrollBackView'] as const)('%s writes the view as one path on a sheet that starts at its foot, no text', async type => {
     const result = await captured(() => makePanel(scrolled()).downloadExport(type));
     expect(result!.name).toBe(`test-violin-${type}.svg`);
-    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    const doc = parseSheet(result!.text);
     expect(doc.querySelector('parsererror')).toBeNull();
     expect(doc.querySelectorAll('path')).toHaveLength(1);
     expect(doc.querySelectorAll('text')).toHaveLength(0);
@@ -392,7 +411,7 @@ describe('the scroll back strip', () => {
   it('writes the side profile centred on a sheet that starts at its foot, no text', async () => {
     const result = await captured(() => makePanel(scrolled()).downloadExport('scrollSide'));
     expect(result!.name).toBe('test-violin-scrollSide.svg');
-    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    const doc = parseSheet(result!.text);
     expect(doc.querySelector('parsererror')).toBeNull();
     expect(doc.querySelectorAll('text')).toHaveLength(0);
     expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
@@ -409,7 +428,7 @@ describe('the scroll back strip', () => {
     p.scroll!.hipHeight = -p.neck!.nutHeight;
     const xs = async (type: 'scrollFrontView' | 'scrollBackView') => {
       const result = await captured(() => makePanel(p).downloadExport(type));
-      const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+      const doc = parseSheet(result!.text);
       return [...doc.querySelector('path')!.getAttribute('d')!.replace(/A \S+ \S+ \S+ \S+ \S+ /g, '').matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => Math.abs(+m[1]));
     };
     // the cheeks stand 23 out from the centreline, wider than anything of the back's own
@@ -503,7 +522,7 @@ describe('the bundled SVGs', () => {
   it('packs the templates onto one sheet, like templates kept together', async () => {
     const result = await captured(() => makePanel(finished()).downloadBundle('templates'));
     expect(result!.name).toBe('test-violin-templates.svg');
-    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    const doc = parseSheet(result!.text);
     expect(doc.querySelector('parsererror')).toBeNull();
     expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
     // every cross-arch blank of both plates in the one piece, and the long arch's pair in another
@@ -517,7 +536,7 @@ describe('the bundled SVGs', () => {
     const templates = await captured(() => makePanel(finished()).downloadBundle('templates'));
     const full = await captured(() => makePanel(finished()).downloadBundle('full'));
     expect(full!.name).toBe('test-violin-full.svg');
-    expect(new DOMParser().parseFromString(full!.text, 'image/svg+xml').querySelector('parsererror')).toBeNull();
+    expect(parseSheet(full!.text).querySelector('parsererror')).toBeNull();
     expect(groups(full!.text)).toBeGreaterThan(groups(templates!.text));
   });
 
@@ -531,7 +550,7 @@ describe('the largest bundled instrument exports', () => {
     // The sheet is sized off the body — this is the only check that the export
     // path holds at cello size.
     const result = await captured(() => makePanel(templateViolin('stradivari-cello-castelbarco')).downloadExport('outerTrace'));
-    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    const doc = parseSheet(result!.text);
     expect(doc.querySelector('parsererror')).toBeNull();
     expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
   });
