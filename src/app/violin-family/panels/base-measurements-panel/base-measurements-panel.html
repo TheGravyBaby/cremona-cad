@@ -1,0 +1,70 @@
+@let body = solveBody(recipe.params);
+@let HtoW = solveBodyRatios(recipe.params).HtoW;
+
+<section class="ui-group">
+    <div class="ui-group-title">File Properties</div>
+    <!-- the toolbar carries the name too; a field here is where a user expects to find it -->
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Name</span>
+            <input class="basic-input" type="text" placeholder="Untitled" maxlength="120"
+                [(ngModel)]="recipe.fileName" (input)="edited()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Description</span>
+            <textarea class="description-textarea" rows="1" maxlength="200"
+                [(ngModel)]="recipe.description" (input)="edited()"></textarea>
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Source</span>
+            <input class="basic-input" type="text" placeholder="Where this came from" maxlength="300"
+                [(ngModel)]="recipe.source" (input)="edited()" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Primary Dimensions</div>
+
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="recipe.params.body.height" (input)="edited()" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="recipe.params.body.width" (input)="edited()" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">H to W</span>
+            <div class="basic-display" aria-label="Height to width ratio value">{{ HtoW ? nearestFraction(HtoW) : '–' }}</div>
+        </label>
+        <button type="button" class="info-icon" (click)="help('dimension')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Overhang <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="recipe.params.body.overhang" (input)="edited()" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Ribs <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="recipe.params.body.rib" (input)="edited()" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Inset<span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Inset">{{ body.failures.length ? '–' : body.inset }}</div>
+        </label>
+        <button type="button" class="info-icon" (click)="help('inset')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+</section>

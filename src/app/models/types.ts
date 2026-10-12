@@ -100,7 +100,9 @@ export interface RecipeInterface {
     fileName: string;
     version: string;
     params: any;
-    paths: any;
+    /** Solved path strings the Ceruti recipe keeps on the file. A recipe that derives its geometry
+     * from params alone (violin-family) leaves this off. */
+    paths?: any;
     referenceImages?: ReferenceImage[];
     /** Shapes drawn with the draft-canvas toolbox — see ToolboxStore.exportState/loadState.
      * Untyped here (rather than importing DraftShape) to avoid a models/types.ts <-> draft-canvas
