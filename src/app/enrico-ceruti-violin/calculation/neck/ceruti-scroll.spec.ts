@@ -22,7 +22,7 @@ const scrolled = (style: VoluteStyle, eyeRadius: number, over: Partial<ScrollPar
   const p = defaultViolin();
   p.neck = defaultNeckParams(p);
   p.stringSetup = defaultStringSetup(p);
-  p.neck.thickness = 0;
+  p.neck.upperThickness = 0;
   p.scroll = { ...defaultVoluteParams(p), ...spec(style, eyeRadius, radii), flushWithNeck: true, ...over };
   p.scroll.eye = new Circle(p.scroll.eye.x, over.eye?.y ?? EYE_Y, eyeRadius);
   const failures = calculateScroll(p);
@@ -204,7 +204,7 @@ describe('the back and front off a salviati volute', () => {
     const { p, v } = scrolled(style, 4, BACK);
     const [x, y] = at(v.S3, v.S3.start);
     const neckBack = x + 10;
-    p.neck!.thickness = -neckBack;
+    p.neck!.upperThickness = -neckBack;
     expect(unsolved(p)).toEqual([]);
     expect(scrollLines(p).square.map(q => [q.x, q.y])).toEqual([[x, y], [neckBack - 3, y]].map(q => q.map(c => expect.closeTo(c, 9))));
     expect(v.nape.r).toBe(3);
@@ -212,14 +212,14 @@ describe('the back and front off a salviati volute', () => {
     expect(at(v.nape, Math.PI / 2)).toEqual([neckBack - 3, y].map(c => expect.closeTo(c, 9)));
     expect(at(v.nape, 0)).toEqual([neckBack, y - 3].map(c => expect.closeTo(c, 9)));
 
-    p.neck!.thickness = -(x + 3);
+    p.neck!.upperThickness = -(x + 3);
     expect(unsolved(p)).toEqual([]);
     expect(dist(...scrollLines(p).square)).toBeCloseTo(0, 9);
     expect(at(v.nape, Math.PI / 2)).toEqual([x, y].map(c => expect.closeTo(c, 9)));
 
-    p.neck!.thickness = -(x + 2);
+    p.neck!.upperThickness = -(x + 2);
     expect(unsolved(p)).toEqual(['nape']);
-    p.neck!.thickness = -neckBack;
+    p.neck!.upperThickness = -neckBack;
     v.nape.r = 0;
     expect(unsolved(p)).toEqual(['nape']);
     expect(v.S3.end).toBe(4 - Math.PI);
@@ -231,7 +231,7 @@ describe('the back and front off a salviati volute', () => {
     v.napeCircle = true;
     const [x, y] = at(v.S3, v.S3.start);
     const gap = 10;
-    p.neck!.thickness = -(x + gap);
+    p.neck!.upperThickness = -(x + gap);
     const neckBack = x + gap;
     const fit = (r: number) => {
       v.nape = new Arc(0, 0, r, 0, 0);
@@ -260,7 +260,7 @@ describe('the back and front off a salviati volute', () => {
     v.nape = new Arc(0, 0, gap / 2 - 0.1, 0, 0);
     expect(unsolved(p)).toEqual(['nape']);
     v.nape = new Arc(0, 0, gap, 0, 0);
-    p.neck!.thickness = -(x - 1);
+    p.neck!.upperThickness = -(x - 1);
     expect(unsolved(p)).toEqual(['nape']);
   });
 
@@ -344,7 +344,7 @@ describe('the default scroll', () => {
     expect(unsolved(p)).toEqual([]);
     const v = p.scroll!;
     expect(v.spiral).toHaveLength(TO_FRONT);
-    expect(v.nape.x).toBeCloseTo(-p.neck.thickness - v.nape.r, 9);
+    expect(v.nape.x).toBeCloseTo(-p.neck.upperThickness - v.nape.r, 9);
     expect(v.F1.end - v.F1.start).toBeGreaterThan(0);
   });
 });

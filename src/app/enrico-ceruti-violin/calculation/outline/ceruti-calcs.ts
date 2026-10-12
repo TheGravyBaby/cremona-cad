@@ -1301,7 +1301,7 @@ export const upsertPathEntry = (paths: PathEntry[], key: PathKey, path: string):
 /**
  * Reads a path the caller has already guaranteed is there by calling the
  * matching `ensure*` first. Asserts, so a missing `ensure*` fails loudly at the
- * read rather than drawing nothing — see the panel notes in this folder's
+ * read rather than drawing nothing — see the panel checklist in the root
  * CLAUDE.md. Lived as a private copy in four panels before this.
  */
 export const getPath = (paths: PathEntry[], key: PathKey): string =>

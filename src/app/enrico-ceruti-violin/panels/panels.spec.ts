@@ -296,7 +296,7 @@ describe('the scroll panel', () => {
     expect(lowest).toBeLessThan(0);
     expect(-lowest).toBeLessThan(p.scroll!.eye.y);
     const leftmost = Math.min(...lines.flatMap(l => [l['x1'] as number, l['x2'] as number]));
-    expect(-leftmost).toBeCloseTo(p.neck!.thickness, 9);
+    expect(-leftmost).toBeCloseTo(p.neck!.upperThickness, 9);
   });
 
   describe('the volute', () => {
@@ -561,7 +561,7 @@ describe('the scroll panel', () => {
       const instance = scroll(p, { showModuleArcs: true, showModuleGuides: false, showVoluteConstruction: false });
       const drawn = () => recordLayers(instance.buildRun()).elements;
       const backTop = (els: ReturnType<typeof drawn>) => els
-        .filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neutral.faint(5)' && el.attrs['x1'] === -p.neck!.thickness && el.attrs['x2'] === -p.neck!.thickness)
+        .filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neutral.faint(5)' && el.attrs['x1'] === -p.neck!.upperThickness && el.attrs['x2'] === -p.neck!.upperThickness)
         .map(el => Math.max(el.attrs['y1'] as number, el.attrs['y2'] as number));
       // the duck tail hangs no higher than the nut line, so the nape meets the neck's back below it
       const naped = drawn();
@@ -962,7 +962,7 @@ describe('the scroll widths panel', () => {
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
     const sides = drawn.filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neutral.faint(5)').map(el => points(el.attrs['d'] as string));
     expect(sides).toHaveLength(4);
-    for (const [bottom] of sides) expect(bottom.y).toBeCloseTo(-2 * p.neck!.thickness, 9);
+    for (const [bottom] of sides) expect(bottom.y).toBeCloseTo(-2 * p.neck!.upperThickness, 9);
 
     const [behind, inFront] = [sides.filter(s => s[0].x < 0), sides.filter(s => s[0].x > 0)];
     const center = (pair: Pt[][]) => (pair[0][0].x + pair[1][0].x) / 2;
@@ -1128,7 +1128,7 @@ describe('the scroll set on the neck in the side view', () => {
     expect(near(applyMatrix(m, new Pt(1, 0)), new Pt(nk.neckTop!.x + normal.a, nk.neckTop!.y + normal.b))).toBe(true);
   });
 
-  it('draws the scroll on the neck panel once started, with no wall at the nut and the back up to the nape', () => {
+  it('draws the scroll on the neck panel once started, the back up to the nape and hidden on to the nut', () => {
     const p = scrolled();
     const before = recordLayers(panel(NeckPanel, archedViolinWithNeck()).buildRun()).elements;
     expect(before.filter(el => el.tag === 'line').some(el => lineEnds(el).some(e => near(e, p.neck!.backNut!)))).toBe(true);
@@ -1137,9 +1137,9 @@ describe('the scroll set on the neck in the side view', () => {
     expect(drawn.map(el => el.attrs['d'])).toContain(definePlacedSideScrollPath(p));
     const lines = drawn.filter(el => el.tag === 'line');
     const nk = p.neck!;
-    expect(lines.some(el => lineEnds(el).some(e => near(e, nk.neckTop!)) && lineEnds(el).some(e => near(e, nk.backNut!)))).toBe(false);
-    const napeJoin = applyMatrix(scrollOnNeck(p), new Pt(-nk.thickness, p.scroll!.nape.y));
-    expect(lines.some(el => lineEnds(el).some(e => near(e, napeJoin)))).toBe(true);
+    const napeJoin = applyMatrix(scrollOnNeck(p), new Pt(-nk.upperThickness, p.scroll!.nape.y));
+    expect(lines.some(el => !el.attrs['stroke-dasharray'] && lineEnds(el).some(e => near(e, napeJoin)))).toBe(true);
+    expect(lines.some(el => el.attrs['stroke-dasharray'] && lineEnds(el).some(e => near(e, napeJoin)) && lineEnds(el).some(e => near(e, nk.backNut!)))).toBe(true);
   });
 
   it('draws it under the body on the long arching panel, when that panel draws the neck', () => {
@@ -1196,7 +1196,7 @@ describe('the scroll\'s front view on the front profile', () => {
     }
     // the neck's sides the widths panel carries on below the nut are the profile's own here
     const ys = (d: string) => [...d.matchAll(/[ML]\s*-?[\d.e-]+\s+(-?[\d.e-]+)/g)].map(mm => Number(mm[1]));
-    const stub = 2 * p.neck!.thickness;
+    const stub = 2 * p.neck!.upperThickness;
     const onPanel = scrollBackViewStrokes(p, (x, y) => new Pt(x, y), -stub).neck;
     expect(onPanel).toHaveLength(2);
     expect(onPanel.every(s => Math.min(...ys((s as { d: string }).d)) < 0)).toBe(true);
@@ -1224,9 +1224,9 @@ describe('the scroll\'s front view on the front profile', () => {
     neck.paths = paths;
     const before = recordLayers(neck.buildRun()).elements.length;
     p.scroll = defaultVoluteParams(p);
-    // in the side view the scroll's path takes the place of the wall across the nut, one for one, and
-    // the nut's seat it runs on over shows in both views
-    expect(recordLayers(neck.buildRun()).elements.length).toBe(before + scrollFrontInPlan(p).length + 2);
+    // in the side view the scroll's path, the nut's seat it runs on over and the back hidden from the
+    // nape on to the nut; the seat shows in the front view too
+    expect(recordLayers(neck.buildRun()).elements.length).toBe(before + scrollFrontInPlan(p).length + 4);
   });
 
   it('goes on the plate pair once asked for, the front view on the top and the back view on the back', () => {

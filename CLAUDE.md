@@ -4,163 +4,167 @@ Angular app for drafting violin-family instruments from parameters (bout widths,
 placements, cutoff angles) rather than traced coordinates. Parameters carry through to purfling,
 fluting, arching and the mould; designs export as SVG/PDF/DXF for templates and STL for CNC.
 
+This is the only CLAUDE.md. Most source files open with a header comment stating their own
+boundary: read it before adding to a file.
+
 ## Commands
 
 ```bash
 ng serve        # dev server, localhost:4200
-ng test         # vitest, ~20s wall, ~970 tests — full suite, run before considering work done
+ng test         # vitest, full suite (~20s). Run before considering work done.
 ng build
 ```
 
-### Scoped test runs
-
-It's worth running only the area you touched while iterating, then the full `ng test` once
-before finishing. Each scoped script is `ng test --watch=false` with an `--include`/`--exclude`
-glob; see them in `package.json` if you need a variant. Timings are wall-clock, single run, and
-about 6s of each is the build before any test starts:
-
-| Script | Covers | Time |
-|---|---|---|
-| `npm run test:outline` | `calculation/outline/**`, `calculation/neck/**`, `ceruti-serialization`, `templates/*` — the 2D outline pipeline, plus the neck set and the scroll | ~10s |
-| `npm run test:arching` | `calculation/arching/**` — the 3D arching pipeline, the specialist math | ~13s |
-| `npm run test:panels` | `enrico-ceruti-violin/panels/**` — panel wiring + SVG/DXF/STL export | ~13s |
-| `npm run test:draft-canvas` | `draft-canvas/**` — canvas, camera, snapping, tools | ~10s |
-| `npm run test:helpers` | `helpers/**` — instrument-agnostic math, renderers, exporters | ~8s |
-| `npm run test:shell` | `app.spec.ts`, `docs/**`, `shared/**`, `top-bar/**`, `hello-world-recipe/**`, `recipe-base/**` | ~11s |
-| `npm run test:fast` | everything except `test:arching` and `test:panels` | ~13s |
-
-These mirror the Layout table below plus the 2D/3D pipeline split documented in
-`enrico-ceruti-violin/CLAUDE.md`. If you add a spec file, check it lands in the group you'd
-expect — a stray file outside these globs only runs under the full `ng test`.
+While iterating, run only the area you touched (see `package.json` for the globs):
+`test:outline` (2D outline, neck, scroll, templates), `test:arching` (3D pipeline),
+`test:panels` (panel wiring + exports), `test:draft-canvas`, `test:helpers`, `test:shell`,
+`test:fast` (all but arching and panels). A new spec file outside these globs only runs under
+the full `ng test`.
 
 ## Layout
 
 | Path | What lives there |
 |---|---|
-| `src/app/enrico-ceruti-violin/` | The one real instrument model. Has its own CLAUDE.md. |
-| `src/app/draft-canvas/` | SVG canvas, camera, snapping, pointer routing. |
-| `src/app/draft-canvas/tools/` | Pluggable drafting tools + shape store. Has its own CLAUDE.md. |
-| `src/app/helpers/` | Instrument-agnostic math, rendering, exporters. Has its own CLAUDE.md. |
-| `src/app/models/types.ts` | `Pt`/`Circle`/`Arc`/`Rectangle` — recipe-side geometry. Read its header. |
-| `src/app/recipe-base/` | `RecipeComponentBase` — panel flow, undo/redo, file load/save, toolbox sync. |
-| `src/app/shared/` | Message/toast service. |
-| `src/app/theme/` | Colour and stroke, for the whole app, in two files. `palettes.ts` is every colour and stroke constant: a `Palette` is a list of inks, any length, instrument-agnostic, and `PALETTES` holds them all by id, with the theme's `NEUTRAL` trace grey and `ALERT` solve-failure red, the `CANVAS` each mode draws on, the toolbox's `CANVAS_COLORS`, and `STROKE_WEIGHT` and `DASH` beside them. Open it to make a palette while looking at the others. `theme.service.ts` is all the colour code: the hex/HSL/contrast math, `makeInk` turning a hex into an `Ink`, which is its hex string with one method, `faint(n)`, whole steps from -5 to 5, positive toward the canvas and negative away from it, held inside the lightness band that reads against the canvas, `resolveTheme` resolving every palette for the mode, and `ThemeService`: `ThemeService.getPalette(id)` is a static any panel or recipe calls as a plain field, no injection or binding, returning a live palette whose every read resolves against the mode at that moment, so the field follows a day/night flip; `ThemeService.useTheme` puts a spec's labelled theme in front; and the instance is the one Angular piece, the mode as a signal a recipe redraws on and the canvas colour pushed onto `--ui-bg-canvas`. A panel names its palette on its first line, `protected readonly pal = ThemeService.getPalette('orchid')`, and reads it by position, `pal.ink(1)` or `pal.ink(1).faint(-2)`, wrapping past the end, so a panel wanting two inks can take a palette of six; `pal.neutral` and `pal.alert` are the same whichever palette. An `Ink` is a String object, so it goes anywhere a colour string goes but compares by identity: a spec reads it through `String()`. `theme-fixtures.ts` is the specs' labelled theme. No file outside this folder holds a hex. The UI chrome stays on the `--ui-*` variables in `styles.css`. |
-| `src/app/docs/` | Every word the app says to the user, in one place. `field-help.ts` is the ⓘ write-ups (`help('id')` in a panel); `tooltips.ts` the explanatory tooltips, bound as `docTip="id"`, a tooltip that only names a control stays a literal `title=`; `conditions.ts` the toasts that run to a paragraph; `export-descriptions.ts` the export rows; `guide/` the Documentation tab. The change log is `CHANGELOG.md` at the root, rendered in the about modal. See `docs/documentation-plan.md`. |
-| `src/app/docs/wiki/` | The wiki: Markdown articles under `articles/` (folders allowed), imported as text, parsed into a registry the wiki component renders and `wiki.spec.ts` lints. One article per concept; `[[slug]]` links between them; figures under `public/wiki/`. Dev builds only, for now. |
-| `examples/` | **Not built, not tested.** Outside `tsconfig.app.json` and `tsconfig.spec.json`. |
-
-`examples/beard-violin` and `examples/kelly-violin` are earlier recipe implementations kept for
-reference. `examples/beard-violin.spec.ts` does not run. Don't fix, refactor or lint anything
-under `examples/` unless asked for it by name.
+| `src/app/enrico-ceruti-violin/` | The one real instrument model. `ceruti-violin.ts` is a shell owning panel order and caches. |
+| `…/calculation/outline/` | 2D pipeline: `ceruti-calcs.ts` (solvers, mould) → `ceruti-paths.ts` (arcs to SVG paths). |
+| `…/calculation/arching/` | 3D pipeline: `ceruti-arching.ts` (*where* a section is taken, *how tall*) → `ceruti-arch-geometry.ts` (*what shape* the section is) → `ceruti-surface.ts` (height field z(x,y), templates, STL). |
+| `…/calculation/neck/` | Neck set and scroll, all in the side elevation. |
+| `…/panels/` | One folder per sidebar panel. Thin. |
+| `…/renders/` | Violin drawing several panels share (front profile, body side profile). |
+| `…/templates/` | `ceruti-templates.ts` is **append-only** pasted JSON. New instruments go in `corpus/` (with `source` and `ImageCredit`). `local/` is gitignored scratch. `test-fixtures/` is what specs read. |
+| `src/app/draft-canvas/` | SVG canvas, camera, snapping, pointer routing. `tools/` holds the toolbox. |
+| `src/app/helpers/` | Instrument-agnostic math, rendering, exporters, `validators.ts` (`solveSection`), `workingStorage.ts`. |
+| `src/app/models/types.ts` | `Pt`/`Circle`/`Arc`/`Rectangle`. Read its header. |
+| `src/app/recipe-base/` | Panel flow, undo/redo, file load/save, toolbox sync. |
+| `src/app/theme/` | All colour and stroke. `palettes.ts` holds every constant; `theme.service.ts` the code. No file outside this folder holds a hex. |
+| `src/app/docs/` | Every word the app says to the user: `field-help.ts` (ⓘ), `tooltips.ts` (`docTip="id"`), `conditions.ts`, `guide/`, `wiki/`. Change log is root `CHANGELOG.md`. |
+| `examples/` | **Not built, not tested.** Don't touch unless asked by name. |
 
 ## Where logic belongs
 
-Sort by what the code knows, not by what feature it serves:
+Sort by what the code knows, not what feature it serves:
 
-- **`calculation/` (`ceruti-calcs.ts` and friends)** — math that knows it's a violin. Takes `EnricoCerutiParams`,
-  encodes instrument proportions.
-- **`helpers/math/` (`simpleGeometry.ts`, `draftMath.ts`, `vibeMath.ts`)** — math that doesn't.
-  Intersections, clamping, angle normalization, spline/catenary solvers, split by how far the
-  math is from something you could do with a compass and straightedge — see `helpers/CLAUDE.md`.
-  If it doesn't need to know it's a violin, it goes in one of these rather than becoming a private
-  method on a component.
-- **`helpers/renderFuncs.ts`** — instrument-agnostic SVG emission: primitives, guide marks,
-  `renderStroke`, `renderTranslated`. Weights and dashes come from `theme/palettes.ts`, colours
-  from the caller.
-- **A panel's own render functions** live in its panel file, exported when a neighbour draws them
-  too (`renderMainBouts`, `renderVolute`). `renders/` holds only what several panels draw and that
-  knows it's a violin: the front profile and the body section. Colour is read by position off the
-  palette a panel named (`pal.ink(2)`), never by a part's name.
-  Geometry that only serves a view is still geometry — violin geometry goes in `calculation/`
-  (`computeWireframeGeometry`, the scroll's back and front views), generic in `helpers/math/`.
-- **Component `change*()` methods** — thin: debounce/validate, call a `calculate*`/`define*`,
-  then `draftChange.emit([...renderX(...)])`. What legitimately stays on the component is
-  Angular-lifecycle state: drag handlers, and caches keyed by a params hash (the cross-arching
-  panel's per-plate surface, contour and wireframe cache).
+- **`calculation/`**: math that knows it's a violin. View-only geometry still goes here if it's violin geometry.
+- **`helpers/math/`**: math that doesn't. The test is whether the name and signature would make
+  sense to someone drafting a guitar. Files are ordered by distance from compass-and-straightedge,
+  and each imports only from those before it: `simpleGeometry` (closed-form) → `draftMath`
+  (casework solvers, fillets, arc fits, runs) → `vibeMath` (splines, catenary, spatial index,
+  projection) → `pathMath` (one SVG `d` string at a time) → `pathVibes` (booleans, offsets, joining).
+- **`helpers/renderFuncs.ts`**: instrument-agnostic SVG emission. A panel's own renders live in its panel file.
+- **Component `change*()`**: thin. Debounce, call a `calculate*`, emit renders. Only Angular
+  lifecycle state (drag handlers, params-hash caches) stays on the component.
 
-This split is meant to generalize to future instrument modules — `helpers/math/`,
-`renderFuncs.ts` and `theme/` already sit outside any single model's folder.
+**Params hold what the user sets.** `calculate*` writes solved arcs onto params and returns
+`SolveFailure[]` via `solveSection`. Don't add new derived points or readouts to a params
+interface. Derive them with an exported function beside the calc (`buttonTip`, `scrollLines`,
+`lowerThicknessLine`) and call it from the calc, the render and the highlight. Arcs whose `r` or
+angle the user authors stay on params.
 
-## Two traps that cross the whole codebase
+## Traps
 
-**Arc sweep conventions differ by type, and converting is lossy.** `models/types.ts` `Arc` always
-renders the minor arc regardless of `start`/`end` order, while `tools/toolbox-shape.ts` `ArcShape`
-sweeps counterclockwise from `startAngle` to `endAngle`, so order alone picks minor vs major —
-don't write a blind converter between them.
+- **Arc sweep conventions differ.** `models/types.ts` `Arc` always renders the minor arc;
+  `ArcShape` (toolbox) sweeps counterclockwise from `startAngle` to `endAngle`. Scroll arcs are
+  plain `Arc`s but read counterclockwise and can pass a half turn (pass `longArc`). Never write a
+  blind converter.
+- **Recipe geometry loses its prototypes on load.** `JSON.parse` returns plain objects, hidden by
+  the calc pass reassigning arcs through constructors. Don't add getters/methods to the
+  `models/types.ts` classes. `DraftShape` is a method-free plain-object union for the same reason;
+  don't reuse `models/types.ts` classes in the toolbox. Either break only shows after save-and-reopen.
+- **Every field on `ReferenceImage` must also exist on `ImageShape`.** The canvas rewrites
+  `referenceImages` on every change, so a missing field is silently erased.
+  `reference-image-schema.ts` is the only translator between the two.
+- **`getPath` asserts.** A panel reading the path cache must call the matching `ensure*` at the
+  top of `buildRun()`; use `getPathOrNull` for legitimately optional entries.
+- **Section colour must be bound on every `<input>`**, not the `<section>`: `.ui-group` has
+  `border: none`, so tinting it shows nothing.
 
-**Recipe geometry loses its prototypes on load.** `Pt`/`Circle`/`Arc`/`Rectangle` are
-JSON-serialized into recipe files; `JSON.parse` returns prototype-less objects. What hides this is
-the calc pass in `ceruti-calcs.ts` reassigning nearly every arc through real constructors. So:
-don't add a getter or method to those classes unless the calc pass reassigns every field holding
-one, and don't reuse them across a serialization boundary with no calc pass. Breaking either
-fails only after save-and-reopen. Full explanation in the `models/types.ts` header.
+## Adding a panel
+
+Six edits. Missing one usually fails quietly (a panel that never unlocks):
+
+1. `ceruti-types.ts` → `CERUTI_PANEL_IDS`. Ids are file-format vocabulary (images scope to them).
+2. `panels/<name>-panel/`: `.ts` + `.html` only, shared stylesheets. Extend `CerutiPanelBase`,
+   declare `static readonly renderToggles`. Copy `outer-trace-panel/`.
+3. `ceruti-violin.ts` → `panelOrder` (bench order, `toggles: <Panel>.renderToggles`).
+4. `ceruti-violin.ts` → `canOpenPanel()` case with a `hasX()` predicate.
+5. `ceruti-violin.ts` → component `imports`.
+6. `ceruti-violin.html` → `@if (openPanel === '<id>')` block with `#panelRef` and `(panelUpdate)`.
+
+`ngOnInit` → `emitImmediate()`; typed edits → `emitDebounced()`; expensive `buildRun()` →
+`emitCoalesced()`. `export-panel` is not this shape; don't copy it.
+
+## Adding a tool
+
+Write `createXTool(...)` returning a `DraftTool` and add it to `toolRows` or `modifyRows` in
+`tools/tool-registry.ts`. Nothing else. Reuse `TwoPointTool`/`ThreePointTool`/`ChainTool`.
+Layer/image visibility is one `scope` field (`panel-scope.ts`), with no separate hidden flag.
+`getEditableShapes()` is the single editability gate. A group is just a shared `groupId`. Missing
+`layerId` means `DEFAULT_LAYER_ID`.
+
+## Settled decisions: don't re-litigate
+
+- **Never fabricate arching values for a named instrument.** A corpus template carries `arching`
+  only alongside a reference image scoped to `longArching` it was read from;
+  `ceruti-templates.spec.ts` enforces it.
+- **One arching model.** `gouged` as a model qualifier is a leftover; *gouge* as the tool name is fine.
+  Panel order follows the bench: channel → long arch → crown.
+- **The rib taper is placement, not carving.** Plates are carved against their own gluing plane;
+  only the section views apply the tilt, as a rigid rotation.
+- **`innerFlutingDepth` stays.** Removing it reshapes every arch.
+- **The heel is a cove** (a convex arc can't reach the button tip). The foot is cut square to the neck.
+- **The neck tapers**: `upperThickness` at the nut, `lowerThickness` at the heel, square to the
+  fingerboard plane through the button tip.
+- **The scroll continues the neck's plane from `nut`**, not `nutString`; the nut stands proud.
+- **The neck's `length` places the nut**; `stringLength` is read off, never entered.
+- **Fingerboard, nut, bridge are reference geometry** on `p.stringSetup`, seeded only by the
+  string setup panel; they never shape the neck. `nutHeight`/`nutWidth` shape the scroll and live on `p.neck`.
+- **ⓘ help icons are added by hand.** Don't add an `ⓘ` button or `FIELD_HELP` entry with a new field.
+- **Back and front views of the scroll are drawn as a draughtsman would**, not projected or masked.
+
+## Scroll vocabulary
+
+Defined nowhere else yet. **Hang**: how far the duck tail drops below the nut's lower edge; S3's
+end angle is solved from it. **Duck tail**: the round where the pegbox's flat back dives into the
+neck (`widths.duckTail` is its diameter). **Nape**: the arc joining the duck tail to the neck's
+back. **Hips**: the pegbox's widest point beside the nut (`hipHeight`, up from the nut's top; 0 =
+none). **Throat**: the front's width at the foot of its straight. **Poll**: the back of the head,
+its furthest reach. **Foot**: the back's width at the round's top. The front goes by height (sawn
+straight); the back goes by distance along the path (carved off the volute). S0–S3 are the back's
+arcs, F0–F1 the front's.
 
 ## Code taste
 
-**Locality of behavior beats abstraction.** Code that reads clean as a dependency graph can still
-be worse for a human, who has to travel across many functions to understand one tool. Prefer
-keeping related behavior together. Don't extract a helper because a block got long, and don't
-split a file because it got big — the arching files are large because the math is genuinely
-complex, not because they're awaiting a split.
-
-Splitting is right where the boundary is one a reader already thinks in: one panel per folder,
-and the four stages of the ceruti pipeline. Not where it only reduces file size.
-
-**Keep it modifiable by hand.** The arching layer was built largely with agents because the math
-is specialist; most other panels were written by hand. The standing risk is that this codebase
-drifts past the point where a person can open it and change something. So: when a change can be
-made as a local edit or as a new layer of indirection, take the local edit. Raise sweeping
-structural changes before making them, not after.
-
-**Comments default to zero.** Write one only when it carries a WHY the code can't: a hidden
-constraint, a workaround, a decision that looks wrong until you know the reason. If a comment
-just restates the line under it, or what a well-named function/variable/test already says, it
-doesn't clear that bar — delete it rather than shrink it. Comments are lowercase and brief,
-sitting inline above the section they describe. The long headers that do exist (`models/types.ts`,
-`draft-tool.ts`) earn their length by documenting a trap; don't add more of those by default, and
-don't pad the short ones.
-
-Banned outright, no exceptions — all pulled from a real cleanup pass on `fholes` (2026-09) where
-every one of these showed up across dozens of files:
-- Banner/divider comments (`===== Section =====`, `----- Section -----`). Blank lines and
-  function boundaries already do this job.
-- JSDoc/docstring blocks on functions, classes, or `describe`/`it` blocks by default. A docstring
-  longer than the code it sits on means the code needed no comment, not that the comment earned
-  its length.
-- Restating the next line (`// pop the secondary arc, as above` over a call that pops the
-  secondary arc). Read it without the comment — if nothing is lost, the comment was never load-
-  bearing.
-- The same explanation pasted into more than one file, or repeated more than once in one file.
-  Needing it twice means it belongs on a shared definition, not copy-pasted.
-- Commented-out code. Delete it — git history is where dead code lives.
-- A comment left stale after the code it describes changed. Update it or delete it; a comment
-  that contradicts the code below it is worse than no comment.
-
-Self-check before calling comment work done: for each one, could you delete it and have a reader
-end up in the same place? If yes, it goes. A future reader hitting a real, unmarked trap will
-complain loudly; nobody complains about a comment that wasn't there.
+- **Locality beats abstraction.** Don't extract a helper because a block got long or split a
+  file because it got big. Split only on boundaries a reader already thinks in (a panel, a
+  pipeline stage). Prefer a local edit to a new layer of indirection; raise sweeping structural
+  changes before making them.
+- **The arching files were agent-built.** Explain changes there in bench terms and lean on the
+  specs, which encode the acceptance criteria.
+- **Comments default to zero.** Only a WHY the code can't carry: a hidden constraint, a workaround.
+  Lowercase, brief, inline. Banned: banner/divider comments, JSDoc by default, restating the next
+  line, duplicated explanations, commented-out code, stale comments.
 
 ## Conventions
 
-- **Colour has two tiers on a panel, not three.** The parts a panel edits draw in their own ink
-  and everything else draws in `pal.neutral`. Each distinct part takes its own ink: add one to
-  the palette in `theme/palettes.ts` rather than deriving a colour from another part's ink.
-  `faint(n)` only tells siblings of one part apart: steps either way for the arcs of one bout or
-  the turns of a spiral, a positive step for a guide sitting behind its subject. It measures
-  against the canvas, not absolute lightness, so a step means the same by day and by night
-  (2026-10-08). The old `Off`/`Off2`/`Muted` greyings went with the theme refactor (2026-10-07);
-  a part that needs to recede without going grey takes a positive `faint` or a stroke opacity,
-  never a desaturated twin.
-- Units are **millimetres** in world space throughout. Angles are radians in geometry, degrees in
-  UI fields.
-- The app is pre-production, so saved recipes carry no loader migrations: when a field's shape
-  changes, rewrite the templates under `src/**/templates` and let older files fall away.
-- Prose for UI help text: say what the concept *is* in luthier terms, then what the field
-  controls. Terse. No filler transitions, no elaboration past the information.
-- `ceruti-templates.ts` is append-only pasted recipe JSON. Add instruments; don't restructure it.
-- Working state (the open recipe, the open panel, drawn shapes) goes through
-  `helpers/workingStorage.ts`, never `localStorage`/`sessionStorage` directly. It is
-  **sessionStorage, so a tab is a workspace** — two windows hold two designs, and neither
-  survives its tab closing. Saving to disk is the durable copy. It reports quota failures once.
-  The exception is `App`'s `themeMode`,
-  which is a browser preference rather than the user's work.
+- Millimetres in world space. Radians in geometry, degrees in UI fields.
+- **Colour**: a panel names a palette (`ThemeService.getPalette('orchid')`) and reads by position,
+  `pal.ink(i)`, never by part name. Parts the panel edits take their own ink; everything else is
+  `pal.neutral`. A distinct part gets a distinct ink; `faint(n)` only separates siblings of one
+  part. No desaturated "off" twins. Only R/length fields take the arc colour, not angle fields.
+  Never write tests asserting colours.
+- **No loader migrations** (pre-production). When a field's shape changes, rewrite the templates
+  and let old files fall away.
+- Working state goes through `helpers/workingStorage.ts` (sessionStorage, a tab is a workspace),
+  never `localStorage` directly. Exception: `App`'s `themeMode`.
+- UI help prose: what the concept is in luthier terms, then what the field controls. Terse.
+
+## Tests
+
+- **No spec reads a served template** (`ceruti-templates.ts`, `corpus/`, `local/`). Use
+  `ceruti-fixtures.ts` built from `templates/test-fixtures/`. Only `ceruti-templates.spec.ts`
+  validates the served set.
+- Assert invariants (closure, symmetry, tangency), not counts or coordinates. No tests that only
+  check a DOM node appeared or pin a number from `DefaultParams`.
+- A spec touching no DOM API opens with `// @vitest-environment node`.
+- The 20s timeouts on the dense sweeps in `ceruti-arch-geometry.spec.ts` and
+  `ceruti-surface.spec.ts` stay. Coarser sweeps miss what they exist to catch.

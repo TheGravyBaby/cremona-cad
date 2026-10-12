@@ -16,7 +16,7 @@ import { scrollOnNeck } from '../outline/ceruti-paths';
 // calculateScrollWidths holding each turn at least as wide as the one before keeps that order true
 
 // how far each view carries the neck on below the scroll
-export const scrollNeckStub = (p: EnricoCerutiParams) => 2 * p.neck!.thickness;
+export const scrollNeckStub = (p: EnricoCerutiParams) => 2 * p.neck!.upperThickness;
 
 function halfWidthAtHeight(pts: Pt3D[], y: number): number | null {
   return polylinePointAtY(pts, y)?.x ?? null;
