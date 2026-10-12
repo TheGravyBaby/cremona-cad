@@ -14,6 +14,7 @@ export interface ViolinFamilyParams {
   body: BodyParams;
   bouts?: MainBoutsParams;
   corners?: CornersParams;
+  outerContour?: OuterContourParams;
 }
 
 // the outer envelope of the finished body. Every field is a number once typed, null while a field
@@ -85,6 +86,33 @@ export interface CornersParams {
   C11R: number;
   C11Start: number;
   C11DoubleArc: boolean;
+}
+
+// the plate's edge: the rib outline stood off by the inset, each corner's arcs run on past the rib
+// corner and cut off across a flat, the button on the back, and the purfling lines inside the
+// edge. A cutoff is how far a corner arc runs on past the rib outline's corner, in degrees along
+// its own direction of travel, so an inverted corner's follows it round; the Ceruti recipe typed
+// the arc's whole span instead. Rounding (0 to 1) swaps the flat for a curve
+export interface OuterContourParams {
+  button: ButtonParams;
+  purflingOffset: number;
+  purflingChannelDepth: number;
+  U3Cutoff: number;
+  U31Cutoff: number;
+  C2Cutoff: number;
+  C21Cutoff: number;
+  C1Cutoff: number;
+  C11Cutoff: number;
+  L3Cutoff: number;
+  L31Cutoff: number;
+  upperRounding: number;
+  lowerRounding: number;
+}
+
+// width is the cap's diameter; height is how far the tip stands beyond the plate's end
+export interface ButtonParams {
+  width: number;
+  height: number;
 }
 
 export const DEFAULT_VIOLIN_FAMILY_PARAMS: ViolinFamilyParams = {
@@ -175,6 +203,22 @@ export interface CenterBoutSolve {
   failures: CenterBoutFailure[];
 }
 
+export type OuterContourKey = 'top' | 'back' | 'purfling';
+export type OuterContourFailure = SolveFailure<OuterContourKey>;
+export type OuterCornerKey = 'U3' | 'U31' | 'C2' | 'C21' | 'C1' | 'C11' | 'L3' | 'L31';
+
+// the plates' outlines as closed SVG paths, the corner arcs at the plate edge with their cutoffs
+// (right-hand side; a viol corner has none), and the button the back carries
+export interface OuterContourSolve {
+  top: string | null;
+  back: string | null;
+  purfling: string | null;
+  outerPurfling: string | null;
+  corners: Partial<Record<OuterCornerKey, Arc>>;
+  button: { path: string; cap: Arc } | null;
+  failures: OuterContourFailure[];
+}
+
 // named <thing>to<datum>. The radius ratios are taken against the bout's inner width (the width
 // less the inset both sides), as the Ceruti recipe always measured them, so the two compare
 export interface ViolinFamilyRatios {
@@ -262,7 +306,7 @@ export const VIOLIN_FAMILY_SCHEMA_VERSION = '1';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface {

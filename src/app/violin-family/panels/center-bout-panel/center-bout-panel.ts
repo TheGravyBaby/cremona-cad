@@ -146,15 +146,12 @@ export const renderCenterBout = (
   let bout = currentModule ? pal.ink(3) : pal.neutral;
   let lowerTip = currentModule ? pal.ink(2) : pal.neutral;
 
-  // C0 is tangent to each corner arc, so an arc centred further than C0's radius from C0's
-  // centre sits outside it and its plate edge is the larger circle
-  let turn = (arc: Arc | null): 1 | -1 => arc && cb.C0 && dist(arc, cb.C0) > cb.C0.r ? 1 : -1;
   type Part = [Arc | null, string, 1 | -1];
   let parts = ([
-    [cb.C2, upperTip, turn(cb.C2)],
-    ...(k.C21DoubleArc ? [[cb.C21, upperTip, turn(cb.C2)] as Part] : []),
-    [cb.C1, lowerTip, turn(cb.C1)],
-    ...(k.C11DoubleArc ? [[cb.C11, lowerTip, turn(cb.C1)] as Part] : []),
+    [cb.C2, upperTip, cornerTurn(cb.C2, cb.C0)],
+    ...(k.C21DoubleArc ? [[cb.C21, upperTip, cornerTurn(cb.C2, cb.C0)] as Part] : []),
+    [cb.C1, lowerTip, cornerTurn(cb.C1, cb.C0)],
+    ...(k.C11DoubleArc ? [[cb.C11, lowerTip, cornerTurn(cb.C1, cb.C0)] as Part] : []),
     [cb.C0, bout, -1],
   ] as Part[]).filter((part): part is [Arc, string, 1 | -1] => !!part[0]);
 
@@ -194,6 +191,12 @@ export const renderCenterBout = (
     }
   }
 };
+
+// which way a C corner arc's plate edge offsets. C0 is tangent to each corner arc, so one centred
+// further than C0's radius from C0's centre sits outside it and its plate edge is the larger
+// circle (1); one that has inverted into the C offsets the other way (-1). A compound corner's
+// second arc follows its first
+export const cornerTurn = (arc: Arc | null, C0: Arc | null): 1 | -1 => arc && C0 && dist(arc, C0) > C0.r ? 1 : -1;
 
 // a later panel reads the C bout by calling this; it returns and never writes to the params. The
 // corners are solved again here for the join arcs the fit touches and the tips the corner arcs

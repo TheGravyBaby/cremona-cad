@@ -1,0 +1,114 @@
+@let o = params.outerContour!;
+@let k = params.corners!;
+
+<section class="ui-group">
+    <div class="ui-group-title">Button</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="o.button.width" (input)="edited()"
+                [style.borderColor]="pal.ink(0)" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="o.button.height" (input)="edited()"
+                [style.borderColor]="pal.ink(0)" />
+        </label>
+        <button type="button" class="info-icon" (click)="help('button')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Upper Corner</div>
+    @if (k.useViolCornerUC) {
+    <p class="viol-corner-notice">Viol corner selected — no cutoff options available.</p>
+    } @else {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
+            @if (k.U31DoubleArc) {
+            <input type="number" class="basic-input" step="1" [(ngModel)]="o.U31Cutoff" (input)="edited()"
+                [style.borderColor]="pal.ink(4)" />
+            } @else {
+            <input type="number" class="basic-input" step="1" [(ngModel)]="o.U3Cutoff" (input)="edited()"
+                [style.borderColor]="pal.ink(4)" />
+            }
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Bottom Cutoff <span class="unit-label">°</span></span>
+            @if (k.C21DoubleArc) {
+            <input type="number" class="basic-input" step="1" [(ngModel)]="o.C21Cutoff" (input)="edited()"
+                [style.borderColor]="pal.ink(4)" />
+            } @else {
+            <input type="number" class="basic-input" step="1" [(ngModel)]="o.C2Cutoff" (input)="edited()"
+                [style.borderColor]="pal.ink(4)" />
+            }
+        </label>
+        <button type="button" class="info-icon" (click)="help('cornerCutoff')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Rounding</span>
+            <input type="number" class="basic-input" step=".01" min="0" max="1" [(ngModel)]="o.upperRounding" (input)="edited()" />
+        </label>
+    </div>
+    }
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Lower Corner</div>
+    @if (k.useViolCornerLC) {
+    <p class="viol-corner-notice">Viol corner selected — no cutoff options available.</p>
+    } @else {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
+            @if (k.C11DoubleArc) {
+            <input type="number" class="basic-input" step="1" [(ngModel)]="o.C11Cutoff" (input)="edited()"
+                [style.borderColor]="pal.ink(2)" />
+            } @else {
+            <input type="number" class="basic-input" step="1" [(ngModel)]="o.C1Cutoff" (input)="edited()"
+                [style.borderColor]="pal.ink(2)" />
+            }
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Bottom Cutoff <span class="unit-label">°</span></span>
+            @if (k.L31DoubleArc) {
+            <input type="number" class="basic-input" step="1" [(ngModel)]="o.L31Cutoff" (input)="edited()"
+                [style.borderColor]="pal.ink(2)" />
+            } @else {
+            <input type="number" class="basic-input" step="1" [(ngModel)]="o.L3Cutoff" (input)="edited()"
+                [style.borderColor]="pal.ink(2)" />
+            }
+        </label>
+        <button type="button" class="info-icon" (click)="help('cornerCutoff')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Rounding</span>
+            <input type="number" class="basic-input" step=".01" min="0" max="1" [(ngModel)]="o.lowerRounding" (input)="edited()" />
+        </label>
+    </div>
+    }
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Purfling</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Offset <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="o.purflingOffset" (input)="edited()"
+                [style.borderColor]="pal.ink(3)" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="o.purflingChannelDepth" (input)="edited()"
+                [style.borderColor]="pal.ink(3)" />
+        </label>
+        <button type="button" class="info-icon" (click)="help('purfling')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+</section>

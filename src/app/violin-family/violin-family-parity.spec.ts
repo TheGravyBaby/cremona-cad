@@ -1,21 +1,31 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { templateKeys, templateViolin } from '../enrico-ceruti-violin/ceruti-fixtures';
-import { calculateCenterBout, calculateCorners } from '../enrico-ceruti-violin/calculation/outline/ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateOuterArcs } from '../enrico-ceruti-violin/calculation/outline/ceruti-calcs';
+import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../enrico-ceruti-violin/calculation/outline/ceruti-paths';
 import { EnricoCerutiParams } from '../enrico-ceruti-violin/ceruti-types';
-import { Arc } from '../models/types';
-import { TURN } from '../helpers/math/simpleGeometry';
+import { Arc, Pt } from '../models/types';
+import { signedRadianDelta, TURN } from '../helpers/math/simpleGeometry';
+import { samplePathToPolyline } from '../helpers/math/pathMath';
+import { buildPolylineIndex, distPointToPolylineIndexed } from '../helpers/math/vibeMath';
 import { solveMainBoutsRatios, solveMainBouts } from './panels/main-bouts-panel/main-bouts-panel';
 import { solveCorners, solveCornersRatios } from './panels/corners-panel/corners-panel';
 import { solveCenterBout, solveCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
+import { solveOuterContour } from './panels/outer-contour-panel/outer-contour-panel';
 import { ViolinFamilyParams } from './violin-family-types';
 
 // The port's acceptance test: every frozen Ceruti instrument, solved by both recipes from the same
 // inputs, gives the same arcs and reads the same ratios. Goes when the Ceruti recipe does.
 
+// Ceruti stored each plate corner arc's end; here that end is typed as how far it runs on past the
+// rib arc's, along the rib arc's own travel
+const cutoff = (inner: Arc | null | undefined, outer: Arc | null | undefined): number =>
+  inner && outer ? Math.sign(signedRadianDelta(inner.end - inner.start)) * signedRadianDelta(outer.end - inner.end) / TURN.degree : 0;
+
 function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
   let V0 = c.viol?.V0;
   let b = c.bouts;
+  let oc = c.outerCorners;
   return {
     body: { height: c.height, width: b.LBW!, overhang: c.overhang, rib: c.rib },
     bouts: {
@@ -57,16 +67,69 @@ function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
       C11Start: b.C11!.start / TURN.degree,
       C11DoubleArc: c.options.C11DoubleArc,
     },
+    outerContour: {
+      button: { width: c.button!.width, height: c.button!.height },
+      purflingOffset: c.purflingOffset!,
+      purflingChannelDepth: c.purflingChannelDepth!,
+      U3Cutoff: cutoff(b.U3, oc.U3),
+      U31Cutoff: cutoff(b.U31, oc.U31),
+      C2Cutoff: cutoff(b.C2, oc.C2),
+      C21Cutoff: cutoff(b.C21, oc.C21),
+      C1Cutoff: cutoff(b.C1, oc.C1),
+      C11Cutoff: cutoff(b.C11, oc.C11),
+      L3Cutoff: cutoff(b.L3, oc.L3),
+      L31Cutoff: cutoff(b.L31, oc.L31),
+      upperRounding: c.options.ucCornerSharpness ?? 0,
+      lowerRounding: c.options.lcCornerSharpness ?? 0,
+    },
   };
 }
 
 // to a millionth: the Ceruti fixtures are solved through every outline stage, and its corners
-// leave a ~2e-8 residue on U1.end that its main bouts solve would have snapped to 0
+// leave a ~2e-8 residue on U1.end that its main bouts solve would have snapped to 0. Angles
+// compare round the circle, since an arc is the same arc a turn later
 const sameArc = (a: Arc | null, b: Arc | null | undefined, label: string) => {
   expect(a, `${label} solved`).not.toBeNull();
-  for (const k of ['x', 'y', 'r', 'start', 'end'] as const) {
+  for (const k of ['x', 'y', 'r'] as const) {
     expect(Math.abs(a![k] - b![k]), `${label}.${k}`).toBeLessThan(1e-6);
   }
+  for (const k of ['start', 'end'] as const) {
+    expect(Math.abs(signedRadianDelta(a![k] - b![k])), `${label}.${k}`).toBeLessThan(1e-6);
+  }
+};
+
+// two paths are the same curve when every point sampled along either lies on the other, to a
+// micron. Sampled finely enough that the chords of the tightest corner arc stay under that
+const samePath = (a: string | null, b: string | null, label: string) => {
+  expect(a, `${label} drawn`).toBeTruthy();
+  expect(b, `${label} drawn by Ceruti`).toBeTruthy();
+  const A = samplePathToPolyline(a!, 0.1, true);
+  const B = samplePathToPolyline(b!, 0.1, true);
+  const far = (pts: Pt[], onto: Pt[]) => {
+    const idx = buildPolylineIndex(onto);
+    return Math.max(...pts.map(q => distPointToPolylineIndexed(q, idx)));
+  };
+  expect(far(A, B), `${label}: ours strays off theirs`).toBeLessThan(1e-3);
+  expect(far(B, A), `${label}: theirs strays off ours`).toBeLessThan(1e-3);
+};
+
+const OUTER_CORNER_KEYS = ['U3', 'U31', 'C2', 'C21', 'C1', 'C11', 'L3', 'L31'] as const;
+
+// the plate edges, purfling and corner arcs, both recipes solved from the same Ceruti instrument
+const sameOuterContour = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
+  const s = solveOuterContour(p)!;
+  const inset = c.overhang + c.rib;
+  expect(s.failures).toEqual([]);
+  if (!c.options.useViolCornerUC && !c.options.useViolCornerLC) {
+    for (const key of OUTER_CORNER_KEYS) {
+      expect(!!s.corners[key], `${key} present`).toBe(!!c.outerCorners[key]);
+      if (s.corners[key]) sameArc(s.corners[key]!, c.outerCorners[key], key);
+    }
+  }
+  samePath(s.top, defineOuterPath(c, inset, true, false), 'top');
+  samePath(s.back, defineOuterPath(c, inset, true, true), 'back');
+  samePath(s.purfling, definePurflingPath(c, inset), 'purfling');
+  samePath(s.outerPurfling, defineOuterPurflingPath(c, inset), 'outer purfling');
 };
 
 // every corner arc the options draw, both recipes solved from the same Ceruti instrument
@@ -174,6 +237,21 @@ describe.each(templateKeys())('parity with the Ceruti recipe: %s', key => {
     } else {
       sameCenterBout(fit, p);
     }
+  });
+
+  it('draws the same plates, purfling and corner cutoffs', () => {
+    sameOuterContour(c);
+  });
+
+  // no fixture ships with a viol corner: both recipes re-solve the instrument with one at each end
+  it('draws the same plates with viol corners', () => {
+    const viol = templateViolin(key);
+    viol.options.useViolCornerUC = true;
+    viol.options.useViolCornerLC = true;
+    calculateCorners(viol);
+    calculateCenterBout(viol);
+    calculateOuterArcs(viol);
+    sameOuterContour(viol, fromCeruti(viol));
   });
 
   it('reads the same ratios', () => {
