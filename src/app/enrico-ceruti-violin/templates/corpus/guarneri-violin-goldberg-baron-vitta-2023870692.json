@@ -447,7 +447,8 @@
       "overstand": 6.5,
       "angle": 0.1308996938995747,
       "length": 145,
-      "thickness": 13,
+      "upperThickness": 13,
+      "lowerThickness": 15,
       "topWidth": 24,
       "rootWidth": 33,
       "heel": {

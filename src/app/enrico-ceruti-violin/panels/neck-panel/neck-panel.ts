@@ -4,21 +4,21 @@ import { CerutiViewFlags, EnricoCerutiParams, FlutingParams, NeckParams, PathEnt
 import { defaultArchingParams } from '../../calculation/arching/ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
 import { calculateOuterArcs, ensureFholePath, ensureNeckPath, ensureOuterTracePaths, topPlatePaths } from '../../calculation/outline/ceruti-calcs';
-import { buttonTip, calculateNeck, defaultNeckParams, mortiseFingerboardIntersect, heelFace, heelStands, plateEdgeAtNeck } from '../../calculation/neck/ceruti-neck';
+import { buttonTip, calculateNeck, defaultNeckParams, mortiseFingerboardIntersect, heelFace, heelStands, lowerThicknessLine, plateEdgeAtNeck } from '../../calculation/neck/ceruti-neck';
 import { defineFrontProfilePath, definePlacedSideScrollPath, mortiseFloorY, scrollOnNeck } from '../../calculation/outline/ceruti-paths';
 import { solveScrollForProfile } from '../../calculation/neck/ceruti-scroll';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { applyMatrix, pathFromArc } from '../../../helpers/math/pathMath';
 import { moveInVectorSpace, pointOnCircle, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
-import { renderSegment, renderSegmentHalo, renderArcHalo, renderPolygon, renderPath, renderGuideMeasure, renderGuideBaseline, renderStroke } from '../../../helpers/renderFuncs';
-import { STROKE_WEIGHT } from '../../../theme/palettes';
+import { renderSegment, renderSegmentHalo, renderArcHalo, renderPolygon, renderPath, renderGuideMeasure, renderGuideBaseline, renderStroke, renderDashedLine } from '../../../helpers/renderFuncs';
+import { DASH, STROKE_WEIGHT } from '../../../theme/palettes';
 import { Pt } from '../../../models/types';
 import { scrollFrontInPlan } from '../../calculation/neck/ceruti-scroll-views';
 import { renderBodySideProfile, sideViewOffsetX } from '../../renders/body-side-profile.render';
 import { PanelPalette, ThemeService } from '../../../theme/theme.service';
 
-export type NeckHighlightKey = 'length' | 'thickness' | 'topWidth' | 'rootWidth' | 'heel' | 'buttonHeight' | 'mortise' | 'overstand' | 'angle';
+export type NeckHighlightKey = 'length' | 'upperThickness' | 'lowerThickness' | 'topWidth' | 'rootWidth' | 'heel' | 'buttonHeight' | 'mortise' | 'overstand' | 'angle';
 
 @Component({
   selector: 'app-ceruti-neck-panel',
@@ -125,11 +125,13 @@ export function renderNeck(p: EnricoCerutiParams, pal: PanelPalette, opts: NeckR
   const mortFboard = mortiseFingerboardIntersect(p);
   // with the scroll on, the pegbox carries on past the nut, and the back runs up to where the nape
   // meets it, as the scroll panels draw it
-  const backTop = scroll ? applyMatrix(scrollOnNeck(p), new Pt(-nk.thickness, p.scroll!.nape.y)) : nk.backNut!;
+  const backTop = scroll ? applyMatrix(scrollOnNeck(p), new Pt(-nk.upperThickness, p.scroll!.nape.y)) : nk.backNut!;
+  const [frontHeel, backHeel] = lowerThicknessLine(p);
 
   return (g: any, ui: any): void => {
-    // only the front, which the length sets, is in the neck's colour; the rest of its outline is plain
+    // only what a field sets is in colour, the front and the two thicknesses; the rest of the outline is plain
     const seg = (a: Pt, b: Pt, color: string = pal.neutral) => renderSegment(a, b, color, STROKE_WEIGHT.section)(g, ui);
+    const hidden = (a: Pt, b: Pt) => renderDashedLine(a, b, pal.neutral, DASH.hidden, STROKE_WEIGHT.section, 1)(g, ui);
 
     // the button: the back plate carried on past its edge, the heel's foot on top of it
     const backThickness = p.arching!.bottom.thickness;
@@ -144,8 +146,6 @@ export function renderNeck(p: EnricoCerutiParams, pal: PanelPalette, opts: NeckR
     if (scroll) {
       seg(nk.neckTop!, moveInVectorSpace(nk.neckTop!, [{ ...direction, mag: nk.nutHeight }]));
       renderPath(definePlacedSideScrollPath(p), pal.neutral, STROKE_WEIGHT.section)(g, ui);
-    } else {
-      seg(nk.neckTop!, nk.backNut!);
     }
     const heel = nk.heel;
     if (heelStands(p)) {
@@ -157,6 +157,21 @@ export function renderNeck(p: EnricoCerutiParams, pal: PanelPalette, opts: NeckR
       seg(backTop, nk.backRoot!);
     }
 
+    // the two thicknesses, across the nut end and across the heel's corner, with the back carried
+    // on to each where the scroll and the heel hide it. Under another panel only the nut's end,
+    // when it's an edge
+    if (ground) {
+      if (!scroll) seg(nk.neckTop!, nk.backNut!);
+    } else {
+      if (scroll) hidden(backTop, nk.backNut!);
+      if (heelStands(p)) {
+        hidden(pointOnCircle(heel, heel.start), backHeel);
+        hidden(backHeel, pointOnCircle(heel, heel.end));
+      }
+      seg(nk.neckTop!, nk.backNut!, pal.ink(2).faint(3));
+      seg(frontHeel, backHeel, pal.ink(3).faint(-5));
+    }
+
     seg(mortFboard, nk.root!, ink(pal.ink(2)));
     seg(nk.root!, nk.neckTop!, ink(pal.ink(2)));
 
@@ -164,10 +179,13 @@ export function renderNeck(p: EnricoCerutiParams, pal: PanelPalette, opts: NeckR
     const rootPlaneY = p.height - p.overhang;
     // offsets scale with the neck's own wood thickness rather than a fixed mm, so the parked
     // dimension lines clear the drawing the same way on a cello neck as on a violin's
-    renderGuideMeasure(plateEdgeAtNeck(p), nk.root!, pal.neutral, -nk.thickness)(g, ui);
+    renderGuideMeasure(plateEdgeAtNeck(p), nk.root!, pal.neutral, -nk.upperThickness)(g, ui);
     renderGuideBaseline(new Pt(0, rootPlaneY), new Pt(mortFboard.x, rootPlaneY), pal.neutral)(g, ui);
-    renderGuideMeasure(new Pt(mortFboard.x, rootPlaneY), mortFboard, pal.neutral, 2 * nk.thickness)(g, ui);
-    renderGuideMeasure(mortFboard, nk.neckTop!, pal.neutral, -2 * nk.thickness)(g, ui);
+    renderGuideMeasure(new Pt(mortFboard.x, rootPlaneY), mortFboard, pal.neutral, 2 * nk.upperThickness)(g, ui);
+    renderGuideMeasure(mortFboard, nk.neckTop!, pal.neutral, -2 * nk.upperThickness)(g, ui);
+    // both parked inside the neck, off the coloured lines they measure
+    renderGuideMeasure(nk.neckTop!, nk.backNut!, pal.neutral, nk.upperThickness / 2)(g, ui);
+    renderGuideMeasure(frontHeel, backHeel, pal.neutral, -nk.upperThickness / 2)(g, ui);
   };
 }
 
@@ -181,7 +199,8 @@ function renderNeckHighlight(p: EnricoCerutiParams, key: NeckHighlightKey | null
     const rootY = mortiseFloorY(p);
     switch (key) {
       case 'length': line(mortiseFingerboardIntersect(p), nk.neckTop!); break;
-      case 'thickness': line(nk.neckTop!, nk.backNut!); break;
+      case 'upperThickness': line(nk.neckTop!, nk.backNut!); break;
+      case 'lowerThickness': line(...lowerThicknessLine(p)); break;
       case 'topWidth': line(new Pt(-nk.topWidth / 2, topY), new Pt(nk.topWidth / 2, topY)); break;
       case 'rootWidth': line(new Pt(-nk.rootWidth / 2, rootY), new Pt(nk.rootWidth / 2, rootY)); break;
       case 'heel': if (heelStands(p)) renderArcHalo(nk.heel, color)(g, ui); break;

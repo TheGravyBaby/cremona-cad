@@ -129,8 +129,7 @@ export const scrollArc = (arc: Arc, color: string, fancy: boolean) =>
 // crown's top, then back to S1's furthest reach
 export const renderScrollNeck = (p: EnricoCerutiParams, pal: PanelPalette, showGuides: boolean, failures: ScrollFailure[] = []) => (g: any, ui: any): void => {
   const v = p.scroll!;
-  const { thickness } = p.neck!;
-  const { nutHeight } = p.neck!;
+  const { upperThickness: thickness, nutHeight } = p.neck!;
   const { nutThickness } = p.stringSetup ?? defaultStringSetup(p);
   const stub = scrollNeckStub(p);
 

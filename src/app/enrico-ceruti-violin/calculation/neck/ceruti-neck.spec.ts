@@ -6,7 +6,7 @@ import { EnricoCerutiParams, NeckParams } from '../../ceruti-types';
 import { defaultFlutingParams, solveLongArch } from '../arching/ceruti-arch-geometry';
 import {
   bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, defineNeckPath, fingerboardCrown, mortiseFingerboardIntersect,
-  heelFace, heelStands, plateEdgeAtNeck, stringLength,
+  heelFace, heelStands, lowerThicknessLine, plateEdgeAtNeck, stringLength,
 } from './ceruti-neck';
 import { defineFrontProfilePath, fingerboardEnd, mortiseFloorY, neckHalfWidthAt } from '../outline/ceruti-paths';
 
@@ -193,18 +193,39 @@ describe('the heel', () => {
 });
 
 describe('the neck wood', () => {
-  it('is the entered thickness, uniform along the neck, whatever the fingerboard is', () => {
+  it('is the upper thickness under the nut and the lower under the heel, whatever the fingerboard is', () => {
     const thin = neckedViolin();
     const thick = neckedViolin();
     thick.stringSetup!.fingerboardThickness += 3;
     thick.stringSetup!.nutThickness += 3;
     for (const [p, s] of [[thin, solve(thin)], [thick, solve(thick)]] as const) {
-      // the back sits the entered thickness under the fingerboard plane at both ends
       const normal = normalOf(s);
       const under = (pt: Pt) => (pt.x - s.root!.x) * -normal.a + (pt.y - s.root!.y) * -normal.b;
-      expect(under(s.backNut!)).toBeCloseTo(p.neck!.thickness, 9);
-      expect(under(s.backRoot!)).toBeCloseTo(p.neck!.thickness, 9);
+      expect(under(s.backNut!)).toBeCloseTo(p.neck!.upperThickness, 9);
+      const [front, back] = lowerThicknessLine(p);
+      expect(under(back)).toBeCloseTo(p.neck!.lowerThickness, 9);
+      expect(under(front)).toBeCloseTo(0, 9);
     }
+  });
+
+  it('measures the lower thickness on the line the heel\'s foot is cut along, through the button tip', () => {
+    const p = neckedViolin();
+    const s = solve(p);
+    const tip = buttonTip(p);
+    const along = directionOf(s);
+    for (const end of lowerThicknessLine(p)) expect((tip.x - end.x) * along.a + (tip.y - end.y) * along.b).toBeCloseTo(0, 9);
+  });
+
+  it('tapers the back in one straight line from the nut through the heel to the root', () => {
+    const p = neckedViolin();
+    p.neck!.upperThickness = 12;
+    p.neck!.lowerThickness = 16;
+    const s = solve(p);
+    const cross = (a: Pt, b: Pt, c: Pt) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    expect(cross(s.backNut!, lowerThicknessLine(p)[1], s.backRoot!)).toBeCloseTo(0, 9);
+    const normal = normalOf(s);
+    const under = (pt: Pt) => (pt.x - s.root!.x) * -normal.a + (pt.y - s.root!.y) * -normal.b;
+    expect(under(s.backRoot!)).toBeGreaterThan(16);
   });
 
   it('traces one path from the mortise floor round to the heel\'s foot, and to the back\'s root with no heel', () => {

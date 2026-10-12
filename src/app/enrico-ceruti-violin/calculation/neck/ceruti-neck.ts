@@ -32,10 +32,11 @@ export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
     overstand: mm(6.5),
     angle: 7.5 * TURN.degree,
     length: mm(144),
-    thickness: mm(13),
+    upperThickness: mm(13),
+    lowerThickness: mm(15),
     topWidth: mm(24),
     rootWidth: mm(33),
-    heel: new Arc(0, 0, mm(20), 0, 0),
+    heel: new Arc(0, 0, mm(10), 0, 0),
     nutHeight: mm(6),
     nutWidth: mm(24),
 
@@ -84,24 +85,25 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   const neckAtRootPlane = intersectLines(fingerboardPlane, lineFromTwoPoints(new Pt(0, rootPlaneY), new Pt(1, rootPlaneY)))!;
 
   // `length` runs along the fingerboard plane from where it crosses the mortise floor to the
-  // nut's bottom, the neck's end; the back sits the neck's thickness below
+  // nut's bottom, the neck's end. The back sits the upper thickness under the nut and runs straight
+  // through the lower under the heel
   const tip = buttonTip(p);
   const floorY = mortiseFloorY(p);
   const floorCrossing = intersectLines(fingerboardPlane, lineFromTwoPoints(new Pt(0, floorY), new Pt(1, floorY)))!;
   const neckTop = moveInVectorSpace(floorCrossing, [{ ...direction, mag: nk.length }]);
-  const backNut = moveInVectorSpace(neckTop, [{ ...normal, mag: -nk.thickness }]);
-  const backRoot = moveInVectorSpace(neckAtRootPlane, [{ ...normal, mag: -nk.thickness }]);
+  const backNut = moveInVectorSpace(neckTop, [{ ...normal, mag: -nk.upperThickness }]);
 
   nk.root = root;
   nk.neckTop = neckTop;
-  nk.backRoot = backRoot;
   nk.backNut = backNut;
+  const [, backHeel] = lowerThicknessLine(p);
+  nk.backRoot = intersectLines(lineFromTwoPoints(backNut, backHeel), lineFromTwoPoints(neckAtRootPlane, moveInVectorSpace(neckAtRootPlane, [normal])))!;
   // where the mortise floor comes out through the plate's surface; below it the foot is hidden in the
   // block. The floor is level with the body, so the point stays on it: the taper's tilt moves the
   // placed point's y by a fraction of a mm, across which the surface barely rises
   const surface = placeOnTopPlate(placement, new Pt(outerZ + channelCenterlineZAt(p, topGouge, topArch, floorY), floorY));
   nk.plateAtMortise = new Pt(surface.x, floorY);
-  nk.heel = calculateHeel(backRoot, backNut, tip, nk.heel.r) ?? nk.heel;
+  nk.heel = calculateHeel(backHeel, backNut, tip, nk.heel.r) ?? nk.heel;
 
   const ss = p.stringSetup;
   if (!ss) return [];
@@ -143,31 +145,37 @@ export function heelStands(p: EnricoCerutiParams): boolean {
   return nk.heel.r > 0 && tipDepthBehindBack(nk.backRoot!, nk.backNut!, buttonTip(p)) > 0;
 }
 
-function calculateHeel(backRoot: Pt, backNut: Pt, tip: Pt, radius: number): Arc | null {
-  const tipDepth = tipDepthBehindBack(backRoot, backNut, tip);
+// the heel rounds the corner at `backHeel` between the back and the foot running out to the tip
+function calculateHeel(backHeel: Pt, backNut: Pt, tip: Pt, radius: number): Arc | null {
+  const tipDepth = tipDepthBehindBack(backHeel, backNut, tip);
   if (!(radius > 0) || !(tipDepth > 0)) return null;
 
-  const backRunLength = dist(backRoot, backNut);
-  const backDirection: Vect2D = { a: (backNut.x - backRoot.x) / backRunLength, b: (backNut.y - backRoot.y) / backRunLength, mag: 1 };
-  const backNormal: Vect2D = { a: backDirection.b, b: -backDirection.a, mag: 1 };
+  const backRunLength = dist(backHeel, backNut);
+  const footLength = dist(backHeel, tip);
+  const up: Vect2D = { a: (backNut.x - backHeel.x) / backRunLength, b: (backNut.y - backHeel.y) / backRunLength, mag: 1 };
+  const out: Vect2D = { a: (tip.x - backHeel.x) / footLength, b: (tip.y - backHeel.y) / footLength, mag: 1 };
+  // off the back toward the tip, where the arc's centre stands
+  const cos = up.a * out.a + up.b * out.b;
+  const offBack: Vect2D = { a: (out.a - cos * up.a) / Math.sqrt(1 - cos * cos), b: (out.b - cos * up.b) / Math.sqrt(1 - cos * cos), mag: 1 };
 
-  let center: Pt;
+  let start: Pt;
   let end: Pt;
 
-  // the foot is cut square to the neck, not level with the body, so it leaves the tip along the
-  // back's normal and meets the back line `tipDepth` later — a plain fillet if it fits, else the
-  // arc reaches the tip itself
-  if (radius < tipDepth) {
-    end = moveInVectorSpace(tip, [{ ...backNormal, mag: tipDepth - radius }]);
-    center = moveInVectorSpace(end, [{ ...backDirection, mag: radius }]);
+  // the foot is cut square to the neck, not level with the body, so it leaves the tip square to the
+  // fingerboard plane — a plain fillet if it fits, else the arc reaches the tip itself
+  const tangentRun = radius * Math.sqrt((1 + cos) / (1 - cos));
+  if (tangentRun < footLength) {
+    start = moveInVectorSpace(backHeel, [{ ...up, mag: tangentRun }]);
+    end = moveInVectorSpace(backHeel, [{ ...out, mag: tangentRun }]);
   } else {
-    const alongBackToCenter = tipDepth - radius;
-    const acrossBackToCenter = Math.sqrt(Math.max(radius * radius - alongBackToCenter * alongBackToCenter, 0));
-    center = moveInVectorSpace(tip, [{ ...backNormal, mag: alongBackToCenter }, { ...backDirection, mag: acrossBackToCenter }]);
+    const fromTip = new Pt(backHeel.x + offBack.a * radius - tip.x, backHeel.y + offBack.b * radius - tip.y);
+    const along = fromTip.x * up.a + fromTip.y * up.b;
+    const upBack = -along + Math.sqrt(Math.max(along * along - (fromTip.x ** 2 + fromTip.y ** 2) + radius * radius, 0));
+    start = moveInVectorSpace(backHeel, [{ ...up, mag: upBack }]);
     end = tip;
   }
 
-  const start = moveInVectorSpace(center, [{ ...backNormal, mag: radius }]);
+  const center = moveInVectorSpace(start, [{ ...offBack, mag: radius }]);
   const circle: Circle = { x: center.x, y: center.y, r: radius };
   return arcFromCircle(circle, angleFromCenter(center, start), angleFromCenter(center, end));
 }
@@ -195,6 +203,17 @@ export function mortiseFingerboardIntersect(p: EnricoCerutiParams): Pt {
 export function plateEdgeAtNeck(p: EnricoCerutiParams): Pt {
   const taper = solveRibTaper(p);
   return placeOnTopPlate(topPlatePlacement(p, taper), new Pt(taper.zLower + p.arching!.top.thickness, p.height));
+}
+
+// the lower thickness, fingerboard plane to back, taken square to the plane through the button tip:
+// the line the heel's foot is cut along, so it is measured at the corner the heel rounds
+export function lowerThicknessLine(p: EnricoCerutiParams): [Pt, Pt] {
+  const nk = p.neck!;
+  const direction = vectorFromSlope(nk.angle + TURN.quarter);
+  const tip = buttonTip(p);
+  const root = nk.root!;
+  const front = moveInVectorSpace(root, [{ ...direction, mag: (tip.x - root.x) * direction.a + (tip.y - root.y) * direction.b }]);
+  return [front, moveInVectorSpace(front, [{ ...vectorFromSlope(nk.angle), mag: -nk.lowerThickness }])];
 }
 
 // the flat foot square to the neck, from the heel's end on to the button tip, when the arc stops

@@ -253,7 +253,7 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
   if (v.style === 'fourPoint' && !v.arcRadii.length)
     v.arcRadii = kellyArcs(v.eye.r, v.seedLength).reverse().map(a => Math.round(a.r * 100) / 100);
 
-  let neckBack = -p.neck!.thickness;
+  let neckBack = -p.neck!.upperThickness;
   let nutTop = new Pt(0, p.neck!.nutHeight);
 
   v.spiral = null;

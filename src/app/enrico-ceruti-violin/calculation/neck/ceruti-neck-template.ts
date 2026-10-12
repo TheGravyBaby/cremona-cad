@@ -152,7 +152,7 @@ export function defineNeckTemplate(p: EnricoCerutiParams, spec: NeckTemplateSpec
   const m = scrollOnNeck(p);
   const { interior, whole, crossing } = interiorSpiral(p);
   const edge = scrollOutline(p, crossing);
-  const backTop = { x: m[0] * -p.neck!.thickness + m[2] * v.nape.y + m[4], y: m[1] * -p.neck!.thickness + m[3] * v.nape.y + m[5] };
+  const backTop = { x: m[0] * -p.neck!.upperThickness + m[2] * v.nape.y + m[4], y: m[1] * -p.neck!.upperThickness + m[3] * v.nape.y + m[5] };
   const outline = unifyConnectedSvgPaths([...edge.map(d => transformPath(d, m)), ...neckOutline(p, backTop)]);
 
   // what else a slot could break through to: the next turn of the spiral, or the outline's other

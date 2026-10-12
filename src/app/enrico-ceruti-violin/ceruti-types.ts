@@ -226,7 +226,8 @@ export interface NeckParams {
   overstand: number;
   angle: number;
   length: number;
-  thickness: number;
+  upperThickness: number; // at the nut
+  lowerThickness: number; // at the heel, square to the fingerboard plane through the button tip
   topWidth: number;
   rootWidth: number;
   heel: Arc; // r is entered, the rest derived
