@@ -1,12 +1,13 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { templateKeys, templateViolin } from '../enrico-ceruti-violin/ceruti-fixtures';
-import { calculateCorners } from '../enrico-ceruti-violin/calculation/outline/ceruti-calcs';
+import { calculateCenterBout, calculateCorners } from '../enrico-ceruti-violin/calculation/outline/ceruti-calcs';
 import { EnricoCerutiParams } from '../enrico-ceruti-violin/ceruti-types';
 import { Arc } from '../models/types';
 import { TURN } from '../helpers/math/simpleGeometry';
 import { solveMainBoutsRatios, solveMainBouts } from './panels/main-bouts-panel/main-bouts-panel';
 import { solveCorners, solveCornersRatios } from './panels/corners-panel/corners-panel';
+import { solveCenterBout, solveCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
 import { ViolinFamilyParams } from './violin-family-types';
 
 // The port's acceptance test: every frozen Ceruti instrument, solved by both recipes from the same
@@ -25,6 +26,10 @@ function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
       L1R: b.L1!.r,
       useViolNeck: c.options.useViolNeck,
       viol: V0 ? { width: c.viol.width!, neckRadius: c.viol.neckRadius ?? 0, V0R: V0.r, V0Start: V0.start / TURN.degree, V0End: V0.end / TURN.degree } : null,
+      CBW: b.CBW!,
+      C0R: b.C0!.r,
+      C0Y: b.C0!.y,
+      useKellyC0: c.options.useKellyC0,
     },
     // a solved Ceruti compound arc's start is the split direction it was solved at, so it reads
     // straight across as the authored angle
@@ -43,6 +48,14 @@ function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
       L31Start: b.L31!.start / TURN.degree,
       L31DoubleArc: c.options.L31DoubleArc,
       useViolCornerLC: c.options.useViolCornerLC,
+      C2R: b.C2!.r,
+      C21R: b.C21!.r,
+      C21Start: b.C21!.start / TURN.degree,
+      C21DoubleArc: c.options.C21DoubleArc,
+      C1R: b.C1!.r,
+      C11R: b.C11!.r,
+      C11Start: b.C11!.start / TURN.degree,
+      C11DoubleArc: c.options.C11DoubleArc,
     },
   };
 }
@@ -72,6 +85,19 @@ const sameCorners = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
   if (o.L31DoubleArc) sameArc(s.L31, b.L31, 'L31');
   if (o.useViolCornerUC) sameArc(s.U4, b.U4, 'U4');
   if (o.useViolCornerLC) sameArc(s.L4, b.L4, 'L4');
+};
+
+// the C bout and its corner arcs, both recipes solved from the same Ceruti instrument
+const sameCenterBout = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
+  const s = solveCenterBout(p)!;
+  const b = c.bouts;
+  expect(s.failures).toEqual([]);
+  sameArc(s.C0, b.C0, 'C0');
+  sameArc(s.C2, b.C2, 'C2');
+  sameArc(s.C1, b.C1, 'C1');
+  if (c.options.C21DoubleArc) sameArc(s.C21, b.C21, 'C21');
+  if (c.options.C11DoubleArc) sameArc(s.C11, b.C11, 'C11');
+  expect(s.CBW).toBeCloseTo(b.CBW!, 6);
 };
 
 describe.each(templateKeys())('parity with the Ceruti recipe: %s', key => {
@@ -119,11 +145,43 @@ describe.each(templateKeys())('parity with the Ceruti recipe: %s', key => {
     }
   });
 
+  it('solves the center bout to the same arcs', () => {
+    sameCenterBout(c);
+  });
+
+  it('solves the compound center bout corners to the same arcs, or misses them together', () => {
+    const compound = templateViolin(key);
+    compound.options.C21DoubleArc = true;
+    compound.options.C11DoubleArc = true;
+    const p = fromCeruti(compound);
+    const failures = calculateCenterBout(compound);
+    if (failures.length) {
+      expect(solveCenterBout(p)!.failures.map(f => f.unsolved)).toEqual(failures.map(f => f.unsolved));
+    } else {
+      sameCenterBout(compound, p);
+    }
+  });
+
+  // no fixture ships with the fit on. Where Ceruti's fit misses it turns itself off and falls
+  // back to a hand-placed C0; here that is a failure, with no fallback
+  it('fits C0 to the bouts the same way, or misses it together', () => {
+    const fit = templateViolin(key);
+    fit.options.useKellyC0 = true;
+    const p = fromCeruti(fit);
+    calculateCenterBout(fit);
+    if (!fit.options.useKellyC0) {
+      expect(solveCenterBout(p)!.failures[0].message).toContain('Fit C0 to Bouts');
+    } else {
+      sameCenterBout(fit, p);
+    }
+  });
+
   it('reads the same ratios', () => {
-    const r = { ...solveMainBoutsRatios(p), ...solveCornersRatios(p) };
+    const r = { ...solveMainBoutsRatios(p), ...solveCornersRatios(p), ...solveCenterBoutRatios(p) };
     for (const k of [
       'UBtoLB', 'U0toUBW', 'U1toUBW', 'LBtoH', 'L0toLBW', 'L1toLBW',
       'U2toUBW', 'U3toLBW', 'U31toLBW', 'L2toLBW', 'L3toLBW', 'L31toLBW', 'UCYtoH', 'LCYtoH',
+      'CBWtoLBW', 'C0toLBW', 'C0YtoH', 'C2toLBW', 'C21toLBW', 'C1toLBW', 'C11toLBW',
     ] as const) {
       expect(r[k], k).toBeCloseTo(c.ratios[k], 12);
     }

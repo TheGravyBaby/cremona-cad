@@ -16,6 +16,7 @@ import {
   ViolinFamilyRatios, ViolinFamilyToggleKey, ViolinFamilyViewFlags, ViolNeckCap, ViolNeckJoin,
 } from '../../violin-family-types';
 import { renderCorners, solveCorners } from '../corners-panel/corners-panel';
+import { renderCenterBout, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 
 // The main bouts: the upper and lower bouts' two arcs each, set by their widths and radii, and the
 // viol neck that can take the place of the upper bout's top. Panel and renders, then solve and ratios.
@@ -49,7 +50,11 @@ export class MainBoutsPanel implements ViolinFamilyPanel, OnInit {
       let L0R = Math.round(LBWI * SEED_RATIOS.L0toLBW * 10) / 10;
       let L1R = Math.round(LBWI * SEED_RATIOS.L1toLBW * 10) / 10;
 
-      p.bouts = { UBW, U0R, U1R, L0R, L1R, useViolNeck: false, viol: null };
+      let CBW = Math.round(LBW * SEED_RATIOS.CBWtoLBW);
+      let C0R = Math.round(LBWI * SEED_RATIOS.C0toLBW);
+      let C0Y = Math.round(p.body.height * SEED_RATIOS.C0YtoH);
+
+      p.bouts = { UBW, U0R, U1R, L0R, L1R, useViolNeck: false, viol: null, CBW, C0R, C0Y, useKellyC0: false };
     }
 
     if (p.bouts.useViolNeck && !p.bouts.viol) {
@@ -116,11 +121,14 @@ export class MainBoutsPanel implements ViolinFamilyPanel, OnInit {
       this.ratios = solveMainBoutsRatios(p);
       let arc = this.highlightedKey ? m[this.highlightedKey] : null;
       let c = solveCorners(p);
+      let cb = solveCenterBout(p);
       let layers: RenderLayer[] = [];
 
       if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, this.pal));
-      // the corners as far as they've been drafted, in grey under this panel's bouts
+      // the corners and the center bout as far as they've been drafted, in grey under this
+      // panel's bouts
       if (c) layers.push(renderCorners(p, c, this.pal, this.flags, false, null));
+      if (cb) layers.push(renderCenterBout(p, cb, this.pal, this.flags, false, null));
       layers.push(
         renderMainBouts(p, m, this.pal, this.flags, true, arc ? { arc, color: this.highlightedColor } : null),
         renderSolveFailures(m.failures, this.pal.alert, true),

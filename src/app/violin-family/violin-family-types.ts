@@ -27,7 +27,8 @@ export interface BodyParams {
 }
 
 // widths are outer measurements; radii are of the rib outline, inside the inset. The lower bout's
-// width is the body's (`body.width`), so the two panels can't disagree about it
+// width is the body's (`body.width`), so the two panels can't disagree about it. The center bout
+// is a bout, so C0 lives here too, seeded with the others and edited on the Center Bout panel
 export interface MainBoutsParams {
   UBW: number;
   U0R: number;
@@ -37,6 +38,12 @@ export interface MainBoutsParams {
   useViolNeck: boolean;
   // kept when the toggle goes off, so turning it back on returns the same neck
   viol: ViolNeckParams | null;
+  CBW: number;
+  C0R: number;
+  C0Y: number;
+  // Kelly's four circles: C0 is placed where it touches both join arcs, and CBW and C0Y are
+  // read off it rather than typed
+  useKellyC0: boolean;
 }
 
 export interface ViolNeckParams {
@@ -51,8 +58,10 @@ export interface ViolNeckParams {
 
 // the corner tips and the arcs that turn each bout into them. The tips are typed points: the seed
 // puts them on their guide circles and the Default button puts them back there. Radii are of the
-// rib outline. Where a corner is compound, the split angle is the direction from U3's centre to
-// the point U31 takes over at, in degrees as the field shows it
+// rib outline. Where a corner is compound, the split angle is the direction from the first arc's
+// centre to the point the second takes over at, in degrees as the field shows it. The center
+// bout's corner arcs (C2 under the upper tip, C1 over the lower) are corners too, so they live
+// here, seeded with the others and edited on the Center Bout panel
 export interface CornersParams {
   UCr: Pt;
   LCr: Pt;
@@ -68,6 +77,14 @@ export interface CornersParams {
   L31Start: number;
   L31DoubleArc: boolean;
   useViolCornerLC: boolean;
+  C2R: number;
+  C21R: number;
+  C21Start: number;
+  C21DoubleArc: boolean;
+  C1R: number;
+  C11R: number;
+  C11Start: number;
+  C11DoubleArc: boolean;
 }
 
 export const DEFAULT_VIOLIN_FAMILY_PARAMS: ViolinFamilyParams = {
@@ -142,6 +159,22 @@ export interface CornersSolve {
   failures: CornerFailure[];
 }
 
+export type CenterBoutKey = 'C0' | 'C1' | 'C11' | 'C2' | 'C21';
+export type CenterBoutFailure = SolveFailure<CenterBoutKey>;
+
+// the right-hand C bout; renders mirror it. C0 runs from where C2 takes over down to where C1
+// does, and is null until both corners solve. CBW is the width in use: the typed one, or the one
+// the fit found
+export interface CenterBoutSolve {
+  C0: Arc | null;
+  C2: Arc | null;
+  C21: Arc | null;
+  C1: Arc | null;
+  C11: Arc | null;
+  CBW: number | null;
+  failures: CenterBoutFailure[];
+}
+
 // named <thing>to<datum>. The radius ratios are taken against the bout's inner width (the width
 // less the inset both sides), as the Ceruti recipe always measured them, so the two compare
 export interface ViolinFamilyRatios {
@@ -160,6 +193,13 @@ export interface ViolinFamilyRatios {
   L31toLBW: number;
   UCYtoH: number;
   LCYtoH: number;
+  CBWtoLBW: number;
+  C0toLBW: number;
+  C0YtoH: number;
+  C2toLBW: number;
+  C21toLBW: number;
+  C1toLBW: number;
+  C11toLBW: number;
 }
 
 // what a stage is first drafted at
@@ -179,6 +219,13 @@ export const SEED_RATIOS: ViolinFamilyRatios = {
   L31toLBW: 1 / 16,
   UCYtoH: 2 / 3,
   LCYtoH: 6 / 15,
+  CBWtoLBW: 1 / 2,
+  C0toLBW: 4 / 9,
+  C0YtoH: 9 / 16,
+  C2toLBW: 1 / 12,
+  C21toLBW: 1 / 16,
+  C1toLBW: 1 / 8,
+  C11toLBW: 1 / 16,
 };
 
 export interface ViolinFamilyViewFlags {
@@ -215,7 +262,7 @@ export const VIOLIN_FAMILY_SCHEMA_VERSION = '1';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface {

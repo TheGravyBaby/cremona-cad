@@ -4,7 +4,7 @@ import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAn
 import { angleFromCenter, dist, flipArcAboutY, lineCircleIntersection, lineFromPointAndSlope, offsetArcRadius, pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCrosshair, renderPointHalo, renderSolveFailures } from '../../../helpers/renderFuncs';
-import { reportFailures, safeRun, solveSection } from '../../../helpers/validators';
+import { reportFailures, safeRun, SolveFailure, solveSection } from '../../../helpers/validators';
 import { showFieldHelp } from '../../../docs/field-help';
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt } from '../../../models/types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -15,6 +15,7 @@ import {
   ViolinFamilyRatios, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
 } from '../../violin-family-types';
 import { renderBoutBounds, renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
+import { renderCenterBout, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 
 // The corners: each bout turns through a join arc (U2, L2) into a corner arc (U3, L3) that ends on
 // the typed corner tip, or through a compound pair (U3 then U31) where one arc can't make the
@@ -58,6 +59,14 @@ export class CornersPanel implements ViolinFamilyPanel, OnInit {
       L31Start: 15 / 16 * 180,
       L31DoubleArc: false,
       useViolCornerLC: false,
+      C2R: Math.round(LBWI * SEED_RATIOS.C2toLBW),
+      C21R: Math.round(LBWI * SEED_RATIOS.C21toLBW),
+      C21Start: 15 / 16 * 180,
+      C21DoubleArc: false,
+      C1R: Math.round(LBWI * SEED_RATIOS.C1toLBW),
+      C11R: Math.round(LBWI * SEED_RATIOS.C11toLBW),
+      C11Start: 17 / 16 * 180,
+      C11DoubleArc: false,
     };
   }
 
@@ -118,14 +127,19 @@ export class CornersPanel implements ViolinFamilyPanel, OnInit {
       let p = this.params;
       let m = this.m = solveMainBouts(p)!;
       let c = this.c = solveCorners(p)!;
+      let cb = solveCenterBout(p);
       this.ratios = solveCornersRatios(p);
       let highlighted = this.highlightedKey ? { key: this.highlightedKey, color: this.highlightedColor } : null;
       let layers: RenderLayer[] = [];
 
       if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, this.pal));
+      // the bouts and the center bout in grey under this panel's corners
       layers.push(
         renderMainBouts(p, { ...m, U1: c.U1, L1: c.L1 }, this.pal, this.flags, false, null),
         renderSolveFailures(m.failures, this.pal.alert, true),
+      );
+      if (cb) layers.push(renderCenterBout(p, cb, this.pal, this.flags, false, null));
+      layers.push(
         renderCorners(p, c, this.pal, this.flags, true, highlighted),
         renderSolveFailures(c.failures, this.pal.alert, true),
       );
@@ -247,29 +261,6 @@ export function solveCorners(p: ViolinFamilyParams): CornersSolve | null {
     U1: m.U1, U2: null, U3: null, U31: null, U4: null,
     L1: m.L1, L2: null, L3: null, L31: null, L4: null,
     failures: [],
-  };
-
-  // an arc of radius r tangent to `from` and through the corner needs r to span half the gap
-  // between them; the compound pair has no closed form, so it only gets the generic advice
-  let cornerMiss = (
-    section: string,
-    fromKey: CornerKey,
-    from: Circle,
-    arcKey: CornerKey,
-    corner: Pt,
-    compound: boolean,
-    unsolved: CornerKey[],
-  ): CornerFailure => {
-    let needed = Math.abs(dist(from, corner) - from.r) / 2
-    return {
-      message: compound
-        ? `${section}: no ${arcKey} of that radius reaches the corner from ${fromKey}. Bring the corner in toward the body, or give it a larger radius.`
-        : `${section}: ${arcKey} can't reach the corner from ${fromKey}. Enlarge ${arcKey} (at least ${needed.toFixed(1)}mm), or bring the corner in toward the body.`,
-      unsolved,
-      circles: [from],
-      segments: [],
-      points: [corner],
-    }
   };
 
   // a field cleared mid-edit, or a bout that hasn't solved, fails its own corner rather than
@@ -412,6 +403,30 @@ export function solveCorners(p: ViolinFamilyParams): CornersSolve | null {
   });
 
   return s;
+}
+
+// an arc of radius r tangent to `from` and through the corner needs r to span half the gap
+// between them; the compound pair has no closed form, so it only gets the generic advice. The
+// center bout's corner arcs miss the same way
+export function cornerMiss<K extends string>(
+  section: string,
+  fromKey: K,
+  from: Circle,
+  arcKey: K,
+  corner: Pt,
+  compound: boolean,
+  unsolved: K[],
+): SolveFailure<K> {
+  let needed = Math.abs(dist(from, corner) - from.r) / 2
+  return {
+    message: compound
+      ? `${section}: no ${arcKey} of that radius reaches the corner from ${fromKey}. Bring the corner in toward the body, or give it a larger radius.`
+      : `${section}: ${arcKey} can't reach the corner from ${fromKey}. Enlarge ${arcKey} (at least ${needed.toFixed(1)}mm), or bring the corner in toward the body.`,
+    unsolved,
+    circles: [from],
+    segments: [],
+    points: [corner],
+  }
 }
 
 // read off the params every solve, so they can't drift from the instrument. The radius ratios are

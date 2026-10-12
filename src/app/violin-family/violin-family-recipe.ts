@@ -14,6 +14,7 @@ import {
 import { BaseMeasurementsPanel, solveBodyRatios } from './panels/base-measurements-panel/base-measurements-panel';
 import { MainBoutsPanel, solveMainBouts, solveMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel, solveCornersRatios } from './panels/corners-panel/corners-panel';
+import { CenterBoutPanel, solveCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
 
 // The Violin Family recipe: the Ceruti model rebuilt on a split between what the user sets
 // (`d.params`, the file) and what each panel's solver derives from it (never written out). The
@@ -25,7 +26,7 @@ import { CornersPanel, solveCornersRatios } from './panels/corners-panel/corners
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel],
   templateUrl: './violin-family.html',
   styleUrls: ['../sidebar.css', './violin-family.css'],
 })
@@ -35,6 +36,8 @@ export class ViolinFamily extends RecipeComponentBase {
     { id: 'base', label: 'Base Measurements', toggles: BaseMeasurementsPanel.renderToggles },
     { id: 'mainBouts', label: 'Main Bouts', toggles: MainBoutsPanel.renderToggles, seed: MainBoutsPanel.seed },
     { id: 'corners', label: 'Corners', toggles: CornersPanel.renderToggles, seed: CornersPanel.seed },
+    // no seed: its numbers are seeded with the bouts and the corners
+    { id: 'centerBout', label: 'Center Bout', toggles: CenterBoutPanel.renderToggles },
   ];
 
   private readonly themeService = inject(ThemeService);
@@ -100,6 +103,7 @@ export class ViolinFamily extends RecipeComponentBase {
         let m = solveMainBouts(p);
         return !!(m?.U0 && m.U1 && m.L0 && m.L1);
       }
+      case 'centerBout': return !!p.corners;
       default: return false;
     }
   }
@@ -146,6 +150,7 @@ export class ViolinFamily extends RecipeComponentBase {
       ...solveBodyRatios(p),
       ...solveMainBoutsRatios(p),
       ...solveCornersRatios(p),
+      ...solveCenterBoutRatios(p),
     };
   }
 

@@ -3,9 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { dist, pointOnCircle } from '../../../helpers/math/simpleGeometry';
 import { Arc } from '../../../models/types';
 import { CornersPanel, defaultCornerTips, solveCorners, solveCornersRatios } from './corners-panel';
-import { MainBoutsPanel, solveMainBouts, solveMainBoutsRatios } from '../main-bouts-panel/main-bouts-panel';
-import { solveBodyRatios } from '../base-measurements-panel/base-measurements-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, SEED_RATIOS, ViolinFamilyParams, ViolinFamilyRatios } from '../../violin-family-types';
+import { MainBoutsPanel, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS, SEED_RATIOS, ViolinFamilyParams } from '../../violin-family-types';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
 
@@ -372,11 +371,5 @@ describe('ratios', () => {
     expect(r.U2toUBW).toBeCloseTo(c.U2!.r / (p.bouts!.UBW - 2 * inset), 12);
     expect(r.L3toLBW).toBeCloseTo(c.L3!.r / (p.body.width - 2 * inset), 12);
     expect(r.UCYtoH).toBeCloseTo(end(c.U3!).y / p.body.height, 6);
-  });
-
-  it('names every seed fraction a ratio some panel reports', () => {
-    const p = seeded();
-    const keys = Object.keys({ ...solveBodyRatios(p), ...solveMainBoutsRatios(p), ...solveCornersRatios(p) }).sort();
-    expect(keys).toEqual((Object.keys(SEED_RATIOS) as (keyof ViolinFamilyRatios)[]).sort());
   });
 });

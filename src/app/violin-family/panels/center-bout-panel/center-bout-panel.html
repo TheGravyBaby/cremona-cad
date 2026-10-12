@@ -1,0 +1,194 @@
+@let bouts = params.bouts!;
+@let k = params.corners!;
+
+<section class="ui-group">
+    <div class="ui-group-title">Upper Corner</div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">X <span class="unit-label">mm</span></span>
+                <span class="field-title">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Upper corner position"
+                [style.borderColor]="pal.ink(4).faint(5)" title="Arrow keys move the corner from either box">
+                <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Upper corner X"
+                    [(ngModel)]="k.UCr.x" (input)="edited()"
+                    (focus)="highlight('UCr', pal.ink(4).faint(5))" (blur)="highlight(null)" />
+                <input type="number" class="basic-input" step="1" data-xy="y" aria-label="Upper corner Y"
+                    [(ngModel)]="k.UCr.y" (input)="edited()"
+                    (focus)="highlight('UCr', pal.ink(4).faint(5))" (blur)="highlight(null)" />
+            </div>
+        </div>
+        <div class="field-cell">
+            <button type="button" class="recipe-btn" (click)="defaultCorner('upper')"
+                title="Set the upper corner to a default position">Default</button>
+        </div>
+        <button type="button" class="info-icon" (click)="help('cornerPosition')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+
+    <div class="ui-group">
+        <div class="input-group basic-row field-row" role="group">
+            <label class="field-cell">
+                <span class="field-title">C2 Corner Radius <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.C2R" (input)="edited()"
+                    [style.borderColor]="pal.ink(4)"
+                    (focus)="highlight('C2', pal.ink(4))" (blur)="highlight(null)" />
+            </label>
+            <label class="field-cell">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="k.C21DoubleArc" (change)="edited()" /><span>Compound</span>
+                </div>
+            </label>
+            <label class="field-cell">
+                <span class="field-title">C2 to LBW</span>
+                <div class="basic-display" aria-label="Upper center bout radius to lower bout width ratio value">{{ ratio('C2toLBW') }}</div>
+            </label>
+        </div>
+        @if (k.C21DoubleArc) {
+        <div class="ui-group">
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">C21 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.C21R" (input)="edited()"
+                        [style.borderColor]="pal.ink(4)"
+                        (focus)="highlight('C21', pal.ink(4))" (blur)="highlight(null)" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">Split Angle <span class="unit-label">°</span></span>
+                    <input type="number" class="basic-input" step="1" [(ngModel)]="k.C21Start" (input)="edited()"
+                        (focus)="highlight('C21', pal.ink(4))" (blur)="highlight(null)" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">C21 to LBW</span>
+                    <div class="basic-display" aria-label="Upper compound corner radius to lower bout width ratio value">{{ ratio('C21toLBW') }}</div>
+                </label>
+                <button type="button" class="info-icon" (click)="help('compoundArc')" title="More information"
+                    aria-label="Information">ⓘ</button>
+            </div>
+        </div>
+        }
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Center Bout</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Total Width <span class="unit-label">mm</span></span>
+            @if (bouts.useKellyC0) {
+            <div class="basic-display" aria-label="Fitted center bout width">{{ cb.CBW?.toFixed(1) ?? '–' }}</div>
+            } @else {
+            <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.CBW" (input)="edited()" />
+            }
+        </label>
+        <button type="button" class="info-icon" (click)="help('centerBoutWidth')" title="More information"
+            aria-label="Information">ⓘ</button>
+        <label class="field-cell"></label>
+        <label class="field-cell">
+            <span class="field-title">CBW to LBW</span>
+            <div class="basic-display" aria-label="Center bout width to lower bout width ratio value">{{ ratio('CBWtoLBW') }}</div>
+        </label>
+    </div>
+    <div class="ui-group">
+        <div class="input-group basic-row field-row" role="group">
+            <label class="field-cell">
+                <span class="field-title">C0 Radius <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="bouts.C0R" (input)="edited()"
+                    [style.borderColor]="pal.ink(3)"
+                    (focus)="highlight('C0', pal.ink(3))" (blur)="highlight(null)" />
+            </label>
+            <label class="field-cell">
+                <span class="field-title">C0 Y <span class="unit-label">mm</span></span>
+                @if (bouts.useKellyC0) {
+                <div class="basic-display" aria-label="Fitted C0 height">{{ cb.C0?.y?.toFixed(1) ?? '–' }}</div>
+                } @else {
+                <input type="number" class="basic-input" step="1" [(ngModel)]="bouts.C0Y" (input)="edited()"
+                    [style.borderColor]="pal.ink(3)"
+                    (focus)="highlight('C0', pal.ink(3))" (blur)="highlight(null)" />
+                }
+            </label>
+            <label class="field-cell">
+                <span class="field-title">C0 to LBW</span>
+                <div class="basic-display" aria-label="Center bout radius to lower bout width ratio value">{{ ratio('C0toLBW') }}</div>
+            </label>
+        </div>
+        <div class="input-group basic-row field-row" role="group">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="bouts.useKellyC0" (change)="fitChanged()" /><span>Fit C0 to Bouts</span>
+            </div>
+            <button type="button" class="info-icon" (click)="help('fitC0')" title="More information"
+                aria-label="Information">ⓘ</button>
+        </div>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Lower Corner</div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">X <span class="unit-label">mm</span></span>
+                <span class="field-title">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Lower corner position"
+                [style.borderColor]="pal.ink(2).faint(5)" title="Arrow keys move the corner from either box">
+                <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Lower corner X"
+                    [(ngModel)]="k.LCr.x" (input)="edited()"
+                    (focus)="highlight('LCr', pal.ink(2).faint(5))" (blur)="highlight(null)" />
+                <input type="number" class="basic-input" step="1" data-xy="y" aria-label="Lower corner Y"
+                    [(ngModel)]="k.LCr.y" (input)="edited()"
+                    (focus)="highlight('LCr', pal.ink(2).faint(5))" (blur)="highlight(null)" />
+            </div>
+        </div>
+        <div class="field-cell">
+            <button type="button" class="recipe-btn" (click)="defaultCorner('lower')"
+                title="Set the lower corner to a default position">Default</button>
+        </div>
+        <button type="button" class="info-icon" (click)="help('cornerPosition')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+
+    <div class="ui-group">
+        <div class="input-group basic-row field-row" role="group">
+            <label class="field-cell">
+                <span class="field-title">C1 Corner Radius <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.C1R" (input)="edited()"
+                    [style.borderColor]="pal.ink(2)"
+                    (focus)="highlight('C1', pal.ink(2))" (blur)="highlight(null)" />
+            </label>
+            <label class="field-cell">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="k.C11DoubleArc" (change)="edited()" /><span>Compound</span>
+                </div>
+            </label>
+            <label class="field-cell">
+                <span class="field-title">C1 to LBW</span>
+                <div class="basic-display" aria-label="Lower center bout radius to lower bout width ratio value">{{ ratio('C1toLBW') }}</div>
+            </label>
+        </div>
+        @if (k.C11DoubleArc) {
+        <div class="ui-group">
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">C11 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.C11R" (input)="edited()"
+                        [style.borderColor]="pal.ink(2)"
+                        (focus)="highlight('C11', pal.ink(2))" (blur)="highlight(null)" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">Split Angle <span class="unit-label">°</span></span>
+                    <input type="number" class="basic-input" step="1" [(ngModel)]="k.C11Start" (input)="edited()"
+                        (focus)="highlight('C11', pal.ink(2))" (blur)="highlight(null)" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">C11 to LBW</span>
+                    <div class="basic-display" aria-label="Lower compound corner radius to lower bout width ratio value">{{ ratio('C11toLBW') }}</div>
+                </label>
+                <button type="button" class="info-icon" (click)="help('compoundArc')" title="More information"
+                    aria-label="Information">ⓘ</button>
+            </div>
+        </div>
+        }
+    </div>
+</section>
