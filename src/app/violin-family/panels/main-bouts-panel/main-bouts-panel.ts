@@ -15,6 +15,7 @@ import {
   HighlightedArc, MainBoutFailure, MainBoutsSolve, RenderLayer, SEED_RATIOS, ViolinFamilyPanel, ViolinFamilyParams,
   ViolinFamilyRatios, ViolinFamilyToggleKey, ViolinFamilyViewFlags, ViolNeckCap, ViolNeckJoin,
 } from '../../violin-family-types';
+import { renderCorners, solveCorners } from '../corners-panel/corners-panel';
 
 // The main bouts: the upper and lower bouts' two arcs each, set by their widths and radii, and the
 // viol neck that can take the place of the upper bout's top. Panel and renders, then solve and ratios.
@@ -114,29 +115,12 @@ export class MainBoutsPanel implements ViolinFamilyPanel, OnInit {
       let m = this.m = solveMainBouts(p)!;
       this.ratios = solveMainBoutsRatios(p);
       let arc = this.highlightedKey ? m[this.highlightedKey] : null;
+      let c = solveCorners(p);
       let layers: RenderLayer[] = [];
 
-      // the body's box and the rib line's inside it, and a square on each bout width with the inset
-      // marked inside it
-      if (this.flags.showModuleGuides) {
-        let h = p.body.height;
-        let LBW = p.body.width;
-        let UBW = b.UBW;
-        let inset = p.body.overhang + p.body.rib;
-        let lower = this.pal.ink(0).faint(-2);
-        let upper = this.pal.ink(1).faint(-2);
-        layers.push(
-          renderRect(new Rectangle(new Pt(-LBW / 2, 0), new Pt(LBW / 2, h)), this.pal.neutral),
-          renderRect(new Rectangle(new Pt(-LBW / 2 + inset, inset), new Pt(LBW / 2 - inset, h - inset)), this.pal.neutral),
-          renderRect(new Rectangle(new Pt(-LBW / 2, 0), new Pt(LBW / 2, LBW)), lower),
-          renderSegment(new Pt(-LBW / 2 + inset, 0), new Pt(-LBW / 2 + inset, LBW), lower),
-          renderSegment(new Pt(LBW / 2 - inset, 0), new Pt(LBW / 2 - inset, LBW), lower),
-          renderRect(new Rectangle(new Pt(-UBW / 2, h - UBW), new Pt(UBW / 2, h)), upper),
-          renderSegment(new Pt(-UBW / 2 + inset, h - UBW), new Pt(-UBW / 2 + inset, h), upper),
-          renderSegment(new Pt(UBW / 2 - inset, h - UBW), new Pt(UBW / 2 - inset, h), upper),
-        );
-      }
-
+      if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, this.pal));
+      // the corners as far as they've been drafted, in grey under this panel's bouts
+      if (c) layers.push(renderCorners(p, c, this.pal, this.flags, false, null));
       layers.push(
         renderMainBouts(p, m, this.pal, this.flags, true, arc ? { arc, color: this.highlightedColor } : null),
         renderSolveFailures(m.failures, this.pal.alert, true),
@@ -145,6 +129,27 @@ export class MainBoutsPanel implements ViolinFamilyPanel, OnInit {
     });
   }
 }
+
+// the module guides the bouts are drawn in: the body's box and the rib line's inside it, and a
+// square on each bout width with the inset marked inside it. Later panels show the same guides
+export const renderBoutBounds = (p: ViolinFamilyParams, pal: PanelPalette) => (g: any, ui: any): void => {
+  let h = p.body.height;
+  let LBW = p.body.width;
+  let UBW = p.bouts!.UBW;
+  let inset = p.body.overhang + p.body.rib;
+  let lower = pal.ink(0).faint(-2);
+  let upper = pal.ink(1).faint(-2);
+  for (let layer of [
+    renderRect(new Rectangle(new Pt(-LBW / 2, 0), new Pt(LBW / 2, h)), pal.neutral),
+    renderRect(new Rectangle(new Pt(-LBW / 2 + inset, inset), new Pt(LBW / 2 - inset, h - inset)), pal.neutral),
+    renderRect(new Rectangle(new Pt(-LBW / 2, 0), new Pt(LBW / 2, LBW)), lower),
+    renderSegment(new Pt(-LBW / 2 + inset, 0), new Pt(-LBW / 2 + inset, LBW), lower),
+    renderSegment(new Pt(LBW / 2 - inset, 0), new Pt(LBW / 2 - inset, LBW), lower),
+    renderRect(new Rectangle(new Pt(-UBW / 2, h - UBW), new Pt(UBW / 2, h)), upper),
+    renderSegment(new Pt(-UBW / 2 + inset, h - UBW), new Pt(-UBW / 2 + inset, h), upper),
+    renderSegment(new Pt(UBW / 2 - inset, h - UBW), new Pt(UBW / 2 - inset, h), upper),
+  ]) layer(g, ui);
+};
 
 // the main bouts in their own colours on this panel, where their fields are; grey under a later
 // panel's work. A bout whose section failed isn't drawn; its failure is

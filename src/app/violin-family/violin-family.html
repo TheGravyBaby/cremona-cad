@@ -63,6 +63,15 @@
             (edit)="onPanelEdit()">
         </app-vf-main-bouts-panel>
         }
+
+        @if (openPanel === 'corners') {
+        <app-vf-corners-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-corners-panel>
+        }
     </div>
 </div>
 

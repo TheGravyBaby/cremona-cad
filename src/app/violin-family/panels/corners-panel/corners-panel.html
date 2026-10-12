@@ -1,0 +1,195 @@
+@let k = params.corners!;
+
+<section class="ui-group">
+    <div class="ui-group-title">Upper Bout</div>
+    <div class="input-group basic-row field-row" role="group"
+        [style.opacity]="k.useViolCornerUC ? 0.5 : 1" [style.pointerEvents]="k.useViolCornerUC ? 'none' : 'auto'">
+        <label class="field-cell">
+            <span class="field-title">U2 Join Radius <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U2R" (input)="edited()"
+                [style.borderColor]="pal.ink(1).faint(-2)"
+                (focus)="highlight('U2', pal.ink(1).faint(-2))" (blur)="highlight(null)" />
+        </label>
+        <label class="field-cell"></label>
+        <label class="field-cell">
+            <span class="field-title">U2 to UBW</span>
+            <div class="basic-display" aria-label="U2 to upper bout width ratio value">{{ ratio('U2toUBW') }}</div>
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Upper Corner</div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">X <span class="unit-label">mm</span></span>
+                <span class="field-title">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Upper corner position"
+                [style.borderColor]="pal.ink(4).faint(5)" title="Arrow keys move the corner from either box">
+                <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Upper corner X"
+                    [(ngModel)]="k.UCr.x" (input)="edited()"
+                    (focus)="highlight('UCr', pal.ink(4).faint(5))" (blur)="highlight(null)" />
+                <input type="number" class="basic-input" step="1" data-xy="y" aria-label="Upper corner Y"
+                    [(ngModel)]="k.UCr.y" (input)="edited()"
+                    (focus)="highlight('UCr', pal.ink(4).faint(5))" (blur)="highlight(null)" />
+            </div>
+        </div>
+        <div class="field-cell">
+            <button type="button" class="recipe-btn" (click)="defaultCorner('upper')"
+                title="Set the upper corner to a default position">Default</button>
+        </div>
+        <button type="button" class="info-icon" (click)="help('cornerPosition')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+
+    <div class="ui-group">
+        <div class="input-group basic-row field-row" role="group"
+            [style.opacity]="k.useViolCornerUC ? 0.5 : 1" [style.pointerEvents]="k.useViolCornerUC ? 'none' : 'auto'">
+            <label class="field-cell">
+                <span class="field-title">U3 Corner Radius <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U3R" (input)="edited()"
+                    [style.borderColor]="pal.ink(4)"
+                    (focus)="highlight('U3', pal.ink(4))" (blur)="highlight(null)" />
+            </label>
+            <label class="field-cell">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="k.U31DoubleArc" (change)="edited()" /><span>Compound</span>
+                </div>
+            </label>
+            <label class="field-cell">
+                <span class="field-title">U3 to LBW</span>
+                <div class="basic-display" aria-label="U3 to lower bout width ratio value">{{ ratio('U3toLBW') }}</div>
+            </label>
+        </div>
+        @if (k.U31DoubleArc) {
+        <div class="ui-group" [style.opacity]="k.useViolCornerUC ? 0.5 : 1"
+            [style.pointerEvents]="k.useViolCornerUC ? 'none' : 'auto'">
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">U31 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U31R" (input)="edited()"
+                        [style.borderColor]="pal.ink(4)"
+                        (focus)="highlight('U31', pal.ink(4))" (blur)="highlight(null)" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">Split Angle <span class="unit-label">°</span></span>
+                    <input type="number" class="basic-input" step="1" [(ngModel)]="k.U31Start" (input)="edited()"
+                        (focus)="highlight('U31', pal.ink(4))" (blur)="highlight(null)" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">U31 to LBW</span>
+                    <div class="basic-display" aria-label="Upper compound corner radius to lower bout width ratio value">{{ ratio('U31toLBW') }}</div>
+                </label>
+                <button type="button" class="info-icon" (click)="help('compoundArc')" title="More information"
+                    aria-label="Information">ⓘ</button>
+            </div>
+        </div>
+        }
+        <div class="input-group basic-row field-row">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="k.useViolCornerUC" (change)="edited()" /><span>Use Viol Corner</span>
+            </div>
+            <button type="button" class="info-icon" (click)="help('violCorner')" title="More information"
+                aria-label="Information">ⓘ</button>
+        </div>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Lower Corner</div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">X <span class="unit-label">mm</span></span>
+                <span class="field-title">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Lower corner position"
+                [style.borderColor]="pal.ink(2).faint(5)" title="Arrow keys move the corner from either box">
+                <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Lower corner X"
+                    [(ngModel)]="k.LCr.x" (input)="edited()"
+                    (focus)="highlight('LCr', pal.ink(2).faint(5))" (blur)="highlight(null)" />
+                <input type="number" class="basic-input" step="1" data-xy="y" aria-label="Lower corner Y"
+                    [(ngModel)]="k.LCr.y" (input)="edited()"
+                    (focus)="highlight('LCr', pal.ink(2).faint(5))" (blur)="highlight(null)" />
+            </div>
+        </div>
+        <div class="field-cell">
+            <button type="button" class="recipe-btn" (click)="defaultCorner('lower')"
+                title="Set the lower corner to a default position">Default</button>
+        </div>
+        <button type="button" class="info-icon" (click)="help('cornerPosition')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+
+    <div class="ui-group">
+        <div class="input-group basic-row field-row" role="group"
+            [style.opacity]="k.useViolCornerLC ? 0.5 : 1" [style.pointerEvents]="k.useViolCornerLC ? 'none' : 'auto'">
+            <label class="field-cell">
+                <span class="field-title">L3 Corner Radius <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L3R" (input)="edited()"
+                    [style.borderColor]="pal.ink(2)"
+                    (focus)="highlight('L3', pal.ink(2))" (blur)="highlight(null)" />
+            </label>
+            <label class="field-cell">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="k.L31DoubleArc" (change)="edited()" /><span>Compound</span>
+                </div>
+            </label>
+            <label class="field-cell">
+                <span class="field-title">L3 to LBW</span>
+                <div class="basic-display" aria-label="L3 to lower bout width ratio value">{{ ratio('L3toLBW') }}</div>
+            </label>
+        </div>
+        @if (k.L31DoubleArc) {
+        <div class="ui-group" [style.opacity]="k.useViolCornerLC ? 0.5 : 1"
+            [style.pointerEvents]="k.useViolCornerLC ? 'none' : 'auto'">
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">L31 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L31R" (input)="edited()"
+                        [style.borderColor]="pal.ink(2)"
+                        (focus)="highlight('L31', pal.ink(2))" (blur)="highlight(null)" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">Split Angle <span class="unit-label">°</span></span>
+                    <input type="number" class="basic-input" step="1" [(ngModel)]="k.L31Start" (input)="edited()"
+                        (focus)="highlight('L31', pal.ink(2))" (blur)="highlight(null)" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">L31 to LBW</span>
+                    <div class="basic-display" aria-label="Lower compound corner radius to lower bout width ratio value">{{ ratio('L31toLBW') }}</div>
+                </label>
+                <button type="button" class="info-icon" (click)="help('compoundArc')" title="More information"
+                    aria-label="Information">ⓘ</button>
+            </div>
+        </div>
+        }
+        <div class="input-group basic-row field-row">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="k.useViolCornerLC" (change)="edited()" /><span>Use Viol Corner</span>
+            </div>
+            <button type="button" class="info-icon" (click)="help('violCorner')" title="More information"
+                aria-label="Information">ⓘ</button>
+        </div>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Lower Bout</div>
+    <div class="input-group basic-row field-row" role="group"
+        [style.opacity]="k.useViolCornerLC ? 0.5 : 1" [style.pointerEvents]="k.useViolCornerLC ? 'none' : 'auto'">
+        <label class="field-cell">
+            <span class="field-title">L2 Join Radius <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L2R" (input)="edited()"
+                [style.borderColor]="pal.ink(0).faint(-2)"
+                (focus)="highlight('L2', pal.ink(0).faint(-2))" (blur)="highlight(null)" />
+        </label>
+        <label class="field-cell"></label>
+        <label class="field-cell">
+            <span class="field-title">L2 to LBW</span>
+            <div class="basic-display" aria-label="L2 to lower bout width ratio value">{{ ratio('L2toLBW') }}</div>
+        </label>
+    </div>
+</section>
