@@ -12,12 +12,13 @@ import { ToolboxStore } from './draft-canvas/tools/toolbox-store';
 import { readWorkingState, SELECTED_RECIPE_KEY, writeWorkingState } from './helpers/workingStorage';
 import { CerutiViolin } from './enrico-ceruti-violin/ceruti-violin';
 import { HelloWorldRecipe } from './hello-world-recipe/hello-world-recipe';
+import { ViolinFamily } from './violin-family/violin-family-recipe';
 import { ThemeService } from './theme/theme.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, AboutModalComponent, DraftCanvasComponent, CerutiViolin, HelloWorldRecipe],
+  imports: [TopBarComponent, AboutModalComponent, DraftCanvasComponent, CerutiViolin, ViolinFamily, HelloWorldRecipe],
   template: `
     <div class="app" [class.sidebar-collapsed]="!sidebarOpen"
       [class.bar-autohide]="!barPinned && !hasMessages()" [class.bar-revealed]="barRevealed()">
@@ -47,6 +48,13 @@ import { ThemeService } from './theme/theme.service';
           (draftChange)="onDraftChange($event)"
           (requestFit)="requestFit()">
         </app-ceruti-violin>
+        }
+
+        @if (selectedRecipe == "violin-family") {
+         <app-violin-family class="sidebar"
+          (draftChange)="onDraftChange($event)"
+          (requestFit)="requestFit()">
+        </app-violin-family>
         }
 
         @if (selectedRecipe == "hello-world-recipe") {
@@ -152,7 +160,7 @@ export class App implements OnDestroy {
     // the violin, whose own session write then buries the other recipe's. checked against the names
     // the top bar offers, since a stale name would mount nothing at all.
     const stored = readWorkingState(SELECTED_RECIPE_KEY);
-    if (stored === 'enrico-ceruti-violin' || stored === 'hello-world-recipe') this.selectedRecipe = stored;
+    if (stored === 'enrico-ceruti-violin' || stored === 'violin-family' || stored === 'hello-world-recipe') this.selectedRecipe = stored;
   }
 
   ngOnDestroy(): void {

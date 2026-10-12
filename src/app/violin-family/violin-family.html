@@ -1,0 +1,106 @@
+<!-- The file header, the nav strip and the render toggles are siblings of .panel, not children, so
+     only the panel scrolls — see recipe-toolbar.css. -->
+<app-recipe-toolbar
+            [recipeName]="d.recipeName"
+            [fileName]="d.fileName"
+            (fileNameChange)="onFileNameChange($event)"
+            (newFile)="onNewClick()"
+            (saveFile)="saveToDisk()"
+            (loadFile)="loadFile($event)"
+            (debugDump)="copyRecipeToClipboard()">
+</app-recipe-toolbar>
+
+<div class="panel-nav-wrap">
+    <section class="panel-nav" aria-label="Sidebar section navigation">
+        <div class="panel-nav-controls">
+            <button type="button" class="panel-nav-btn panel-nav-btn--back" (click)="stepPanel(-1)"
+                title="Previous section" aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
+                Back
+            </button>
+            <div class="panel-select-wrap">
+                <select id="panel-selector" class="panel-select" [ngModel]="openPanel"
+                    (ngModelChange)="onPanelSelect($event)">
+                    @for (panel of panelOrder; track panel.id) {
+                    <option [value]="panel.id" [disabled]="!isPanelEnabled(panel.id)">
+                        {{ panel.label }}@if (!isPanelEnabled(panel.id)) { (Locked) }
+                    </option>
+                    }
+                </select>
+                <span class="panel-select-caret" aria-hidden="true">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                </span>
+            </div>
+            <button type="button" class="panel-nav-btn panel-nav-btn--next" (click)="stepPanel(1)"
+                title="Next section" aria-label="Go to next section" [disabled]="!canStepPanel(1)">
+                Next
+            </button>
+        </div>
+        <div class="panel-progress" role="progressbar" aria-label="Section progress" aria-valuemin="1"
+            [attr.aria-valuemax]="panelProgressMax" [attr.aria-valuenow]="panelProgressNow">
+            <div class="panel-progress-fill" [style.width.%]="panelProgressPercent"></div>
+        </div>
+    </section>
+</div>
+
+<div class="panel">
+    <div class="panel-content">
+        @if (openPanel === 'base') {
+        <app-vf-base-measurements-panel #panelRef
+            [recipe]="d"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-base-measurements-panel>
+        }
+
+        @if (openPanel === 'mainBouts') {
+        <app-vf-main-bouts-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-main-bouts-panel>
+        }
+    </div>
+</div>
+
+@if (renderToggleButtons.length) {
+<div class="view-toggle-bar">
+    @if (renderToggleButtons.includes('showModuleArcs')) {
+    <button type="button" class="vt-btn" [class.active]="viewFlags.showModuleArcs" (click)="onRenderToggle('showModuleArcs')"
+        title="Show Module Arcs" aria-label="Show Module Arcs">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <path d="M4 19a15 15 0 0 1 15-15" />
+            <line x1="4" y1="19" x2="19" y2="19" opacity="0.25" />
+            <line x1="19" y1="4" x2="19" y2="19" opacity="0.25" />
+        </svg>
+    </button>
+    }
+
+    @if (renderToggleButtons.includes('showModuleGuides')) {
+    <button type="button" class="vt-btn" [class.active]="viewFlags.showModuleGuides"
+        (click)="onRenderToggle('showModuleGuides')" title="Show Module Guides" aria-label="Show Module Guides">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2.5" />
+            <line x1="12" y1="2" x2="12" y2="22" stroke-dasharray="2 2" />
+            <line x1="2" y1="12" x2="22" y2="12" stroke-dasharray="2 2" />
+        </svg>
+    </button>
+    }
+
+    @if (renderToggleButtons.includes('renderOuterPath')) {
+    <button type="button" class="vt-btn" [class.active]="viewFlags.renderOuterPath"
+        (click)="onRenderToggle('renderOuterPath')" title="Show Outer Path" aria-label="Show Outer Path">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <path d="M4 19a15 15 0 0 1 15-15" />
+            <path d="M8 19a11 11 0 0 1 11-11" stroke-dasharray="3 2.5" />
+        </svg>
+    </button>
+    }
+</div>
+}
