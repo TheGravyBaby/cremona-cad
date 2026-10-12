@@ -18,7 +18,7 @@ export const ALERT = '#d62828';
 
 // the canvas each mode draws on, pushed onto :root by the theme service; every ink is fitted
 // against it
-export const CANVAS = { night: '#1e1e1e', day: '#d8cfb1' } as const;
+export const CANVAS = { night: '#1e1e1e', day: '#c9c3b1ff' } as const;
 
 export const PALETTES = {
   classicCremona: {
@@ -57,6 +57,18 @@ export const CANVAS_COLORS = {
   selection: '#f59e0b',
   grabberStroke: '#78350f',
   highlighter: '#fde047',
+} as const;
+
+// the bulk SVG's machine codes, not a theme: the laser maps each pure colour to a power setting and
+// cuts only strokes no wider than 0.01px, 0.0026mm. cut1 goes through first, the holes inside a piece,
+// cut2 after it, the piece's outline, so nothing is cut out before its holes are; etch marks the
+// surface, and guide is the size box. In mm, the sheet's user unit
+export const LASER = {
+  cut1: '#000000',
+  cut2: '#0000ff',
+  etch: '#ff0000',
+  guide: '#00ff00',
+  hairline: .1,
 } as const;
 
 // stroke widths in screen px, every render drawing non-scaling. trace is a cut line (bouts, corners,

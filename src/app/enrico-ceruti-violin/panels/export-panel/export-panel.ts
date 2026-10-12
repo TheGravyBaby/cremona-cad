@@ -7,7 +7,7 @@ import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import { renderPath, renderText } from '../../../helpers/renderFuncs';
 import { STROKE_WEIGHT } from '../../../theme/palettes';
-import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureFrontProfilePaths, FrontProfileSolve, getPath, getPathOrNull, hasOuterTrace, solveNeckForProfile } from '../../calculation/outline/ceruti-calcs';
+import { calculateCornerBlocks, LabelledBlock, calculateMould, calculateOuterArcs, ensureFrontProfilePaths, FrontProfileSolve, getPath, getPathOrNull, hasOuterTrace, solveNeckForProfile } from '../../calculation/outline/ceruti-calcs';
 import { defineNeckTemplate, NeckTemplate, neckTemplatePath } from '../../calculation/neck/ceruti-neck-template';
 import { calculateScroll, calculateScrollWidths, scrollBackStrip, scrollCompassWalk } from '../../calculation/neck/ceruti-scroll';
 import { scrollBackViewStrokes, scrollFrontViewStrokes } from '../../calculation/neck/ceruti-scroll-views';
@@ -51,7 +51,8 @@ const PDF_GROUPS: ReadonlyArray<{ label: string; types: readonly ExportType[] }>
   { label: 'Neck & Scroll', types: SCROLL_EXPORTS },
 ];
 // what the templates SVG gathers: the pieces a maker cuts from card or ply and works to
-const TEMPLATE_BUNDLE: readonly ExportType[] = ['neckTemplate', 'scrollSide', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass', 'longArchTemplates', 'crossArchTemplates', 'blocks'];
+const FHOLE_TEMPLATE_MARGIN = 10;
+const TEMPLATE_BUNDLE: readonly ExportType[] = ['neckTemplate', 'scrollBack', 'scrollCompass', 'longArchTemplates', 'crossArchTemplates', 'fholeTemplate', 'blocks'];
 
 /** Templates are laid out in their own coordinate frame (not the violin's plan-view box), so their
  *  export sheet is sized from the actual combined geometry rather than the shared plan dimensions. */
@@ -65,6 +66,9 @@ const COMPASS_BOX_MARGIN = 5;
 const COMPASS_STAR = 1;
 
 const black = (d: string, strokeWidth = '.5'): SvgPathExport => ({ d, stroke: 'black', fill: 'none', strokeWidth });
+const etched = (d: string, strokeWidth = '.5'): SvgPathExport => ({ ...black(d, strokeWidth), laser: 'etch' });
+// a hole inside a piece, which the laser cuts before any outline so the piece is still held
+const cutFirst = (d: string, strokeWidth = '.5'): SvgPathExport => ({ ...black(d, strokeWidth), laser: 'cut1' });
 
 @Component({
   selector: 'app-ceruti-export-panel',
@@ -181,7 +185,7 @@ export class ExportPanel implements OnInit {
     switch (type) {
       case 'neckTemplate': {
         const t = this.neckTemplate();
-        return t && [black(t.outline, '.5'), black(combinePathStrings([...t.slots, ...t.dots, t.eye]), '.5')];
+        return t && [black(t.outline, '.5'), cutFirst(combinePathStrings([...t.slots, ...t.dots, t.eye]), '.5')];
       }
       case 'scrollSide': {
         const side = this.scrollSide();
@@ -198,7 +202,7 @@ export class ExportPanel implements OnInit {
       }
       case 'scrollCompass': {
         const t = this.scrollCompass();
-        return t && [black(t.box, '.5'), black(t.marks, '.25'), black(t.centres, '.5'), black(t.edges, '.1')];
+        return t && [black(t.box, '.5'), etched(t.marks, '.25'), etched(t.centres, '.5'), etched(t.edges, '.1')];
       }
     }
   }
@@ -253,14 +257,29 @@ export class ExportPanel implements OnInit {
    * shapes before handing them here. Skipping this left the template page geometrically valid but
    * entirely outside the sheet's viewBox — a blank page, not a thrown error.
    */
-  private fholeTemplatePath(renderEyes = true): string {
+  private fholeTemplate(renderEyes: boolean): { blank: string; hole: string } {
     const raw = defineOneFholePath(this.params, false, renderEyes);
     const bounds = pathsBounds([raw]);
-    return translatePath(raw, -(bounds.minX + bounds.maxX) / 2, -bounds.minY);
+    // a whole-mm blank round the hole: the maker traces the hole from inside it, so cutting the
+    // pair leaves a rectangle with the hole's negative in it
+    const width = Math.ceil(bounds.width + 2 * FHOLE_TEMPLATE_MARGIN);
+    const height = Math.ceil(bounds.height + 2 * FHOLE_TEMPLATE_MARGIN);
+    const blank = pathFromRect(new Rectangle(new Pt(-width / 2, 0), new Pt(width / 2, height)));
+    const hole = translatePath(raw, -(bounds.minX + bounds.maxX) / 2, (height - bounds.height) / 2 - bounds.minY);
+    return { blank, hole };
   }
 
-  private cornerBlocks(): string[] {
+  private fholeTemplatePath(renderEyes = true): string {
+    const { blank, hole } = this.fholeTemplate(renderEyes);
+    return combinePathStrings([blank, hole]);
+  }
+
+  private cornerBlocks(): LabelledBlock[] {
     return calculateCornerBlocks(this.params, getPath(this.paths, 'inner'));
+  }
+
+  private blockTexts(): SvgTextExport[] {
+    return this.cornerBlocks().map(b => ({ text: b.label, x: b.x, y: b.y, fontSize: TEMPLATE_LABEL_SIZE }));
   }
 
   private toSvgTexts(shapes: TemplateShape[]): SvgTextExport[] {
@@ -330,7 +349,10 @@ export class ExportPanel implements OnInit {
         break;
       }
       case 'blocks': {
-        const renders = this.cornerBlocks().map((block: string) => renderPath(block, this.pal.neutral, STROKE_WEIGHT.trace));
+        const renders = this.cornerBlocks().flatMap(block => [
+          renderPath(block.path, this.pal.neutral, STROKE_WEIGHT.trace),
+          renderText(block, block.label, this.pal.neutral, TEMPLATE_LABEL_SIZE),
+        ]);
         this.draftChange.emit(renders);
         break;
       }
@@ -394,16 +416,19 @@ export class ExportPanel implements OnInit {
         return { paths: [black(this.getPath('inner'))] };
       case 'outerTrace':
       case 'back': {
-        const extras = [this.getPathOrNull('purfling'), this.getPathOrNull('outerPurfling'), type === 'outerTrace' ? this.getPathOrNull('fHole') : null];
-        return { paths: [this.getPath(type === 'back' ? 'back' : 'top'), ...extras.filter((d): d is string => !!d)].map(d => black(d)) };
+        const purfling = [this.getPathOrNull('purfling'), this.getPathOrNull('outerPurfling')].filter((d): d is string => !!d);
+        const fHole = type === 'outerTrace' ? this.getPathOrNull('fHole') : null;
+        return { paths: [black(this.getPath(type === 'back' ? 'back' : 'top')), ...(fHole ? [cutFirst(fHole)] : []), ...purfling.map(d => etched(d))] };
       }
       case 'mould':
         return { paths: [black(calculateMould(this.params, true, false))] };
       case 'blocks':
-        return { paths: [black(combinePathStrings(this.cornerBlocks()))] };
+        return { paths: [black(combinePathStrings(this.cornerBlocks().map(b => b.path)))], texts: this.blockTexts() };
       case 'fholeTemplate':
-      case 'fholeTemplateNoEyes':
-        return { paths: [black(this.fholeTemplatePath(type === 'fholeTemplate'))] };
+      case 'fholeTemplateNoEyes': {
+        const { blank, hole } = this.fholeTemplate(type === 'fholeTemplate');
+        return { paths: [black(blank), cutFirst(hole)] };
+      }
       case 'crossArchTemplates':
       case 'longArchTemplates': {
         const shapes = this.archTemplates(type);
@@ -484,7 +509,8 @@ export class ExportPanel implements OnInit {
         pathD = calculateMould(p, true, false);
         break;
       case 'blocks':
-        pathD = combinePathStrings(this.cornerBlocks());
+        pathD = combinePathStrings(this.cornerBlocks().map(b => b.path));
+        texts = this.blockTexts().map(t => ({ text: t.text, x: t.x, y: t.y, height: TEMPLATE_LABEL_SIZE }));
         break;
       case 'fholeTemplate':
       case 'fholeTemplateNoEyes':
@@ -543,7 +569,8 @@ export class ExportPanel implements OnInit {
         pdfPaths = [{ d: calculateMould(p, true, false), stroke: 'black', fill: 'none' }];
         break;
       case 'blocks':
-        pdfPaths = [{ d: combinePathStrings(this.cornerBlocks()), stroke: 'black', fill: 'none' }];
+        pdfPaths = [{ d: combinePathStrings(this.cornerBlocks().map(b => b.path)), stroke: 'black', fill: 'none' }];
+        texts = this.blockTexts();
         break;
       case 'fholeTemplate':
       case 'fholeTemplateNoEyes': {
@@ -608,7 +635,7 @@ export class ExportPanel implements OnInit {
     const planPage = (label: string, paths: SvgPathExport[]) => plans.push({ label, width: p.width, height, paths });
     const purfling = [this.getPathOrNull('purfling'), this.getPathOrNull('outerPurfling')].filter((d): d is string => !!d).map(d => black(d));
     const fHole = this.getPathOrNull('fHole');
-    if (this.ready.has('outerTrace')) planPage('Top Contour', [black(this.getPath('top')), ...purfling, ...(fHole ? [black(fHole)] : [])]);
+    if (this.ready.has('outerTrace')) planPage('Top Contour', [black(this.getPath('top')), ...purfling, ...(fHole ? [cutFirst(fHole)] : [])]);
     if (this.ready.has('back')) planPage('Back Contour', [black(this.getPath('back')), ...purfling]);
     if (this.ready.has('innerTrace')) planPage('Inner Contour', [black(this.getPath('inner'))]);
     if (this.ready.has('mould')) planPage('Mould', [black(calculateMould(p, true, false))]);

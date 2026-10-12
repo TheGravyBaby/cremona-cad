@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { svg2pdf } from 'svg2pdf.js';
 import { pathsBounds } from './math/pathMath';
+import { LASER } from '../theme/palettes';
 
 export type SvgPathExport = {
   d: string;
@@ -10,6 +11,8 @@ export type SvgPathExport = {
   fillOpacity?: number;
   strokeWidth?: number | string;
   transform?: string;
+  // the laser pass the bulk SVG puts it in (`LASER`); unmarked is an outline, cut last
+  laser?: 'cut1' | 'cut2' | 'etch';
 };
 
 export type SvgTextExport = {
@@ -78,15 +81,40 @@ function buildPathMarkup(paths: SvgPathExport[], strokeWidth: (p: SvgPathExport)
 // space; that flip would also mirror text glyphs, so each <text> carries its own
 // counter-transform — translate to its drafting position, undo the flip, then rotate —
 // keeping labels upright (and rotated the intended way) regardless of the outer flip.
-function buildTextMarkup(texts: SvgTextExport[]): string {
+// `laser` draws the glyphs as outlines in that colour, unfilled, since the cutter reads strokes only
+function buildTextMarkup(texts: SvgTextExport[], laser?: string): string {
+  const paint = (t: SvgTextExport) => laser
+    ? `fill="none" stroke="${laser}" stroke-width="${LASER.hairline}" font-family="monospace"`
+    : `fill="${t.color ?? 'black'}"`;
   return texts
-    .map(t => `<text transform="translate(${t.x} ${t.y}) scale(1 -1) rotate(${-(t.rotationDeg ?? 0)})" text-anchor="middle" dominant-baseline="central" fill="${t.color ?? 'black'}" font-size="${t.fontSize ?? 5}">${t.text}</text>`)
+    .map(t => `<text transform="translate(${t.x} ${t.y}) scale(1 -1) rotate(${-(t.rotationDeg ?? 0)})" text-anchor="middle" dominant-baseline="central" ${paint(t)} font-size="${t.fontSize ?? 5}">${t.text}</text>`)
     .join('');
 }
+
+const forLaser = (p: SvgPathExport): SvgPathExport =>
+  ({ ...p, stroke: LASER[p.laser ?? 'cut2'], fill: 'none', fillOpacity: undefined, strokeWidth: LASER.hairline });
 
 // the sheet's frame: content centred on x = 0 from y = 0 up, y flipped to point up, SHEET_PAD of
 // empty sheet round it
 const sheetViewBox = (width: number, height: number) => `${-width / 2 - SHEET_PAD} ${-SHEET_PAD} ${width + 2 * SHEET_PAD} ${height + 2 * SHEET_PAD}`;
+
+// a laser cutter's software drops a bare viewBox's units and zeroes on its origin, so the sheet
+// starts at 0 0, states its size in mm, and carries a whole-mm box round the content with the
+// box's dimensions written beside it
+const BOX_MARGIN = 10;
+function dimensionedSvg(width: number, height: number, markup: string, laser = false): string {
+  const w = Math.ceil(width + 1);
+  const h = Math.ceil(height + 1);
+  const y0 = (height - h) / 2;
+  const frame = [{ d: `M ${-w / 2} ${y0} H ${w / 2} V ${y0 + h} H ${-w / 2} Z`, stroke: laser ? LASER.guide : 'blue', strokeWidth: laser ? LASER.hairline : 0.25 }];
+  const labels = buildTextMarkup([
+    { text: `${w} mm`, x: 0, y: y0 + h + 5, fontSize: 4, color: 'blue' },
+    { text: `${h} mm`, x: w / 2 + 5, y: y0 + h / 2, fontSize: 4, color: 'blue', rotationDeg: 90 },
+  ], laser ? LASER.guide : undefined);
+  const sheetW = w + 2 * BOX_MARGIN;
+  const sheetH = h + 2 * BOX_MARGIN;
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" width="${sheetW}mm" height="${sheetH}mm" viewBox="0 0 ${sheetW} ${sheetH}"><sodipodi:namedview id="namedview" inkscape:document-units="mm" units="mm"/><g transform="translate(${w / 2 + BOX_MARGIN} ${height - y0 + BOX_MARGIN}) scale(1 -1)"><g id="size-box">${buildPathMarkup(frame, p => p.strokeWidth ?? 0.25)}${labels}</g>${markup}</g></svg>`;
+}
 
 export function buildMirroredSvg(
   width: number,
@@ -94,8 +122,7 @@ export function buildMirroredSvg(
   paths: SvgPathExport[],
   texts: SvgTextExport[] = []
 ): string {
-  const markup = buildPathMarkup(paths, p => p.strokeWidth ?? 0.5) + buildTextMarkup(texts);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${sheetViewBox(width, height)}"><g transform="translate(0 ${height}) scale(1 -1)">${markup}</g></svg>`;
+  return dimensionedSvg(width, height, buildPathMarkup(paths, p => p.strokeWidth ?? 0.5) + buildTextMarkup(texts));
 }
 
 export type SvgPiece = { paths: SvgPathExport[]; texts?: SvgTextExport[] };
@@ -143,12 +170,14 @@ export function packPieces(pieces: SvgPiece[], gap = 10, maxWidth?: number): { w
   };
 }
 
-// the packed pieces as one SVG, each its own group so it moves as one in an editor
+// the packed pieces as one SVG, each its own group so it moves as one in an editor. This is the
+// sheet that goes to the laser, so it alone is drawn in the machine's codes (`LASER`): every
+// stroke a hairline, the passes told apart by colour, labels etched
 export function buildPackedSvg(pieces: SvgPiece[], gap = 10): string {
   const { width, height, placed } = packPieces(pieces, gap);
   const groups = placed.map(({ piece, dx, dy }) =>
-    `<g transform="translate(${dx} ${dy})">${buildPathMarkup(piece.paths, p => p.strokeWidth ?? 0.5)}${buildTextMarkup(piece.texts ?? [])}</g>`);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${sheetViewBox(width, height)}"><g transform="translate(0 ${height}) scale(1 -1)">${groups.join('')}</g></svg>`;
+    `<g transform="translate(${dx} ${dy})">${buildPathMarkup(piece.paths.map(forLaser), p => p.strokeWidth!)}${buildTextMarkup(piece.texts ?? [], LASER.etch)}</g>`);
+  return dimensionedSvg(width, height, groups.join(''), true);
 }
 
 // the packed pieces as one PDF page's content: each path carries its piece's move as a transform,
