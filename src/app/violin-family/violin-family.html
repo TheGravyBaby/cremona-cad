@@ -81,6 +81,15 @@
             (edit)="onPanelEdit()">
         </app-vf-center-bout-panel>
         }
+
+        @if (openPanel === 'outerContour') {
+        <app-vf-outer-contour-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-outer-contour-panel>
+        }
     </div>
 </div>
 

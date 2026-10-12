@@ -14,7 +14,8 @@ import {
 import { BaseMeasurementsPanel, solveBodyRatios } from './panels/base-measurements-panel/base-measurements-panel';
 import { MainBoutsPanel, solveMainBouts, solveMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel, solveCornersRatios } from './panels/corners-panel/corners-panel';
-import { CenterBoutPanel, solveCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
+import { CenterBoutPanel, solveCenterBout, solveCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
+import { OuterContourPanel } from './panels/outer-contour-panel/outer-contour-panel';
 
 // The Violin Family recipe: the Ceruti model rebuilt on a split between what the user sets
 // (`d.params`, the file) and what each panel's solver derives from it (never written out). The
@@ -26,7 +27,7 @@ import { CenterBoutPanel, solveCenterBoutRatios } from './panels/center-bout-pan
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel],
   templateUrl: './violin-family.html',
   styleUrls: ['../sidebar.css', './violin-family.css'],
 })
@@ -38,6 +39,7 @@ export class ViolinFamily extends RecipeComponentBase {
     { id: 'corners', label: 'Corners', toggles: CornersPanel.renderToggles, seed: CornersPanel.seed },
     // no seed: its numbers are seeded with the bouts and the corners
     { id: 'centerBout', label: 'Center Bout', toggles: CenterBoutPanel.renderToggles },
+    { id: 'outerContour', label: 'Outer Contour', toggles: OuterContourPanel.renderToggles, seed: OuterContourPanel.seed },
   ];
 
   private readonly themeService = inject(ThemeService);
@@ -104,6 +106,10 @@ export class ViolinFamily extends RecipeComponentBase {
         return !!(m?.U0 && m.U1 && m.L0 && m.L1);
       }
       case 'centerBout': return !!p.corners;
+      case 'outerContour': {
+        let cb = solveCenterBout(p);
+        return !!(cb?.C0 && cb.C2 && cb.C1);
+      }
       default: return false;
     }
   }
