@@ -13,6 +13,7 @@ import {
   ViolinFamilyRecipe, ViolinFamilyToggleKey,
 } from '../../violin-family-types';
 import { renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
+import { renderCorners, solveCorners } from '../corners-panel/corners-panel';
 
 // The body's envelope: the box the outline is drawn inside, and the rib line's box inset from it.
 // Panel, then solve and ratios.
@@ -65,12 +66,18 @@ export class BaseMeasurementsPanel implements ViolinFamilyPanel, OnInit {
       this.body = solveBody(p);
       this.ratios = solveBodyRatios(p);
       let m = solveMainBouts(p);
+      let c = solveCorners(p);
       let layers: RenderLayer[] = [];
 
-      // the instrument as far as it's been drafted, in grey under the envelope
+      // the instrument as far as it's been drafted, in grey under the envelope. Once there are
+      // corners, the bouts end where the corners take over
       if (m) {
-        layers.push(renderMainBouts(p, m, this.pal, { showModuleArcs: false, renderOuterPath: false }, false, null));
+        layers.push(renderMainBouts(p, c ? { ...m, U1: c.U1, L1: c.L1 } : m, this.pal, { showModuleArcs: false, renderOuterPath: false }, false, null));
         layers.push(renderSolveFailures(m.failures, this.pal.alert, true));
+      }
+      if (c) {
+        layers.push(renderCorners(p, c, this.pal, { showModuleArcs: false, renderOuterPath: false }, false, null));
+        layers.push(renderSolveFailures(c.failures, this.pal.alert, true));
       }
       if (this.body.outer && this.body.ribBox) {
         layers.push(renderRect(this.body.outer, this.pal.neutral, 'none', STROKE_WEIGHT.guide));

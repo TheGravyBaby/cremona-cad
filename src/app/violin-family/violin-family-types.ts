@@ -1,4 +1,4 @@
-import { Arc, Rectangle, RecipeInterface } from '../models/types';
+import { Arc, Pt, Rectangle, RecipeInterface } from '../models/types';
 import { SolveFailure } from '../helpers/validators';
 
 // Every data shape the Violin Family recipe passes around, in one place. Three families:
@@ -13,6 +13,7 @@ import { SolveFailure } from '../helpers/validators';
 export interface ViolinFamilyParams {
   body: BodyParams;
   bouts?: MainBoutsParams;
+  corners?: CornersParams;
 }
 
 // the outer envelope of the finished body. Every field is a number once typed, null while a field
@@ -46,6 +47,27 @@ export interface ViolNeckParams {
   // where U0 takes over
   V0Start: number;
   V0End: number;
+}
+
+// the corner tips and the arcs that turn each bout into them. The tips are typed points: the seed
+// puts them on their guide circles and the Default button puts them back there. Radii are of the
+// rib outline. Where a corner is compound, the split angle is the direction from U3's centre to
+// the point U31 takes over at, in degrees as the field shows it
+export interface CornersParams {
+  UCr: Pt;
+  LCr: Pt;
+  U2R: number;
+  U3R: number;
+  U31R: number;
+  U31Start: number;
+  U31DoubleArc: boolean;
+  useViolCornerUC: boolean;
+  L2R: number;
+  L3R: number;
+  L31R: number;
+  L31Start: number;
+  L31DoubleArc: boolean;
+  useViolCornerLC: boolean;
 }
 
 export const DEFAULT_VIOLIN_FAMILY_PARAMS: ViolinFamilyParams = {
@@ -99,6 +121,27 @@ export interface ViolNeckJoin {
   headroom: number;
 }
 
+export type CornerKey = 'U2' | 'U3' | 'U31' | 'U4' | 'L2' | 'L3' | 'L31' | 'L4';
+export type CornerFailure = SolveFailure<CornerKey>;
+
+// the right-hand corners; renders mirror them. U1 and L1 are the main bouts' arcs with their ends
+// moved to where U2 and L2 take over: a render under or after this stage draws the bouts with
+// these in place of the main bouts' own. A corner whose section failed leaves its arcs null and
+// its bout arc untrimmed
+export interface CornersSolve {
+  U1: Arc | null;
+  U2: Arc | null;
+  U3: Arc | null;
+  U31: Arc | null;
+  U4: Arc | null;
+  L1: Arc | null;
+  L2: Arc | null;
+  L3: Arc | null;
+  L31: Arc | null;
+  L4: Arc | null;
+  failures: CornerFailure[];
+}
+
 // named <thing>to<datum>. The radius ratios are taken against the bout's inner width (the width
 // less the inset both sides), as the Ceruti recipe always measured them, so the two compare
 export interface ViolinFamilyRatios {
@@ -109,6 +152,14 @@ export interface ViolinFamilyRatios {
   LBtoH: number;
   L0toLBW: number;
   L1toLBW: number;
+  U2toUBW: number;
+  U3toLBW: number;
+  U31toLBW: number;
+  L2toLBW: number;
+  L3toLBW: number;
+  L31toLBW: number;
+  UCYtoH: number;
+  LCYtoH: number;
 }
 
 // what a stage is first drafted at
@@ -120,6 +171,14 @@ export const SEED_RATIOS: ViolinFamilyRatios = {
   LBtoH: 4 / 7,
   L0toLBW: 7 / 8,
   L1toLBW: 1 / 3,
+  U2toUBW: 1 / 2,
+  U3toLBW: 1 / 8,
+  U31toLBW: 1 / 16,
+  L2toLBW: 1 / 2,
+  L3toLBW: 1 / 8,
+  L31toLBW: 1 / 16,
+  UCYtoH: 2 / 3,
+  LCYtoH: 6 / 15,
 };
 
 export interface ViolinFamilyViewFlags {
@@ -156,7 +215,7 @@ export const VIOLIN_FAMILY_SCHEMA_VERSION = '1';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface {

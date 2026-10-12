@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { dist, pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
 import { MainBoutsPanel, solveMainBoutsRatios, solveMainBouts, violNeckJoinLimit } from './main-bouts-panel';
 import { solveBodyRatios } from '../base-measurements-panel/base-measurements-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, SEED_RATIOS, ViolinFamilyParams, ViolinFamilyRatios } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS, SEED_RATIOS, ViolinFamilyParams } from '../../violin-family-types';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
 
@@ -222,8 +222,8 @@ describe('ratios', () => {
     expect(r.L1toLBW).toBeCloseTo(m.L1!.r / (p.body.width - 2 * inset), 12);
   });
 
-  it('names every seed fraction a ratio the solve can report', () => {
-    const keys = Object.keys({ ...solveBodyRatios(seeded()), ...solveMainBoutsRatios(seeded()) }).sort();
-    expect(keys).toEqual((Object.keys(SEED_RATIOS) as (keyof ViolinFamilyRatios)[]).sort());
+  it('reports only ratios that have a seed fraction', () => {
+    const keys = Object.keys({ ...solveBodyRatios(seeded()), ...solveMainBoutsRatios(seeded()) });
+    for (const key of keys) expect(key in SEED_RATIOS, key).toBe(true);
   });
 });

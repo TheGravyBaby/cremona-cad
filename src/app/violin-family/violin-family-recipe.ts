@@ -12,7 +12,8 @@ import {
   ViolinFamilyToggleKey, ViolinFamilyViewFlags,
 } from './violin-family-types';
 import { BaseMeasurementsPanel, solveBodyRatios } from './panels/base-measurements-panel/base-measurements-panel';
-import { MainBoutsPanel, solveMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
+import { MainBoutsPanel, solveMainBouts, solveMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
+import { CornersPanel, solveCornersRatios } from './panels/corners-panel/corners-panel';
 
 // The Violin Family recipe: the Ceruti model rebuilt on a split between what the user sets
 // (`d.params`, the file) and what each panel's solver derives from it (never written out). The
@@ -24,7 +25,7 @@ import { MainBoutsPanel, solveMainBoutsRatios } from './panels/main-bouts-panel/
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel],
   templateUrl: './violin-family.html',
   styleUrls: ['../sidebar.css', './violin-family.css'],
 })
@@ -33,6 +34,7 @@ export class ViolinFamily extends RecipeComponentBase {
   protected readonly panelOrder: readonly PanelEntry[] = [
     { id: 'base', label: 'Base Measurements', toggles: BaseMeasurementsPanel.renderToggles },
     { id: 'mainBouts', label: 'Main Bouts', toggles: MainBoutsPanel.renderToggles, seed: MainBoutsPanel.seed },
+    { id: 'corners', label: 'Corners', toggles: CornersPanel.renderToggles, seed: CornersPanel.seed },
   ];
 
   private readonly themeService = inject(ThemeService);
@@ -85,6 +87,8 @@ export class ViolinFamily extends RecipeComponentBase {
   protected override setOpenPanel(panel: string): void {
     super.setOpenPanel(panel);
     this.panelOrder.find(entry => entry.id === panel)?.seed?.(this.d.params);
+    // the stage just seeded is what unlocks the next panel
+    this.panelFlow?.refreshEnabledPanels();
   }
 
   override canOpenPanel(panel: string): boolean {
@@ -92,6 +96,10 @@ export class ViolinFamily extends RecipeComponentBase {
     switch (panel) {
       case 'base': return true;
       case 'mainBouts': return p.body.width > 0 && p.body.height > 0;
+      case 'corners': {
+        let m = solveMainBouts(p);
+        return !!(m?.U0 && m.U1 && m.L0 && m.L1);
+      }
       default: return false;
     }
   }
@@ -137,6 +145,7 @@ export class ViolinFamily extends RecipeComponentBase {
     this.d.ratios = {
       ...solveBodyRatios(p),
       ...solveMainBoutsRatios(p),
+      ...solveCornersRatios(p),
     };
   }
 
