@@ -1,6 +1,3 @@
-@let body = solveBody(recipe.params);
-@let HtoW = solveBodyRatios(recipe.params).HtoW;
-
 <section class="ui-group">
     <div class="ui-group-title">File Properties</div>
     <!-- the toolbar carries the name too; a field here is where a user expects to find it -->
@@ -43,7 +40,7 @@
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">H to W</span>
-            <div class="basic-display" aria-label="Height to width ratio value">{{ HtoW ? nearestFraction(HtoW) : '–' }}</div>
+            <div class="basic-display" aria-label="Height to width ratio value">{{ ratio('HtoW') }}</div>
         </label>
         <button type="button" class="info-icon" (click)="help('dimension')" title="More information"
             aria-label="Information">ⓘ</button>

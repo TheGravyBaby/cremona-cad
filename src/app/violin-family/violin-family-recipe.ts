@@ -8,10 +8,9 @@ import { error } from '../shared/message-emitter';
 import { RecipeInterface } from '../models/types';
 import {
   blankViolinFamilyRecipe, DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS, VIOLIN_FAMILY_PANEL_IDS, VIOLIN_FAMILY_RECIPE_NAME,
-  VIOLIN_FAMILY_VIEW_FLAGS_KEY, ViolinFamilyPanelId, ViolinFamilyParams, ViolinFamilyRecipe, ViolinFamilyToggleKey,
-  ViolinFamilyViewFlags,
+  VIOLIN_FAMILY_VIEW_FLAGS_KEY, ViolinFamilyPanel, ViolinFamilyPanelId, ViolinFamilyParams, ViolinFamilyRecipe,
+  ViolinFamilyToggleKey, ViolinFamilyViewFlags,
 } from './violin-family-types';
-import { ViolinFamilyPanel } from './violin-family-panel';
 import { BaseMeasurementsPanel, solveBodyRatios } from './panels/base-measurements-panel/base-measurements-panel';
 import { MainBoutsPanel, solveMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
 
@@ -52,7 +51,7 @@ export class ViolinFamily extends RecipeComponentBase {
     super();
     effect(() => {
       this.themeService.mode();
-      this.panelRef?.redraw();
+      this.panelRef?.draw();
     });
     this.initializePanelFlow(this.panelOrder);
     this.initializeDebounce(() => this.refreshBoundInputs());
@@ -78,7 +77,7 @@ export class ViolinFamily extends RecipeComponentBase {
   // open panel does the drawing, once the template has caught up with a replaced `d`
   override firstRender = (): void => {
     this.requestFit.emit();
-    setTimeout(() => this.panelRef?.redraw());
+    setTimeout(() => this.panelRef?.draw());
   };
 
   // every way a panel opens comes through here: a pick, the session, a load, an undo. Its stage is
@@ -102,7 +101,7 @@ export class ViolinFamily extends RecipeComponentBase {
   protected override onStateRestored(): void {
     setTimeout(() => {
       if (this._destroyed) return;
-      this.panelRef?.redraw();
+      this.panelRef?.draw();
     });
   }
 
@@ -113,7 +112,7 @@ export class ViolinFamily extends RecipeComponentBase {
   onRenderToggle(key: ViolinFamilyToggleKey): void {
     this.viewFlags[key] = !this.viewFlags[key];
     writeWorkingState(VIOLIN_FAMILY_VIEW_FLAGS_KEY, JSON.stringify(this.viewFlags));
-    this.panelRef?.redraw();
+    this.panelRef?.draw();
   }
 
   // a panel's field was edited: its stage is seeded again (a toggle may have opened new fields),

@@ -23,14 +23,6 @@ describe('the body', () => {
     expect(outer.height! - ribBox.height!).toBeCloseTo(2 * inset, 9);
   });
 
-  it('hands back the same solve until a body param changes', () => {
-    const p = blank();
-    const first = solveBody(p);
-    expect(solveBody(blank())).toBe(first);
-    p.body.height += 1;
-    expect(solveBody(p)).not.toBe(first);
-  });
-
   it('reports a measurement out of range instead of clamping it, and draws no box', () => {
     const p = blank();
     p.body.overhang = 0.5;

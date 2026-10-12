@@ -1,20 +1,20 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections } from '../../../helpers/math/draftMath';
 import { angleFromCenter, flipAngleAboutYAxis, flipArcAboutY, lineCircleIntersection, offsetArcRadius, pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderRect, renderSegment, renderSolveFailures } from '../../../helpers/renderFuncs';
-import { reportFailures, solveSection } from '../../../helpers/validators';
+import { reportFailures, safeRun, solveSection } from '../../../helpers/validators';
 import { violNeckJoinExceeded } from '../../../docs/conditions';
+import { showFieldHelp } from '../../../docs/field-help';
 import { Arc, arcFromCircle, Pt, Rectangle } from '../../../models/types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../theme/theme.service';
 import {
-  HighlightedArc, MainBoutFailure, MainBoutsSolve, SEED_RATIOS, ViolinFamilyParams, ViolinFamilyRatios,
-  ViolinFamilyToggleKey, ViolinFamilyViewFlags, ViolNeckCap, ViolNeckJoin,
+  HighlightedArc, MainBoutFailure, MainBoutsSolve, RenderLayer, SEED_RATIOS, ViolinFamilyPanel, ViolinFamilyParams,
+  ViolinFamilyRatios, ViolinFamilyToggleKey, ViolinFamilyViewFlags, ViolNeckCap, ViolNeckJoin,
 } from '../../violin-family-types';
-import { finiteRatios, RenderLayer, stage, ViolinFamilyPanel } from '../../violin-family-panel';
 
 // The main bouts: the upper and lower bouts' two arcs each, set by their widths and radii, and the
 // viol neck that can take the place of the upper bout's top. Panel and renders, then solve and ratios.
@@ -26,8 +26,10 @@ type MainBoutArcKey = 'U0' | 'U1' | 'L0' | 'L1' | 'V0';
   templateUrl: './main-bouts-panel.html',
   styleUrls: ['../../../sidebar.css', '../../violin-family.css'],
 })
-export class MainBoutsPanel extends ViolinFamilyPanel implements OnInit {
+export class MainBoutsPanel implements ViolinFamilyPanel, OnInit {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'renderOuterPath'];
+  protected readonly pal = ThemeService.getPalette('classicCremona');
+  protected readonly help = showFieldHelp;
 
   // the first draft of whatever the fields need: the bouts off the body and the seed ratios, and the
   // viol neck the first time it's turned on. The shell runs this as the panel opens and on every
@@ -60,72 +62,87 @@ export class MainBoutsPanel extends ViolinFamilyPanel implements OnInit {
     }
   }
 
-  protected readonly pal = ThemeService.getPalette('classicCremona');
-
   @Input({ required: true }) params!: ViolinFamilyParams;
   @Input({ required: true }) flags!: ViolinFamilyViewFlags;
+  @Output() drawn = new EventEmitter<RenderLayer[]>();
+  @Output() edit = new EventEmitter<void>();
+
+  // what the last draw solved; the template and report() read these rather than solving again
+  m!: MainBoutsSolve;
+  ratios: Partial<ViolinFamilyRatios> = {};
 
   // held as a key rather than the arc: every solve builds new arcs
   private highlightedKey: MainBoutArcKey | null = null;
   private highlightedColor = '';
 
   ngOnInit(): void {
-    this.redraw();
+    this.draw();
+  }
+
+  // every field calls this: the shell seeds the stage and schedules the commit (the undo entry, the
+  // session write, report()) for when the typing stops, and the picture catches up now
+  edited(): void {
+    this.edit.emit();
+    this.draw();
   }
 
   // the arc a field sets, haloed while the field has focus; null on blur
   highlight(key: MainBoutArcKey | null, color = ''): void {
     this.highlightedKey = key;
     this.highlightedColor = color;
-    this.redraw();
+    this.draw();
   }
 
   ratio(key: keyof ViolinFamilyRatios): string {
-    let value = solveMainBoutsRatios(this.params)[key];
-    return value ? nearestFraction(value) : '–';
+    let value = this.ratios[key];
+    return Number.isFinite(value) ? nearestFraction(value!) : '–';
   }
 
-  override report(): void {
-    let m = solveMainBouts(this.params)!;
+  // messages for what didn't solve, raised once the edit settles rather than on every keystroke
+  report(): void {
+    let m = this.m;
     reportFailures(m.failures, 'Main Bouts');
     // the neck's reach is reported rather than refused: five fields feed it and any of them is a
     // legitimate thing to have just changed, so which to pull back is the maker's call
     if (m.violJoin && m.violJoin.headroom < 0) violNeckJoinExceeded(-m.violJoin.headroom);
   }
 
-  public draw(): RenderLayer[] {
-    let p = this.params;
-    let b = p.bouts!;
-    let m = solveMainBouts(p)!;
-    let arc = this.highlightedKey ? m[this.highlightedKey] : null;
-    let layers: RenderLayer[] = [];
+  draw(): void {
+    safeRun(() => {
+      let p = this.params;
+      let b = p.bouts!;
+      let m = this.m = solveMainBouts(p)!;
+      this.ratios = solveMainBoutsRatios(p);
+      let arc = this.highlightedKey ? m[this.highlightedKey] : null;
+      let layers: RenderLayer[] = [];
 
-    // the body's box and the rib line's inside it, and a square on each bout width with the inset
-    // marked inside it
-    if (this.flags.showModuleGuides) {
-      let h = p.body.height;
-      let LBW = p.body.width;
-      let UBW = b.UBW;
-      let inset = p.body.overhang + p.body.rib;
-      let lower = this.pal.ink(0).faint(-2);
-      let upper = this.pal.ink(1).faint(-2);
+      // the body's box and the rib line's inside it, and a square on each bout width with the inset
+      // marked inside it
+      if (this.flags.showModuleGuides) {
+        let h = p.body.height;
+        let LBW = p.body.width;
+        let UBW = b.UBW;
+        let inset = p.body.overhang + p.body.rib;
+        let lower = this.pal.ink(0).faint(-2);
+        let upper = this.pal.ink(1).faint(-2);
+        layers.push(
+          renderRect(new Rectangle(new Pt(-LBW / 2, 0), new Pt(LBW / 2, h)), this.pal.neutral),
+          renderRect(new Rectangle(new Pt(-LBW / 2 + inset, inset), new Pt(LBW / 2 - inset, h - inset)), this.pal.neutral),
+          renderRect(new Rectangle(new Pt(-LBW / 2, 0), new Pt(LBW / 2, LBW)), lower),
+          renderSegment(new Pt(-LBW / 2 + inset, 0), new Pt(-LBW / 2 + inset, LBW), lower),
+          renderSegment(new Pt(LBW / 2 - inset, 0), new Pt(LBW / 2 - inset, LBW), lower),
+          renderRect(new Rectangle(new Pt(-UBW / 2, h - UBW), new Pt(UBW / 2, h)), upper),
+          renderSegment(new Pt(-UBW / 2 + inset, h - UBW), new Pt(-UBW / 2 + inset, h), upper),
+          renderSegment(new Pt(UBW / 2 - inset, h - UBW), new Pt(UBW / 2 - inset, h), upper),
+        );
+      }
+
       layers.push(
-        renderRect(new Rectangle(new Pt(-LBW / 2, 0), new Pt(LBW / 2, h)), this.pal.neutral),
-        renderRect(new Rectangle(new Pt(-LBW / 2 + inset, inset), new Pt(LBW / 2 - inset, h - inset)), this.pal.neutral),
-        renderRect(new Rectangle(new Pt(-LBW / 2, 0), new Pt(LBW / 2, LBW)), lower),
-        renderSegment(new Pt(-LBW / 2 + inset, 0), new Pt(-LBW / 2 + inset, LBW), lower),
-        renderSegment(new Pt(LBW / 2 - inset, 0), new Pt(LBW / 2 - inset, LBW), lower),
-        renderRect(new Rectangle(new Pt(-UBW / 2, h - UBW), new Pt(UBW / 2, h)), upper),
-        renderSegment(new Pt(-UBW / 2 + inset, h - UBW), new Pt(-UBW / 2 + inset, h), upper),
-        renderSegment(new Pt(UBW / 2 - inset, h - UBW), new Pt(UBW / 2 - inset, h), upper),
+        renderMainBouts(p, m, this.pal, this.flags, true, arc ? { arc, color: this.highlightedColor } : null),
+        renderSolveFailures(m.failures, this.pal.alert, true),
       );
-    }
-
-    layers.push(
-      renderMainBouts(p, m, this.pal, this.flags, true, arc ? { arc, color: this.highlightedColor } : null),
-      renderSolveFailures(m.failures, this.pal.alert, true),
-    );
-    return layers;
+      this.drawn.emit(layers);
+    });
   }
 }
 
@@ -211,7 +228,8 @@ export const renderMainBouts = (
   }
 };
 
-export const solveMainBouts = stage(p => [p.body, p.bouts], (p): MainBoutsSolve | null => {
+// a later panel reads the bouts by calling this; it returns and never writes to the params
+export function solveMainBouts(p: ViolinFamilyParams): MainBoutsSolve | null {
   if (!p.bouts) return null;
   let b = p.bouts;
   let inset = p.body.overhang + p.body.rib;
@@ -355,7 +373,7 @@ export const solveMainBouts = stage(p => [p.body, p.bouts], (p): MainBoutsSolve 
   });
 
   return s;
-});
+}
 
 /**
  * How far the viol neck may reach across before U0 can no longer carry the outline out to U1.
@@ -418,12 +436,12 @@ export function solveMainBoutsRatios(p: ViolinFamilyParams): Partial<ViolinFamil
   let UBWI = b.UBW - 2 * inset;
   let LBWI = LBW - 2 * inset;
 
-  return finiteRatios({
+  return {
     UBtoLB: b.UBW / LBW,
     U0toUBW: b.U0R / UBWI,
     U1toUBW: b.U1R / UBWI,
     LBtoH: LBW / p.body.height,
     L0toLBW: b.L0R / LBWI,
     L1toLBW: b.L1R / LBWI,
-  });
+  };
 }

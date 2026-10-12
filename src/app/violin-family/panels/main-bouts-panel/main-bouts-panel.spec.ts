@@ -28,18 +28,11 @@ describe('the main bouts solve', () => {
     expect(m.L1!.x + m.L1!.r).toBeCloseTo(p.body.width / 2 - (p.body.overhang + p.body.rib), 9);
   });
 
-  it('hands back the same solve while its params are unchanged', () => {
+  it('never writes to the params', () => {
     const p = seeded();
-    expect(solveMainBouts(p)).toBe(solveMainBouts(p));
-  });
-
-  it('re-solves a stage once a param it reads changes, and never writes to the params', () => {
-    const p = seeded();
-    const before = solveMainBouts(p);
     const snapshot = JSON.stringify(p);
-    p.bouts!.L0R += 5;
-    expect(solveMainBouts(p)).not.toBe(before);
-    p.bouts!.L0R -= 5;
+    solveMainBouts(p);
+    solveMainBoutsRatios(p);
     expect(JSON.stringify(p)).toBe(snapshot);
   });
 
@@ -227,15 +220,6 @@ describe('ratios', () => {
     expect(r.LBtoH).toBeCloseTo(p.body.width / p.body.height, 12);
     expect(r.U0toUBW).toBeCloseTo(m.U0!.r / (p.bouts!.UBW - 2 * inset), 12);
     expect(r.L1toLBW).toBeCloseTo(m.L1!.r / (p.body.width - 2 * inset), 12);
-  });
-
-  it('leaves off a ratio over a width that has gone to nothing, rather than showing NaN', () => {
-    const p = seeded();
-    p.bouts!.UBW = 2 * (p.body.overhang + p.body.rib);
-    const r = solveMainBoutsRatios(p);
-    expect(r.U0toUBW).toBeUndefined();
-    expect(r.U1toUBW).toBeUndefined();
-    for (const value of Object.values(r) as number[]) expect(Number.isFinite(value)).toBe(true);
   });
 
   it('names every seed fraction a ratio the solve can report', () => {
