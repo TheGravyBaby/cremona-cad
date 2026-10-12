@@ -9,8 +9,7 @@ import { SolveFailure } from '../helpers/validators';
 //   ratios  the proportions the drawing reads at, for study. Derived like the solved stages, and
 //           stamped onto the file as a record; nothing reads them back.
 
-// one sub-object per drafting stage, absent until that stage is first opened, so a stage's solver
-// can name exactly what it reads
+// one sub-object per drafting stage, absent until that stage is first opened and seeded
 export interface ViolinFamilyParams {
   body: BodyParams;
   bouts?: MainBoutsParams;
@@ -140,6 +139,15 @@ export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
 export interface HighlightedArc {
   arc: Arc;
   color: string;
+}
+
+export type RenderLayer = (g: any, ui: any) => void;
+
+// what the shell asks of whichever panel is mounted: a draw when the theme, a view toggle or an
+// undo has changed the picture, and the messages once an edit has settled
+export interface ViolinFamilyPanel {
+  draw(): void;
+  report(): void;
 }
 
 export const VIOLIN_FAMILY_RECIPE_NAME = 'violin-family-recipe';
