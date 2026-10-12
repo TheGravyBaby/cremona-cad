@@ -72,6 +72,15 @@
             (edit)="onPanelEdit()">
         </app-vf-corners-panel>
         }
+
+        @if (openPanel === 'centerBout') {
+        <app-vf-center-bout-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-center-bout-panel>
+        }
     </div>
 </div>
 
