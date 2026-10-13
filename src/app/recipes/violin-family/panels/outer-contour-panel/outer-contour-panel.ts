@@ -526,9 +526,21 @@ export function purflingPath(p: ViolinFamilyParams, rib: RibArcs, arcOffset: num
 }
 
 // a later panel reads the plates by calling this; it returns and never writes to the params. The
-// rib outline is solved again here, every stage of it, since the edge stands off all of it
+// rib outline is solved again here, every stage of it, since the edge stands off all of it. The
+// last answer is kept against the params it was solved from (~20ms a solve, and the arching panels
+// ask for it on every cursor move); nothing of it reaches the file
+let last: { key: string; solve: OuterContourSolve } | null = null;
+
 export function solveOuterContour(p: ViolinFamilyParams): OuterContourSolve | null {
   if (!p.outerContour || !p.corners || !p.bouts) return null;
+  let key = JSON.stringify([p.body, p.bouts, p.corners, p.outerContour]);
+  if (last?.key === key) return last.solve;
+  let solve = solveOuterContourUncached(p);
+  last = { key, solve };
+  return solve;
+}
+
+function solveOuterContourUncached(p: ViolinFamilyParams): OuterContourSolve {
   let m = solveMainBouts(p)!;
   let c = solveCorners(p)!;
   let cb = solveCenterBout(p)!;

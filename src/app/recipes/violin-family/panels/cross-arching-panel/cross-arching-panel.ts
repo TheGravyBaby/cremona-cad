@@ -21,7 +21,7 @@ import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
   ArchTakeoff, CrossArchingFailure, CrossArchingSolve, CrossArchKnot, CrossArchParams, CrossArchRow, CrossArchSection, CrossShapeParams,
-  CrossStationParams, Plate, PlateSurface, RenderLayer, SurfaceGouge, SurfaceRow, ViolinFamilyPanel, ViolinFamilyParams,
+  CrossStationParams, OuterContourSolve, Plate, PlateSurface, RenderLayer, SurfaceGouge, SurfaceRow, ViolinFamilyPanel, ViolinFamilyParams,
   ViolinFamilyToggleKey, ViolinFamilyViewFlags,
 } from '../../violin-family-types';
 import { gougeHalfWidth, gougeProfileZ, renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
@@ -31,7 +31,7 @@ import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import {
-  archZAt, BACK_ARCH_INK, CHANNEL_INK, ribHeightAt, solveArchTakeoff, solveLongArching, TOP_ARCH_INK,
+  archZAt, BACK_ARCH_INK, CHANNEL_INK, renderBodySideProfile, ribHeightAt, sideViewOffsetX, solveArchTakeoff, solveLongArching, TOP_ARCH_INK,
 } from '../long-arching-panel/long-arching-panel';
 
 // The crown across the plate, and the surface the whole arching comes to. The maker authors only
@@ -95,6 +95,8 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
 
   view: CrossArchingView = { cursorY: null, overlay: { top: 'none', back: 'none' }, rotX: -30, rotY: -10, rotZ: 0 };
   private sampled: Record<Plate, Sampled | null> = { top: null, back: null };
+  // the rib outline the section's box is cut from, sampled once per outer contour solve
+  private ribOutline: { for: OuterContourSolve; poly: Pt[] | null } | null = null;
   highlighted: { plate: Plate; index: number } | null = null;
   dragging = false;
   private dragLast = { x: 0, y: 0 };
@@ -127,6 +129,8 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
       let p = this.params;
       let o = solveOuterContour(p)!;
       let f = solveFluting(p)!;
+      let a = solveLongArching(p)!;
+      let sideX = sideViewOffsetX(p);
       let s = this.s = solveCrossArching(p)!;
       let y = this.cursorY;
       for (let plate of this.plates) {
@@ -137,10 +141,14 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
       }
       let dx = -p.body.width * PLATE_LAYOUT_GAP;
       let stationLine = renderDashedLine(new Pt(dx - p.body.width / 2 - 10, y), new Pt(p.body.width / 2 + 10, y), this.pal.neutral, DASH.guide, STROKE_WEIGHT.guide, 0.7);
+      let side = renderBodySideProfile(p, a, o, this.pal, false, { ground: true, fluting: true });
+
+
       this.drawn.emit([
         renderOuterContour(p, o, this.pal, this.flags, false),
         renderFluting(p, f, this.pal, false),
         renderFholes(p, this.pal),
+        (g, ui) => side(g.append('g').attr('transform', `translate(${sideX},0)`), ui.append('g').attr('transform', `translate(${sideX},0)`)),
         stationLine,
         this.sectionView(y),
         ...this.overlayLayers(y),
@@ -385,9 +393,13 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     let a = p.arching!;
     let s = this.s;
     let ribs = solveLongArching(p)!.ribs;
-    let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
-    let ribOutline = rib ? purflingPath(p, rib, 0) : null;
-    let ribHalf = ribOutline ? plateHalfChordAtY(samplePathToPolyline(ribOutline), y) : null;
+    let o = solveOuterContour(p)!;
+    if (this.ribOutline?.for !== o) {
+      let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+      let path = rib ? purflingPath(p, rib, 0) : null;
+      this.ribOutline = { for: o, poly: path ? samplePathToPolyline(path) : null };
+    }
+    let ribHalf = this.ribOutline.poly ? plateHalfChordAtY(this.ribOutline.poly, y) : null;
     let halves = { top: s.top ? plateHalfChordAtY(s.top.outline, y) : null, back: s.back ? plateHalfChordAtY(s.back.outline, y) : null };
     if (!ribs || (halves.top === null && halves.back === null)) return () => {};
     let ribZ = ribHeightAt(p, y, ribs);
