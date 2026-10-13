@@ -204,3 +204,11 @@
   font-weight: 500 !important;
   color: var(--ui-text-secondary);
 }
+
+/* the four point's radii, narrowed so a turn's four quarters share one row where three cells is
+   the rule; touch keeps the full width for its steppers and wraps */
+@media (pointer: fine) {
+  .field-cell.field-cell--arc {
+    width: 76px;
+  }
+}
