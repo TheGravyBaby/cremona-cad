@@ -31,3 +31,21 @@ export const CORPUS_TEMPLATES: ViolinFamilyTemplate[] = [
   stradivariViolaCassavetti2022560103 as unknown as ViolinFamilyTemplate,
   stradivariCelloCastelbarco2022560102 as unknown as ViolinFamilyTemplate,
 ];
+
+const LOC_HOST = 'https://tile.loc.gov/';
+
+// the Library of Congress's IIIF service sends the CORS header a browser needs to read an image's
+// pixels, which the white suppression does. A template with an image from anywhere else is offered
+// on a local dev build only, since a deployed one can't count on that host
+export function isLocSourced(template: ViolinFamilyTemplate): boolean {
+  return (template.referenceImages ?? []).every(img => img.href.startsWith(LOC_HOST));
+}
+
+// the gallery card's picture is the first reference image, asked for small: a LoC href is a IIIF
+// request whose size segment can be swapped, so the card never pulls the full-resolution scan
+export function thumbnailHref(template: ViolinFamilyTemplate): string | undefined {
+  const href = template.referenceImages?.[0]?.href;
+  if (!href) return undefined;
+  if (!href.startsWith(LOC_HOST)) return href;
+  return href.replace(/\/full\/[^/]+\/0\/default\./, '/full/!240,320/0/default.');
+}

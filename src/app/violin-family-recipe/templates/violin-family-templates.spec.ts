@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { CORPUS_TEMPLATES } from './corpus';
+import { CORPUS_TEMPLATES, isLocSourced, thumbnailHref } from './corpus';
 import { VIOLIN_FAMILY_PANEL_IDS, VIOLIN_FAMILY_RECIPE_NAME, VIOLIN_FAMILY_SCHEMA_VERSION } from '../violin-family-types';
 import { solveMainBouts } from '../panels/main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../panels/corners-panel/corners-panel';
@@ -73,5 +73,20 @@ describe('CORPUS_TEMPLATES', () => {
         solve ? solve.failures.map(f => `${t.key} ${name}: ${f.message}`) : [`${t.key} ${name}: no solve`]);
       expect(failed).toEqual([]);
     }
+  });
+});
+
+describe('thumbnailHref', () => {
+  it('asks the LoC image service for a small rendering rather than the full scan', () => {
+    const thumb = thumbnailHref(CORPUS_TEMPLATES.find(t => t.referenceImages?.length)!)!;
+    expect(thumb).toContain('/full/!240,320/0/default.');
+    expect(thumb).not.toContain('pct:100');
+  });
+
+  it('passes any other host through untouched, and has nothing for a template with no image', () => {
+    const other = { ...CORPUS_TEMPLATES[0], referenceImages: [{ href: 'https://example.org/a.png' } as any] };
+    expect(thumbnailHref(other)).toBe('https://example.org/a.png');
+    expect(isLocSourced(other)).toBe(false);
+    expect(thumbnailHref({ ...CORPUS_TEMPLATES[0], referenceImages: [] })).toBeUndefined();
   });
 });

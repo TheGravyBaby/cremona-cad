@@ -5,11 +5,12 @@ import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 import { ThemeService } from '../theme/theme.service';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
 import { error } from '../shared/message-emitter';
+import { isLocalHost } from '../helpers/debugDump';
 import { RecipeInterface } from '../models/types';
 import {
   blankViolinFamilyRecipe, DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS, VIOLIN_FAMILY_PANEL_IDS, VIOLIN_FAMILY_RECIPE_NAME,
   VIOLIN_FAMILY_VIEW_FLAGS_KEY, ViolinFamilyPanel, ViolinFamilyPanelId, ViolinFamilyParams, ViolinFamilyRecipe,
-  ViolinFamilyToggleKey, ViolinFamilyViewFlags,
+  ViolinFamilyTemplate, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
 } from './violin-family-types';
 import { BaseMeasurementsPanel, solveBodyRatios } from './panels/base-measurements-panel/base-measurements-panel';
 import { MainBoutsPanel, solveMainBouts, solveMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
@@ -28,6 +29,7 @@ import { ScrollWidthsPanel } from './panels/scroll-widths-panel/scroll-widths-pa
 import { StringSetupPanel } from './panels/string-setup-panel/string-setup-panel';
 import { MouldPanel } from './panels/mould-panel/mould-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
+import { CORPUS_TEMPLATES, isLocSourced, thumbnailHref } from './templates/corpus';
 
 // The Violin Family recipe: the Ceruti model rebuilt on a split between what the user sets
 // (`d.params`, the file) and what each panel's solver derives from it (never written out). The
@@ -96,9 +98,42 @@ export class ViolinFamily extends RecipeComponentBase {
 
   private _lastLoadedParamsSnapshot = '';
 
+  // the gallery is the base panel's first section while it's open: on a first visit, with no session
+  // to restore, and when asked for from the file menu. Picking a card, the blank or hiding it puts it away
+  galleryOpen = false;
+
+  // off localhost, a template with an image from a host other than the Library of Congress is left
+  // out; see isLocSourced
+  get templateCards(): { key: string; instrument: string; meta: string; thumb?: string }[] {
+    return CORPUS_TEMPLATES
+      .filter(t => isLocalHost() || isLocSourced(t))
+      .map(t => ({ key: t.key, instrument: t.fileName, meta: t.description ?? '', thumb: thumbnailHref(t) }));
+  }
+
+  openTemplateGallery(): void {
+    this.galleryOpen = true;
+    this.setOpenPanel('base');
+  }
+
+  // asks only when there is work to lose, as starting a new instrument does
+  loadTemplate(key: string): void {
+    let template = CORPUS_TEMPLATES.find(t => t.key === key);
+    if (!template || !this.confirmDiscard('Load template? Any unsaved changes will be lost.')) return;
+    let { key: _key, ...recipe } = JSON.parse(JSON.stringify(template)) as ViolinFamilyTemplate;
+    this.loadFile(recipe);
+    this.galleryOpen = false;
+  }
+
+  private confirmDiscard(message: string): boolean {
+    let dirty = !!this._lastLoadedParamsSnapshot && JSON.stringify(this.d.params) !== this._lastLoadedParamsSnapshot;
+    return !dirty || confirm(message);
+  }
+
   // the session's panel is put back before the first draw, so the right panel is the one that mounts
   override ngOnInit(): void {
+    let freshVisit = !this.loadMatchingStoredRecipe();
     super.ngOnInit();
+    this.galleryOpen = freshVisit;
     this.panelFlow?.refreshEnabledPanels();
     let saved = readWorkingState(PANEL_KEY) ?? '';
     let known = (VIOLIN_FAMILY_PANEL_IDS as readonly string[]).includes(saved);
@@ -225,9 +260,9 @@ export class ViolinFamily extends RecipeComponentBase {
   }
 
   onNewClick(): void {
-    let dirty = !!this._lastLoadedParamsSnapshot && JSON.stringify(this.d.params) !== this._lastLoadedParamsSnapshot;
-    if (dirty && !confirm('Start a new instrument? Any work you have not downloaded will be lost.')) return;
+    if (!this.confirmDiscard('Start a new instrument? Any work you have not downloaded will be lost.')) return;
     this.loadFile(blankViolinFamilyRecipe());
+    this.galleryOpen = false;
   }
 
   // the toolbar's name field sits outside the panel, so it commits by hand
