@@ -1,0 +1,118 @@
+@let f = params.fHoles!;
+
+<section class="ui-group">
+    <div class="ui-group-title">Upper Eye</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Radius <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.UEye.r" (input)="edited()"
+                [style.borderColor]="pal.ink(1)" />
+        </label>
+        <label class="field-cell"></label>
+        <label class="field-cell">
+            <span class="field-title">Ur to Lr</span>
+            <div class="basic-display" aria-label="Upper eye radius to lower eye radius ratio value">{{ ratio('FUtoL') }}</div>
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">X <span class="unit-label">mm</span></span>
+                <span class="field-title">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Upper eye position"
+                [style.borderColor]="pal.ink(1).faint(5)" title="Arrow keys move the eye from either box">
+                <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Upper eye X"
+                    [(ngModel)]="f.UEye.x" (input)="edited()" />
+                <input type="number" class="basic-input" step="1" min="0" data-xy="y" aria-label="Upper eye Y"
+                    [(ngModel)]="f.UEye.y" (input)="edited()" />
+            </div>
+        </div>
+        <label class="field-cell">
+            <span class="field-title">Eye Distance</span>
+            <div class="basic-display" aria-label="Distance between the eyes">{{ eyeDistance }}</div>
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Rise <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.URise" (input)="edited()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">H to W</span>
+            <div class="basic-display" aria-label="F-hole bounding box height to width ratio value">{{ boundsHtoW }}</div>
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Stem</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.stem.width" (input)="edited()"
+                [style.borderColor]="pal.ink(2)" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Angle <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="0.1" [min]="stemAngleRange[0]" [max]="stemAngleRange[1]"
+                [(ngModel)]="f.stem.angle" (input)="edited()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">X <span class="unit-label">mm</span></span>
+                <span class="field-title">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Stem centre position"
+                [style.borderColor]="pal.ink(2).faint(5)" title="Arrow keys move the stem from either box">
+                <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Stem centre X"
+                    [(ngModel)]="f.stem.center.x" (input)="edited()" />
+                <input type="number" class="basic-input" step="1" min="0" data-xy="y" aria-label="Stem centre Y"
+                    [(ngModel)]="f.stem.center.y" (input)="edited()" />
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Lower Eye</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Radius <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.LEye.r" (input)="edited()"
+                [style.borderColor]="pal.ink(0)" />
+        </label>
+        <label class="field-cell"></label>
+        <label class="field-cell">
+            <span class="field-title">Lr to W</span>
+            <div class="basic-display" aria-label="Lower eye radius to body width ratio value">{{ ratio('FLtoW') }}</div>
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">X <span class="unit-label">mm</span></span>
+                <span class="field-title">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Lower eye position"
+                [style.borderColor]="pal.ink(0).faint(5)" title="Arrow keys move the eye from either box">
+                <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Lower eye X"
+                    [(ngModel)]="f.LEye.x" (input)="edited()" />
+                <input type="number" class="basic-input" step="1" min="0" data-xy="y" aria-label="Lower eye Y"
+                    [(ngModel)]="f.LEye.y" (input)="edited()" />
+            </div>
+        </div>
+        <label class="field-cell">
+            <span class="field-title">Eye Distance</span>
+            <div class="basic-display" aria-label="Distance between the eyes">{{ eyeDistance }}</div>
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Rise <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.LRise" (input)="edited()" />
+        </label>
+    </div>
+</section>

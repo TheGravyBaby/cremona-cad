@@ -1,4 +1,4 @@
-import { Arc, Pt, Rectangle, RecipeInterface } from '../models/types';
+import { Arc, Circle, Pt, Rectangle, RecipeInterface } from '../models/types';
 import { SolveFailure } from '../helpers/validators';
 
 // Every data shape the Violin Family recipe passes around, in one place. Three families:
@@ -16,6 +16,8 @@ export interface ViolinFamilyParams {
   corners?: CornersParams;
   outerContour?: OuterContourParams;
   fluting?: FlutingParams;
+  fHoles?: FholePlacementParams;
+  fHoleContours?: FholeContourParams;
 }
 
 // the outer envelope of the finished body. Every field is a number once typed, null while a field
@@ -116,9 +118,10 @@ export interface ButtonParams {
   height: number;
 }
 
-// the fluting channel each plate is gouged with, inside a flat land round the edge. The land edge
-// is one number for both plates: it belongs to the outline and the purfling, not to a gouge. The
-// corners are smoothed down to the channel in one operation at the bench, so one toggle for both
+// the fluting channel each plate is gouged with, inside the flat left round the edge. The fluting
+// edge, where that flat ends and the channel begins, is one number for both plates: it belongs to
+// the outline and the purfling, not to a gouge. The corners are smoothed down to the channel in
+// one operation at the bench, so one toggle for both
 export interface FlutingParams {
   flutingEdge: number;
   cornerGouge: boolean;
@@ -239,12 +242,69 @@ export interface OuterContourSolve {
   failures: OuterContourFailure[];
 }
 
+// where the two f-holes sit on the top plate: the eyes first, everything else hung off them. Each
+// eye is a typed circle on the treble side; the bass side mirrors it. The rise is how far the hole
+// runs on past its eye, and the stem's lean is in degrees past upright, positive toward the upper eye
+export interface FholePlacementParams {
+  UEye: Circle;
+  LEye: Circle;
+  URise: number;
+  LRise: number;
+  stem: FholeStemParams;
+}
+
+export interface FholeStemParams {
+  center: Pt;
+  width: number;
+  angle: number;
+}
+
+// what bends between the eyes and the stem: each end's shoulder (U1/L1, ends in degrees), arm
+// (U2/L2, or a compound pair split at an angle), wing (U3/L3) and the cut that sets the wing's
+// tip, and the four arcs that land the outline on the stem, one radius for all four unless set
+// free. Radii in mm, angles in degrees as the fields show them
+export interface FholeContourParams {
+  U1R: number;
+  U1End: number;
+  U2R: number;
+  U21DoubleArc: boolean;
+  U21R: number;
+  U21Start: number;
+  U3R: number;
+  U3End: number;
+  UCut: FholeCutParams;
+  L1R: number;
+  L1End: number;
+  L2R: number;
+  L21DoubleArc: boolean;
+  L21R: number;
+  L21Start: number;
+  L3R: number;
+  L3End: number;
+  LCut: FholeCutParams;
+  stemArcR: number;
+  stemArcsIndependent: boolean;
+  S1R: number;
+  S2R: number;
+  S3R: number;
+  S4R: number;
+}
+
+// the notch cut from the eye to the wing's tip: where on the eye it starts (degrees round the eye),
+// the direction it runs (degrees) and how far
+export interface FholeCutParams {
+  angleOnEye: number;
+  slope: number;
+  length: number;
+}
+
 export type FlutingKey = 'top' | 'back';
 export type FlutingFailure = SolveFailure<FlutingKey>;
 
-// one plate's channel as three closed loops: its outer edge on the land, its centreline, and its
-// inner edge, each a gouge's half width further in, with the inner edge's offset from the plate
-// edge read off for the arching. The land is the plate edge the land's width in, corners followed
+// one plate's channel as three closed loops: its outer edge on the fluting edge, its centreline,
+// and its inner edge, each a gouge's half width further in, with the inner edge's offset from the
+// plate edge read off for the arching. The fluting edge itself is the plate edge that width in,
+// corners followed, which the channel bypasses
 export interface ChannelSolve {
   outer: string;
   center: string;
@@ -256,10 +316,34 @@ export interface ChannelSolve {
 }
 
 export interface FlutingSolve {
-  land: string | null;
+  outerEdge: string | null;
   top: ChannelSolve | null;
   back: ChannelSolve | null;
   failures: FlutingFailure[];
+}
+
+export type FholeArcKey = 'U1' | 'U2' | 'U21' | 'U3' | 'L1' | 'L2' | 'L21' | 'L3' | 'S1' | 'S2' | 'S3' | 'S4';
+export type FholeFailure = SolveFailure<FholeArcKey>;
+
+// one f-hole's arcs on the treble side, the two tips its cuts place, and its outline as one closed
+// path; renders mirror them. An arc whose section failed is null, and so is the path
+export interface FholeContoursSolve {
+  U1: Arc | null;
+  U2: Arc | null;
+  U21: Arc | null;
+  U3: Arc | null;
+  L1: Arc | null;
+  L2: Arc | null;
+  L21: Arc | null;
+  L3: Arc | null;
+  S1: Arc | null;
+  S2: Arc | null;
+  S3: Arc | null;
+  S4: Arc | null;
+  UTip: Pt | null;
+  LTip: Pt | null;
+  path: string | null;
+  failures: FholeFailure[];
 }
 
 // named <thing>to<datum>. The radius ratios are taken against the bout's inner width (the width
@@ -287,6 +371,8 @@ export interface ViolinFamilyRatios {
   C21toLBW: number;
   C1toLBW: number;
   C11toLBW: number;
+  FLtoW: number;
+  FUtoL: number;
 }
 
 // what a stage is first drafted at
@@ -313,12 +399,18 @@ export const SEED_RATIOS: ViolinFamilyRatios = {
   C21toLBW: 1 / 16,
   C1toLBW: 1 / 8,
   C11toLBW: 1 / 16,
+  FLtoW: 1 / 50,
+  FUtoL: 3 / 4,
 };
 
 export interface ViolinFamilyViewFlags {
   showModuleArcs: boolean;
   showModuleGuides: boolean;
   renderOuterPath: boolean;
+  showFholeBounds: boolean;
+  showFholePlacementGuides: boolean;
+  // the top plate's inner channel edge, faint, where the f-holes are placed against it
+  showFlutingEdge: boolean;
 }
 
 export type ViolinFamilyToggleKey = keyof ViolinFamilyViewFlags;
@@ -327,6 +419,9 @@ export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
   showModuleArcs: true,
   showModuleGuides: false,
   renderOuterPath: true,
+  showFholeBounds: true,
+  showFholePlacementGuides: false,
+  showFlutingEdge: false,
 };
 
 export interface HighlightedArc {
@@ -349,7 +444,7 @@ export const VIOLIN_FAMILY_SCHEMA_VERSION = '1';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface {

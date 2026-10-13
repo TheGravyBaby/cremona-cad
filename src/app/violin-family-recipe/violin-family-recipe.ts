@@ -17,6 +17,8 @@ import { CornersPanel, solveCornersRatios } from './panels/corners-panel/corners
 import { CenterBoutPanel, solveCenterBout, solveCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
 import { OuterContourPanel, solveOuterContour } from './panels/outer-contour-panel/outer-contour-panel';
 import { FlutingPanel } from './panels/fluting-panel/fluting-panel';
+import { FHolePlacementPanel, solveFholePlacementRatios } from './panels/fhole-placement-panel/fhole-placement-panel';
+import { FHoleContoursPanel } from './panels/fhole-contours-panel/fhole-contours-panel';
 
 // The Violin Family recipe: the Ceruti model rebuilt on a split between what the user sets
 // (`d.params`, the file) and what each panel's solver derives from it (never written out). The
@@ -28,7 +30,7 @@ import { FlutingPanel } from './panels/fluting-panel/fluting-panel';
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel],
   templateUrl: './violin-family.html',
   styleUrls: ['../sidebar.css', './violin-family.css'],
 })
@@ -42,6 +44,8 @@ export class ViolinFamily extends RecipeComponentBase {
     { id: 'centerBout', label: 'Center Bout', toggles: CenterBoutPanel.renderToggles },
     { id: 'outerContour', label: 'Outer Contour', toggles: OuterContourPanel.renderToggles, seed: OuterContourPanel.seed },
     { id: 'fluting', label: 'Fluting Channel', toggles: FlutingPanel.renderToggles, seed: FlutingPanel.seed },
+    { id: 'fHolePlacement', label: 'F-Hole Placement', toggles: FHolePlacementPanel.renderToggles, seed: FHolePlacementPanel.seed },
+    { id: 'fHoleContours', label: 'F-Hole Contours', toggles: FHoleContoursPanel.renderToggles, seed: FHoleContoursPanel.seed },
   ];
 
   private readonly themeService = inject(ThemeService);
@@ -113,6 +117,8 @@ export class ViolinFamily extends RecipeComponentBase {
         return !!(cb?.C0 && cb.C2 && cb.C1);
       }
       case 'fluting': return !!solveOuterContour(p)?.top;
+      case 'fHolePlacement': return !!solveOuterContour(p)?.top;
+      case 'fHoleContours': return !!p.fHoles;
       default: return false;
     }
   }
@@ -160,6 +166,7 @@ export class ViolinFamily extends RecipeComponentBase {
       ...solveMainBoutsRatios(p),
       ...solveCornersRatios(p),
       ...solveCenterBoutRatios(p),
+      ...solveFholePlacementRatios(p),
     };
   }
 

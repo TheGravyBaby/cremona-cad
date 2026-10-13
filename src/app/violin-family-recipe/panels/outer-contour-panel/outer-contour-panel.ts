@@ -21,11 +21,13 @@ import {
 import { solveMainBouts, violNeckCap } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { cornerTurn, solveCenterBout } from '../center-bout-panel/center-bout-panel';
+import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 
 // The outer contour: the plates' edges, the rib outline stood off by the inset. Each corner's arcs
 // run on past the rib corner by their cutoffs and are cut across a flat (or its rounding); the
-// back carries the button; the purfling lines run inside the edge. Only the plates are drawn here,
-// and no earlier panel draws them. Panel and renders, then solve.
+// back carries the button; the purfling lines run inside the edge. The plates are drawn here and on
+// every panel after this one, never before it; the f-holes ride on the top plate once they are cut.
+// Panel and renders, then solve.
 
 // the back sits a body's width and a bit to the left of the top, as the sheets lay the plates out
 export const PLATE_LAYOUT_GAP = 1.1;
@@ -105,8 +107,10 @@ export class OuterContourPanel implements ViolinFamilyPanel, OnInit {
     safeRun(() => {
       let p = this.params;
       let o = this.o = solveOuterContour(p)!;
+      // the holes, once cut, ride on the top plate here as on every panel after this one
       this.drawn.emit([
         renderOuterContour(p, o, this.pal, this.flags, true),
+        renderFholes(p, this.pal),
         renderSolveFailures(o.failures, this.pal.alert, true),
       ]);
     });
@@ -508,9 +512,9 @@ export function outerPath(p: ViolinFamilyParams, rib: RibArcs, outer: OuterCorne
 }
 
 // a purfling line: the rib outline at `arcOffset` out (in when negative), its corners pure offsets
-// of the corner arcs meeting at a new tip rather than cut across. Null once the offset is too far
-// in for a corner's arcs to meet
-function purflingPath(p: ViolinFamilyParams, rib: RibArcs, arcOffset: number): string | null {
+// of the corner arcs meeting at a new tip rather than cut across; at 0 the rib outline itself. Null
+// once the offset is too far in for a corner's arcs to meet
+export function purflingPath(p: ViolinFamilyParams, rib: RibArcs, arcOffset: number): string | null {
   const arcs = offsetArcs(p, rib, arcOffset, true);
   if (!arcs.length) return null;
   const mirrored = arcs.map(arc => flipArcAboutY(arc));

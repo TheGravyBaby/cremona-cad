@@ -1,11 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { templateKeys, templateViolin } from '../enrico-ceruti-violin/ceruti-fixtures';
-import { calculateCenterBout, calculateCorners, calculateOuterArcs } from '../enrico-ceruti-violin/calculation/outline/ceruti-calcs';
-import { defineInsetPath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../enrico-ceruti-violin/calculation/outline/ceruti-paths';
+import { calculateCenterBout, calculateCorners, calculateFholeContours, calculateOuterArcs } from '../enrico-ceruti-violin/calculation/outline/ceruti-calcs';
+import { defineInsetPath, defineOneFholePath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../enrico-ceruti-violin/calculation/outline/ceruti-paths';
+import { defaultFHolePlacement } from '../enrico-ceruti-violin/panels/f-hole-placement-panel/f-hole-placement-panel';
 import { channelPaths, defaultFlutingParams } from '../enrico-ceruti-violin/calculation/arching/ceruti-arch-geometry';
 import { defaultArchingParams } from '../enrico-ceruti-violin/calculation/arching/ceruti-arching';
-import { EnricoCerutiParams, FlutingParams } from '../enrico-ceruti-violin/ceruti-types';
+import { EnricoCerutiParams, FholeParams, FlutingParams } from '../enrico-ceruti-violin/ceruti-types';
 import { Arc, Pt } from '../models/types';
 import { signedRadianDelta, TURN } from '../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../helpers/math/pathMath';
@@ -15,7 +16,9 @@ import { solveCorners, solveCornersRatios } from './panels/corners-panel/corners
 import { solveCenterBout, solveCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
 import { solveOuterContour } from './panels/outer-contour-panel/outer-contour-panel';
 import { solveFluting } from './panels/fluting-panel/fluting-panel';
-import { GougeParams, ViolinFamilyParams } from './violin-family-types';
+import { FHolePlacementPanel } from './panels/fhole-placement-panel/fhole-placement-panel';
+import { FHoleContoursPanel, solveFholeContours } from './panels/fhole-contours-panel/fhole-contours-panel';
+import { FholeArcKey, FholeContourParams, FholePlacementParams, GougeParams, ViolinFamilyParams } from './violin-family-types';
 
 // The port's acceptance test: every frozen Ceruti instrument, solved by both recipes from the same
 // inputs, gives the same arcs and reads the same ratios. Goes when the Ceruti recipe does.
@@ -28,6 +31,39 @@ const cutoff = (inner: Arc | null | undefined, outer: Arc | null | undefined): n
 // Ceruti's second gouge is on when its sweep is set; here the sweep stays typed under a toggle
 const gouge = (g: FlutingParams): GougeParams =>
   ({ sweepRadius: g.sweepRadius, depth: g.depth, cBoutSweep: g.sweepRadius_cBout ?? g.sweepRadius, useCBoutGouge: g.sweepRadius_cBout !== null });
+
+// Ceruti's angles are radians on the arcs; here they are degrees in the fields. Rounded to a
+// billionth of a degree so a stored quarter turn reads back as exactly 90 and compares the same
+// way against the apex it is tested at
+const degrees = (radians: number): number => Math.round(radians / TURN.degree * 1e9) / 1e9;
+
+// the placement as Ceruti holds it, once its stem is there (a fixture may carry eyes alone)
+const placement = (f: FholeParams | undefined): FholePlacementParams | undefined => f?.stem?.center ? {
+  UEye: { x: f.UEye!.x, y: f.UEye!.y, r: f.UEye!.r },
+  LEye: { x: f.LEye!.x, y: f.LEye!.y, r: f.LEye!.r },
+  URise: f.URise!,
+  LRise: f.LRise!,
+  stem: { center: { x: f.stem.center.x, y: f.stem.center.y }, width: f.stem.width!, angle: degrees(f.stem.angle!) },
+} : undefined;
+
+// the contours as Ceruti holds them, once solved at least once: the radii and ends it keeps on
+// the arcs, read before a re-solve moves anything else
+const contours = (c: EnricoCerutiParams): FholeContourParams | undefined => {
+  let f = c.fHoles;
+  if (!f?.U1 || !f.S1) return undefined;
+  return {
+    U1R: f.U1.r, U1End: degrees(f.U1.end), U2R: f.U2!.r,
+    U21DoubleArc: !!c.options.U21DoubleArc, U21R: f.U21?.r ?? f.U2!.r, U21Start: degrees(f.U21?.start ?? 0),
+    U3R: f.U3!.r, U3End: degrees(f.U3!.end),
+    UCut: { angleOnEye: degrees(f.UCut!.angleOnEye!), slope: degrees(f.UCut!.slope!), length: f.UCut!.length! },
+    L1R: f.L1!.r, L1End: degrees(f.L1!.end), L2R: f.L2!.r,
+    L21DoubleArc: !!c.options.L21DoubleArc, L21R: f.L21?.r ?? f.L2!.r, L21Start: degrees(f.L21?.start ?? 0),
+    L3R: f.L3!.r, L3End: degrees(f.L3!.end),
+    LCut: { angleOnEye: degrees(f.LCut!.angleOnEye!), slope: degrees(f.LCut!.slope!), length: f.LCut!.length! },
+    stemArcR: f.stem.arcR!, stemArcsIndependent: !!c.options.stemArcsIndependent,
+    S1R: f.S1.r, S2R: f.S2!.r, S3R: f.S3!.r, S4R: f.S4!.r,
+  };
+};
 
 function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
   let V0 = c.viol?.V0;
@@ -96,6 +132,8 @@ function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
       top: gouge(c.arching?.top.fluting ?? defaultFlutingParams(c)),
       back: gouge(c.arching?.bottom.fluting ?? defaultFlutingParams(c)),
     },
+    fHoles: placement(c.fHoles),
+    fHoleContours: contours(c),
   };
 }
 
@@ -168,11 +206,11 @@ const sameOuterContour = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
   samePath(s.outerPurfling, defineOuterPurflingPath(c, inset), 'outer purfling');
 };
 
-// each plate's channel edges and the land, both recipes from the same Ceruti instrument, seeded
-// with the same gouges where the fixture carries none. Where a join grazes the land the two can
-// settle a degree of retreat apart, since Ceruti's land polygon is sampled in path order and the
-// phase differs; the centreline, whose C bout runs on the land, is where that shows under viol
-// corners, and its construction is covered by the fixtures' own channels
+// each plate's channel edges and the fluting edge, both recipes from the same Ceruti instrument,
+// seeded with the same gouges where the fixture carries none. Where a join grazes the fluting edge
+// the two can settle a degree of retreat apart, since Ceruti samples that polygon in path order
+// and the phase differs; the centreline, whose C bout runs on the edge, is where that shows under
+// viol corners, and its construction is covered by the fixtures' own channels
 const sameFluting = (c: EnricoCerutiParams, p = fromCeruti(c), grazing = false) => {
   c.arching ??= defaultArchingParams(c.height);
   const s = solveFluting(p)!;
@@ -189,7 +227,30 @@ const sameFluting = (c: EnricoCerutiParams, p = fromCeruti(c), grazing = false) 
     expect(ours!.innerEdgeOffset).toBeCloseTo(theirs.innerEdgeOffset, 9);
     expect(ours!.innerEdgeOffset_cBout).toBeCloseTo(theirs.innerEdgeOffset_cBout, 9);
   }
-  samePath(s.land, defineInsetPath(c, c.outerFlutingDepth!), 'land');
+  samePath(s.outerEdge, defineInsetPath(c, c.outerFlutingDepth!), 'fluting edge');
+};
+
+const FHOLE_KEYS: FholeArcKey[] = ['U1', 'U2', 'U21', 'U3', 'L1', 'L2', 'L21', 'L3', 'S1', 'S2', 'S3', 'S4'];
+
+// the f-hole's arcs, tips and outline, both recipes from the same placement. Ceruti seeds the
+// contours lazily inside its solve, so a fixture without them is seeded on both sides first; where
+// Ceruti's solve fails, ours has to fail the same sections
+const sameFholes = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
+  const failures = calculateFholeContours(c);
+  if (!p.fHoleContours) FHoleContoursPanel.seed(p);
+  const s = solveFholeContours(p)!;
+  expect(s.failures.map(f => f.unsolved)).toEqual(failures.map(f => f.unsolved));
+  if (failures.length) return;
+  const f = c.fHoles!;
+  for (const key of FHOLE_KEYS) {
+    if ((key === 'U21' && !c.options.U21DoubleArc) || (key === 'L21' && !c.options.L21DoubleArc)) continue;
+    sameArc(s[key], f[key], key);
+  }
+  for (const [ours, theirs, label] of [[s.UTip, f.UTip, 'UTip'], [s.LTip, f.LTip, 'LTip']] as const) {
+    expect(Math.abs(ours!.x - theirs!.x), `${label}.x`).toBeLessThan(1e-6);
+    expect(Math.abs(ours!.y - theirs!.y), `${label}.y`).toBeLessThan(1e-6);
+  }
+  samePath(s.path, defineOneFholePath(c, false), 'f-hole');
 };
 
 // every corner arc the options draw, both recipes solved from the same Ceruti instrument
@@ -223,8 +284,14 @@ const sameCenterBout = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
   expect(s.CBW).toBeCloseTo(b.CBW!, 6);
 };
 
+// a fixture carrying only its eyes gets Ceruti's own placement, as its panel would give it
+const withPlacement = (c: EnricoCerutiParams): EnricoCerutiParams => {
+  if (!c.fHoles?.stem?.center) c.fHoles = defaultFHolePlacement(c);
+  return c;
+};
+
 describe.each(templateKeys())('parity with the Ceruti recipe: %s', key => {
-  const c = templateViolin(key);
+  const c = withPlacement(templateViolin(key));
   const p = fromCeruti(c);
   const m = solveMainBouts(p)!;
 
@@ -326,6 +393,55 @@ describe.each(templateKeys())('parity with the Ceruti recipe: %s', key => {
     calculateCenterBout(viol);
     calculateOuterArcs(viol);
     sameFluting(viol, fromCeruti(viol), true);
+  });
+
+  it('cuts the same f-holes', () => {
+    sameFholes(c);
+  });
+
+  // Ceruti seeds a split arm halfway along the arm it last drew; here the seed does the same, so
+  // the second half is read off Ceruti's once it has drawn one
+  it('cuts the same f-holes with both arms compound', () => {
+    const compound = withPlacement(templateViolin(key));
+    calculateFholeContours(compound);
+    compound.options.U21DoubleArc = true;
+    compound.options.L21DoubleArc = true;
+    calculateFholeContours(compound);
+    compound.fHoles!.U21!.r *= 0.6;
+    compound.fHoles!.L21!.r *= 1.4;
+    sameFholes(compound, fromCeruti(compound));
+  });
+
+  it('cuts the same f-holes with the stem arcs set free', () => {
+    const free = withPlacement(templateViolin(key));
+    calculateFholeContours(free);
+    free.options.stemArcsIndependent = true;
+    const shared = free.fHoles!.stem.arcR!;
+    free.fHoles!.S1!.r = shared + 2;
+    free.fHoles!.S2!.r = shared + 4;
+    free.fHoles!.S3!.r = shared + 6;
+    free.fHoles!.S4!.r = shared + 8;
+    sameFholes(free, fromCeruti(free));
+  });
+
+  // no fixture ships with the eyes at the seed's ratios bar the del Gesu, whose eyes alone are
+  // what Ceruti places from; where the fixture's own ratios differ the seeds can't agree
+  it('places the eyes the same way from the corners, where the ratios are the seed\'s', () => {
+    const fresh = templateViolin(key);
+    if (Math.abs((fresh.ratios.FUtoL ?? 3 / 4) - 3 / 4) > 1e-9 || Math.abs((fresh.ratios.FLtoW ?? 1 / 50) - 1 / 50) > 1e-9) return;
+    const theirs = defaultFHolePlacement(fresh);
+    const q = fromCeruti(fresh);
+    delete q.fHoles;
+    delete q.fHoleContours;
+    FHolePlacementPanel.seed(q);
+    const ours = q.fHoles!;
+    for (const [a, b, label] of [[ours.UEye.x, theirs.UEye!.x, 'UEye.x'], [ours.UEye.y, theirs.UEye!.y, 'UEye.y'], [ours.UEye.r, theirs.UEye!.r, 'UEye.r'],
+      [ours.LEye.x, theirs.LEye!.x, 'LEye.x'], [ours.LEye.y, theirs.LEye!.y, 'LEye.y'], [ours.LEye.r, theirs.LEye!.r, 'LEye.r'],
+      [ours.URise, theirs.URise!, 'URise'], [ours.LRise, theirs.LRise!, 'LRise'],
+      [ours.stem.center.x, theirs.stem.center!.x, 'stem.x'], [ours.stem.center.y, theirs.stem.center!.y, 'stem.y'], [ours.stem.width, theirs.stem.width!, 'stem.width'],
+      [ours.stem.angle, degrees(theirs.stem.angle!), 'stem.angle']] as const) {
+      expect(Math.abs(a - b), label).toBeLessThan(0.006);
+    }
   });
 
   it('reads the same ratios', () => {

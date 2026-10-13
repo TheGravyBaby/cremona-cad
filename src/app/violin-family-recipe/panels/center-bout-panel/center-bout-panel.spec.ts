@@ -1,5 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
+import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
+import { FHolePlacementPanel, solveFholePlacementRatios } from '../fhole-placement-panel/fhole-placement-panel';
 import { dist, pointOnCircle } from '../../../helpers/math/simpleGeometry';
 import { Arc } from '../../../models/types';
 import { solveCenterBout, solveCenterBoutRatios } from './center-bout-panel';
@@ -282,7 +284,9 @@ describe('ratios', () => {
 
   it('names every seed fraction a ratio some panel reports', () => {
     const p = seeded();
-    const keys = Object.keys({ ...solveBodyRatios(p), ...solveMainBoutsRatios(p), ...solveCornersRatios(p), ...solveCenterBoutRatios(p) }).sort();
+    OuterContourPanel.seed(p);
+    FHolePlacementPanel.seed(p);
+    const keys = Object.keys({ ...solveBodyRatios(p), ...solveMainBoutsRatios(p), ...solveCornersRatios(p), ...solveCenterBoutRatios(p), ...solveFholePlacementRatios(p) }).sort();
     expect(keys).toEqual((Object.keys(SEED_RATIOS) as (keyof ViolinFamilyRatios)[]).sort());
   });
 });

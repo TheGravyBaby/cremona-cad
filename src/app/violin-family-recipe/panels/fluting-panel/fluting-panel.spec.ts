@@ -92,16 +92,16 @@ describe('the channel', () => {
     }
   });
 
-  it('runs its outer edge the land\'s width inside the plate edge, and never outside the land', () => {
-    const land = points(s.land!, 0.1);
-    expect(closed(s.land!)).toBe(true);
-    expect(Math.min(...offTheLine(land, edge))).toBeCloseTo(f.flutingEdge, 3);
+  it('runs its outer edge the fluting edge\'s width inside the plate edge, and never outside it', () => {
+    const flat = points(s.outerEdge!, 0.1);
+    expect(closed(s.outerEdge!)).toBe(true);
+    expect(Math.min(...offTheLine(flat, edge))).toBeCloseTo(f.flutingEdge, 3);
     for (const channel of [s.top!, s.back!]) {
       const outer = points(channel.outer, 0.5);
       expect(Math.min(...offTheLine(outer, edge))).toBeCloseTo(f.flutingEdge, 3);
-      // the land follows the corners and the channel bypasses them, so the two part there, the
-      // channel on the inside
-      const strays = offTheLine(outer.filter(q => !pointInPolygon(q, land)), land);
+      // the fluting edge follows the corners and the channel bypasses them, so the two part there,
+      // the channel on the inside
+      const strays = offTheLine(outer.filter(q => !pointInPolygon(q, flat)), flat);
       expect(Math.max(0, ...strays)).toBeLessThan(0.1);
     }
   });
@@ -205,7 +205,7 @@ describe('what cannot be cut', () => {
     const s = solveFluting(p)!;
     expect(s.failures.map(f => f.unsolved)).toEqual([['top'], ['back']]);
     expect(s.failures[0].message).toContain('joined');
-    expect(s.land).not.toBeNull();
+    expect(s.outerEdge).not.toBeNull();
   });
 
   it('fails the plate whose C bout gouge can\'t cut this deep, until that gouge is turned off', () => {
@@ -216,7 +216,7 @@ describe('what cannot be cut', () => {
     expect(solveFluting(p)!.failures).toEqual([]);
   });
 
-  it('fails a plate while one of its gouge fields is cleared, and both while the land edge is', () => {
+  it('fails a plate while one of its gouge fields is cleared, and both while the fluting edge is', () => {
     const p = seeded();
     (p.fluting!.top as any).sweepRadius = null;
     let s = solveFluting(p)!;
@@ -225,10 +225,10 @@ describe('what cannot be cut', () => {
     expect(s.back).not.toBeNull();
 
     const q = seeded();
-    (q.fluting as any).landEdge = null;
+    (q.fluting as any).flutingEdge = null;
     s = solveFluting(q)!;
     expect(s.failures.map(f => f.unsolved)).toEqual([['top', 'back']]);
-    expect(s.land).toBeNull();
+    expect(s.outerEdge).toBeNull();
     q.fluting!.flutingEdge = -1;
     expect(solveFluting(q)!.failures.map(f => f.unsolved)).toEqual([['top', 'back']]);
   });
@@ -239,7 +239,7 @@ describe('what cannot be cut', () => {
     const s = solveFluting(p)!;
     expect(s.failures).toHaveLength(1);
     expect(s.failures[0].message).toContain('plate edge');
-    expect(s.land).toBeNull();
+    expect(s.outerEdge).toBeNull();
     expect(s.top).toBeNull();
   });
 });
