@@ -56,7 +56,7 @@ Unit tests run under [Vitest](https://vitest.dev/) via `@angular/build:unit-test
 
 ## For Developers
 
-The `src/app/hello-world-recipe/` component is a minimal working recipe — the four-circle theory of violin outlines, in about 150 lines. A good starting point if you want to experiment with building your own.
+The `src/app/recipes/hello-world/` component is a minimal working recipe — the four-circle theory of violin outlines, in about 150 lines. A good starting point if you want to experiment with building your own.
 
 Recipe components follow the structure established in `recipe-base/`, which owns the save/load file format, undo/redo, and the panel scaffolding. The draft canvas (`draft-canvas/`) accepts an array of draw functions and handles rendering, pan/zoom and the axis grid; it also hosts the drawing toolbox, whose shapes and reference images are saved into the recipe file alongside the parameters.
 
@@ -82,15 +82,16 @@ src/app/
 │   ├── axis-controls/     #   Grid settings
 │   └── edit-menu/         #   Selection actions
 ├── helpers/               # Math, render functions, SVG/PDF/DXF/STL export
-├── hello-world-recipe/    # Minimal recipe for experimentation
 ├── models/                # Shared TypeScript types
 ├── recipe-base/           # Base class shared across all recipes
 ├── recipe-toolbar/        # Design name, file menu, export
+├── recipes/
+│   ├── hello-world/       #   Minimal recipe for experimentation
+│   └── violin-family/     #   The instrument model
+│       ├── panels/        #     One folder per design stage: its panel, its renders and its solver
+│       └── templates/corpus/  #  Historical instruments traced from public museum records
 ├── shared/                # Message service and UI components
 ├── top-bar/               # Application toolbar
-└── violin-family-recipe/  # The instrument model
-    ├── panels/            #   One folder per design stage: its panel, its renders and its solver
-    └── templates/corpus/  #   Historical instruments traced from public museum records
 
 
 CHANGELOG.md               # Rendered in the about modal

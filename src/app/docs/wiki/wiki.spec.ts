@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { VIOLIN_FAMILY_PANEL_IDS } from '../../violin-family-recipe/violin-family-types';
+import { VIOLIN_FAMILY_PANEL_IDS } from '../../recipes/violin-family/violin-family-types';
 import { firstParagraph, parseArticle } from './article';
 import { ARTICLE_SOURCES } from './articles';
 import { markdownToText, renderMarkdown } from './markdown';

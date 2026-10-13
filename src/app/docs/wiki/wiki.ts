@@ -2,7 +2,7 @@ import { Component, DestroyRef, ElementRef, ViewChild, computed, inject, signal 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Article, ArticleKind } from './article';
 import { WikiService } from './wiki.service';
-import { VIOLIN_FAMILY_PANEL_IDS } from '../../violin-family-recipe/violin-family-types';
+import { VIOLIN_FAMILY_PANEL_IDS } from '../../recipes/violin-family/violin-family-types';
 
 interface NavGroup { label: string; articles: Article[] }
 
