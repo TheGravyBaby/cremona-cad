@@ -30,6 +30,8 @@
       <option value="hello-world-recipe" [selected]="selectedRecipe === 'hello-world-recipe'">Hello World Recipe</option>
     </select> -->
 
+    <button class="btn help-btn" (click)="helpRequested.emit('guide')" aria-label="Help" title="Help">?</button>
+
     <span class="settings-menu">
       <button class="btn icon-btn settings-btn" [class.active]="settingsOpen" (click)="settingsOpen = !settingsOpen"
         aria-haspopup="dialog" [attr.aria-expanded]="settingsOpen" aria-label="Settings" title="Settings">
@@ -44,8 +46,6 @@
       }
     </span>
 
-    <!-- Last in the row, hard against the recipe's file header that continues the bar. -->
-    <button class="btn help-btn" (click)="helpRequested.emit('guide')" aria-label="Help" title="Help">?</button>
   </div>
 
 </div>
