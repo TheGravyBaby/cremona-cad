@@ -16,9 +16,11 @@ import { MainBoutsPanel, solveMainBouts, solveMainBoutsRatios } from './panels/m
 import { CornersPanel, solveCornersRatios } from './panels/corners-panel/corners-panel';
 import { CenterBoutPanel, solveCenterBout, solveCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
 import { OuterContourPanel, solveOuterContour } from './panels/outer-contour-panel/outer-contour-panel';
-import { FlutingPanel } from './panels/fluting-panel/fluting-panel';
+import { FlutingPanel, solveFluting } from './panels/fluting-panel/fluting-panel';
 import { FHolePlacementPanel, solveFholePlacementRatios } from './panels/fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel } from './panels/fhole-contours-panel/fhole-contours-panel';
+import { LongArchingPanel } from './panels/long-arching-panel/long-arching-panel';
+import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
 
 // The Violin Family recipe: the Ceruti model rebuilt on a split between what the user sets
 // (`d.params`, the file) and what each panel's solver derives from it (never written out). The
@@ -30,7 +32,7 @@ import { FHoleContoursPanel } from './panels/fhole-contours-panel/fhole-contours
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel],
   templateUrl: './violin-family.html',
   styleUrls: ['../sidebar.css', './violin-family.css'],
 })
@@ -46,6 +48,9 @@ export class ViolinFamily extends RecipeComponentBase {
     { id: 'fluting', label: 'Fluting Channel', toggles: FlutingPanel.renderToggles, seed: FlutingPanel.seed },
     { id: 'fHolePlacement', label: 'F-Hole Placement', toggles: FHolePlacementPanel.renderToggles, seed: FHolePlacementPanel.seed },
     { id: 'fHoleContours', label: 'F-Hole Contours', toggles: FHoleContoursPanel.renderToggles, seed: FHoleContoursPanel.seed },
+    { id: 'longArching', label: 'Long Arching', toggles: LongArchingPanel.renderToggles, seed: LongArchingPanel.seed },
+    // no seed: its shape is seeded with the long arch
+    { id: 'crossArching', label: 'Cross Arching', toggles: CrossArchingPanel.renderToggles },
   ];
 
   private readonly themeService = inject(ThemeService);
@@ -119,6 +124,11 @@ export class ViolinFamily extends RecipeComponentBase {
       case 'fluting': return !!solveOuterContour(p)?.top;
       case 'fHolePlacement': return !!solveOuterContour(p)?.top;
       case 'fHoleContours': return !!p.fHoles;
+      case 'longArching': {
+        let f = solveFluting(p);
+        return !!(f?.top && f.back);
+      }
+      case 'crossArching': return !!p.arching;
       default: return false;
     }
   }

@@ -1,5 +1,6 @@
 import { Arc, Circle, Pt, Rectangle, RecipeInterface } from '../models/types';
 import { SolveFailure } from '../helpers/validators';
+import { PolylineIndex } from '../helpers/math/vibeMath';
 
 // Every data shape the Violin Family recipe passes around, in one place. Three families:
 //
@@ -18,6 +19,7 @@ export interface ViolinFamilyParams {
   fluting?: FlutingParams;
   fHoles?: FholePlacementParams;
   fHoleContours?: FholeContourParams;
+  arching?: ArchingParams;
 }
 
 // the outer envelope of the finished body. Every field is a number once typed, null while a field
@@ -136,6 +138,72 @@ export interface GougeParams {
   depth: number;
   cBoutSweep: number;
   useCBoutGouge: boolean;
+}
+
+// the plates' arching: the ribs the top plate stands on, and for each plate its edge thickness, the
+// arch along the body and the crown across it. Stored as the fields show them: millimetres, and
+// percent where a position or a height is a share of something solved (the body's length, the
+// plate's half width at a station, the arch's height there). A plate carries every field of every
+// curve type at once, so switching type only reveals
+export interface ArchingParams {
+  // a caliper reading square to the rib edge, at the lower bout and at the upper block
+  ribHeightLower: number;
+  ribHeightUpper: number;
+  top: PlateArchParams;
+  back: PlateArchParams;
+}
+
+export interface PlateArchParams {
+  thickness: number;
+  arch: LongArchParams;
+  cross: CrossArchParams;
+}
+
+// the arch along the body: its height at the peak, where the peak sits (% of the length, 50 the
+// middle) and, for a spline, the control points it runs through. Where it starts and ends is solved,
+// not typed: it runs into the fluting channel and stops where it meets it tangentially
+export interface LongArchParams {
+  type: 'catenary' | 'spline';
+  height: number;
+  peak: number;
+  points: LongArchPoint[];
+}
+
+// t is % along the body from the lower end, z mm above the plate's edge; a mirrored point is
+// repeated at 100 - t
+export interface LongArchPoint {
+  t: number;
+  z: number;
+  mirror: boolean;
+}
+
+// the crown across the plate at one station: a cycloid of factor d (% from a raised cosine to a
+// full cycloid) over pct of its window, or a spline through points, peaking at peak (% across, 50
+// the joint). Which is read is the plate's type
+export interface CrossShapeParams {
+  d: number;
+  pct: number;
+  peak: number;
+  points: CrossArchPoint[];
+}
+
+// the plate's crown everywhere there is no station, anchoring both ends; stations are overrides
+// between, which the crown ramps through
+export interface CrossArchParams extends CrossShapeParams {
+  type: 'catenary' | 'cycloid' | 'spline';
+  stations: CrossStationParams[];
+}
+
+export interface CrossStationParams extends CrossShapeParams {
+  y: number;
+}
+
+// x is % across the whole plate (0 the bass channel edge, 50 the joint, 100 the treble), z % of
+// the arch height at that station; a mirrored point is repeated at 100 - x
+export interface CrossArchPoint {
+  x: number;
+  z: number;
+  mirror: boolean;
 }
 
 export const DEFAULT_VIOLIN_FAMILY_PARAMS: ViolinFamilyParams = {
@@ -346,6 +414,136 @@ export interface FholeContoursSolve {
   failures: FholeFailure[];
 }
 
+export type Plate = 'top' | 'back';
+export type LongArchingKey = 'ribs' | Plate;
+export type LongArchingFailure = SolveFailure<LongArchingKey>;
+
+// the tilted plane the top plate glues to, from the two rib heights: those heights as vertical rise
+// above the back plane, the tilt in radians, and the most the pair may differ by on this body
+export interface RibTaper {
+  yLower: number;
+  yUpper: number;
+  zLower: number;
+  zUpper: number;
+  angle: number;
+  max: number;
+}
+
+// where an arch lands on the channel: how far from the channel's centreline (0 the trough,
+// negative on the outer flank), how deep it is there, the channel's slope there, and whether the
+// meeting is a true tangency or the closest the arch could come
+export interface ArchTakeoff {
+  contactS: number;
+  takeoffDepth: number;
+  slope: number;
+  tangent: boolean;
+}
+
+// a long arch in the solver's own terms: fractions of its span, heights in mm
+export interface LongArchCurve {
+  type: 'catenary' | 'spline';
+  archHeight: number;
+  peak: number;
+  points: { t: number; z: number; mirror: boolean }[];
+}
+
+// the long arch terminated where it meets the channel at each end; `lowered` is the arch restated
+// against the start takeoff, `farZ` the far end's height in that frame
+export interface LongArchSolve {
+  span: number;
+  yStart: number;
+  yEnd: number;
+  takeoff: ArchTakeoff;
+  farTakeoff: ArchTakeoff;
+  lowered: LongArchCurve;
+  farZ: number;
+  halfWidth: number;
+  centerY: number;
+}
+
+export interface LongArchingSolve {
+  ribs: RibTaper | null;
+  top: LongArchSolve | null;
+  back: LongArchSolve | null;
+  failures: LongArchingFailure[];
+}
+
+export type CrossArchingKey = Plate;
+export type CrossArchingFailure = SolveFailure<CrossArchingKey>;
+
+// one authored point of a crown, as fractions: x of the way from the joint to the channel's inner
+// edge, z of the arch height
+export interface CrossArchKnot {
+  x: number;
+  z: number;
+}
+
+// a crown shape resolved to one station: its knots each side, still fractional, and where the crown
+// sits (fraction of the chord, 0.5 the joint). A catenary carries no knots; a cycloid's knots are
+// fractions of each side's takeoff rather than of the fixed frame
+export interface CrossArchRow {
+  left: CrossArchKnot[];
+  right: CrossArchKnot[];
+  peak?: number;
+  catenary?: boolean;
+  fromTakeoff?: boolean;
+}
+
+// a plate's transverse surface at one station, the transition solved on both sides. zAt is the
+// height above the plate's outer surface at x across the plate, 0 the joint
+export interface CrossArchSection {
+  centerHalf: number;
+  halfWidth: number;
+  sweepRadius: number;
+  archH: number;
+  xPeak: number;
+  left: ArchTakeoff | null;
+  right: ArchTakeoff | null;
+  xEndLeft: number;
+  xEndRight: number;
+  innerEdge: number;
+  datumLeft: number;
+  datumRight: number;
+  zAt: (x: number) => number;
+}
+
+// the gouge as the surface reads it, with the band between the corners the C bout sweep takes
+export interface SurfaceGouge {
+  sweepRadius: number;
+  depth: number;
+  cBoutSweep: number;
+  cornerGouge: boolean;
+  lowerCornerY: number;
+  upperCornerY: number;
+}
+
+// one plate's carved surface: the loops it is measured against, the gouge, the crown resolver and
+// the long arch. Heights come from surfaceZAt, relative to the plate's outer surface
+export interface PlateSurface {
+  outline: Pt[];
+  flutingEdge: Pt[];
+  flutingEdgeIdx: PolylineIndex;
+  centerPoly: Pt[];
+  centerIdx: PolylineIndex;
+  gouge: SurfaceGouge;
+  resolveCross: (y: number) => CrossArchRow;
+  longArch: LongArchSolve | null;
+}
+
+// what one station row of the surface shares between every sample on it
+export interface SurfaceRow {
+  outerHalf: number | null;
+  landCrossings: number[];
+  section: CrossArchSection | null;
+  centerCrossings: number[];
+}
+
+export interface CrossArchingSolve {
+  top: PlateSurface | null;
+  back: PlateSurface | null;
+  failures: CrossArchingFailure[];
+}
+
 // named <thing>to<datum>. The radius ratios are taken against the bout's inner width (the width
 // less the inset both sides), as the Ceruti recipe always measured them, so the two compare
 export interface ViolinFamilyRatios {
@@ -444,7 +642,7 @@ export const VIOLIN_FAMILY_SCHEMA_VERSION = '1';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface {
