@@ -2,7 +2,7 @@ import { Component, DestroyRef, ElementRef, ViewChild, computed, inject, signal 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Article, ArticleKind } from './article';
 import { WikiService } from './wiki.service';
-import { CERUTI_PANEL_IDS } from '../../enrico-ceruti-violin/ceruti-types';
+import { VIOLIN_FAMILY_PANEL_IDS } from '../../violin-family-recipe/violin-family-types';
 
 interface NavGroup { label: string; articles: Article[] }
 
@@ -49,7 +49,7 @@ export class WikiComponent {
   }
 
   private panelsInOrder(): Article[] {
-    return CERUTI_PANEL_IDS
+    return VIOLIN_FAMILY_PANEL_IDS
       .map(id => this.registry.panelArticle(id))
       .filter((a): a is Article => !!a);
   }

@@ -2,7 +2,6 @@ import { Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewC
 import { FormsModule } from '@angular/forms';
 import { RecipeInterface } from '../models/types';
 import { MessageService } from '../shared/message.service';
-import { RECIPE_SCHEMA_VERSION } from '../enrico-ceruti-violin/ceruti-types';
 import { isLocalHost } from '../helpers/debugDump';
 import { TooltipDirective } from '../docs/tooltips';
 
@@ -17,6 +16,8 @@ export class RecipeToolbarComponent {
   private messages = inject(MessageService);
 
   @Input() recipeName = '';
+  // the recipe's own schema version; a file carrying another is loaded with a warning
+  @Input() version = '';
   // a recipe with nothing to start from (see hello-recipe) leaves the templates row off
   @Input() hasTemplates = false;
   @Input() fileName = '';
@@ -83,11 +84,11 @@ export class RecipeToolbarComponent {
           return;
         }
 
-        if (data.version && data.version !== RECIPE_SCHEMA_VERSION) {
+        if (this.version && data.version && data.version !== this.version) {
           this.messages.emit({
             severity: 'warn',
             title: 'Older file format',
-            message: `This file uses schema version "${data.version}" (current: "${RECIPE_SCHEMA_VERSION}"). It has been loaded, but some fields may be missing or behave unexpectedly.`,
+            message: `This file uses schema version "${data.version}" (current: "${this.version}"). It has been loaded, but some fields may be missing or behave unexpectedly.`,
             autoDismiss: false,
           });
         }

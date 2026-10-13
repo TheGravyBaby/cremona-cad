@@ -48,7 +48,7 @@ export class AboutModalComponent {
   // Image gallery properties
   images = [
     {
-      src: 'CerutiDrawing.png',
+      src: 'CerutiDrawing.webp',
       alt: '',
       caption: 'A drawing from the Cremonese workshop of Enrico Ceruti, early 19th century.'
     },

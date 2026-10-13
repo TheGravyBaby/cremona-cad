@@ -260,7 +260,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draftFuncs = value
     this.versions.recipe++;
     this.draw();
-    // after the draw, so a recipe's first-render bookkeeping (see CerutiViolin.firstRender) has
+    // after the draw, so a recipe's first-render bookkeeping (see RecipeComponentBase.firstRender) has
     // already run against the real canvas by the time the index re-runs the layers
     this.scene.setLayers(value);
   }

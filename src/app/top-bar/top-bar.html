@@ -24,10 +24,8 @@
       }
     </span> -->
 
-    <!-- Violin Family is the Ceruti model being rebuilt on a params/solved split; the hello world
-         recipe is a worked example, and two archived recipes sit in the examples directory. -->
+    <!-- Violin Family is the instrument model; the hello world recipe is a worked example. -->
     <select class="select" (change)="onSelectChange($event)">
-      <option value="enrico-ceruti-violin" [selected]="selectedRecipe === 'enrico-ceruti-violin'">Enrico Ceruti Violin</option>
       <option value="violin-family" [selected]="selectedRecipe === 'violin-family'">Violin Family</option>
       <option value="hello-world-recipe" [selected]="selectedRecipe === 'hello-world-recipe'">Hello World Recipe</option>
     </select>

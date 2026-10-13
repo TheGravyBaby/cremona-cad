@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { CERUTI_PANEL_IDS } from '../../enrico-ceruti-violin/ceruti-types';
+import { VIOLIN_FAMILY_PANEL_IDS } from '../../violin-family-recipe/violin-family-types';
 import { firstParagraph, parseArticle } from './article';
 import { ARTICLE_SOURCES } from './articles';
 import { markdownToText, renderMarkdown } from './markdown';
@@ -128,7 +128,7 @@ describe('the articles', () => {
 
   it('name real panels', () => {
     for (const a of articles) {
-      if (a.panel) expect(CERUTI_PANEL_IDS as readonly string[], a.id).toContain(a.panel);
+      if (a.panel) expect(VIOLIN_FAMILY_PANEL_IDS as readonly string[], a.id).toContain(a.panel);
       if (a.kind === 'field') expect(a.panel, `${a.id} is a field with no panel`).toBeTruthy();
     }
   });

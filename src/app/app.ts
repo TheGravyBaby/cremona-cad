@@ -10,7 +10,6 @@ import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
 import { ToolboxStore } from './draft-canvas/tools/toolbox-store';
 import { readWorkingState, SELECTED_RECIPE_KEY, writeWorkingState } from './helpers/workingStorage';
-import { CerutiViolin } from './enrico-ceruti-violin/ceruti-violin';
 import { HelloWorldRecipe } from './hello-world-recipe/hello-world-recipe';
 import { ViolinFamily } from './violin-family-recipe/violin-family-recipe';
 import { ThemeService } from './theme/theme.service';
@@ -18,7 +17,7 @@ import { ThemeService } from './theme/theme.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, AboutModalComponent, DraftCanvasComponent, CerutiViolin, ViolinFamily, HelloWorldRecipe],
+  imports: [TopBarComponent, AboutModalComponent, DraftCanvasComponent, ViolinFamily, HelloWorldRecipe],
   template: `
     <div class="app" [class.sidebar-collapsed]="!sidebarOpen"
       [class.bar-autohide]="!barPinned && !hasMessages()" [class.bar-revealed]="barRevealed()">
@@ -43,13 +42,6 @@ import { ThemeService } from './theme/theme.service';
       </div>
 
       <div class="sidebar-dock">
-        @if (selectedRecipe == "enrico-ceruti-violin") {
-         <app-ceruti-violin class="sidebar"
-          (draftChange)="onDraftChange($event)"
-          (requestFit)="requestFit()">
-        </app-ceruti-violin>
-        }
-
         @if (selectedRecipe == "violin-family") {
          <app-violin-family class="sidebar"
           (draftChange)="onDraftChange($event)"
@@ -92,7 +84,7 @@ export class App implements OnDestroy {
   private toolbox = inject(ToolboxStore);
 
   draftArgs = signal<Array<(g: any, ui: any) => void>>([]);
-  selectedRecipe: string = 'enrico-ceruti-violin';
+  selectedRecipe: string = 'violin-family';
   /** Incremented to ask the canvas to re-frame; the value itself means nothing. The camera fits to
    * what the canvas rendered, so this is a signal rather than a set of extents — see
    * RecipeComponentBase.requestFit. */
@@ -160,7 +152,7 @@ export class App implements OnDestroy {
     // the violin, whose own session write then buries the other recipe's. checked against the names
     // the top bar offers, since a stale name would mount nothing at all.
     const stored = readWorkingState(SELECTED_RECIPE_KEY);
-    if (stored === 'enrico-ceruti-violin' || stored === 'violin-family' || stored === 'hello-world-recipe') this.selectedRecipe = stored;
+    if (stored === 'violin-family' || stored === 'hello-world-recipe') this.selectedRecipe = stored;
   }
 
   ngOnDestroy(): void {

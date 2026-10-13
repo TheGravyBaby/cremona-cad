@@ -13,10 +13,11 @@ import guarneriViolinGoldbergBaronVitta2023870692 from './guarneri-violin-goldbe
 // not an open licence). Images scope to panels by `scope: { only | except: [...] }`, ids from
 // `VIOLIN_FAMILY_PANEL_IDS`.
 //
-// Ported from the Ceruti recipe's corpus, where the same files are still the tracing source. A stage
-// is here only where the old file held a measurement: the Goldberg-Baron Vitta shipped Ceruti's
-// seeded arching, neck, string setup and scroll with no profile image to read them from, so it
-// carries the outline and f-holes alone and each later stage seeds when its panel opens.
+// Ported from the Ceruti recipe's corpus, retired in Oct 2026 and kept in the history as the
+// tracing source. A stage is here only where the old file held a measurement: the Goldberg-Baron
+// Vitta shipped Ceruti's seeded arching, neck, string setup and scroll with no profile image to
+// read them from, so it carries the outline and f-holes alone and each later stage seeds when its
+// panel opens.
 //
 // No measurement that isn't in the record. `arching` may be read off a side-profile image, and only
 // then: the spec pairs an `arching` stage with an image scoped to the `longArching` panel.

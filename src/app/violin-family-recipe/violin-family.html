@@ -2,6 +2,7 @@
      only the panel scrolls — see recipe-toolbar.css. -->
 <app-recipe-toolbar
             [recipeName]="d.recipeName"
+            [version]="d.version"
             [fileName]="d.fileName"
             (fileNameChange)="onFileNameChange($event)"
             (newFile)="onNewClick()"
