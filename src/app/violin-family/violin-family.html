@@ -90,6 +90,15 @@
             (edit)="onPanelEdit()">
         </app-vf-outer-contour-panel>
         }
+
+        @if (openPanel === 'fluting') {
+        <app-vf-fluting-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-fluting-panel>
+        }
     </div>
 </div>
 

@@ -15,6 +15,7 @@ export interface ViolinFamilyParams {
   bouts?: MainBoutsParams;
   corners?: CornersParams;
   outerContour?: OuterContourParams;
+  fluting?: FlutingParams;
 }
 
 // the outer envelope of the finished body. Every field is a number once typed, null while a field
@@ -113,6 +114,25 @@ export interface OuterContourParams {
 export interface ButtonParams {
   width: number;
   height: number;
+}
+
+// the fluting channel each plate is gouged with, inside a flat land round the edge. The land edge
+// is one number for both plates: it belongs to the outline and the purfling, not to a gouge. The
+// corners are smoothed down to the channel in one operation at the bench, so one toggle for both
+export interface FlutingParams {
+  flutingEdge: number;
+  cornerGouge: boolean;
+  top: GougeParams;
+  back: GougeParams;
+}
+
+// a gouge is its sweep radius and how deep it is run; the channel's width follows from the two.
+// A second, narrower gouge may take the waist, where the first can't follow the C bout's curve
+export interface GougeParams {
+  sweepRadius: number;
+  depth: number;
+  cBoutSweep: number;
+  useCBoutGouge: boolean;
 }
 
 export const DEFAULT_VIOLIN_FAMILY_PARAMS: ViolinFamilyParams = {
@@ -219,6 +239,29 @@ export interface OuterContourSolve {
   failures: OuterContourFailure[];
 }
 
+export type FlutingKey = 'top' | 'back';
+export type FlutingFailure = SolveFailure<FlutingKey>;
+
+// one plate's channel as three closed loops: its outer edge on the land, its centreline, and its
+// inner edge, each a gouge's half width further in, with the inner edge's offset from the plate
+// edge read off for the arching. The land is the plate edge the land's width in, corners followed
+export interface ChannelSolve {
+  outer: string;
+  center: string;
+  inner: string;
+  width: number;
+  cBoutWidth: number;
+  innerEdgeOffset: number;
+  innerEdgeOffset_cBout: number;
+}
+
+export interface FlutingSolve {
+  land: string | null;
+  top: ChannelSolve | null;
+  back: ChannelSolve | null;
+  failures: FlutingFailure[];
+}
+
 // named <thing>to<datum>. The radius ratios are taken against the bout's inner width (the width
 // less the inset both sides), as the Ceruti recipe always measured them, so the two compare
 export interface ViolinFamilyRatios {
@@ -306,7 +349,7 @@ export const VIOLIN_FAMILY_SCHEMA_VERSION = '1';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface {

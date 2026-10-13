@@ -100,13 +100,11 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Offset <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="o.purflingOffset" (input)="edited()"
-                [style.borderColor]="pal.ink(3)" />
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="o.purflingOffset" (input)="edited()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="o.purflingChannelDepth" (input)="edited()"
-                [style.borderColor]="pal.ink(3)" />
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="o.purflingChannelDepth" (input)="edited()" />
         </label>
         <button type="button" class="info-icon" (click)="help('purfling')" title="More information"
             aria-label="Information">ⓘ</button>
