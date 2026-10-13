@@ -260,7 +260,7 @@ export class ViolinFamily extends RecipeComponentBase {
   }
 
   onNewClick(): void {
-    if (!this.confirmDiscard('Start a new instrument? Any work you have not downloaded will be lost.')) return;
+    if (!this.confirmDiscard('Start a new instrument? Any work you have not saved will be lost.')) return;
     this.loadFile(blankViolinFamilyRecipe());
     this.galleryOpen = false;
   }

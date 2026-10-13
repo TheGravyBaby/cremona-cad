@@ -23,7 +23,7 @@ describe('RecipeToolbarComponent', () => {
     expect(fixture.nativeElement.querySelectorAll('.toolbar-btn')).toHaveLength(1);
     expect(fixture.nativeElement.querySelector('.toolbar-menu')).toBeNull();
     open();
-    expect(items()).toEqual(expect.arrayContaining(['New blank instrument', 'Upload Recipe', 'Download Recipe']));
+    expect(items()).toEqual(expect.arrayContaining(['New blank instrument', 'Load Recipe', 'Save Recipe']));
     expect(items()).not.toContain('Start from a historical instrument…');
   });
 

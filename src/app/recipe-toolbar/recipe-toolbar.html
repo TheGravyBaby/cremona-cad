@@ -25,10 +25,10 @@
       }
       <div class="toolbar-menu-sep" role="separator"></div>
       <button type="button" class="toolbar-menu-item" role="menuitem" (click)="menuOpen = false; triggerFilePick()">
-        Upload Recipe
+        Load Recipe
       </button>
       <button type="button" class="toolbar-menu-item" role="menuitem" (click)="menuOpen = false; saveFile.emit()">
-        Download Recipe
+        Save Recipe
       </button>
       <!-- Debug, localhost only (see isLocalHost in helpers/debugDump.ts): the saved recipe JSON, to the clipboard. -->
       @if (debugDumpEnabled) {

@@ -108,12 +108,13 @@ export const renderFluting = (
   f: FlutingSolve,
   pal: PanelPalette,
   currentModule: boolean,
+  showBack = true,
 ) => (g: any, ui: any): void => {
   let plates: [ChannelSolve | null, string, number][] = [
     [f.top, pal.ink(TOP_GOUGE_INK), 0],
     [f.back, pal.ink(BACK_GOUGE_INK), -p.body.width * PLATE_LAYOUT_GAP],
   ];
-  for (let [channel, ink, dx] of plates) {
+  for (let [channel, ink, dx] of showBack ? plates : plates.slice(0, 1)) {
     if (!channel) continue;
     let color = currentModule ? ink : pal.neutral;
     if (f.outerEdge) renderFilledPath(translatePath(`${f.outerEdge} Z ${channel.outer} Z`, dx, 0), color, p.fluting!.cornerGouge ? 0.15 : 0.08)(g, ui);

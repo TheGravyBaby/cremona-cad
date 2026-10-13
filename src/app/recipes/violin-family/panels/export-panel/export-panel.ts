@@ -115,6 +115,7 @@ export class ExportPanel implements ViolinFamilyPanel, OnInit {
   @Input() fileName = '';
   @Input() description = '';
   @Output() drawn = new EventEmitter<RenderLayer[]>();
+  @Output() saveRecipe = new EventEmitter<void>();
 
   // what each sheet can be built from, refreshed before every preview and download: a sheet is
   // offered once the panels it's drawn from have been reached, so a blank instrument skipped
@@ -263,8 +264,8 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
       let o = solveOuterContour(p);
       let plate = type === 'topPlate' ? o?.top : o?.back;
       if (!o || !plate) return null;
-      let holes = type === 'topPlate' ? fholes(p) : null;
-      return sheet([black(plate), holes && cutFirst(holes), ...[o.purfling, o.outerPurfling].map(d => d && etched(d))]);
+      let holes = type === 'topPlate' ? fholes(p) : [];
+      return sheet([black(plate), ...holes.map(d => cutFirst(d)), ...[o.purfling, o.outerPurfling].map(d => d && etched(d))]);
     }
     case 'mould': {
       let m = solveMould(p, MOULD_EXPORT_STEP);
@@ -339,10 +340,10 @@ function ribOutline(p: ViolinFamilyParams): string | null {
   return rib && purflingPath(p, rib, 0);
 }
 
-// both holes cut into the top plate, or null until the contours close
-function fholes(p: ViolinFamilyParams): string | null {
+// the two holes cut into the top plate, each its own path so either can be picked alone; empty until the contours close
+function fholes(p: ViolinFamilyParams): string[] {
   let s = p.fHoleContours ? solveFholeContours(p) : null;
-  return s?.path ? combinePathStrings([s.path, fholePath(p, s, true)!]) : null;
+  return s?.path ? [s.path, fholePath(p, s, true)!] : [];
 }
 
 // the single-hole cutting template, moved off the plate's real coordinates onto its own sheet: the

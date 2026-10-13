@@ -1,5 +1,8 @@
 <section class="ui-group">
     <div class="export-primary">
+        <button type="button" class="recipe-btn recipe-btn--primary" (click)="saveRecipe.emit()">Save Recipe Data</button>
+    </div>
+    <div class="export-primary">
         <button type="button" class="recipe-btn recipe-btn--primary" [disabled]="!ready.has('innerContour')" (click)="downloadFullPlan()">Full Plan PDF</button>
     </div>
     <div class="export-primary">
