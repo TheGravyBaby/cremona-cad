@@ -7,6 +7,8 @@
             (newFile)="onNewClick()"
             (saveFile)="saveToDisk()"
             (loadFile)="loadFile($event)"
+            [hasTemplates]="templateCards.length > 0"
+            (openTemplates)="openTemplateGallery()"
             (debugDump)="copyRecipeToClipboard()"
             [showExport]="true"
             [exportEnabled]="isPanelEnabled('export')"
@@ -52,6 +54,45 @@
 <div class="panel">
     <div class="panel-content">
         @if (openPanel === 'base') {
+        @if (galleryOpen && templateCards.length) {
+        <section class="ui-group template-gallery">
+            <div class="ui-group-title">
+                Start from a historical instrument
+                <button type="button" class="template-gallery__hide" (click)="galleryOpen = false"
+                    title="Hide" aria-label="Hide the instrument gallery">✕</button>
+            </div>
+            <p class="hint">
+                High quality templates built with reference images from the Library of Congress.
+            </p>
+            <div class="template-cards">
+                @for (t of templateCards; track t.key) {
+                <button type="button" class="template-card" (click)="loadTemplate(t.key)">
+                    <span class="template-card__thumb">
+                        @if (t.thumb) {
+                        <img [src]="t.thumb" alt="" loading="lazy" />
+                        }
+                    </span>
+                    <span class="template-card__text">
+                        <span class="template-card__name">{{ t.instrument }}</span>
+                        <span class="template-card__meta">{{ t.meta }}</span>
+                    </span>
+                </button>
+                }
+                <button type="button" class="template-card template-card--blank" (click)="onNewClick()">
+                    <span class="template-card__thumb template-card__thumb--blank" aria-hidden="true">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                    </span>
+                    <span class="template-card__text">
+                        <span class="template-card__name">New Instrument</span>
+                        <span class="template-card__meta">A blank sheet, your own measurements</span>
+                    </span>
+                </button>
+            </div>
+        </section>
+        }
         <app-vf-base-measurements-panel #panelRef
             [recipe]="d"
             (drawn)="draftChange.emit($event)"
