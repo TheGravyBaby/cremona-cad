@@ -57,8 +57,8 @@
 }
 
 .theme-opt.active {
-  background: var(--ui-topbar-control-bg-hover);
-  color: var(--ui-text-primary);
+  background: var(--ui-focus-border);
+  color: #fff;
 }
 
 .switch {
@@ -86,10 +86,11 @@
 }
 
 .switch.on {
-  background: var(--ui-topbar-control-bg-hover);
+  border-color: var(--ui-focus-border);
+  background: var(--ui-focus-border);
 }
 
 .switch.on::after {
   transform: translateX(16px);
-  background: var(--ui-text-primary);
+  background: #fff;
 }

@@ -204,8 +204,8 @@ describe('a sheet whose stage was never reached', () => {
 describe('the plate sheets', () => {
   it('cut both holes out of the top plate once they are drawn, and none before', () => {
     const holes = exportSheet(holed(), 'topPlate')!.paths.filter(path => path.laser === 'cut1');
-    expect(holes).toHaveLength(1);
-    expect(holes[0].d.match(/M/g)).toHaveLength(2);
+    expect(holes).toHaveLength(2);
+    for (const hole of holes) expect(hole.d.match(/M/g)).toHaveLength(1);
     expect(exportSheet(plated(), 'topPlate')!.paths.some(path => path.laser === 'cut1')).toBe(false);
     expect(exportSheet(holed(), 'backPlate')!.paths.some(path => path.laser === 'cut1')).toBe(false);
   });

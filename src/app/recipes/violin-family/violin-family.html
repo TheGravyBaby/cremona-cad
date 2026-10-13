@@ -241,7 +241,8 @@
             [params]="d.params"
             [fileName]="d.fileName"
             [description]="d.description ?? ''"
-            (drawn)="draftChange.emit($event)">
+            (drawn)="draftChange.emit($event)"
+            (saveRecipe)="saveToDisk()">
         </app-vf-export-panel>
         }
     </div>

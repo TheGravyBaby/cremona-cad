@@ -118,7 +118,7 @@ export class OuterContourPanel implements ViolinFamilyPanel, OnInit {
 }
 
 // the plates side by side as the sheets show them: the top at the body's place, the back to its
-// left with the button. On this panel the corner arcs, the button and the purfling take their own
+// left with the button, unless `showBack` is off. On this panel the corner arcs, the button and the purfling take their own
 // inks over the neutral outlines; grey under a later panel's work
 export const renderOuterContour = (
   p: ViolinFamilyParams,
@@ -126,6 +126,7 @@ export const renderOuterContour = (
   pal: PanelPalette,
   flags: Pick<ViolinFamilyViewFlags, 'showModuleArcs'>,
   currentModule: boolean,
+  showBack = true,
 ) => (g: any, ui: any): void => {
   let dx = -p.body.width * PLATE_LAYOUT_GAP;
   let upper = currentModule ? pal.ink(4) : pal.neutral;
@@ -135,11 +136,11 @@ export const renderOuterContour = (
 
   if (o.top) renderPath(o.top, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
   for (let d of [o.purfling, o.outerPurfling]) if (d) renderPath(d, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-  if (o.back) {
+  if (showBack && o.back) {
     renderPath(translatePath(o.back, dx, 0), pal.neutral, STROKE_WEIGHT.trace)(g, ui);
     for (let d of [o.purfling, o.outerPurfling]) if (d) renderPath(translatePath(d, dx, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   }
-  if (o.button) {
+  if (showBack && o.button) {
     renderPath(translatePath(o.button.path, dx, 0), button, STROKE_WEIGHT.trace)(g, ui);
     if (fancy) renderArcFromArcFancy(arcFromCircle({ ...o.button.cap, x: o.button.cap.x + dx }, o.button.cap.start, o.button.cap.end), button)(g, ui);
   }

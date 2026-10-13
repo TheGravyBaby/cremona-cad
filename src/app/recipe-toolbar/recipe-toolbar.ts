@@ -45,7 +45,7 @@ export class RecipeToolbarComponent {
 
   protected startBlank(): void {
     this.menuOpen = false;
-    const confirmed = confirm('Start a new instrument? Any work you have not downloaded will be lost.');
+    const confirmed = confirm('Start a new instrument? Any work you have not saved will be lost.');
     if (confirmed) this.newFile.emit();
   }
 
