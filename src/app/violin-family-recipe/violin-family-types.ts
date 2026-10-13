@@ -23,6 +23,7 @@ export interface ViolinFamilyParams {
   neck?: NeckParams;
   scroll?: ScrollParams;
   stringSetup?: StringSetupParams;
+  mould?: MouldParams;
 }
 
 // the outer envelope of the finished body. Every field is a number once typed, null while a field
@@ -244,6 +245,29 @@ export interface StringSetupParams {
   fingerboardLength: number;
   fingerboardThickness: number;
   fingerboardRadius: number;
+}
+
+// the inside mould: the rib outline with the blocks cut out of it. Only the blocks' sizes are typed;
+// where they sit follows from the outline. The neck and end blocks stand on the centreline against
+// the outline's ends; each corner block's outer corner stands `pad` off its corner tip, out past it
+// and toward the waist, so the outline clips the block to the corner's shape. The clamp box is the
+// windows a clamp reaches through to hold each block home; off, the mould is its outline alone
+export interface MouldParams {
+  neckBlock: BlockParams;
+  upperCornerBlock: CornerBlockParams;
+  lowerCornerBlock: CornerBlockParams;
+  endBlock: BlockParams;
+  bitDiameter: number;
+  clampBox: boolean;
+}
+
+export interface BlockParams {
+  width: number;
+  height: number;
+}
+
+export interface CornerBlockParams extends BlockParams {
+  pad: Pt;
 }
 
 // the scroll in its own side view: the nut at the origin on the neck's front, up the neck +y,
@@ -711,6 +735,20 @@ export interface ScrollWidthsSolve {
   failures: ScrollWidthsFailure[];
 }
 
+export type MouldKey = 'neckBlock' | 'upperCornerBlock' | 'lowerCornerBlock' | 'endBlock' | 'clampBox';
+export type MouldFailure = SolveFailure<MouldKey>;
+
+// the blocks placed (the corner blocks on the right; renders mirror them), the rib outline they are
+// cut from, the mould that leaves, and the clamp box's windows. A window that can't be cut between
+// its blocks is left out and said so
+export interface MouldSolve {
+  blocks: Record<'neck' | 'upperCorner' | 'lowerCorner' | 'end', Rectangle> | null;
+  ribOutline: string | null;
+  outline: string | null;
+  clampBox: string[];
+  failures: MouldFailure[];
+}
+
 // named <thing>to<datum>. The radius ratios are taken against the bout's inner width (the width
 // less the inset both sides), as the Ceruti recipe always measured them, so the two compare
 export interface ViolinFamilyRatios {
@@ -781,6 +819,8 @@ export interface ViolinFamilyViewFlags {
   showFingerboard: boolean;
   // equal-tempered semitones marked up the string, as far as the board reaches
   showFretMarks: boolean;
+  showBlocks: boolean;
+  showRibOutline: boolean;
 }
 
 export type ViolinFamilyToggleKey = keyof ViolinFamilyViewFlags;
@@ -795,6 +835,8 @@ export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
   showVoluteConstruction: true,
   showFingerboard: false,
   showFretMarks: false,
+  showBlocks: true,
+  showRibOutline: false,
 };
 
 export interface HighlightedArc {
@@ -817,7 +859,7 @@ export const VIOLIN_FAMILY_SCHEMA_VERSION = '1';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'scroll', 'scrollWidths', 'stringSetup'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'scroll', 'scrollWidths', 'stringSetup', 'mould'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface {
