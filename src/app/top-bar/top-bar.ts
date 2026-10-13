@@ -1,10 +1,12 @@
 import { Component, ElementRef, EventEmitter, HostListener, Output, Input, inject } from '@angular/core';
 import { MessageCenterComponent } from '../shared/message-center.component';
+import { SettingsMenuComponent } from '../settings/settings-menu';
+import { HelpTab } from '../docs/help/help-dialog';
 
 @Component({
   selector: 'app-top-bar',
   standalone: true,
-  imports: [MessageCenterComponent],
+  imports: [MessageCenterComponent, SettingsMenuComponent],
   templateUrl: './top-bar.html',
   styleUrls: ['./top-bar.css'],
 })
@@ -12,19 +14,25 @@ export class TopBarComponent {
   @Input() selectedRecipe: string = 'Beard';
   @Output() recipeChange = new EventEmitter<string>();
 
-  @Output() aboutRequested = new EventEmitter<'about' | 'tutorial'>();
+  @Output() helpRequested = new EventEmitter<HelpTab>();
 
   // The edit verbs live up here because they act on the document as a whole. See edit-menu.ts.
   protected editOpen = false;
+  protected settingsOpen = false;
   private host = inject(ElementRef<HTMLElement>);
 
   @HostListener('document:pointerdown', ['$event'])
   onDocumentPointerDown(event: PointerEvent): void {
-    if (this.editOpen && !this.host.nativeElement.querySelector('.edit-menu')?.contains(event.target as Node)) this.editOpen = false;
+    const outside = (sel: string) => !this.host.nativeElement.querySelector(sel)?.contains(event.target as Node);
+    if (this.editOpen && outside('.edit-menu')) this.editOpen = false;
+    if (this.settingsOpen && outside('.settings-menu')) this.settingsOpen = false;
   }
 
   @HostListener('document:keydown.escape')
-  onEscape(): void { this.editOpen = false; }
+  onEscape(): void {
+    this.editOpen = false;
+    this.settingsOpen = false;
+  }
 
   onSelectChange(event: Event) {
     const value = (event.target as HTMLSelectElement).value;

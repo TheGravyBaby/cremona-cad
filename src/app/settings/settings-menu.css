@@ -1,0 +1,95 @@
+:host {
+  display: block;
+  position: absolute;
+  z-index: 100;
+}
+
+.settings-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 260px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border-elevated);
+  border-radius: 6px;
+  background: var(--ui-bg-elevated);
+  box-shadow: var(--ui-shadow-pop);
+  color: var(--ui-text-primary);
+  font-size: 13px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.theme-seg {
+  display: inline-flex;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.theme-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 48px;
+  padding: 6px 8px;
+  background: none;
+  border: none;
+  border-right: 1px solid var(--ui-border-strong);
+  color: var(--ui-text-muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.theme-opt:last-child {
+  border-right: none;
+}
+
+.theme-opt:hover {
+  color: var(--ui-text-primary);
+}
+
+.theme-opt.active {
+  background: var(--ui-topbar-control-bg-hover);
+  color: var(--ui-text-primary);
+}
+
+.switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 10px;
+  background: var(--ui-bg-surface);
+  cursor: pointer;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ui-text-muted);
+  transition: transform 120ms ease;
+}
+
+.switch.on {
+  background: var(--ui-topbar-control-bg-hover);
+}
+
+.switch.on::after {
+  transform: translateX(16px);
+  background: var(--ui-text-primary);
+}
