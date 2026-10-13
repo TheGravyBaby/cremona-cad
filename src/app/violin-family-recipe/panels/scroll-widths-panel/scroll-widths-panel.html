@@ -1,0 +1,108 @@
+@let v = params.scroll!;
+@let w = v.widths;
+@let nk = params.neck!;
+
+<section class="ui-group">
+    <div class="ui-group-title">Front</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(3).faint(1)">Throat <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(3).faint(1)"
+                [(ngModel)]="w.throat" (input)="edited()" (focus)="focus('throat', pal.ink(3).faint(1))" (blur)="blur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(3).faint(-3)">Hip <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(3).faint(-3)"
+                [disabled]="v.hipHeight === 0" [(ngModel)]="w.hip" (input)="edited()" (focus)="focus('hip', pal.ink(3).faint(-3))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Hip Y <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0"
+                [(ngModel)]="v.hipHeight" (input)="edited()" (focus)="focus('hip', pal.ink(3).faint(-3))" (blur)="blur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(3).faint(-1)">Nut <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="nk.nutWidth" (input)="edited()" (focus)="focus('nut', pal.ink(3).faint(-1))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(3).faint(-3)">Wall <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(3).faint(-3)"
+                [(ngModel)]="v.wall" (input)="edited()" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Back</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(1).faint(5)">Crown <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1).faint(5)"
+                [(ngModel)]="w.crown" (input)="edited()" (focus)="focus('crown', pal.ink(1).faint(5))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(1).faint(-3)">Poll <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1).faint(-3)"
+                [(ngModel)]="w.poll" (input)="edited()" (focus)="focus('poll', pal.ink(1).faint(-3))" (blur)="blur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(1).faint(1)">Hip <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1).faint(1)"
+                [disabled]="!(v.backHipHeight > 0)" [(ngModel)]="w.backHip" (input)="edited()" (focus)="focus('backHip', pal.ink(1).faint(1))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Hip Y <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0"
+                [(ngModel)]="v.backHipHeight" (input)="edited()" (focus)="focus('backHip', pal.ink(1).faint(1))" (blur)="blur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(1).faint(-4)">Foot <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1).faint(-4)"
+                [(ngModel)]="w.foot" (input)="edited()" (focus)="focus('foot', pal.ink(1).faint(-4))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(1).faint(3)">Duck Tail <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1).faint(3)"
+                [(ngModel)]="w.duckTail" (input)="edited()" (focus)="focus('duckTail', pal.ink(1).faint(3))" (blur)="blur()" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Turns</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(2).faint(3)">Turn 1 Bottom <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(2).faint(3)"
+                [(ngModel)]="w.turn1Bottom" (input)="edited()" (focus)="focus('turn1Bottom', pal.ink(2).faint(3))" (blur)="blur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(2).faint(-3)">Turn 2 Top <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(2).faint(-3)"
+                [(ngModel)]="w.turn2Top" (input)="edited()" (focus)="focus('turn2Top', pal.ink(2).faint(-3))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(2).faint(1)">Turn 2 Bottom <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(2).faint(1)"
+                [(ngModel)]="w.turn2Bottom" (input)="edited()" (focus)="focus('turn2Bottom', pal.ink(2).faint(1))" (blur)="blur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(2).faint(-4)">Eye <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(2).faint(-4)"
+                [(ngModel)]="w.eye" (input)="edited()" (focus)="focus('eye', pal.ink(2).faint(-4))" (blur)="blur()" />
+        </label>
+    </div>
+</section>

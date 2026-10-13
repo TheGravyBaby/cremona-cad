@@ -1,0 +1,103 @@
+@let v = params.scroll!;
+@let nk = params.neck!;
+
+<section class="ui-group">
+    <div class="ui-group-title">Back</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(1).faint(-3)">S2 R <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(-3)"
+                [(ngModel)]="v.S2R" (input)="edited()" (focus)="focus('S2', pal.ink(1).faint(-3))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">End <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1"
+                [(ngModel)]="v.S2End" (input)="edited()" (focus)="focus('S2', pal.ink(1).faint(-3))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(1).faint(-3)">Straight <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(-3)"
+                [(ngModel)]="v.backStraight" (input)="edited()" (focus)="focus('backStraight', pal.ink(1).faint(-3))" (blur)="blur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(1).faint(-1)">S3 R <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(-1)"
+                [(ngModel)]="v.S3R" (input)="edited()" (focus)="focus('S3', pal.ink(1).faint(-1))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Hang <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1"
+                [(ngModel)]="v.hang" (input)="edited()" (focus)="focus('S3', pal.ink(1).faint(-1))" (blur)="blur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(1).faint(5)">Nape R <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(5)"
+                [(ngModel)]="v.napeR" (input)="edited()" (focus)="focus('nape', pal.ink(1).faint(5))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="v.napeCircle" (change)="edited()" /><span>Circle</span>
+            </div>
+        </label>
+    </div>
+    @if (extent; as e) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Scroll height">{{ e.height.toFixed(1) }}</div>
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Scroll width">{{ e.width.toFixed(1) }}</div>
+        </label>
+        <label class="field-cell">
+            <span class="field-title">H to W</span>
+            <div class="basic-display" aria-label="Scroll height to width">{{ nearestFraction(e.height / e.width) }}</div>
+        </label>
+    </div>
+    }
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Front</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(3).faint(-3)">Flat <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3).faint(-3)"
+                [(ngModel)]="v.flat" (input)="edited()" (focus)="focus('flat', pal.ink(3).faint(-3))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(0)">Nut Height <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="nk.nutHeight" (input)="edited()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(3)">F0 R <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3)"
+                [(ngModel)]="v.F0R" (input)="edited()" (focus)="focus('F0', pal.ink(3))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">End <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1"
+                [(ngModel)]="v.F0End" (input)="edited()" (focus)="focus('F0', pal.ink(3))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(3)">Straight <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3)"
+                [(ngModel)]="v.frontStraight" (input)="edited()" (focus)="focus('frontStraight', pal.ink(3))" (blur)="blur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(3).faint(-3)">F1 R <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3).faint(-3)"
+                [(ngModel)]="v.F1R" (input)="edited()" (focus)="focus('F1', pal.ink(3).faint(-3))" (blur)="blur()" />
+        </label>
+    </div>
+</section>

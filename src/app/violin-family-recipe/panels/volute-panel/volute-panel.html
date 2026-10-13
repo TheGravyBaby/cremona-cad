@@ -1,0 +1,96 @@
+@let v = params.scroll!;
+
+<section class="ui-group">
+    <div class="ui-group-title">Volute</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Style</span>
+            <select [(ngModel)]="v.style" (change)="edited()">
+                @for (style of styles; track style.id) {
+                <option [value]="style.id">{{ style.label }}</option>
+                }
+            </select>
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Radius <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.25" min="0.25" [style.border-color]="pal.ink(2)"
+                [(ngModel)]="v.eye.r" (input)="edited()" />
+        </label>
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">X <span class="unit-label">mm</span></span>
+                <span class="field-title">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Eye position" [style.borderColor]="pal.ink(2).faint(5)">
+                @if (v.fitToNeck) {
+                <input type="number" class="basic-input" data-xy="x" aria-label="Eye X" disabled [ngModel]="s.eye?.x" />
+                } @else {
+                <input type="number" class="basic-input" step="0.25" data-xy="x" aria-label="Eye X" [(ngModel)]="v.eye.x" (input)="edited()" />
+                }
+                <input type="number" class="basic-input" step="0.25" data-xy="y" aria-label="Eye Y" [(ngModel)]="v.eye.y" (input)="edited()" />
+            </div>
+        </div>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        @if (v.style === 'archimedean') {
+        <label class="field-cell">
+            <span class="field-title">Pitch <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.25" min="0.25" [(ngModel)]="v.pitch" (input)="edited()" />
+        </label>
+        }
+        @if (v.style === 'kelly') {
+        <label class="field-cell">
+            <span class="field-title">Seed <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.25" min="0.25" [(ngModel)]="v.seedLength" (input)="edited()" />
+        </label>
+        }
+        <label class="field-cell">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="v.fitToNeck" (change)="fitChanged()" /><span>Fit to Neck</span>
+            </div>
+        </label>
+    </div>
+    @if (v.style === 'fourPoint') {
+    @for (arcs of arcRows; track $index) {
+    <div class="input-group basic-row field-row" role="group">
+        @for (i of arcs; track i) {
+        <label class="field-cell field-cell--arc">
+            <span class="field-title" [style.color]="arcInk(i)">R {{ arcEnd(i) }} <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.25" min="0.25" [style.border-color]="arcInk(i)"
+                [(ngModel)]="v.arcRadii[i]" (input)="edited()" (focus)="focus(i, arcInk(i))" (blur)="blur()" />
+        </label>
+        }
+    </div>
+    }
+    }
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Crown</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(1).faint(3)">S0 R <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(3)"
+                [(ngModel)]="v.S0R" (input)="edited()" (focus)="focus('S0', pal.ink(1).faint(3))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">End <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1"
+                [(ngModel)]="v.S0End" (input)="edited()" (focus)="focus('S0', pal.ink(1).faint(3))" (blur)="blur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(1)">S1 R <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1)"
+                [(ngModel)]="v.S1R" (input)="edited()" (focus)="focus('S1', pal.ink(1))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">End <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1"
+                [(ngModel)]="v.S1End" (input)="edited()" (focus)="focus('S1', pal.ink(1))" (blur)="blur()" />
+        </label>
+    </div>
+</section>

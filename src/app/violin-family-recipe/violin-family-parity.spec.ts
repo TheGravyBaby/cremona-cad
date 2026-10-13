@@ -8,9 +8,11 @@ import { channelPaths, crossArchSectionAt, defaultCrossArchParams, defaultFlutin
 import { bodyLandmarks as cerutiLandmarks, defaultArchingParams, solveRibTaper as cerutiRibTaper } from '../enrico-ceruti-violin/calculation/arching/ceruti-arching';
 import { buildPlateSurfaceModel, stationChordsAt, topSurfaceZAt } from '../enrico-ceruti-violin/calculation/arching/ceruti-surface';
 import { calculateNeck, defaultNeckParams, heelStands, heelFace as cerutiHeelFace, lowerThicknessLine, mortiseFingerboardIntersect, plateEdgeAtNeck, buttonTip } from '../enrico-ceruti-violin/calculation/neck/ceruti-neck';
-import { NeckParams as CerutiNeck } from '../enrico-ceruti-violin/ceruti-types';
+import { NeckParams as CerutiNeck, ScrollParams as CerutiScroll, VoluteStyle } from '../enrico-ceruti-violin/ceruti-types';
+import { calculateScroll, calculateScrollWidths, defaultVoluteParams, pegboxCavity as cerutiCavity, scrollPathStretches as cerutiStretches, scrollWidthStations as cerutiStations } from '../enrico-ceruti-violin/calculation/neck/ceruti-scroll';
+import { scrollBackViewStrokes as cerutiBackView, scrollFrontViewStrokes as cerutiFrontView } from '../enrico-ceruti-violin/calculation/neck/ceruti-scroll-views';
 import { ArchCurve, ArchingParams as CerutiArching, CrossArchShape, EnricoCerutiParams, FholeParams, FlutingParams } from '../enrico-ceruti-violin/ceruti-types';
-import { Arc, Pt } from '../models/types';
+import { Arc, Pt, Pt3D } from '../models/types';
 import { signedRadianDelta, TURN } from '../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../helpers/math/vibeMath';
@@ -24,7 +26,10 @@ import { FHoleContoursPanel, solveFholeContours } from './panels/fhole-contours-
 import { solveLongArching } from './panels/long-arching-panel/long-arching-panel';
 import { bodyLandmarks, rowAt, sectionAt, solveCrossArching, surfaceZAt } from './panels/cross-arching-panel/cross-arching-panel';
 import { NeckPanel, solveNeck } from './panels/neck-panel/neck-panel';
-import { ArchingParams, NeckParams, CrossArchParams, CrossShapeParams, FholeArcKey, FholeContourParams, FholePlacementParams, GougeParams, LongArchParams, ViolinFamilyParams } from './violin-family-types';
+import { VolutePanel } from './panels/volute-panel/volute-panel';
+import { solveScroll } from './panels/scroll-panel/scroll-panel';
+import { pegboxCavity, scrollBackViewStrokes, scrollFrontViewStrokes, scrollPathStretches, scrollWidthStations, solveScrollWidths } from './panels/scroll-widths-panel/scroll-widths-panel';
+import { ArchingParams, NeckParams, ScrollParams, CrossArchParams, CrossShapeParams, FholeArcKey, FholeContourParams, FholePlacementParams, GougeParams, LongArchParams, ViolinFamilyParams } from './violin-family-types';
 
 // The port's acceptance test: every frozen Ceruti instrument, solved by both recipes from the same
 // inputs, gives the same arcs and reads the same ratios. Goes when the Ceruti recipe does.
@@ -110,6 +115,17 @@ const neck = (n: CerutiNeck): NeckParams => ({
   nutHeight: n.nutHeight, nutWidth: n.nutWidth,
 });
 
+// Ceruti's scroll keeps its arcs whole, the radius and end typed and the rest solved onto them;
+// here only the radius and end are typed, the end in degrees
+const scroll = (v: CerutiScroll): ScrollParams => ({
+  style: v.style, eye: { x: v.eye.x, y: v.eye.y, r: v.eye.r }, fitToNeck: v.flushWithNeck,
+  pitch: v.pitch, seedLength: v.seedLength, arcRadii: [...v.arcRadii],
+  S0R: v.S0.r, S0End: degrees(v.S0.end), S1R: v.S1.r, S1End: degrees(v.S1.end), S2R: v.S2.r, S2End: degrees(v.S2.end),
+  backStraight: v.backStraight, S3R: v.S3.r, hang: v.hang, napeR: v.nape.r, napeCircle: v.napeCircle,
+  flat: v.flat, F0R: v.F0.r, F0End: degrees(v.F0.end), frontStraight: v.frontStraight, F1R: v.F1.r,
+  widths: { ...v.widths }, hipHeight: v.hipHeight, backHipHeight: v.backHipHeight, wall: v.pegbox.wall,
+});
+
 function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
   let V0 = c.viol?.V0;
   let b = c.bouts;
@@ -181,6 +197,7 @@ function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
     fHoleContours: contours(c),
     arching: c.arching ? arching(c.arching) : undefined,
     neck: c.neck ? neck(c.neck) : undefined,
+    scroll: c.scroll ? scroll(c.scroll) : undefined,
   };
 }
 
@@ -235,6 +252,77 @@ const sameNeck = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
   const face = cerutiHeelFace(c);
   expect(!!s.heelFace, 'heel face').toBe(!!face);
   if (face) near(s.heelFace![0], face[0], 'heel face');
+};
+
+const near3 = (a: Pt3D, b: Pt3D, label: string) =>
+  expect(Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y), Math.abs(a.z - b.z)), label).toBeLessThan(1e-6);
+
+// the scroll's side, both recipes from the same instrument; where the side solves whole, its widths,
+// stations, hollow and both views too. Ceruti's solve writes its arcs onto the scroll, so the
+// params are read across before it runs
+const sameScroll = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
+  const failures = calculateScroll(c);
+  const s = solveScroll(p)!;
+  expect(s.failures.map(f => f.unsolved), 'failures').toEqual(failures.map(f => f.unsolved));
+  const v = c.scroll!;
+  if (!s.spiral) return;
+  expect(Math.abs(s.eye!.x - v.eye.x), 'eye x').toBeLessThan(1e-9);
+  expect(s.spiral.length).toBe(v.spiral!.length);
+  s.spiral.forEach((arc, i) => sameArc(arc, v.spiral![i], `spiral ${i}`));
+  for (const key of ['S0', 'S1', 'S2', 'S3', 'nape', 'F0', 'F1'] as const) {
+    if (failures.some(f => f.unsolved.includes(key))) expect(s[key], key).toBeNull();
+    else sameArc(s[key], v[key], key);
+  }
+  if (failures.length) return;
+
+  calculateScrollWidths(c);
+  const w = solveScrollWidths(p)!;
+  expect(w.failures, 'widths').toEqual([]);
+  const ours = scrollWidthStations(p, s);
+  const theirs = cerutiStations(c);
+  expect(ours.map(st => st.key)).toEqual(theirs.map(st => st.key));
+  ours.forEach((st, i) => {
+    expect(Math.hypot(st.at.x - theirs[i].at.x, st.at.y - theirs[i].at.y), `${st.key} station`).toBeLessThan(1e-6);
+    expect(st.width, `${st.key} width`).toBeCloseTo(theirs[i].width, 9);
+  });
+  const stretches = scrollPathStretches(p, s);
+  const theirStretches = cerutiStretches(c);
+  for (const key of Object.keys(stretches) as (keyof typeof stretches)[]) {
+    expect(stretches[key].length, key).toBe(theirStretches[key].length);
+    stretches[key].forEach((pt, i) => near3(pt, theirStretches[key][i], `${key} ${i}`));
+  }
+  const cavity = pegboxCavity(p, s);
+  const theirCavity = cerutiCavity(c);
+  expect(!!cavity, 'hollow').toBe(!!theirCavity);
+  cavity?.forEach((pt, i) => expect(Math.hypot(pt.x - theirCavity![i].x, pt.y - theirCavity![i].y), `hollow ${i}`).toBeLessThan(1e-6));
+  const place = (x: number, y: number) => new Pt(x, y);
+  for (const [mine, theirView, label] of [
+    [scrollBackViewStrokes(p, s, place, -20), cerutiBackView(c, place, -20), 'back view'],
+    [scrollFrontViewStrokes(p, s, place, -20), cerutiFrontView(c, place, -20), 'front view'],
+  ] as const) {
+    for (const part of Object.keys(mine) as (keyof typeof mine)[]) {
+      expect(mine[part].length, `${label} ${part}`).toBe(theirView[part].length);
+      mine[part].forEach((stroke, i) => {
+        const other = theirView[part][i] as any;
+        if ('d' in stroke) samePath(stroke.d, other.d, `${label} ${part} ${i}`);
+        else expect(JSON.stringify(stroke), `${label} ${part} ${i}`).toBe(JSON.stringify(other));
+      });
+    }
+  }
+};
+
+// Ceruti's seeded scroll on the fixture's neck, and ours seeded beside it from the same params
+const seededScroll = (key: string, edit: (v: CerutiScroll) => void = () => {}) => {
+  const c = templateViolin(key, true);
+  c.neck ??= defaultNeckParams(c);
+  const p = fromCeruti(c);
+  c.scroll = defaultVoluteParams(c);
+  VolutePanel.seed(p);
+  edit(c.scroll);
+  const q = fromCeruti(c);
+  // the four point's radii are seeded lazily from Kelly's in Ceruti, up front here
+  q.scroll!.arcRadii = c.scroll.arcRadii.length ? q.scroll!.arcRadii : p.scroll!.arcRadii;
+  return { c, p, q };
 };
 
 const sameSurface = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
@@ -624,6 +712,23 @@ describe.each(templateKeys())('parity with the Ceruti recipe: %s', key => {
       cn.neck.heel.r = r;
       sameNeck(cn);
     }
+  });
+
+  it('seeds the same scroll', () => {
+    const { c, p } = seededScroll(key);
+    expect({ ...p.scroll, arcRadii: [] }).toEqual(scroll(c.scroll!));
+  });
+
+  it.each(['salviati', 'fourPoint', 'archimedean', 'serlio', 'goldmann', 'kelly'] as VoluteStyle[])('carves the same %s scroll, side, widths and views', style => {
+    const { c, q } = seededScroll(key, v => { v.style = style; });
+    sameScroll(c, q);
+  });
+
+  it('carves the same scroll with the nape a circle, and with the eye set by hand', () => {
+    let { c, q } = seededScroll(key, v => { v.napeCircle = true; });
+    sameScroll(c, q);
+    ({ c, q } = seededScroll(key, v => { v.flushWithNeck = false; v.eye.x -= 3; }));
+    sameScroll(c, q);
   });
 
   it('reads the same ratios', () => {

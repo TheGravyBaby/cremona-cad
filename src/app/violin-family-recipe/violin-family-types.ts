@@ -21,6 +21,7 @@ export interface ViolinFamilyParams {
   fHoleContours?: FholeContourParams;
   arching?: ArchingParams;
   neck?: NeckParams;
+  scroll?: ScrollParams;
 }
 
 // the outer envelope of the finished body. Every field is a number once typed, null while a field
@@ -225,6 +226,68 @@ export interface NeckParams {
   overstand: number;
   nutHeight: number;
   nutWidth: number;
+}
+
+// the scroll in its own side view: the nut at the origin on the neck's front, up the neck +y,
+// toward the back -x. The volute is a style's spiral about the eye, run out two turns to its front;
+// with Fit to Neck on, the eye's x is solved to bring that front flush with the neck's front, and the
+// typed x waits until it's off. The back runs on from the spiral: S0 to S2 tangent each to the last,
+// each to its own end angle (degrees), a straight, then S3 turning back down to hang below the nut,
+// and the nape into the neck's back. The front runs up from the nut: a flat, F0 to its end, a
+// straight, and F1 curving back until it meets the spiral. Radii in mm
+export type VoluteStyle = 'fourPoint' | 'archimedean' | 'serlio' | 'salviati' | 'goldmann' | 'kelly';
+
+export interface ScrollParams {
+  style: VoluteStyle;
+  eye: Circle;
+  fitToNeck: boolean;
+  // the Archimedean's growth a turn, Kelly's seed, the four point's radius per quarter turn
+  pitch: number;
+  seedLength: number;
+  arcRadii: number[];
+  S0R: number;
+  S0End: number;
+  S1R: number;
+  S1End: number;
+  S2R: number;
+  S2End: number;
+  backStraight: number;
+  S3R: number;
+  hang: number;
+  napeR: number;
+  // one circle through the duck tail, tangent to the neck's back, with no square line
+  napeCircle: boolean;
+  flat: number;
+  F0R: number;
+  F0End: number;
+  frontStraight: number;
+  F1R: number;
+  widths: ScrollWidths;
+  // where the pegbox's front is widest, up from the nut's top, 0 none; where the back's slope turns,
+  // up from the foot at the round's top, 0 none; the wood left round the pegbox's hollow
+  hipHeight: number;
+  backHipHeight: number;
+  wall: number;
+}
+
+// full widths, cheek to cheek. The front is the pegbox sawn straight through the blank, by height:
+// out from the nut's edges to the hips, then tapering to `throat` at the foot of the front's
+// straight. The back starts in the duck tail's round, `foot` wide at the round's top, out on a
+// straight slope by height to `backHip` and on to `poll`, the back's furthest reach, and from there
+// on a curve through the crown and each turn, by distance along the back. The last turn is as wide
+// as the eye from its top on in
+export interface ScrollWidths {
+  hip: number;
+  throat: number;
+  duckTail: number;
+  foot: number;
+  backHip: number;
+  poll: number;
+  crown: number;
+  turn1Bottom: number;
+  turn2Top: number;
+  turn2Bottom: number;
+  eye: number;
 }
 
 export const DEFAULT_VIOLIN_FAMILY_PARAMS: ViolinFamilyParams = {
@@ -589,6 +652,33 @@ export interface NeckSolve {
   failures: NeckFailure[];
 }
 
+export type ScrollKey = 'spiral' | 'S0' | 'S1' | 'S2' | 'S3' | 'nape' | 'backStraight' | 'F0' | 'F1' | 'flat' | 'frontStraight';
+export type ScrollFailure = SolveFailure<ScrollKey>;
+
+// the scroll's side profile, every arc placed, the spiral outermost first. An arc whose section
+// failed is null, and so is everything solved after it
+export interface ScrollSolve {
+  eye: Circle | null;
+  spiral: Arc[] | null;
+  S0: Arc | null;
+  S1: Arc | null;
+  S2: Arc | null;
+  S3: Arc | null;
+  nape: Arc | null;
+  F0: Arc | null;
+  F1: Arc | null;
+  failures: ScrollFailure[];
+}
+
+export type ScrollWidthsKey = keyof ScrollWidths | 'hipHeight' | 'backHipHeight' | 'wall';
+export type ScrollWidthsFailure = SolveFailure<ScrollWidthsKey>;
+
+// the side profile the widths hang on, and what the widths themselves say against it
+export interface ScrollWidthsSolve {
+  scroll: ScrollSolve;
+  failures: ScrollWidthsFailure[];
+}
+
 // named <thing>to<datum>. The radius ratios are taken against the bout's inner width (the width
 // less the inset both sides), as the Ceruti recipe always measured them, so the two compare
 export interface ViolinFamilyRatios {
@@ -654,6 +744,8 @@ export interface ViolinFamilyViewFlags {
   showFholePlacementGuides: boolean;
   // the top plate's inner channel edge, faint, where the f-holes are placed against it
   showFlutingEdge: boolean;
+  // the figure a volute style finds its centres on
+  showVoluteConstruction: boolean;
 }
 
 export type ViolinFamilyToggleKey = keyof ViolinFamilyViewFlags;
@@ -665,6 +757,7 @@ export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
   showFholeBounds: true,
   showFholePlacementGuides: false,
   showFlutingEdge: false,
+  showVoluteConstruction: true,
 };
 
 export interface HighlightedArc {
@@ -687,7 +780,7 @@ export const VIOLIN_FAMILY_SCHEMA_VERSION = '1';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'scroll', 'scrollWidths'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface {

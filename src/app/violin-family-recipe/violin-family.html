@@ -144,6 +144,33 @@
             (edit)="onPanelEdit()">
         </app-vf-neck-panel>
         }
+
+        @if (openPanel === 'volute') {
+        <app-vf-volute-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-volute-panel>
+        }
+
+        @if (openPanel === 'scroll') {
+        <app-vf-scroll-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-scroll-panel>
+        }
+
+        @if (openPanel === 'scrollWidths') {
+        <app-vf-scroll-widths-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-scroll-widths-panel>
+        }
     </div>
 </div>
 
@@ -205,6 +232,18 @@
             stroke-linecap="round">
             <path d="M4 19a15 15 0 0 1 15-15" />
             <path d="M4 12a8 8 0 0 1 8-8" opacity="0.45" />
+        </svg>
+    </button>
+    }
+
+    @if (renderToggleButtons.includes('showVoluteConstruction')) {
+    <button type="button" class="vt-btn" [class.active]="viewFlags.showVoluteConstruction"
+        (click)="onRenderToggle('showVoluteConstruction')" title="Show Volute Construction" aria-label="Show Volute Construction">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <rect x="10.5" y="7" width="3" height="10" stroke-width="1.5" />
+            <line x1="10.5" y1="12" x2="13.5" y2="12" stroke-width="1.5" />
         </svg>
     </button>
     }
