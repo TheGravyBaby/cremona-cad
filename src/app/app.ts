@@ -12,7 +12,7 @@ import { ToolboxStore } from './draft-canvas/tools/toolbox-store';
 import { readWorkingState, SELECTED_RECIPE_KEY, writeWorkingState } from './helpers/workingStorage';
 import { CerutiViolin } from './enrico-ceruti-violin/ceruti-violin';
 import { HelloWorldRecipe } from './hello-world-recipe/hello-world-recipe';
-import { ViolinFamily } from './violin-family/violin-family-recipe';
+import { ViolinFamily } from './violin-family-recipe/violin-family-recipe';
 import { ThemeService } from './theme/theme.service';
 
 @Component({

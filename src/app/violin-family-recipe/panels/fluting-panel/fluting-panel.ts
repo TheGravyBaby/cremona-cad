@@ -6,11 +6,12 @@ import {
 } from '../../../helpers/math/simpleGeometry';
 import { pathFromArc, samplePathToPolyline, translatePath } from '../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../helpers/math/pathVibes';
-import { renderFilledPath, renderSolveFailures } from '../../../helpers/renderFuncs';
+import { renderFilledPath, renderPath, renderSolveFailures } from '../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../helpers/validators';
 import { showFieldHelp } from '../../../docs/field-help';
 import { Arc, Pt } from '../../../models/types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
+import { STROKE_WEIGHT } from '../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../theme/theme.service';
 import {
   ChannelSolve, FlutingFailure, FlutingSolve, GougeParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams,
@@ -19,12 +20,13 @@ import {
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
+import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import {
   offsetArcs, outerCorners, outerPath, PLATE_LAYOUT_GAP, renderOuterContour, ribArcs, RibArcs, solveOuterContour,
   violNeckTopLine,
 } from '../outer-contour-panel/outer-contour-panel';
 
-// The fluting channel: the hollow each plate is gouged with inside a flat land round its edge. The
+// The fluting channel: the hollow each plate is gouged with inside the flat left round its edge. The
 // channel follows the rib outline round the bouts and bypasses the corners, the C bout's run joined
 // to the bout arc either side by an S of two arcs; the wedge of wood that leaves at each corner is
 // taken down by hand afterwards. Panel and render, then the gouge, the channel's path, and solve.
@@ -41,7 +43,7 @@ export class FlutingPanel implements ViolinFamilyPanel, OnInit {
   protected readonly help = showFieldHelp;
 
   // the first gouges, sized by instrument family, with a narrower one through the waist, and the
-  // land half the overhang wide
+  // flat at the edge half the overhang wide
   static seed(p: ViolinFamilyParams): void {
     if (p.fluting || !p.outerContour) return;
     let [sweepRadius, depth, cBoutSweep] =
@@ -84,12 +86,18 @@ export class FlutingPanel implements ViolinFamilyPanel, OnInit {
       let f = this.f = solveFluting(p)!;
       this.drawn.emit([
         renderOuterContour(p, o, this.pal, this.flags, false),
+        renderFholes(p, this.pal),
         renderFluting(p, f, this.pal, true),
         renderSolveFailures(f.failures, this.pal.alert, true),
       ]);
     });
   }
 }
+
+// each plate's gouge takes its own ink; the top's is also what a later panel draws its channel
+// edge in
+export const TOP_GOUGE_INK = 3;
+export const BACK_GOUGE_INK = 0;
 
 // the channel as a filled band on each plate, the top at the body's place and the back beside it,
 // over the grey plates. The corner join, the wood the gouge leaves at each corner, draws lighter
@@ -102,15 +110,21 @@ export const renderFluting = (
   currentModule: boolean,
 ) => (g: any, ui: any): void => {
   let plates: [ChannelSolve | null, string, number][] = [
-    [f.top, pal.ink(3), 0],
-    [f.back, pal.ink(0), -p.body.width * PLATE_LAYOUT_GAP],
+    [f.top, pal.ink(TOP_GOUGE_INK), 0],
+    [f.back, pal.ink(BACK_GOUGE_INK), -p.body.width * PLATE_LAYOUT_GAP],
   ];
   for (let [channel, ink, dx] of plates) {
     if (!channel) continue;
     let color = currentModule ? ink : pal.neutral;
-    if (f.land) renderFilledPath(translatePath(`${f.land} Z ${channel.outer} Z`, dx, 0), color, p.fluting!.cornerGouge ? 0.15 : 0.08)(g, ui);
+    if (f.outerEdge) renderFilledPath(translatePath(`${f.outerEdge} Z ${channel.outer} Z`, dx, 0), color, p.fluting!.cornerGouge ? 0.15 : 0.08)(g, ui);
     renderFilledPath(translatePath(`${channel.outer} Z ${channel.inner} Z`, dx, 0), color, 0.3)(g, ui);
   }
+};
+
+// the top plate's inner channel edge alone, faint in the top gouge's own ink: the line the f-holes
+// are placed against, for the panels that place them
+export const renderFlutingInnerEdge = (f: FlutingSolve) => (g: any, ui: any): void => {
+  if (f.top) renderPath(f.top.inner, ThemeService.getPalette('classicCremona').ink(TOP_GOUGE_INK).faint(3), STROKE_WEIGHT.guide)(g, ui);
 };
 
 // a gouge sweep this shallow relative to its depth isn't a real tool; guards the sqrt below
@@ -144,18 +158,18 @@ const MAX_CBOUT_RETREAT_DEG = 45;
 // inverted corner swings C0's end past the chord and the usual S loops out to reach it, its joint
 // straying off the chord; flipping both inverts mirrors the S, and that's tried only then, so
 // anything the usual S handled is left to it. a join tighter than half its chord curls into the
-// corner the channel is meant to bypass, and one that crosses the land's edge at the corner is cut
-// outside the land it bypasses
-function attemptJoin(arc1: Arc, side1: 'start' | 'end', arc2: Arc, side2: 'start' | 'end', invert: boolean, land: Pt[] | null): Arc[] | null {
+// corner the channel is meant to bypass, and one that crosses the fluting edge at the corner is cut
+// outside the flat it bypasses
+function attemptJoin(arc1: Arc, side1: 'start' | 'end', arc2: Arc, side2: 'start' | 'end', invert: boolean, edge: Pt[] | null): Arc[] | null {
   const P1 = pointOnCircle(arc1, side1 === 'end' ? arc1.end : arc1.start);
   const P2 = pointOnCircle(arc2, side2 === 'end' ? arc2.end : arc2.start);
   const chord = dist(P1, P2);
   const mid = new Pt((P1.x + P2.x) / 2, (P1.y + P2.y) / 2);
   const loops = (join: Arc[]) => dist(pointOnCircle(join[0], join[0].end), mid) > chord / 2;
   const fits = (join: Arc[]) => join[0].r <= MAX_JOIN_RADIUS_TO_CHORD * chord && join[0].r >= chord / 2;
-  const outside = (q: Pt) => !pointInPolygon(q, land!)
-    && land!.every((a, i) => i === 0 || closestPointOnSegment(q, land![i - 1], a).dist > 0.01);
-  const crosses = (join: Arc[]) => land !== null && join.some(arc => {
+  const outside = (q: Pt) => !pointInPolygon(q, edge!)
+    && edge!.every((a, i) => i === 0 || closestPointOnSegment(q, edge![i - 1], a).dist > 0.01);
+  const crosses = (join: Arc[]) => edge !== null && join.some(arc => {
     const sweep = signedRadianDelta(arc.end - arc.start);
     const steps = Math.max(16, Math.ceil(arc.r * Math.abs(sweep) / 0.5));
     return Array.from({ length: steps + 1 }, (_, i) => pointOnCircle(arc, arc.start + sweep * i / steps)).some(outside);
@@ -204,7 +218,7 @@ function joinChannel(
   arc2: Arc, side2: 'start' | 'end',
   invert: boolean,
   cBoutSide: 1 | 2,
-  land: Pt[] | null,
+  edge: Pt[] | null,
 ): Arc[] | null {
   const cBoutArc = cBoutSide === 1 ? arc1 : arc2;
   const cBoutJoinSide = cBoutSide === 1 ? side1 : side2;
@@ -216,7 +230,7 @@ function joinChannel(
       const angle = retreatAngle(originalStart, originalEnd, cBoutJoinSide, degrees);
       if (cBoutJoinSide === 'end') cBoutArc.end = angle; else cBoutArc.start = angle;
     }
-    const join = attemptJoin(arc1, side1, arc2, side2, invert, land);
+    const join = attemptJoin(arc1, side1, arc2, side2, invert, edge);
     if (join) return join;
   }
 
@@ -225,9 +239,9 @@ function joinChannel(
   return null;
 }
 
-// the land's edge, the plate edge `delta` in with the corners followed: the line the channel is cut
+// the fluting's edge, the plate edge `delta` in with the corners followed: the line the channel is cut
 // inside. Null when the offset is too far in for the corner arcs to exist
-function landPath(p: ViolinFamilyParams, rib: RibArcs, delta: number): string | null {
+function outerEdgePath(p: ViolinFamilyParams, rib: RibArcs, delta: number): string | null {
   let inset = p.body.overhang + p.body.rib;
   try {
     return outerPath(p, rib, outerCorners(p, rib, inset), inset - delta, false).path;
@@ -239,7 +253,7 @@ function landPath(p: ViolinFamilyParams, rib: RibArcs, delta: number): string | 
 // the channel's arcs at `offset` from the rib line (in when negative), C0 at its own: the bouts'
 // offset arcs, and in place of each corner the S joining C0 to the bout arc beside it. A viol
 // corner's flank is joined from a little way back from its end. Null when a join can't be made
-function channelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, land: Pt[] | null): Arc[] | null {
+function channelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, edge: Pt[] | null): Arc[] | null {
   let k = p.corners!;
   let arcs = offsetArcs(p, rib, offset, false, centerOffset);
   // L0, L1, L2, C0, U2, U1, U0: whichever side is viol, its corner arc (L2/U2) drops out,
@@ -262,24 +276,24 @@ function channelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, center
     return cut;
   };
   let lower = L2 ?? flank(rib.L4!);
-  let lowerJoin = joinChannel(lower, 'end', C0, 'end', false, 2, land);
+  let lowerJoin = joinChannel(lower, 'end', C0, 'end', false, 2, edge);
   if (!lowerJoin) return null;
 
   let upper = U2 ?? flank(rib.U4!);
-  let upperJoin = joinChannel(C0, 'start', upper, 'end', true, 1, land);
+  let upperJoin = joinChannel(C0, 'start', upper, 'end', true, 1, edge);
   if (!upperJoin) return null;
 
   return [...arcs, ...lowerJoin, ...upperJoin];
 }
 
 // one edge of the channel as a closed loop, `offset` in from the plate edge, the C bout's run at
-// `centerOffset`. The land it has to stay inside is taken at the outer of the two, or C0's own end
-// would sit outside it. No path when the C bout can't be joined to the bouts (`joined` false), or
+// `centerOffset`. The fluting edge it has to stay inside is taken at the outer of the two, or C0's
+// own end would sit outside it. No path when the C bout can't be joined to the bouts (`joined` false), or
 // when the loop doesn't close, as across a neck face the channel has eaten
 function channelPath(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number): { path: string | null; joined: boolean } {
   let inset = p.body.overhang + p.body.rib;
-  let land = landPath(p, rib, Math.min(offset, centerOffset));
-  let arcs = channelArcs(p, rib, inset - offset, inset - centerOffset, land ? samplePathToPolyline(land, 0.5) : null);
+  let edge = outerEdgePath(p, rib, Math.min(offset, centerOffset));
+  let arcs = channelArcs(p, rib, inset - offset, inset - centerOffset, edge ? samplePathToPolyline(edge, 0.5) : null);
   if (!arcs) return { path: null, joined: false };
   let paths = [...arcs, ...arcs.map(arc => flipArcAboutY(arc))].map(arc => pathFromArc(arc));
   let top = violNeckTopLine(p, rib, inset - offset);
@@ -292,13 +306,13 @@ function channelPath(p: ViolinFamilyParams, rib: RibArcs, offset: number, center
 }
 
 // a later panel reads the channels by calling this; it returns and never writes to the params.
-// Each plate's channel is anchored at the land's edge and grows inward by its gouge's width, so
-// the outer edge lands on the land by construction. A second gouge through the waist moves only
+// Each plate's channel is anchored at the fluting edge and grows inward by its gouge's width, so
+// its outer edge sits on the fluting edge by construction. A second gouge through the waist moves only
 // the C bout's inward offsets; the joins either side re-solve at the new radius
 export function solveFluting(p: ViolinFamilyParams): FlutingSolve | null {
   if (!p.fluting || !p.outerContour || !p.corners || !p.bouts) return null;
   let f = p.fluting;
-  let s: FlutingSolve = { land: null, top: null, back: null, failures: [] };
+  let s: FlutingSolve = { outerEdge: null, top: null, back: null, failures: [] };
 
   let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
   if (!rib || !solveOuterContour(p)!.top) {
@@ -306,10 +320,10 @@ export function solveFluting(p: ViolinFamilyParams): FlutingSolve | null {
     return s;
   }
   if (!(Number.isFinite(f.flutingEdge) && f.flutingEdge >= 0)) {
-    s.failures.push({ message: 'Fluting: the land edge needs a value of 0 or more.', unsolved: ['top', 'back'], circles: [], segments: [] });
+    s.failures.push({ message: 'Fluting: the fluting edge needs a value of 0 or more.', unsolved: ['top', 'back'], circles: [], segments: [] });
     return s;
   }
-  s.land = landPath(p, rib, f.flutingEdge);
+  s.outerEdge = outerEdgePath(p, rib, f.flutingEdge);
 
   for (let plate of ['top', 'back'] as const) {
     let label = plate === 'top' ? 'Top plate' : 'Back plate';
@@ -328,7 +342,7 @@ export function solveFluting(p: ViolinFamilyParams): FlutingSolve | null {
       if (edges.some(e => !e.joined))
         return fail(`${label}: the channel round the C bout can't be joined to the one round the bouts at these corners. Bring the two gouges closer, or open the corners.`);
       if (edges.some(e => !e.path))
-        return fail(`${label}: the channel doesn't close into one loop at this width; it has eaten the neck face. Narrow the gouge or the land.`);
+        return fail(`${label}: the channel doesn't close into one loop at this width; it has eaten the neck face. Narrow the gouge or bring the fluting edge in.`);
       let [outer, center, inner] = edges.map(e => e.path!);
       s[plate] = { outer, center, inner, width: 2 * w, cBoutWidth: 2 * wC, innerEdgeOffset: edge + 2 * w, innerEdgeOffset_cBout: edge + 2 * wC };
       return null;
