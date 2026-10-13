@@ -446,6 +446,18 @@ export function solveLongArch(p: ViolinFamilyParams, arch: LongArchCurve, g: Gou
   };
 }
 
+// the plate's centreline height at y, relative to its surface: flat land at the caps, down through
+// the channel, then the arch over and back. One function across the body, since the arch's takeoff
+// meets the channel's flank at the same height and slope. Without an arch the plate is channel and
+// land only
+export function channelCenterlineZAt(p: ViolinFamilyParams, g: GougeParams, la: LongArchSolve | null, y: number): number {
+  let w = gougeHalfWidth(g.sweepRadius, g.depth);
+  let centerY = p.fluting!.flutingEdge + w;
+  let s = Math.min(y, p.body.height - y) - centerY;
+  if (la && y > la.yStart && y < la.yEnd) return archZAt(la.lowered, la.span, y - la.yStart, la.farZ) - la.takeoff.takeoffDepth;
+  return s <= -w ? 0 : gougeProfileZ(Math.min(s, w), g.sweepRadius, g.depth);
+}
+
 // a later panel reads the ribs and the arches by calling this; it returns and never writes to the
 // params. An end that found no tangency keeps its closest approach and is reported, since a little
 // sandpaper makes that join at the bench

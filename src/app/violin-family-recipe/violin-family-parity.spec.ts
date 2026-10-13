@@ -7,6 +7,8 @@ import { defaultFHolePlacement } from '../enrico-ceruti-violin/panels/f-hole-pla
 import { channelPaths, crossArchSectionAt, defaultCrossArchParams, defaultFlutingParams, solveLongArch as cerutiLongArch } from '../enrico-ceruti-violin/calculation/arching/ceruti-arch-geometry';
 import { bodyLandmarks as cerutiLandmarks, defaultArchingParams, solveRibTaper as cerutiRibTaper } from '../enrico-ceruti-violin/calculation/arching/ceruti-arching';
 import { buildPlateSurfaceModel, stationChordsAt, topSurfaceZAt } from '../enrico-ceruti-violin/calculation/arching/ceruti-surface';
+import { calculateNeck, defaultNeckParams, heelStands, heelFace as cerutiHeelFace, lowerThicknessLine, mortiseFingerboardIntersect, plateEdgeAtNeck, buttonTip } from '../enrico-ceruti-violin/calculation/neck/ceruti-neck';
+import { NeckParams as CerutiNeck } from '../enrico-ceruti-violin/ceruti-types';
 import { ArchCurve, ArchingParams as CerutiArching, CrossArchShape, EnricoCerutiParams, FholeParams, FlutingParams } from '../enrico-ceruti-violin/ceruti-types';
 import { Arc, Pt } from '../models/types';
 import { signedRadianDelta, TURN } from '../helpers/math/simpleGeometry';
@@ -21,7 +23,8 @@ import { FHolePlacementPanel } from './panels/fhole-placement-panel/fhole-placem
 import { FHoleContoursPanel, solveFholeContours } from './panels/fhole-contours-panel/fhole-contours-panel';
 import { solveLongArching } from './panels/long-arching-panel/long-arching-panel';
 import { bodyLandmarks, rowAt, sectionAt, solveCrossArching, surfaceZAt } from './panels/cross-arching-panel/cross-arching-panel';
-import { ArchingParams, CrossArchParams, CrossShapeParams, FholeArcKey, FholeContourParams, FholePlacementParams, GougeParams, LongArchParams, ViolinFamilyParams } from './violin-family-types';
+import { NeckPanel, solveNeck } from './panels/neck-panel/neck-panel';
+import { ArchingParams, NeckParams, CrossArchParams, CrossShapeParams, FholeArcKey, FholeContourParams, FholePlacementParams, GougeParams, LongArchParams, ViolinFamilyParams } from './violin-family-types';
 
 // The port's acceptance test: every frozen Ceruti instrument, solved by both recipes from the same
 // inputs, gives the same arcs and reads the same ratios. Goes when the Ceruti recipe does.
@@ -100,6 +103,13 @@ const arching = (a: CerutiArching): ArchingParams => ({
   back: { thickness: a.bottom.thickness, arch: longArch(a.bottom.arch), cross: crossArch(a.bottom.cross ?? defaultCrossArchParams()) },
 });
 
+// Ceruti keeps the heel as an arc whose radius is typed and the angle in radians
+const neck = (n: CerutiNeck): NeckParams => ({
+  length: n.length, angle: degrees(n.angle), upperThickness: n.upperThickness, lowerThickness: n.lowerThickness,
+  topWidth: n.topWidth, rootWidth: n.rootWidth, heelRadius: n.heel.r, mortiseDepth: n.mortiseDepth, overstand: n.overstand,
+  nutHeight: n.nutHeight, nutWidth: n.nutWidth,
+});
+
 function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
   let V0 = c.viol?.V0;
   let b = c.bouts;
@@ -170,6 +180,7 @@ function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
     fHoles: placement(c.fHoles),
     fHoleContours: contours(c),
     arching: c.arching ? arching(c.arching) : undefined,
+    neck: c.neck ? neck(c.neck) : undefined,
   };
 }
 
@@ -196,6 +207,34 @@ const sameArching = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
       expect(la[end].tangent, `${plate} ${label} tangent`).toBe(theirs[end].tangent);
     }
   }
+};
+
+// the neck in the side elevation, both recipes from the same instrument. Ceruti's solve writes its
+// points onto the neck, so it runs after the params are read across
+const sameNeck = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
+  const s = solveNeck(p)!;
+  const top = c.arching!.top;
+  calculateNeck(c, cerutiLongArch(c, top.arch, top.fluting ??= defaultFlutingParams(c)), top.fluting);
+  const n = c.neck!;
+  const near = (a: Pt | null, b: Pt | null | undefined, label: string) => {
+    expect(a, `${label} solved`).not.toBeNull();
+    expect(Math.hypot(a!.x - b!.x, a!.y - b!.y), label).toBeLessThan(1e-6);
+  };
+  near(s.root, n.root, 'root');
+  near(s.neckTop, n.neckTop, 'nut');
+  near(s.backNut, n.backNut, 'back at the nut');
+  near(s.backRoot, n.backRoot, 'back at the root');
+  near(s.plateAtMortise, n.plateAtMortise, 'plate at the mortise');
+  near(s.glue, mortiseFingerboardIntersect(c), 'mortise floor on the fingerboard plane');
+  near(s.plateEdge, plateEdgeAtNeck(c), 'plate edge');
+  near(s.tip, buttonTip(c), 'button tip');
+  near(s.lowerThickness![0], lowerThicknessLine(c)[0], 'lower thickness, front');
+  near(s.lowerThickness![1], lowerThicknessLine(c)[1], 'lower thickness, back');
+  expect(!!s.heel, 'heel stands').toBe(heelStands(c));
+  if (s.heel) sameArc(s.heel, n.heel, 'heel');
+  const face = cerutiHeelFace(c);
+  expect(!!s.heelFace, 'heel face').toBe(!!face);
+  if (face) near(s.heelFace![0], face[0], 'heel face');
 };
 
 const sameSurface = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
@@ -566,6 +605,26 @@ describe.each(templateKeys())('parity with the Ceruti recipe: %s', key => {
     }
     sameSurface(ca);
   }, 60_000);
+
+  it('sets the same neck, seeded where the fixture carries none', () => {
+    const cn = templateViolin(key, true);
+    const p = fromCeruti(cn);
+    if (!cn.neck) {
+      NeckPanel.seed(p);
+      cn.neck = defaultNeckParams(cn);
+      expect(p.neck).toEqual(neck(cn.neck));
+    }
+    sameNeck(cn, p);
+  });
+
+  it('sets the same neck at a tight heel and a wide one', () => {
+    for (const r of [6, 45]) {
+      const cn = templateViolin(key, true);
+      cn.neck ??= defaultNeckParams(cn);
+      cn.neck.heel.r = r;
+      sameNeck(cn);
+    }
+  });
 
   it('reads the same ratios', () => {
     const r = { ...solveMainBoutsRatios(p), ...solveCornersRatios(p), ...solveCenterBoutRatios(p) };

@@ -19,8 +19,9 @@ import { OuterContourPanel, solveOuterContour } from './panels/outer-contour-pan
 import { FlutingPanel, solveFluting } from './panels/fluting-panel/fluting-panel';
 import { FHolePlacementPanel, solveFholePlacementRatios } from './panels/fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel } from './panels/fhole-contours-panel/fhole-contours-panel';
-import { LongArchingPanel } from './panels/long-arching-panel/long-arching-panel';
+import { LongArchingPanel, solveLongArching } from './panels/long-arching-panel/long-arching-panel';
 import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
+import { NeckPanel } from './panels/neck-panel/neck-panel';
 
 // The Violin Family recipe: the Ceruti model rebuilt on a split between what the user sets
 // (`d.params`, the file) and what each panel's solver derives from it (never written out). The
@@ -32,7 +33,7 @@ import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-pa
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel],
   templateUrl: './violin-family.html',
   styleUrls: ['../sidebar.css', './violin-family.css'],
 })
@@ -51,6 +52,7 @@ export class ViolinFamily extends RecipeComponentBase {
     { id: 'longArching', label: 'Long Arching', toggles: LongArchingPanel.renderToggles, seed: LongArchingPanel.seed },
     // no seed: its shape is seeded with the long arch
     { id: 'crossArching', label: 'Cross Arching', toggles: CrossArchingPanel.renderToggles },
+    { id: 'neck', label: 'Neck', toggles: NeckPanel.renderToggles, seed: NeckPanel.seed },
   ];
 
   private readonly themeService = inject(ThemeService);
@@ -129,6 +131,7 @@ export class ViolinFamily extends RecipeComponentBase {
         return !!(f?.top && f.back);
       }
       case 'crossArching': return !!p.arching;
+      case 'neck': return !!p.arching && !!solveLongArching(p)?.ribs;
       default: return false;
     }
   }

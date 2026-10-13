@@ -135,6 +135,15 @@
             (edit)="onPanelEdit()">
         </app-vf-cross-arching-panel>
         }
+
+        @if (openPanel === 'neck') {
+        <app-vf-neck-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-neck-panel>
+        }
     </div>
 </div>
 
