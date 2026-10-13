@@ -1,5 +1,4 @@
-import { jsPDF } from 'jspdf';
-import { svg2pdf } from 'svg2pdf.js';
+import type { jsPDF as JsPdf } from 'jspdf';
 import { pathsBounds } from './math/pathMath';
 import { LASER } from '../theme/palettes';
 
@@ -448,6 +447,13 @@ export function paginatePieces(groups: PieceGroup[], format: PaperFormat | null,
 
 // ─── public export functions ─────────────────────────────────────────────────
 
+// fetched on the first PDF export rather than with the app: jspdf and svg2pdf are near half a
+// megabyte that a session drafting on screen never needs
+async function loadPdf() {
+  const [{ jsPDF }, { svg2pdf }] = await Promise.all([import('jspdf'), import('svg2pdf.js')]);
+  return { jsPDF, svg2pdf };
+}
+
 export async function downloadSvgAsPdf(
   filename: string,
   width: number,
@@ -456,6 +462,7 @@ export async function downloadSvgAsPdf(
   meta?: { fileName?: string; description?: string; sheetLabel?: string },
   texts: SvgTextExport[] = []
 ): Promise<void> {
+  const { jsPDF, svg2pdf } = await loadPdf();
   const match = findStandardPage(width, height);
 
   let pageW: number;
@@ -521,9 +528,10 @@ export async function downloadFullPlanPdf(
   pages: PdfPage[],
   paper: PaperFormat | null = null,
 ): Promise<void> {
+  const { jsPDF, svg2pdf } = await loadPdf();
   const parser = new DOMParser();
 
-  let doc: InstanceType<typeof jsPDF> | null = null;
+  let doc: JsPdf | null = null;
 
   for (let i = 0; i < pages.length; i++) {
     const { label, width, height, paths, texts, fileName, description } = pages[i];

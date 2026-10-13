@@ -1,6 +1,7 @@
 <!-- the sidebar is a column of three: this header, the scrolling panel, and the view toggles -->
 <app-recipe-toolbar
   [recipeName]="d.recipeName"
+  [version]="d.version"
   [fileName]="d.fileName"
   (fileNameChange)="d.fileName = $event"
   (newFile)="onNewClick()"

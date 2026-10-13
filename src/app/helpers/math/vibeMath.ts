@@ -592,8 +592,7 @@ export function solveDense(rows: number[][], rhs: number[]): number[] | null {
  *
  * The trade is real and the caller must be able to live with it. A natural
  * spline through steep or unevenly spaced data can rise above the knots it
- * passes through. Check the result — see `naturalSplineOvershoot` in
- * ceruti-arch-geometry, which is what decides between the two there.
+ * passes through. Check the result against the knots before trusting it.
  */
 export function makeNaturalSpline(ys: number[], zs: number[]): (y: number) => number {
   const n = ys.length - 1;

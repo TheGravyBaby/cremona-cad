@@ -1,5 +1,5 @@
-/* the same strip as enrico-ceruti-violin/render-toggles, copied rather than shared: that component
-   is typed against the violin model's own view flags */
+/* the same strip as the violin family's view toggles, copied rather than shared: that markup is
+   typed against the violin model's own view flags */
 .view-toggle-bar {
   box-sizing: border-box;
   width: 100%;

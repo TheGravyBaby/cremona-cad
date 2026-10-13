@@ -9,7 +9,7 @@ A free and open source application for designing violin family instruments.
 
 ## About
 
-<img src="public/DrawingDemo2.png" alt="Cremona CAD" width="340" align="right" style="margin: 0 0 16px 24px;" />
+<img src="public/DrawingDemo2.webp" alt="Cremona CAD" width="340" align="right" style="margin: 0 0 16px 24px;" />
 CremonaCad draws instruments using a simple system of **intersecting arcs**, historically informed by a drafting document found in the workshop of **Enrico Ceruti**, as well as the research of American luthiers **David Beard** and **Kevin Kelly**.
 
 The outline is drawn from parameters — bout widths, corner placements, cutoff angles — which then carry through to purfling, fluting, long and cross arching, and the internal mould. A **drawing toolbox** sits alongside the recipe for sketching and tracing directly on the canvas, snapping to the geometry underneath. Finished designs export as SVG, PDF and DXF for templates and moulds, and as STL for CNC-carved plates.
@@ -58,8 +58,6 @@ Unit tests run under [Vitest](https://vitest.dev/) via `@angular/build:unit-test
 
 The `src/app/hello-world-recipe/` component is a minimal working recipe — the four-circle theory of violin outlines, in about 150 lines. A good starting point if you want to experiment with building your own.
 
-The `examples/` directory contains the archived Beard and Kelly violin recipes. These are not wired into the main application but are useful as reference implementations.
-
 Recipe components follow the structure established in `recipe-base/`, which owns the save/load file format, undo/redo, and the panel scaffolding. The draft canvas (`draft-canvas/`) accepts an array of draw functions and handles rendering, pan/zoom and the axis grid; it also hosts the drawing toolbox, whose shapes and reference images are saved into the recipe file alongside the parameters.
 
 A few conventions worth knowing before editing geometry code:
@@ -83,26 +81,22 @@ src/app/
 │   ├── layer-controls/    #   Layers and reference images, under the canvas
 │   ├── axis-controls/     #   Grid settings
 │   └── edit-menu/         #   Selection actions
-├── enrico-ceruti-violin/  # Primary working recipe
-│   ├── calculation/       #   The math: outline/, arching/, neck/
-│   ├── panels/            #   One input panel per design stage, plus the render toggles
-│   ├── renders/           #   Drawing several panels share
-│   └── templates/         #   Bundled historical instruments and the open corpus
 ├── helpers/               # Math, render functions, SVG/PDF/DXF/STL export
 ├── hello-world-recipe/    # Minimal recipe for experimentation
 ├── models/                # Shared TypeScript types
 ├── recipe-base/           # Base class shared across all recipes
 ├── recipe-toolbar/        # Design name, file menu, export
 ├── shared/                # Message service and UI components
-└── top-bar/               # Application toolbar
+├── top-bar/               # Application toolbar
+└── violin-family-recipe/  # The instrument model
+    ├── panels/            #   One folder per design stage: its panel, its renders and its solver
+    └── templates/corpus/  #   Historical instruments traced from public museum records
+
 
 CHANGELOG.md               # Rendered in the about modal
-
-examples/
-├── beard-violin/          # Archived Beard recipe
-├── kelly-violin/          # Archived Kelly recipe
-└── shared/                # Older math helpers those two still depend on
 ```
+
+Earlier recipes (Enrico Ceruti, Beard, Kelly) live in the git history.
 
 ## Contributing
 

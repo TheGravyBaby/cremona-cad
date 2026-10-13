@@ -25,7 +25,7 @@ export class GuideComponent {
         { id: 'bouts', label: 'Main Bouts' },
         { id: 'corners', label: 'Corners' },
         { id: 'center', label: 'Center Bout' },
-        { id: 'outer', label: 'Outer Path' },
+        { id: 'outer', label: 'Outer Contour' },
         { id: 'purfling', label: 'Purfling' },
       ],
     },
