@@ -70,9 +70,9 @@ A few conventions worth knowing before editing geometry code:
 
 ```
 src/app/
-├── about-modal/           # About, documentation, settings, changelog
 ├── docs/                  # Every word the app says to the user: field help, tooltips, conditions
 │   ├── guide/             #   The Documentation tab
+│   ├── help/              #   The help dialog: documentation, change log, about
 │   └── wiki/              #   Markdown articles and the wiki that renders them (dev builds)
 ├── draft-canvas/          # SVG canvas, camera, axis grid
 │   ├── tools/             #   Drawing toolbox: tools, snapping, layers, images
@@ -90,11 +90,12 @@ src/app/
 │   └── violin-family/     #   The instrument model
 │       ├── panels/        #     One folder per design stage: its panel, its renders and its solver
 │       └── templates/corpus/  #  Historical instruments traced from public museum records
+├── settings/              # User preferences and the settings menu
 ├── shared/                # Message service and UI components
 ├── top-bar/               # Application toolbar
 
 
-CHANGELOG.md               # Rendered in the about modal
+CHANGELOG.md               # Rendered in the help dialog
 ```
 
 Earlier recipes (Enrico Ceruti, Beard, Kelly) live in the git history.

@@ -1,11 +1,12 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnDestroy, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { setGlobalEmitter } from './shared/message-emitter';
 import { isSmallViewport, trackViewportHeight } from './helpers/viewport';
 import { MessageService } from './shared/message.service';
-import { AboutModalComponent, ThemeMode } from './about-modal/about-modal';
+import { HelpDialogComponent } from './docs/help/help-dialog';
+import { SettingsService } from './settings/settings.service';
 import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
 import { ToolboxStore } from './draft-canvas/tools/toolbox-store';
@@ -17,22 +18,19 @@ import { ThemeService } from './theme/theme.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, AboutModalComponent, DraftCanvasComponent, ViolinFamily, HelloWorldRecipe],
+  imports: [TopBarComponent, HelpDialogComponent, DraftCanvasComponent, ViolinFamily, HelloWorldRecipe],
   template: `
     <div class="app" [class.sidebar-collapsed]="!sidebarOpen"
-      [class.bar-autohide]="!barPinned && !hasMessages()" [class.bar-revealed]="barRevealed()">
+      [class.bar-autohide]="settings.barAutoHide() && !hasMessages()" [class.bar-revealed]="barRevealed()">
      <app-top-bar class="top"
       [selectedRecipe]="selectedRecipe"
       (recipeChange)="selectRecipe($event)"
-      (aboutRequested)="about.open($event)">
+      (helpRequested)="help.open($event)">
     </app-top-bar>
 
     <!-- outside the bar: the unpinned bar is transformed, which would make this fixed backdrop
          relative to it and slide it away -->
-    <app-about-modal #about
-      [themeMode]="themeMode" (themeModeChange)="onThemeModeChange($event)"
-      [barPinned]="barPinned" (barPinnedChange)="onBarPinnedChange($event)">
-    </app-about-modal>
+    <app-help-dialog #help></app-help-dialog>
 
       <div class="main">
         <app-draft-canvas class="canvas"
@@ -79,6 +77,7 @@ import { ThemeService } from './theme/theme.service';
 export class App implements OnDestroy {
   private readonly doc = inject(DOCUMENT);
   private readonly theme = inject(ThemeService);
+  protected readonly settings = inject(SettingsService);
   // inject MessageService via Angular's injector
   private messageService = inject(MessageService);
   private toolbox = inject(ToolboxStore);
@@ -90,10 +89,7 @@ export class App implements OnDestroy {
    * RecipeComponentBase.requestFit. */
   fitToken = signal(0);
 
-  themeMode: ThemeMode = 'auto';
-
   private static readonly SIDEBAR_OPEN_KEY = 'app-sidebar-open';
-  private static readonly BAR_PINNED_KEY = 'app-bar-pinned';
   private static readonly BAR_REVEAL_EDGE_PX = 6;
 
   /** Stops the visual-viewport listeners; see trackViewportHeight in helpers/viewport.ts. */
@@ -103,11 +99,10 @@ export class App implements OnDestroy {
    * header, which stays up so saving and loading never need the panel expanded first. */
   sidebarOpen = true;
 
-  /** Unpinned, the top bar and the recipe's file header slide away together and come back while
-   * the pointer is at the top edge or over either of them. While there are messages the bar acts
-   * pinned instead, taking its row rather than lying over the controls: the chips live in the bar,
-   * so a hidden bar would hide them too. */
-  barPinned = true;
+  /** Auto-hiding, the top bar and the recipe's file header slide away together and come back while
+   * the pointer is at the top edge or over either of them. While there are messages the bar stays
+   * instead, taking its row rather than lying over the controls: the chips live in the bar, so a
+   * hidden bar would hide them too. */
   protected readonly barRevealed = signal(false);
   protected readonly hasMessages = toSignal(
     this.messageService.messages$.pipe(map(msgs => msgs.length > 0)),
@@ -117,7 +112,7 @@ export class App implements OnDestroy {
   // a plain listener rather than a HostListener, which would run change detection on every move;
   // the signal only schedules one when the bar actually shows or hides
   private readonly onPointerMove = (e: PointerEvent): void => {
-    if (this.barPinned) return;
+    if (!this.settings.barAutoHide()) return;
     const bar = 'app-top-bar, app-recipe-toolbar';
     const reveal = e.clientY <= App.BAR_REVEAL_EDGE_PX
       || !!(e.target as Element | null)?.closest?.(bar)
@@ -127,14 +122,22 @@ export class App implements OnDestroy {
   };
 
   constructor() {
-    const savedTheme = localStorage.getItem('themeMode');
-    this.themeMode = savedTheme === 'day' || savedTheme === 'night' ? savedTheme : 'auto';
-    this.applyThemeClass();
+    // auto reads the clock when the appearance is applied, not continuously
+    effect(() => {
+      const appearance = this.settings.appearance();
+      const hour = new Date().getHours();
+      const night = appearance === 'auto' ? hour < 7 || hour >= 19 : appearance === 'night';
+      this.theme.setMode(night ? 'night' : 'day');
+    });
+    // the switch sits in the bar, so turning auto-hide on leaves the bar up until the pointer leaves
+    // it rather than sliding the open menu out from under the pointer
+    effect(() => {
+      if (this.settings.barAutoHide()) this.barRevealed.set(true);
+    });
 
     let storedOpen: string | null = null;
     try {
       storedOpen = sessionStorage.getItem(App.SIDEBAR_OPEN_KEY);
-      this.barPinned = sessionStorage.getItem(App.BAR_PINNED_KEY) !== 'false';
     } catch {
       // ignore blocked sessionStorage
     }
@@ -160,18 +163,6 @@ export class App implements OnDestroy {
     this.doc.removeEventListener('pointermove', this.onPointerMove);
   }
 
-  onBarPinnedChange(pinned: boolean): void {
-    this.barPinned = pinned;
-    // the pointer is on the button, so unpinning slides the bar out from under it rather than
-    // waiting for the pointer to leave
-    this.barRevealed.set(false);
-    try {
-      sessionStorage.setItem(App.BAR_PINNED_KEY, String(pinned));
-    } catch {
-      // ignore storage errors
-    }
-  }
-
   toggleSidebar(): void {
     this.sidebarOpen = !this.sidebarOpen;
     try {
@@ -179,19 +170,6 @@ export class App implements OnDestroy {
     } catch {
       // ignore storage errors
     }
-  }
-
-  onThemeModeChange(mode: ThemeMode) {
-    this.themeMode = mode;
-    localStorage.setItem('themeMode', mode);
-    this.applyThemeClass();
-  }
-
-  // auto reads the clock when the mode is applied, not continuously
-  private applyThemeClass() {
-    const hour = new Date().getHours();
-    const night = this.themeMode === 'auto' ? hour < 7 || hour >= 19 : this.themeMode === 'night';
-    this.theme.setMode(night ? 'night' : 'day');
   }
 
   onDraftChange(fns: Array<(g: any, ui: any) => void>) {

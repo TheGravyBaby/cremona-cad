@@ -10,6 +10,7 @@ import { ImageAssetStore } from '../draft-canvas/tools/image-asset-store';
 import { UndoCoordinator, Undoable } from '../helpers/undoCoordinator';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
 import { copyToClipboard } from '../helpers/debugDump';
+import { SettingsService } from '../settings/settings.service';
 import {
   ReferenceImageSource, imageShapesFromRecipe, imageShapesToRecipe,
 } from '../draft-canvas/tools/reference-image-schema';
@@ -42,11 +43,25 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
    * has actually rendered (recipe output, drawn shapes, reference images, the 3D previews), which
    * a recipe can't describe and shouldn't have to.
    *
-   * Emit only when the drawing is replaced wholesale — a new file, a loaded template. An ordinary
-   * parameter edit must not emit: yanking the camera while someone is typing a dimension throws
-   * away the zoom and pan they set. `F` re-frames on demand.
+   * Emit only when the drawing is replaced wholesale — a new file, a loaded template, or another
+   * panel when the user's settings ask for that. An ordinary parameter edit must not emit: yanking
+   * the camera while someone is typing a dimension throws away the zoom and pan they set. `F`
+   * re-frames on demand.
    */
   @Output() requestFit = new EventEmitter<void>();
+
+  private readonly settings = inject(SettingsService);
+  // a newly opened panel hands over its drawing only once it has mounted and drawn, so the fit
+  // waits for that drawing: asked for at the switch, it would frame the panel being left
+  private fitOnNextDraft = false;
+
+  constructor() {
+    this.draftChange.subscribe(() => {
+      if (!this.fitOnNextDraft) return;
+      this.fitOnNextDraft = false;
+      this.requestFit.emit();
+    });
+  }
 
   loadFile(file: RecipeInterface): void {
     // Snapshot the file's reference images before touching the stores. resetAll() below both
@@ -362,6 +377,7 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
 
   protected activatePanel(panel: string): void {
     if (!this.isPanelEnabled(panel)) return;
+    if (panel !== this.openPanel && this.settings.fitOnPanelChange()) this.fitOnNextDraft = true;
     this.setOpenPanel(panel);
     writeWorkingState(PANEL_KEY, panel);
     this.onPanelActivated(panel);

@@ -35,7 +35,8 @@ these globs only runs under the full `ng test`.
 | `src/app/models/types.ts` | `Pt`/`Circle`/`Arc`/`Rectangle`. Read its header. |
 | `src/app/recipe-base/` | Panel flow, undo/redo, file load/save, toolbox sync. |
 | `src/app/theme/` | All colour and stroke. `palettes.ts` holds every constant; `theme.service.ts` the code. No file outside this folder holds a hex. |
-| `src/app/docs/` | Every word the app says to the user: `field-help.ts` (ⓘ), `tooltips.ts` (`docTip="id"`), `conditions.ts`, `guide/`, `wiki/`. Change log is root `CHANGELOG.md`. |
+| `src/app/docs/` | Every word the app says to the user: `field-help.ts` (ⓘ), `tooltips.ts` (`docTip="id"`), `conditions.ts`, `guide/`, `wiki/`, and `help/`, the dialog that shows them with the change log (root `CHANGELOG.md`) and the about page. |
+| `src/app/settings/` | The user's preferences: `SettingsService` (one typed object, signals, `localStorage`) and the top bar's settings menu. A new setting is a key on `AppSettings`, a line in `readSettings`, a row in the menu. |
 
 ## Where logic belongs
 
@@ -156,7 +157,7 @@ arcs, F0–F1 the front's.
 - **No loader migrations** (pre-production). When a field's shape changes, rewrite the templates
   and let old files fall away.
 - Working state goes through `helpers/workingStorage.ts` (sessionStorage, a tab is a workspace),
-  never `localStorage` directly. Exception: `App`'s `themeMode`.
+  never `localStorage` directly. Exception: `SettingsService`, whose preferences outlive a tab.
 - UI help prose: what the concept is in luthier terms, then what the field controls. Terse.
 
 ## Tests

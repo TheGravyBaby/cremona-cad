@@ -64,6 +64,11 @@ export const TOOLTIPS = {
   // toolbar
   'toolbar.export': 'Templates, plans and a copy of the recipe',
 
+  // preferences
+  'prefs.appearanceAuto': 'Day from 7:00 to 19:00, by the time you open the app',
+  'prefs.barAutoHide': 'Slides the top bar away until the pointer reaches the top edge',
+  'prefs.fitOnPanelChange': 'Frames the drawing each time another panel opens. F frames it any time.',
+
   // crossArching
   'crossArching.stlGrid': 'Sampling step for the mesh — finer takes longer and makes a larger file',
   'crossArching.knotX': 'Across the plate — 0 is the bass channel, 50 the joint, 100 the treble channel. A knot at 66 and one at 34 are the same place on opposite sides.',

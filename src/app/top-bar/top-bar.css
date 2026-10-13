@@ -112,6 +112,24 @@
   left: 0;
 }
 
+.settings-menu {
+  position: relative;
+}
+
+.settings-btn {
+  color: var(--ui-text-muted);
+}
+
+.settings-btn:hover,
+.settings-btn.active {
+  color: var(--ui-text-primary);
+}
+
+.settings-popup-host {
+  top: calc(100% + 6px);
+  right: 0;
+}
+
 .icon-btn:disabled:hover {
   background: var(--ui-topbar-control-bg);
 }
@@ -123,8 +141,7 @@
   padding-right: 24px;
 }
 
-/* ── About button ─────────────────────────────────────────── */
-.about-btn {
+.help-btn {
   width: 28px;
   min-width: 28px;
   padding: 0;
@@ -133,6 +150,6 @@
   color: var(--ui-text-muted);
 }
 
-.about-btn:hover {
+.help-btn:hover {
   color: var(--ui-text-primary);
 }

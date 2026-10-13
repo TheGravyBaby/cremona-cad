@@ -10,6 +10,7 @@ TODO: the neck, volute, scroll and scroll widths panels, the string setup, and t
 - **Bundled SVG exports** — Templates SVG packs the neck template, the scroll's three views, scroll back, compass walk, arch templates and blocks onto one sheet, each set kept together as it previews; Full SVG packs every sheet.
 - **Full plan PDF on one paper size** — every page prints on the same paper, and the templates share pages where they fit, so the small pages are gone.
 - **Scroll side profile export** — the head from the side, as SVG, PDF or DXF, and in the full plan.
+- **Settings menu** — the gear in the top bar holds appearance, auto-hide and a new option to fit the view each time another panel opens. Settings now carry across tabs. The **?** button opens Help: documentation, change log and about.
 
 ## v0.8.8.0 — Sep 14, 2026
 
