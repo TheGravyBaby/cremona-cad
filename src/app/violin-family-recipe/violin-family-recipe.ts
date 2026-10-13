@@ -25,6 +25,7 @@ import { NeckPanel } from './panels/neck-panel/neck-panel';
 import { VolutePanel } from './panels/volute-panel/volute-panel';
 import { ScrollPanel, solveScroll } from './panels/scroll-panel/scroll-panel';
 import { ScrollWidthsPanel } from './panels/scroll-widths-panel/scroll-widths-panel';
+import { StringSetupPanel } from './panels/string-setup-panel/string-setup-panel';
 
 // The Violin Family recipe: the Ceruti model rebuilt on a split between what the user sets
 // (`d.params`, the file) and what each panel's solver derives from it (never written out). The
@@ -36,7 +37,7 @@ import { ScrollWidthsPanel } from './panels/scroll-widths-panel/scroll-widths-pa
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, ScrollPanel, ScrollWidthsPanel],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, ScrollPanel, ScrollWidthsPanel, StringSetupPanel],
   templateUrl: './violin-family.html',
   styleUrls: ['../sidebar.css', './violin-family.css'],
 })
@@ -60,6 +61,7 @@ export class ViolinFamily extends RecipeComponentBase {
     // no seed: the scroll is seeded whole with the volute
     { id: 'scroll', label: 'Scroll', toggles: ScrollPanel.renderToggles },
     { id: 'scrollWidths', label: 'Scroll Widths', toggles: ScrollWidthsPanel.renderToggles },
+    { id: 'stringSetup', label: 'String Setup', toggles: StringSetupPanel.renderToggles, seed: StringSetupPanel.seed },
   ];
 
   private readonly themeService = inject(ThemeService);
@@ -145,6 +147,7 @@ export class ViolinFamily extends RecipeComponentBase {
         let s = solveScroll(p);
         return !!s && !s.failures.length;
       }
+      case 'stringSetup': return !!p.neck;
       default: return false;
     }
   }

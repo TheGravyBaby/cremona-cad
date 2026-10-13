@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import {
   angleFromCenter, dist, intersectLines, lineFromTwoPoints, moveInVectorSpace, pointOnCircle, TURN, vectorFromSlope,
 } from '../../../helpers/math/simpleGeometry';
-import { pathFromArc, pathFromLine, pathFromPolygon, translatePath } from '../../../helpers/math/pathMath';
+import { applyMatrix, Matrix2D, pathFromArc, pathFromLine, pathFromPolygon, transformPath, translatePath } from '../../../helpers/math/pathMath';
 import { occludePath } from '../../../helpers/math/pathVibes';
 import {
   renderArcHalo, renderDashedLine, renderGuideBaseline, renderGuideMeasure, renderPath, renderPolygon, renderSegment,
@@ -15,7 +15,7 @@ import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { DASH, STROKE_WEIGHT } from '../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../theme/theme.service';
 import {
-  NeckFailure, NeckSolve, OuterContourSolve, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey,
+  NeckFailure, NeckSolve, OuterContourSolve, RenderLayer, ScrollSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey,
   ViolinFamilyViewFlags,
 } from '../../violin-family-types';
 import { PLATE_LAYOUT_GAP, solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
@@ -23,6 +23,7 @@ import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-con
 import {
   channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, sideViewOffsetX, solveLongArching, topPlatePlacement,
 } from '../long-arching-panel/long-arching-panel';
+import { defineSideScrollPath } from '../scroll-panel/scroll-panel';
 
 // The neck set in the side elevation, and its widths in plan. Everything hangs off the top plate's
 // edge at the neck end, so the rib taper carries through: the fingerboard plane stands off that edge
@@ -128,15 +129,18 @@ const REFERENCE_BODY_HEIGHT = 355;
 // the neck in the side elevation, over the body's side profile. Only what a field sets is in
 // colour: the front, the two thicknesses, the heel; the rest of the outline is plain. Ground,
 // everything draws neutral and only the nut's end is closed: for a later panel where the neck is
-// what something else stands on
+// what something else stands on. A scroll solved whole is set on the neck's end, the pegbox running
+// on past the nut and the back up to where the nape meets it, as the scroll panels draw it
 export const renderNeck = (
   p: ViolinFamilyParams,
   n: NeckSolve,
   pal: PanelPalette,
-  opts: { guides?: boolean; ground?: boolean } = {},
+  opts: { guides?: boolean; ground?: boolean; scroll?: ScrollSolve } = {},
 ) => (g: any, ui: any): void => {
   if (!n.root || !n.neckTop || !n.backNut || !n.backRoot || !n.glue || !n.lowerThickness || !n.tip) return;
   let nk = p.neck!;
+  let onNeck = opts.scroll ? scrollOnNeck(p, n) : null;
+  let backTop = onNeck ? applyMatrix(onNeck, new Pt(-nk.upperThickness, opts.scroll!.nape!.y)) : n.backNut;
   let ink = (c: string) => opts.ground ? pal.neutral : c;
   let seg = (a: Pt, b: Pt, color: string = pal.neutral) => renderSegment(a, b, color, STROKE_WEIGHT.section)(g, ui);
   let hidden = (a: Pt, b: Pt) => renderDashedLine(a, b, pal.neutral, DASH.hidden, STROKE_WEIGHT.section, 1)(g, ui);
@@ -151,20 +155,26 @@ export const renderNeck = (
   // below it the foot is hidden in the block
   if (n.plateAtMortise) seg(n.plateAtMortise, n.glue, ink(pal.ink(3).faint(-3)));
 
+  if (onNeck) {
+    seg(n.neckTop, applyMatrix(onNeck, new Pt(0, nk.nutHeight)));
+    renderPath(transformPath(defineSideScrollPath(p, opts.scroll!), onNeck), pal.neutral, STROKE_WEIGHT.section)(g, ui);
+  }
+
   let heel = n.heel;
   if (heel) {
-    seg(n.backNut, pointOnCircle(heel, heel.start));
+    seg(backTop, pointOnCircle(heel, heel.start));
     renderPath(pathFromArc(heel), ink(pal.ink(3)), STROKE_WEIGHT.section)(g, ui);
     if (n.heelFace) seg(n.heelFace[0], n.heelFace[1], ink(pal.ink(3)));
   } else {
-    seg(n.backNut, n.backRoot);
+    seg(backTop, n.backRoot);
   }
 
   // the two thicknesses, across the nut end and across the heel's corner, the back carried on to
   // the corner the heel hides
   if (opts.ground) {
-    seg(n.neckTop, n.backNut);
+    if (!onNeck) seg(n.neckTop, n.backNut);
   } else {
+    if (onNeck) hidden(backTop, n.backNut);
     if (heel) {
       hidden(pointOnCircle(heel, heel.start), backHeel);
       hidden(backHeel, pointOnCircle(heel, heel.end));
@@ -214,8 +224,17 @@ const renderNeckHighlight = (
   }
 };
 
+// the scroll's frame set on the neck: its origin the nut's foot on the neck's front, +x the
+// fingerboard plane's normal and +y up the neck, so the neck's angle turns it
+export function scrollOnNeck(p: ViolinFamilyParams, n: NeckSolve): Matrix2D {
+  let angle = p.neck!.angle * TURN.degree;
+  let normal = vectorFromSlope(angle);
+  let up = vectorFromSlope(angle + TURN.quarter);
+  return [normal.a, normal.b, up.a, up.b, n.neckTop!.x, n.neckTop!.y];
+}
+
 // the neck in plan, top width at the nut's foot to root width at the mortise floor
-function neckInPlan(p: ViolinFamilyParams, n: NeckSolve): string {
+export function neckInPlan(p: ViolinFamilyParams, n: NeckSolve): string {
   let nk = p.neck!;
   let floorY = mortiseFloorY(p);
   let topY = n.neckTop!.y;

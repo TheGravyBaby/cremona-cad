@@ -170,9 +170,12 @@ export const scrollArc = (arc: Arc, color: string, fancy: boolean) =>
 // how far each view carries the neck on below the scroll
 export const scrollNeckStub = (p: ViolinFamilyParams) => 2 * p.neck!.upperThickness;
 
-// how far the nut stands off the neck: the string setup's to set, and until there is one the
-// Ceruti recipe's own default, 7.5 mm on a 355 mm body
-export const nutThickness = (p: ViolinFamilyParams) => Math.round(7.5 * p.body.height / 355 * 2) / 2;
+// how far the nut stands off the neck: the string setup's, and until it has one, or while its field
+// is cleared, the thickness it would seed
+export const nutThickness = (p: ViolinFamilyParams) => {
+  let t = p.stringSetup?.nutThickness;
+  return Number.isFinite(t) ? t! : Math.round(7.5 * p.body.height / 355 * 2) / 2;
+};
 
 // the nut on its seat and the neck's end below the scroll, for context: the neck's front up to the
 // nut and its back up to where the nape meets it. Module guides run the neck's front up to the

@@ -2,13 +2,13 @@
 import { describe, expect, it } from 'vitest';
 import { templateKeys, templateViolin } from '../enrico-ceruti-violin/ceruti-fixtures';
 import { calculateCenterBout, calculateCorners, calculateFholeContours, calculateOuterArcs } from '../enrico-ceruti-violin/calculation/outline/ceruti-calcs';
-import { defineInsetPath, defineOneFholePath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../enrico-ceruti-violin/calculation/outline/ceruti-paths';
+import { defineInsetPath, defineOneFholePath, fingerboardEnd as cerutiBoardEnd, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../enrico-ceruti-violin/calculation/outline/ceruti-paths';
 import { defaultFHolePlacement } from '../enrico-ceruti-violin/panels/f-hole-placement-panel/f-hole-placement-panel';
 import { channelPaths, crossArchSectionAt, defaultCrossArchParams, defaultFlutingParams, solveLongArch as cerutiLongArch } from '../enrico-ceruti-violin/calculation/arching/ceruti-arch-geometry';
 import { bodyLandmarks as cerutiLandmarks, defaultArchingParams, solveRibTaper as cerutiRibTaper } from '../enrico-ceruti-violin/calculation/arching/ceruti-arching';
 import { buildPlateSurfaceModel, stationChordsAt, topSurfaceZAt } from '../enrico-ceruti-violin/calculation/arching/ceruti-surface';
-import { calculateNeck, defaultNeckParams, heelStands, heelFace as cerutiHeelFace, lowerThicknessLine, mortiseFingerboardIntersect, plateEdgeAtNeck, buttonTip } from '../enrico-ceruti-violin/calculation/neck/ceruti-neck';
-import { NeckParams as CerutiNeck, ScrollParams as CerutiScroll, VoluteStyle } from '../enrico-ceruti-violin/ceruti-types';
+import { calculateNeck, defaultNeckParams, defaultStringSetup, fingerboardCrown as cerutiCrown, heelStands, heelFace as cerutiHeelFace, lowerThicknessLine, mortiseFingerboardIntersect, plateEdgeAtNeck, buttonTip } from '../enrico-ceruti-violin/calculation/neck/ceruti-neck';
+import { NeckParams as CerutiNeck, ScrollParams as CerutiScroll, StringSetup as CerutiStringSetup, VoluteStyle } from '../enrico-ceruti-violin/ceruti-types';
 import { calculateScroll, calculateScrollWidths, defaultVoluteParams, pegboxCavity as cerutiCavity, scrollPathStretches as cerutiStretches, scrollWidthStations as cerutiStations } from '../enrico-ceruti-violin/calculation/neck/ceruti-scroll';
 import { scrollBackViewStrokes as cerutiBackView, scrollFrontViewStrokes as cerutiFrontView } from '../enrico-ceruti-violin/calculation/neck/ceruti-scroll-views';
 import { ArchCurve, ArchingParams as CerutiArching, CrossArchShape, EnricoCerutiParams, FholeParams, FlutingParams } from '../enrico-ceruti-violin/ceruti-types';
@@ -28,8 +28,9 @@ import { bodyLandmarks, rowAt, sectionAt, solveCrossArching, surfaceZAt } from '
 import { NeckPanel, solveNeck } from './panels/neck-panel/neck-panel';
 import { VolutePanel } from './panels/volute-panel/volute-panel';
 import { solveScroll } from './panels/scroll-panel/scroll-panel';
+import { fingerboardCrown, solveStringSetup, StringSetupPanel } from './panels/string-setup-panel/string-setup-panel';
 import { pegboxCavity, scrollBackViewStrokes, scrollFrontViewStrokes, scrollPathStretches, scrollWidthStations, solveScrollWidths } from './panels/scroll-widths-panel/scroll-widths-panel';
-import { ArchingParams, NeckParams, ScrollParams, CrossArchParams, CrossShapeParams, FholeArcKey, FholeContourParams, FholePlacementParams, GougeParams, LongArchParams, ViolinFamilyParams } from './violin-family-types';
+import { ArchingParams, NeckParams, ScrollParams, StringSetupParams, CrossArchParams, CrossShapeParams, FholeArcKey, FholeContourParams, FholePlacementParams, GougeParams, LongArchParams, ViolinFamilyParams } from './violin-family-types';
 
 // The port's acceptance test: every frozen Ceruti instrument, solved by both recipes from the same
 // inputs, gives the same arcs and reads the same ratios. Goes when the Ceruti recipe does.
@@ -115,6 +116,12 @@ const neck = (n: CerutiNeck): NeckParams => ({
   nutHeight: n.nutHeight, nutWidth: n.nutWidth,
 });
 
+// Ceruti keeps the solved points on the setup beside the typed numbers
+const stringSetup = (ss: CerutiStringSetup): StringSetupParams => ({
+  bodyStop: ss.bodyStop, bridgeHeight: ss.bridgeHeight, nutThickness: ss.nutThickness,
+  fingerboardLength: ss.fingerboardLength, fingerboardThickness: ss.fingerboardThickness, fingerboardRadius: ss.fingerboardRadius,
+});
+
 // Ceruti's scroll keeps its arcs whole, the radius and end typed and the rest solved onto them;
 // here only the radius and end are typed, the end in degrees
 const scroll = (v: CerutiScroll): ScrollParams => ({
@@ -198,6 +205,7 @@ function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
     arching: c.arching ? arching(c.arching) : undefined,
     neck: c.neck ? neck(c.neck) : undefined,
     scroll: c.scroll ? scroll(c.scroll) : undefined,
+    stringSetup: c.stringSetup ? stringSetup(c.stringSetup) : undefined,
   };
 }
 
@@ -252,6 +260,31 @@ const sameNeck = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
   const face = cerutiHeelFace(c);
   expect(!!s.heelFace, 'heel face').toBe(!!face);
   if (face) near(s.heelFace![0], face[0], 'heel face');
+};
+
+// the string setup over the neck, both recipes from the same instrument; Ceruti's neck solve writes
+// the setup's points too. Its failures name the field, ours the part
+const sameStringSetup = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
+  const s = solveStringSetup(p)!;
+  const top = c.arching!.top;
+  const theirs = calculateNeck(c, cerutiLongArch(c, top.arch, top.fluting ??= defaultFlutingParams(c)), top.fluting);
+  const ss = c.stringSetup!;
+  const near = (a: Pt | null, b: Pt | null, label: string) => {
+    expect(a, `${label} solved`).not.toBeNull();
+    expect(Math.hypot(a!.x - b!.x, a!.y - b!.y), label).toBeLessThan(1e-6);
+  };
+  near(s.bridgeFoot, ss.bridgeFoot, 'bridge foot');
+  near(s.bridgeTop, ss.bridgeTop, 'bridge top');
+  near(s.nutTop, ss.nutTop, 'nut');
+  near(s.fingerboardEnd, cerutiBoardEnd(c), 'board end');
+  const radiusFails = theirs.some(f => f.unsolved.includes('fingerboardRadius'));
+  expect(s.failures.some(f => f.message.startsWith('Fingerboard')), 'radius fails').toBe(radiusFails);
+  expect(s.failures.some(f => f.message.startsWith('Nut')), 'nut below the crown').toBe(theirs.some(f => f.unsolved.includes('nutThickness')));
+  if (radiusFails) return;
+  for (let i = 0; i <= 10; i++) {
+    const y = s.neck.neckTop!.y + (s.fingerboardEnd!.y - s.neck.neckTop!.y) * i / 10;
+    expect(fingerboardCrown(p, s, y), `crown at ${i}/10`).toBeCloseTo(cerutiCrown(c, y), 9);
+  }
 };
 
 const near3 = (a: Pt3D, b: Pt3D, label: string) =>
@@ -712,6 +745,29 @@ describe.each(templateKeys())('parity with the Ceruti recipe: %s', key => {
       cn.neck.heel.r = r;
       sameNeck(cn);
     }
+  });
+
+  it('sets the same string setup, seeded where the fixture carries none', () => {
+    const c = templateViolin(key, true);
+    c.neck ??= defaultNeckParams(c);
+    const p = fromCeruti(c);
+    if (!c.stringSetup) {
+      StringSetupPanel.seed(p);
+      c.stringSetup = defaultStringSetup(c);
+      expect(p.stringSetup).toEqual(stringSetup(c.stringSetup));
+    }
+    sameStringSetup(c, p);
+  });
+
+  it('sets the same string setup with the nut sunk in the crown and the radius too tight', () => {
+    const c = templateViolin(key, true);
+    c.neck ??= defaultNeckParams(c);
+    c.stringSetup ??= defaultStringSetup(c);
+    c.stringSetup.nutThickness = 4;
+    sameStringSetup(c);
+    // too tight for the board's end but still round over the nut, where Ceruti's crown isn't clamped
+    c.stringSetup.fingerboardRadius = c.neck.topWidth;
+    sameStringSetup(c);
   });
 
   it('seeds the same scroll', () => {
