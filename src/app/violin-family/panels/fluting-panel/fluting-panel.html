@@ -1,0 +1,102 @@
+@let fluting = params.fluting!;
+
+<section class="ui-group">
+    <div class="ui-group-title">Channel</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Fluting Edge <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="fluting.flutingEdge" (input)="edited()" />
+        </label>
+        <button type="button" class="info-icon" (click)="help('gougeCenterline')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="fluting.cornerGouge" (change)="edited()" /><span>Gouge Corners</span>
+        </div>
+        <button type="button" class="info-icon" (click)="help('cornerGouge')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Top Plate</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Sweep <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="fluting.top.sweepRadius" (input)="edited()"
+                [style.borderColor]="pal.ink(3)" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Depth <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="fluting.top.depth" (input)="edited()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Top plate channel width">{{ f.top?.width?.toFixed(1) ?? '–' }}</div>
+        </label>
+        <button type="button" class="info-icon" (click)="help('gougeSection')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="fluting.top.useCBoutGouge" (change)="edited()" /><span>C Bout</span>
+            </div>
+        </label>
+        @if (fluting.top.useCBoutGouge) {
+        <label class="field-cell">
+            <span class="field-title">Sweep <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="fluting.top.cBoutSweep" (input)="edited()"
+                [style.borderColor]="pal.ink(3)" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Top plate C bout channel width">{{ f.top?.cBoutWidth?.toFixed(1) ?? '–' }}</div>
+        </label>
+        }
+        <button type="button" class="info-icon" (click)="help('gougeCBout')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Back Plate</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Sweep <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="fluting.back.sweepRadius" (input)="edited()"
+                [style.borderColor]="pal.ink(0)" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Depth <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="fluting.back.depth" (input)="edited()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Back plate channel width">{{ f.back?.width?.toFixed(1) ?? '–' }}</div>
+        </label>
+        <button type="button" class="info-icon" (click)="help('gougeSection')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="fluting.back.useCBoutGouge" (change)="edited()" /><span>C Bout</span>
+            </div>
+        </label>
+        @if (fluting.back.useCBoutGouge) {
+        <label class="field-cell">
+            <span class="field-title">Sweep <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="fluting.back.cBoutSweep" (input)="edited()"
+                [style.borderColor]="pal.ink(0)" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Back plate C bout channel width">{{ f.back?.cBoutWidth?.toFixed(1) ?? '–' }}</div>
+        </label>
+        }
+        <button type="button" class="info-icon" (click)="help('gougeCBout')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+</section>

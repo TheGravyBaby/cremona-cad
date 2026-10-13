@@ -2,8 +2,10 @@
 import { describe, expect, it } from 'vitest';
 import { templateKeys, templateViolin } from '../enrico-ceruti-violin/ceruti-fixtures';
 import { calculateCenterBout, calculateCorners, calculateOuterArcs } from '../enrico-ceruti-violin/calculation/outline/ceruti-calcs';
-import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../enrico-ceruti-violin/calculation/outline/ceruti-paths';
-import { EnricoCerutiParams } from '../enrico-ceruti-violin/ceruti-types';
+import { defineInsetPath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../enrico-ceruti-violin/calculation/outline/ceruti-paths';
+import { channelPaths, defaultFlutingParams } from '../enrico-ceruti-violin/calculation/arching/ceruti-arch-geometry';
+import { defaultArchingParams } from '../enrico-ceruti-violin/calculation/arching/ceruti-arching';
+import { EnricoCerutiParams, FlutingParams } from '../enrico-ceruti-violin/ceruti-types';
 import { Arc, Pt } from '../models/types';
 import { signedRadianDelta, TURN } from '../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../helpers/math/pathMath';
@@ -12,7 +14,8 @@ import { solveMainBoutsRatios, solveMainBouts } from './panels/main-bouts-panel/
 import { solveCorners, solveCornersRatios } from './panels/corners-panel/corners-panel';
 import { solveCenterBout, solveCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
 import { solveOuterContour } from './panels/outer-contour-panel/outer-contour-panel';
-import { ViolinFamilyParams } from './violin-family-types';
+import { solveFluting } from './panels/fluting-panel/fluting-panel';
+import { GougeParams, ViolinFamilyParams } from './violin-family-types';
 
 // The port's acceptance test: every frozen Ceruti instrument, solved by both recipes from the same
 // inputs, gives the same arcs and reads the same ratios. Goes when the Ceruti recipe does.
@@ -21,6 +24,10 @@ import { ViolinFamilyParams } from './violin-family-types';
 // rib arc's, along the rib arc's own travel
 const cutoff = (inner: Arc | null | undefined, outer: Arc | null | undefined): number =>
   inner && outer ? Math.sign(signedRadianDelta(inner.end - inner.start)) * signedRadianDelta(outer.end - inner.end) / TURN.degree : 0;
+
+// Ceruti's second gouge is on when its sweep is set; here the sweep stays typed under a toggle
+const gouge = (g: FlutingParams): GougeParams =>
+  ({ sweepRadius: g.sweepRadius, depth: g.depth, cBoutSweep: g.sweepRadius_cBout ?? g.sweepRadius, useCBoutGouge: g.sweepRadius_cBout !== null });
 
 function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
   let V0 = c.viol?.V0;
@@ -82,6 +89,13 @@ function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
       upperRounding: c.options.ucCornerSharpness ?? 0,
       lowerRounding: c.options.lcCornerSharpness ?? 0,
     },
+    // Ceruti seeds a plate's gouge lazily, so a fixture without one takes the default it would get
+    fluting: {
+      flutingEdge: c.outerFlutingDepth ?? c.overhang * 0.5,
+      cornerGouge: c.arching?.top.fluting?.cornerGouge ?? true,
+      top: gouge(c.arching?.top.fluting ?? defaultFlutingParams(c)),
+      back: gouge(c.arching?.bottom.fluting ?? defaultFlutingParams(c)),
+    },
   };
 }
 
@@ -98,13 +112,35 @@ const sameArc = (a: Arc | null, b: Arc | null | undefined, label: string) => {
   }
 };
 
+// a path sampled segment by segment, so its own vertices are kept: a sharp kink sampled at equal
+// steps along the whole path is cut differently from each side, by more than the tolerance below.
+// A segment shorter than a micron draws nothing (Ceruti's channel carries one where a viol flank
+// is shorter than the join-back), and the sampler would make NaN of it
+const polyline = (d: string): Pt[] => {
+  const pts: Pt[] = [];
+  let at: Pt | null = null;
+  for (const cmd of d.match(/[MLACZ][^MLACZ]*/g) ?? []) {
+    const n = cmd.slice(1).trim().split(/[\s,]+/).filter(Boolean).map(Number);
+    if (cmd[0] === 'M') {
+      at = { x: n[0], y: n[1] };
+      pts.push(at);
+      continue;
+    }
+    if (cmd[0] === 'Z' || !at) continue;
+    const to = { x: n[n.length - 2], y: n[n.length - 1] };
+    if (Math.hypot(to.x - at.x, to.y - at.y) > 1e-6) pts.push(...samplePathToPolyline(`M ${at.x} ${at.y} ${cmd}`, 0.1, true).slice(1));
+    at = to;
+  }
+  return pts;
+};
+
 // two paths are the same curve when every point sampled along either lies on the other, to a
 // micron. Sampled finely enough that the chords of the tightest corner arc stay under that
 const samePath = (a: string | null, b: string | null, label: string) => {
   expect(a, `${label} drawn`).toBeTruthy();
   expect(b, `${label} drawn by Ceruti`).toBeTruthy();
-  const A = samplePathToPolyline(a!, 0.1, true);
-  const B = samplePathToPolyline(b!, 0.1, true);
+  const A = polyline(a!);
+  const B = polyline(b!);
   const far = (pts: Pt[], onto: Pt[]) => {
     const idx = buildPolylineIndex(onto);
     return Math.max(...pts.map(q => distPointToPolylineIndexed(q, idx)));
@@ -130,6 +166,30 @@ const sameOuterContour = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
   samePath(s.back, defineOuterPath(c, inset, true, true), 'back');
   samePath(s.purfling, definePurflingPath(c, inset), 'purfling');
   samePath(s.outerPurfling, defineOuterPurflingPath(c, inset), 'outer purfling');
+};
+
+// each plate's channel edges and the land, both recipes from the same Ceruti instrument, seeded
+// with the same gouges where the fixture carries none. Where a join grazes the land the two can
+// settle a degree of retreat apart, since Ceruti's land polygon is sampled in path order and the
+// phase differs; the centreline, whose C bout runs on the land, is where that shows under viol
+// corners, and its construction is covered by the fixtures' own channels
+const sameFluting = (c: EnricoCerutiParams, p = fromCeruti(c), grazing = false) => {
+  c.arching ??= defaultArchingParams(c.height);
+  const s = solveFluting(p)!;
+  for (const [plate, ours] of [['top', s.top], ['bottom', s.back]] as const) {
+    const theirs = channelPaths(c, c.arching[plate].fluting ??= defaultFlutingParams(c));
+    if (!theirs) {
+      expect(ours, `${plate} fails with Ceruti`).toBeNull();
+      continue;
+    }
+    expect(ours, `${plate} channel`).not.toBeNull();
+    samePath(ours!.outer, theirs.outer, `${plate} outer edge`);
+    if (!grazing) samePath(ours!.center, theirs.center, `${plate} centreline`);
+    samePath(ours!.inner, theirs.inner, `${plate} inner edge`);
+    expect(ours!.innerEdgeOffset).toBeCloseTo(theirs.innerEdgeOffset, 9);
+    expect(ours!.innerEdgeOffset_cBout).toBeCloseTo(theirs.innerEdgeOffset_cBout, 9);
+  }
+  samePath(s.land, defineInsetPath(c, c.outerFlutingDepth!), 'land');
 };
 
 // every corner arc the options draw, both recipes solved from the same Ceruti instrument
@@ -252,6 +312,20 @@ describe.each(templateKeys())('parity with the Ceruti recipe: %s', key => {
     calculateCenterBout(viol);
     calculateOuterArcs(viol);
     sameOuterContour(viol, fromCeruti(viol));
+  });
+
+  it('cuts the same fluting channel on each plate', () => {
+    sameFluting(c);
+  });
+
+  it('cuts the same fluting channel past viol corners', () => {
+    const viol = templateViolin(key);
+    viol.options.useViolCornerUC = true;
+    viol.options.useViolCornerLC = true;
+    calculateCorners(viol);
+    calculateCenterBout(viol);
+    calculateOuterArcs(viol);
+    sameFluting(viol, fromCeruti(viol), true);
   });
 
   it('reads the same ratios', () => {

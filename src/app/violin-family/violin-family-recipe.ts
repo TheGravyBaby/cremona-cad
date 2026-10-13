@@ -15,7 +15,8 @@ import { BaseMeasurementsPanel, solveBodyRatios } from './panels/base-measuremen
 import { MainBoutsPanel, solveMainBouts, solveMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel, solveCornersRatios } from './panels/corners-panel/corners-panel';
 import { CenterBoutPanel, solveCenterBout, solveCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
-import { OuterContourPanel } from './panels/outer-contour-panel/outer-contour-panel';
+import { OuterContourPanel, solveOuterContour } from './panels/outer-contour-panel/outer-contour-panel';
+import { FlutingPanel } from './panels/fluting-panel/fluting-panel';
 
 // The Violin Family recipe: the Ceruti model rebuilt on a split between what the user sets
 // (`d.params`, the file) and what each panel's solver derives from it (never written out). The
@@ -27,7 +28,7 @@ import { OuterContourPanel } from './panels/outer-contour-panel/outer-contour-pa
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel],
   templateUrl: './violin-family.html',
   styleUrls: ['../sidebar.css', './violin-family.css'],
 })
@@ -40,6 +41,7 @@ export class ViolinFamily extends RecipeComponentBase {
     // no seed: its numbers are seeded with the bouts and the corners
     { id: 'centerBout', label: 'Center Bout', toggles: CenterBoutPanel.renderToggles },
     { id: 'outerContour', label: 'Outer Contour', toggles: OuterContourPanel.renderToggles, seed: OuterContourPanel.seed },
+    { id: 'fluting', label: 'Fluting Channel', toggles: FlutingPanel.renderToggles, seed: FlutingPanel.seed },
   ];
 
   private readonly themeService = inject(ThemeService);
@@ -110,6 +112,7 @@ export class ViolinFamily extends RecipeComponentBase {
         let cb = solveCenterBout(p);
         return !!(cb?.C0 && cb.C2 && cb.C1);
       }
+      case 'fluting': return !!solveOuterContour(p)?.top;
       default: return false;
     }
   }

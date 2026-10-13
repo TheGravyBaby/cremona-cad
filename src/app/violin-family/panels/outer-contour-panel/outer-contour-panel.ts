@@ -126,12 +126,11 @@ export const renderOuterContour = (
   let dx = -p.body.width * PLATE_LAYOUT_GAP;
   let upper = currentModule ? pal.ink(4) : pal.neutral;
   let lower = currentModule ? pal.ink(2) : pal.neutral;
-  let purfling = currentModule ? pal.ink(3) : pal.neutral;
   let button = currentModule ? pal.ink(0) : pal.neutral;
   let fancy = currentModule && flags.showModuleArcs;
 
   if (o.top) renderPath(o.top, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
-  for (let d of [o.purfling, o.outerPurfling]) if (d) renderPath(d, purfling, STROKE_WEIGHT.guide)(g, ui);
+  for (let d of [o.purfling, o.outerPurfling]) if (d) renderPath(d, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   if (o.back) {
     renderPath(translatePath(o.back, dx, 0), pal.neutral, STROKE_WEIGHT.trace)(g, ui);
     for (let d of [o.purfling, o.outerPurfling]) if (d) renderPath(translatePath(d, dx, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
@@ -153,8 +152,9 @@ export const renderOuterContour = (
 };
 
 // the rib outline's arcs, gathered from the stages that solve them, the bout arcs as the corners
-// trimmed them. Null unless every arc the options call for has solved
-type RibArcs = {
+// trimmed them. Null unless every arc the options call for has solved. Exported with the path
+// builders below, so a later panel can stand its own lines off the same edge
+export type RibArcs = {
   U0: Arc; U1: Arc; L0: Arc; L1: Arc; C0: Arc; C2: Arc; C1: Arc;
   U2: Arc | null; U3: Arc | null; U31: Arc | null; U4: Arc | null;
   L2: Arc | null; L3: Arc | null; L31: Arc | null; L4: Arc | null;
@@ -162,7 +162,7 @@ type RibArcs = {
   V0: Arc | null;
 };
 
-function ribArcs(p: ViolinFamilyParams, m: MainBoutsSolve, c: CornersSolve, cb: CenterBoutSolve): RibArcs | null {
+export function ribArcs(p: ViolinFamilyParams, m: MainBoutsSolve, c: CornersSolve, cb: CenterBoutSolve): RibArcs | null {
   let k = p.corners!;
   let rib = {
     U0: m.U0, U1: c.U1, L0: m.L0, L1: c.L1, C0: cb.C0, C2: cb.C2, C1: cb.C1,
@@ -182,13 +182,13 @@ function ribArcs(p: ViolinFamilyParams, m: MainBoutsSolve, c: CornersSolve, cb: 
   return needed.every(arc => !!arc) ? rib as RibArcs : null;
 }
 
-type OuterCorners = Partial<Record<OuterCornerKey, Arc>>;
+export type OuterCorners = Partial<Record<OuterCornerKey, Arc>>;
 
 // the corner arcs at the plate edge with their cutoffs: each runs on past the rib outline's corner
 // by its cutoff along its own direction of travel, so an inverted corner's follows it round. A
 // compound corner's first arc is the plain offset and its second takes the cutoff. A viol corner
 // has none: its flank and C arc are cut where they meet
-function outerCorners(p: ViolinFamilyParams, rib: RibArcs, inset: number): OuterCorners {
+export function outerCorners(p: ViolinFamilyParams, rib: RibArcs, inset: number): OuterCorners {
   let o = p.outerContour!;
   let k = p.corners!;
   let cut = (arc: Arc, offset: number, cutoff: number): Arc => {
@@ -227,11 +227,26 @@ function cutoffEndAtOffset(scaledArc: Arc, cutPt1: Pt, cutPt2: Pt, refPt: Pt, fa
   return angleFromCenter(scaledArc, best);
 }
 
+// the flat across a corner, moved in from the plate edge by `delta`, parallel to itself
+function insetCutoffLine(pt1: Pt, pt2: Pt, delta: number, interior: Pt): { p1: Pt; p2: Pt } {
+  const dx = pt2.x - pt1.x;
+  const dy = pt2.y - pt1.y;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  const nx = -dy / len;
+  const ny = dx / len;
+  const sign = (interior.x - pt1.x) * nx + (interior.y - pt1.y) * ny >= 0 ? -1 : 1;
+  return {
+    p1: { x: pt1.x + sign * delta * nx, y: pt1.y + sign * delta * ny },
+    p2: { x: pt2.x + sign * delta * nx, y: pt2.y + sign * delta * ny },
+  };
+}
+
 // the corner arcs at `offset`, each cut where it meets the flat across its corner: the line between
-// the two cutoff ends at the plate edge, whatever the offset. The two arcs the flat joins come back
-// as `upper` and `lower`, bout side first. A viol corner's flank and C arc are cut where they meet
+// the two cutoff ends at the plate edge, moved in with the offset. The two arcs the flat joins come
+// back as `upper` and `lower`, bout side first. A viol corner's flank and C arc are cut where they meet
 function outerCornerArcs(p: ViolinFamilyParams, rib: RibArcs, outer: OuterCorners, offset: number): { arcs: Arc[]; upper: [Arc, Arc] | null; lower: [Arc, Arc] | null } {
   let k = p.corners!;
+  let delta = p.body.overhang + p.body.rib - offset;
   let C2Sign = cornerTurn(rib.C2, rib.C0);
   let C1Sign = cornerTurn(rib.C1, rib.C0);
   let arcs: Arc[] = [];
@@ -250,8 +265,7 @@ function outerCornerArcs(p: ViolinFamilyParams, rib: RibArcs, outer: OuterCorner
     arcs.push(U4Offset, flipArcAboutY(U4Offset), C2Offset, flipArcAboutY(C2Offset));
   }
   else {
-    let ucPt1 = endOf(outer.U31 ?? outer.U3!);
-    let ucPt2 = endOf(outer.C21 ?? outer.C2!);
+    let ucLine = insetCutoffLine(endOf(outer.U31 ?? outer.U3!), endOf(outer.C21 ?? outer.C2!), delta, rib.C0);
 
     let U3off = offsetArcRadius(rib.U3!, -offset);
     let U31off = k.U31DoubleArc ? offsetArcRadius(rib.U31!, -offset) : null;
@@ -260,8 +274,8 @@ function outerCornerArcs(p: ViolinFamilyParams, rib: RibArcs, outer: OuterCorner
     // the first arc of a compound corner keeps its own end; only the arc that reaches the flat is cut
     let tip = U31off ?? U3off;
     let side = C21off ?? C2off;
-    tip.end = cutoffEndAtOffset(tip, ucPt1, ucPt2, ucPt1, (outer.U31 ?? outer.U3!).end);
-    side.end = cutoffEndAtOffset(side, ucPt1, ucPt2, ucPt2, (outer.C21 ?? outer.C2!).end);
+    tip.end = cutoffEndAtOffset(tip, ucLine.p1, ucLine.p2, ucLine.p1, (outer.U31 ?? outer.U3!).end);
+    side.end = cutoffEndAtOffset(side, ucLine.p1, ucLine.p2, ucLine.p2, (outer.C21 ?? outer.C2!).end);
     for (let arc of [U3off, U31off, C2off, C21off]) if (arc) arcs.push(arc, flipArcAboutY(arc));
     upper = [tip, side];
   }
@@ -277,8 +291,7 @@ function outerCornerArcs(p: ViolinFamilyParams, rib: RibArcs, outer: OuterCorner
     arcs.push(L4Offset, flipArcAboutY(L4Offset), C1Offset, flipArcAboutY(C1Offset));
   }
   else {
-    let lcPt1 = endOf(outer.C11 ?? outer.C1!);
-    let lcPt2 = endOf(outer.L31 ?? outer.L3!);
+    let lcLine = insetCutoffLine(endOf(outer.C11 ?? outer.C1!), endOf(outer.L31 ?? outer.L3!), delta, rib.C0);
 
     let C1off = offsetArcRadius(rib.C1, C1Sign * offset);
     let C11off = k.C11DoubleArc ? offsetArcRadius(rib.C11!, C1Sign * offset) : null;
@@ -286,8 +299,8 @@ function outerCornerArcs(p: ViolinFamilyParams, rib: RibArcs, outer: OuterCorner
     let L31off = k.L31DoubleArc ? offsetArcRadius(rib.L31!, -offset) : null;
     let side = C11off ?? C1off;
     let tip = L31off ?? L3off;
-    side.end = cutoffEndAtOffset(side, lcPt1, lcPt2, lcPt1, (outer.C11 ?? outer.C1!).end);
-    tip.end = cutoffEndAtOffset(tip, lcPt1, lcPt2, lcPt2, (outer.L31 ?? outer.L3!).end);
+    side.end = cutoffEndAtOffset(side, lcLine.p1, lcLine.p2, lcLine.p1, (outer.C11 ?? outer.C1!).end);
+    tip.end = cutoffEndAtOffset(tip, lcLine.p1, lcLine.p2, lcLine.p2, (outer.L31 ?? outer.L3!).end);
     for (let arc of [C1off, C11off, L3off, L31off]) if (arc) arcs.push(arc, flipArcAboutY(arc));
     lower = [side, tip];
   }
@@ -297,8 +310,9 @@ function outerCornerArcs(p: ViolinFamilyParams, rib: RibArcs, outer: OuterCorner
 
 // the rib outline's bout arcs stood off by `offset` (out when positive), and with `corners` its
 // corner arcs as pure offsets meeting at a new tip, as the purfling runs. Empty when an offset is
-// too far in for a corner's arcs to meet
-function offsetArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, corners: boolean): Arc[] {
+// too far in for a corner's arcs to meet. C0 alone can take its own offset, for a channel that
+// narrows through the waist
+export function offsetArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, corners: boolean, centerOffset = offset): Arc[] {
   let k = p.corners!;
   let b = p.bouts!;
   let arcs: Arc[] = [];
@@ -308,7 +322,7 @@ function offsetArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, corners
   // don't add it here as well — the untrimmed copy runs past the corner.
   arcs.push(offsetArcRadius(rib.L0, offset), offsetArcRadius(rib.L1, offset));
   if (!k.useViolCornerLC) arcs.push(offsetArcRadius(rib.L2!, offset));
-  arcs.push(offsetArcRadius(rib.C0, -offset));
+  arcs.push(offsetArcRadius(rib.C0, -centerOffset));
   if (!k.useViolCornerUC) arcs.push(offsetArcRadius(rib.U2!, offset));
   arcs.push(offsetArcRadius(rib.U1, offset));
   arcs.push(offsetArcRadius(rib.U0, offset));
@@ -419,16 +433,16 @@ function outerButton(p: ViolinFamilyParams, rib: RibArcs, offset: number): { pat
   return shape ? { ...shape, U0 } : null;
 }
 
-function violNeckTopLine(p: ViolinFamilyParams, rib: RibArcs, d: number): string | null {
+export function violNeckTopLine(p: ViolinFamilyParams, rib: RibArcs, d: number): string | null {
   const cap = p.bouts!.useViolNeck && rib.V0 ? violNeckCap(rib.V0, p.bouts!.viol!.neckRadius, d) : null;
   return cap ? pathFromLine({ x: cap.topX, y: cap.topY }, { x: -cap.topX, y: cap.topY }) : null;
 }
 
 // the plate's edge as one closed path at `offset` from the rib outline: the bouts' offset arcs, the
 // corner arcs cut at their flats with the flat or its rounding across each, the viol neck's face,
-// and on the back the button. `offset` is the inset for the plates; a later panel can take the
-// same edge further in
-function outerPath(p: ViolinFamilyParams, rib: RibArcs, outer: OuterCorners, offset: number, withButton: boolean): { path: string; button: { path: string; cap: Arc } | null } {
+// and on the back the button. `offset` is the inset for the plates; a later panel takes the same
+// edge further in with a smaller offset, the flats moving in with it
+export function outerPath(p: ViolinFamilyParams, rib: RibArcs, outer: OuterCorners, offset: number, withButton: boolean): { path: string; button: { path: string; cap: Arc } | null } {
   let o = p.outerContour!;
   let b = p.bouts!;
   let arcs = offsetArcs(p, rib, offset, false);
