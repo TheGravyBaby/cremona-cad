@@ -1,0 +1,58 @@
+@let ss = params.stringSetup!;
+
+<section class="ui-group">
+    <div class="ui-group-title">Neck</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Length <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(2)"
+                [(ngModel)]="params.neck!.length" (input)="edited()" (focus)="focus('length', pal.ink(2))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Nut Thickness <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0).faint(-3)"
+                [(ngModel)]="ss.nutThickness" (input)="edited()" (focus)="focus('nutThickness', pal.ink(0).faint(-3))" (blur)="blur()" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Fingerboard</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Length <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="ss.fingerboardLength" (input)="edited()" (focus)="focus('fbLength', pal.ink(0))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Thickness <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="ss.fingerboardThickness" (input)="edited()" (focus)="focus('fbThickness', pal.ink(0))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Radius <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="ss.fingerboardRadius" (input)="edited()" (focus)="focus('fbRadius', pal.ink(0))" (blur)="blur()" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Bridge</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Stop <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(1)"
+                [(ngModel)]="ss.bodyStop" (input)="edited()" (focus)="focus('bodyStop', pal.ink(1))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1)"
+                [(ngModel)]="ss.bridgeHeight" (input)="edited()" (focus)="focus('bridgeHeight', pal.ink(1))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">String Length <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="String length value">{{ stringLength == null ? '–' : (stringLength | number:'1.1-1') }}</div>
+        </label>
+    </div>
+</section>

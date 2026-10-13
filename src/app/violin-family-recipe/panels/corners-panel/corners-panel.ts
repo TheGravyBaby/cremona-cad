@@ -256,6 +256,7 @@ export function solveCorners(p: ViolinFamilyParams): CornersSolve | null {
   let inset = p.body.overhang + p.body.rib;
   let UBW = p.bouts.UBW;
   let LBW = p.body.width;
+  let allowHeightFlex = false; // this is a fiddly feature that might be cool one day, needs more work for now
 
   let s: CornersSolve = {
     U1: m.U1, U2: null, U3: null, U31: null, U4: null,
@@ -285,6 +286,11 @@ export function solveCorners(p: ViolinFamilyParams): CornersSolve | null {
       U1.end = 0
     }
     let U2 = new Arc(UBW / 2 - k.U2R - inset, U1.y, k.U2R);
+    if (allowHeightFlex && k.U2Y != null && k.U2Y != U1.y) {
+      let flexed = flexedJoin(U1, k.U2R, k.U2Y);
+      if (!flexed) return flexMiss('Upper corner', 'U2', 'U1', U1, k.U2R, k.U2Y, ['U2', 'U3', 'U31', 'U4']);
+      U2 = flexed;
+    }
 
     if (k.U31DoubleArc) {
       let U3r = k.U3R
@@ -348,6 +354,11 @@ export function solveCorners(p: ViolinFamilyParams): CornersSolve | null {
       L1.end = 0
     }
     let L2 = new Arc(LBW / 2 - k.L2R - inset, L1.y, k.L2R);
+    if (allowHeightFlex && k.L2Y != null && k.L2Y != L1.y) {
+      let flexed = flexedJoin(L1, k.L2R, k.L2Y);
+      if (!flexed) return flexMiss('Lower corner', 'L2', 'L1', L1, k.L2R, k.L2Y, ['L2', 'L3', 'L31', 'L4']);
+      L2 = flexed;
+    }
 
     // L4 reads L1's end from before the solve below moves it, as it always has; it lands on the
     // result only once the corner has solved, so a failed corner draws nothing
@@ -403,6 +414,26 @@ export function solveCorners(p: ViolinFamilyParams): CornersSolve | null {
   });
 
   return s;
+}
+
+// a join let off its bout arc's height leaves the width line but stays inscribed in the bout arc:
+// its centre is |r - bout.r| from the bout's, on the side the width line would have put it, so the
+// join slides continuously out of the level case. Null where the height is further off than that
+function flexedJoin(bout: Arc, r: number, y: number): Arc | null {
+  let c = r - bout.r;
+  let b = y - bout.y;
+  if (b * b > c * c) return null;
+  return new Arc(bout.x - Math.sign(c) * Math.sqrt(c * c - b * b), y, r);
+}
+
+function flexMiss(section: string, joinKey: CornerKey, boutKey: string, bout: Arc, r: number, y: number, unsolved: CornerKey[]): CornerFailure {
+  let reach = Math.abs(r - bout.r);
+  return {
+    message: `${section}: ${joinKey} can't sit ${Math.abs(y - bout.y).toFixed(1)}mm off ${boutKey}'s height and still touch it. Keep it within ${reach.toFixed(1)}mm, or move its radius further from ${boutKey}'s.`,
+    unsolved,
+    circles: [bout],
+    segments: [],
+  };
 }
 
 // an arc of radius r tangent to `from` and through the corner needs r to span half the gap

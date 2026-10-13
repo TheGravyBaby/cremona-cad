@@ -22,6 +22,7 @@ export interface ViolinFamilyParams {
   arching?: ArchingParams;
   neck?: NeckParams;
   scroll?: ScrollParams;
+  stringSetup?: StringSetupParams;
 }
 
 // the outer envelope of the finished body. Every field is a number once typed, null while a field
@@ -73,6 +74,10 @@ export interface ViolNeckParams {
 export interface CornersParams {
   UCr: Pt;
   LCr: Pt;
+  // the join arcs' centre heights, where they're let off their bout arc's; absent, level with it.
+  // Read only while the solve's height flex is on
+  U2Y?: number;
+  L2Y?: number;
   U2R: number;
   U3R: number;
   U31R: number;
@@ -226,6 +231,19 @@ export interface NeckParams {
   overstand: number;
   nutHeight: number;
   nutWidth: number;
+}
+
+// the string setup, reference geometry over the neck that never shapes it. The bridge stands on the
+// top's arch the body stop down from the neck end, its height off the arch; the nut stands its
+// thickness off the neck's front at the nut; the board runs its length down the neck from the nut,
+// its thickness off the neck at the edges and its crown a cylinder of the radius across its width
+export interface StringSetupParams {
+  bodyStop: number;
+  bridgeHeight: number;
+  nutThickness: number;
+  fingerboardLength: number;
+  fingerboardThickness: number;
+  fingerboardRadius: number;
 }
 
 // the scroll in its own side view: the nut at the origin on the neck's front, up the neck +y,
@@ -652,6 +670,20 @@ export interface NeckSolve {
   failures: NeckFailure[];
 }
 
+export type StringSetupKey = 'bridge' | 'nut' | 'fingerboard';
+export type StringSetupFailure = SolveFailure<StringSetupKey>;
+
+// the string setup in the side elevation, over the neck it was solved on: the bridge's foot on the
+// arch and its top, the string's point on the nut, and the board's end on the fingerboard plane
+export interface StringSetupSolve {
+  neck: NeckSolve;
+  bridgeFoot: Pt | null;
+  bridgeTop: Pt | null;
+  nutTop: Pt | null;
+  fingerboardEnd: Pt | null;
+  failures: StringSetupFailure[];
+}
+
 export type ScrollKey = 'spiral' | 'S0' | 'S1' | 'S2' | 'S3' | 'nape' | 'backStraight' | 'F0' | 'F1' | 'flat' | 'frontStraight';
 export type ScrollFailure = SolveFailure<ScrollKey>;
 
@@ -746,6 +778,9 @@ export interface ViolinFamilyViewFlags {
   showFlutingEdge: boolean;
   // the figure a volute style finds its centres on
   showVoluteConstruction: boolean;
+  showFingerboard: boolean;
+  // equal-tempered semitones marked up the string, as far as the board reaches
+  showFretMarks: boolean;
 }
 
 export type ViolinFamilyToggleKey = keyof ViolinFamilyViewFlags;
@@ -758,6 +793,8 @@ export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
   showFholePlacementGuides: false,
   showFlutingEdge: false,
   showVoluteConstruction: true,
+  showFingerboard: false,
+  showFretMarks: false,
 };
 
 export interface HighlightedArc {
@@ -780,7 +817,7 @@ export const VIOLIN_FAMILY_SCHEMA_VERSION = '1';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'scroll', 'scrollWidths'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'scroll', 'scrollWidths', 'stringSetup'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface {
