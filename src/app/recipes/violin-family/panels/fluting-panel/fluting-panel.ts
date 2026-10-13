@@ -100,9 +100,10 @@ export const TOP_GOUGE_INK = 3;
 export const BACK_GOUGE_INK = 0;
 
 // the channel as a filled band on each plate, the top at the body's place and the back beside it,
-// over the grey plates. The corner join, the wood the gouge leaves at each corner, draws lighter
-// than the channel, and lighter still with the corner pass off, when it marks wood left rather
-// than taken
+// over the grey plates. Outside its own panel it draws in the calling palette's second ink, so the
+// arching panels show it in their own green. The corner join, the wood the gouge leaves at each
+// corner, draws lighter than the channel, and lighter still with the corner pass off, when it marks
+// wood left rather than taken
 export const renderFluting = (
   p: ViolinFamilyParams,
   f: FlutingSolve,
@@ -116,7 +117,7 @@ export const renderFluting = (
   ];
   for (let [channel, ink, dx] of showBack ? plates : plates.slice(0, 1)) {
     if (!channel) continue;
-    let color = currentModule ? ink : pal.neutral;
+    let color = currentModule ? ink : pal.ink(1);
     if (f.outerEdge) renderFilledPath(translatePath(`${f.outerEdge} Z ${channel.outer} Z`, dx, 0), color, p.fluting!.cornerGouge ? 0.15 : 0.08)(g, ui);
     renderFilledPath(translatePath(`${channel.outer} Z ${channel.inner} Z`, dx, 0), color, 0.3)(g, ui);
   }

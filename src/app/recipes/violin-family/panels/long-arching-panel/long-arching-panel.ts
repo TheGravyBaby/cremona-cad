@@ -161,14 +161,16 @@ export function sideViewOffsetX(p: ViolinFamilyParams): number {
 // full length over the channel and the arch below it, crossed where each corner's flat ends. The
 // top plate is drawn flat and tilted onto the rib line by one transform, so the arch, channel and
 // guides know nothing of the taper. Ground, everything draws neutral: for a later panel where the
-// body is what the neck stands on
+// body is what the neck stands on. Fluting cuts the plate down the centreline as the current module
+// does, since the plate's edge standing over the channel would hide it, and keeps the channel in its
+// own ink even on the ground
 export const renderBodySideProfile = (
   p: ViolinFamilyParams,
   a: LongArchingSolve,
   o: OuterContourSolve,
   pal: PanelPalette,
   currentModule: boolean,
-  opts: { highlight?: { plate: Plate; source: number } | null; showGuides?: boolean; ground?: boolean },
+  opts: { highlight?: { plate: Plate; source: number } | null; showGuides?: boolean; ground?: boolean; fluting?: boolean },
 ) => (g: any, ui: any): void => {
   let taper = a.ribs;
   if (!taper) return;
@@ -197,14 +199,15 @@ export const renderBodySideProfile = (
     let innerZ = isTop ? taper!.zLower : 0;
     let outerZ = innerZ + sign * thickness;
     let color = opts.ground ? pal.neutral : pal.ink(isTop ? TOP_ARCH_INK : BACK_ARCH_INK);
-    let channel = opts.ground ? pal.neutral : pal.ink(CHANNEL_INK);
+    let channel = opts.ground && !opts.fluting ? pal.neutral : pal.ink(CHANNEL_INK);
     let gouge = p.fluting![plate];
     let edge = p.fluting!.flutingEdge;
     let solved = a[plate];
 
     renderSegment(new Pt(innerZ, 0), new Pt(innerZ, p.body.height), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
     let slab = `M ${innerZ} 0 L ${outerZ} 0 L ${outerZ} ${p.body.height} L ${innerZ} ${p.body.height} Z`;
-    if (currentModule) {
+    let cut = currentModule || opts.fluting;
+    if (cut) {
       for (let [yEnd, yLand] of [[0, edge], [p.body.height, p.body.height - edge]] as const) {
         renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
         renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
@@ -229,7 +232,7 @@ export const renderBodySideProfile = (
       }
     }
     let arch = buildArchPathFor(lowered, span, yStart, xBase, sign, farZ);
-    renderPath(currentModule ? arch : occludePath(arch, slab).visible, color, STROKE_WEIGHT.section)(g, ui);
+    renderPath(cut ? arch : occludePath(arch, slab).visible, color, STROKE_WEIGHT.section)(g, ui);
 
     // the guide takes the arch as typed and the plate's outer surface, not the lowered arch against
     // its takeoff: the takeoff moves with the channel, and a guide counting from it would label a
