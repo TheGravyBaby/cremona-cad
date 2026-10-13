@@ -4,9 +4,10 @@ import { templateKeys, templateViolin } from '../enrico-ceruti-violin/ceruti-fix
 import { calculateCenterBout, calculateCorners, calculateFholeContours, calculateOuterArcs } from '../enrico-ceruti-violin/calculation/outline/ceruti-calcs';
 import { defineInsetPath, defineOneFholePath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../enrico-ceruti-violin/calculation/outline/ceruti-paths';
 import { defaultFHolePlacement } from '../enrico-ceruti-violin/panels/f-hole-placement-panel/f-hole-placement-panel';
-import { channelPaths, defaultFlutingParams } from '../enrico-ceruti-violin/calculation/arching/ceruti-arch-geometry';
-import { defaultArchingParams } from '../enrico-ceruti-violin/calculation/arching/ceruti-arching';
-import { EnricoCerutiParams, FholeParams, FlutingParams } from '../enrico-ceruti-violin/ceruti-types';
+import { channelPaths, crossArchSectionAt, defaultCrossArchParams, defaultFlutingParams, solveLongArch as cerutiLongArch } from '../enrico-ceruti-violin/calculation/arching/ceruti-arch-geometry';
+import { bodyLandmarks as cerutiLandmarks, defaultArchingParams, solveRibTaper as cerutiRibTaper } from '../enrico-ceruti-violin/calculation/arching/ceruti-arching';
+import { buildPlateSurfaceModel, stationChordsAt, topSurfaceZAt } from '../enrico-ceruti-violin/calculation/arching/ceruti-surface';
+import { ArchCurve, ArchingParams as CerutiArching, CrossArchShape, EnricoCerutiParams, FholeParams, FlutingParams } from '../enrico-ceruti-violin/ceruti-types';
 import { Arc, Pt } from '../models/types';
 import { signedRadianDelta, TURN } from '../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../helpers/math/pathMath';
@@ -18,7 +19,9 @@ import { solveOuterContour } from './panels/outer-contour-panel/outer-contour-pa
 import { solveFluting } from './panels/fluting-panel/fluting-panel';
 import { FHolePlacementPanel } from './panels/fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel, solveFholeContours } from './panels/fhole-contours-panel/fhole-contours-panel';
-import { FholeArcKey, FholeContourParams, FholePlacementParams, GougeParams, ViolinFamilyParams } from './violin-family-types';
+import { solveLongArching } from './panels/long-arching-panel/long-arching-panel';
+import { bodyLandmarks, rowAt, sectionAt, solveCrossArching, surfaceZAt } from './panels/cross-arching-panel/cross-arching-panel';
+import { ArchingParams, CrossArchParams, CrossShapeParams, FholeArcKey, FholeContourParams, FholePlacementParams, GougeParams, LongArchParams, ViolinFamilyParams } from './violin-family-types';
 
 // The port's acceptance test: every frozen Ceruti instrument, solved by both recipes from the same
 // inputs, gives the same arcs and reads the same ratios. Goes when the Ceruti recipe does.
@@ -64,6 +67,38 @@ const contours = (c: EnricoCerutiParams): FholeContourParams | undefined => {
     S1R: f.S1.r, S2R: f.S2!.r, S3R: f.S3!.r, S4R: f.S4!.r,
   };
 };
+
+// Ceruti's fractions are percent here, rounded to a billionth so 0.66 reads back as 66 and not a
+// hair over; a point's signed per-side fraction becomes a position across the whole plate
+const pct = (f: number): number => Math.round(f * 100 * 1e9) / 1e9;
+
+const longArch = (arch: ArchCurve): LongArchParams => {
+  if (arch.type === 'cycloid') throw new Error('no fixture carries a cycloid long arch');
+  return arch.type === 'spline'
+    ? { type: 'spline', height: arch.archHeight, peak: pct(arch.peak ?? 0.5), points: arch.points.map(pt => ({ t: pct(pt.t), z: pt.z, mirror: !!pt.mirror })) }
+    : { type: 'catenary', height: arch.archHeight, peak: 50, points: [] };
+};
+
+const crossShapeOf = (shape: CrossArchShape): CrossShapeParams => ({
+  d: shape.type === 'cycloid' ? pct(shape.d) : 40,
+  pct: shape.type === 'cycloid' ? pct(shape.pct) : 90,
+  peak: shape.type === 'spline' ? pct(shape.peak ?? 0.5) : 50,
+  points: shape.type === 'spline' ? shape.points.map(pt => ({ x: 50 + pct(pt.x) / 2, z: pct(pt.z), mirror: !!pt.mirror })) : [],
+});
+
+const crossArch = (shape: CrossArchShape): CrossArchParams => ({
+  type: shape.type,
+  ...crossShapeOf(shape),
+  stations: (shape.type === 'catenary' ? [] : shape.stations ?? []).map(st => ({ y: st.y!, ...crossShapeOf(st as CrossArchShape) })),
+});
+
+// Ceruti seeds a plate's crown lazily, so a fixture without one takes the default it would get
+const arching = (a: CerutiArching): ArchingParams => ({
+  ribHeightLower: a.ribHeightLower,
+  ribHeightUpper: a.ribHeightUpper,
+  top: { thickness: a.top.thickness, arch: longArch(a.top.arch), cross: crossArch(a.top.cross ?? defaultCrossArchParams()) },
+  back: { thickness: a.bottom.thickness, arch: longArch(a.bottom.arch), cross: crossArch(a.bottom.cross ?? defaultCrossArchParams()) },
+});
 
 function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
   let V0 = c.viol?.V0;
@@ -134,8 +169,75 @@ function fromCeruti(c: EnricoCerutiParams): ViolinFamilyParams {
     },
     fHoles: placement(c.fHoles),
     fHoleContours: contours(c),
+    arching: c.arching ? arching(c.arching) : undefined,
   };
 }
+
+// the ribs, each plate's long arch and its carved surface, both recipes from the same Ceruti
+// instrument. The arch solves to a millionth: its inputs are the same numbers. The surface is read
+// off channel loops sampled every millimetre from paths that agree to a micron but start at
+// different points, so a half chord can differ by a chord's sagitta; a hundredth covers it
+const sameArching = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
+  const ours = solveLongArching(p)!;
+  expect(ours.failures.filter(f => f.unsolved.length)).toEqual([]);
+  const ribs = cerutiRibTaper(c);
+  for (const k of ['zLower', 'zUpper', 'angle'] as const) expect(ours.ribs![k], k).toBeCloseTo(ribs[k], 9);
+
+  for (const [plate, theirsKey] of [['top', 'top'], ['back', 'bottom']] as const) {
+    const plateParams = c.arching![theirsKey];
+    const theirs = cerutiLongArch(c, plateParams.arch, plateParams.fluting ??= defaultFlutingParams(c))!;
+    const la = ours[plate]!;
+    expect(la.span, `${plate} span`).toBeCloseTo(theirs.span, 6);
+    expect(la.yStart, `${plate} yStart`).toBeCloseTo(theirs.yStart, 6);
+    expect(la.yEnd, `${plate} yEnd`).toBeCloseTo(theirs.yEnd, 6);
+    for (const [end, label] of [['takeoff', 'takeoff'], ['farTakeoff', 'far takeoff']] as const) {
+      expect(la[end].contactS, `${plate} ${label}`).toBeCloseTo(theirs[end].contactS, 6);
+      expect(la[end].takeoffDepth, `${plate} ${label} depth`).toBeCloseTo(theirs[end].takeoffDepth, 6);
+      expect(la[end].tangent, `${plate} ${label} tangent`).toBe(theirs[end].tangent);
+    }
+  }
+};
+
+const sameSurface = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
+  const s = solveCrossArching(p)!;
+  expect(s.failures).toEqual([]);
+  expect(bodyLandmarks(p)).toEqual(cerutiLandmarks(c));
+  for (const [plate, theirsKey] of [['top', 'top'], ['back', 'bottom']] as const) {
+    const model = buildPlateSurfaceModel(c, theirsKey)!;
+    const surface = s[plate]!;
+    const stations = [...cerutiLandmarks(c).map(m => m.y), ...Array.from({ length: 10 }, (_, i) => Math.round(c.height * (i + 0.5) / 10))];
+    for (const y of stations) {
+      const theirs = crossArchSectionAt(c, model.geometry, y);
+      const mine = sectionAt(surface, y);
+      expect(!!mine, `${plate} section at ${y}`).toBe(!!theirs);
+      if (!theirs || !mine) continue;
+      expect(mine.centerHalf, `${plate} ${y} half chord`).toBeCloseTo(theirs.centerHalf, 2);
+      expect(mine.xPeak, `${plate} ${y} crown`).toBeCloseTo(theirs.xPeak, 2);
+      expect(mine.archH, `${plate} ${y} height`).toBeCloseTo(theirs.archH, 6);
+      for (const side of ['left', 'right'] as const) expect(mine[side]!.contactS, `${plate} ${y} ${side} contact`).toBeCloseTo(theirs[side]!.contactS, 2);
+      for (let i = 0; i <= 20; i++) {
+        const x = -mine.centerHalf + (2 * mine.centerHalf * i) / 20;
+        expect(mine.zAt(x), `${plate} ${y} z at ${x.toFixed(1)}`).toBeCloseTo(theirs.zAt(x), 2);
+      }
+    }
+    let compared = 0, offEdge = 0;
+    for (let y = 2; y < c.height; y += 5) {
+      const chords = stationChordsAt(c, model, y);
+      const row = rowAt(surface, y);
+      for (let x = -c.width / 2 - 5; x <= c.width / 2 + 5; x += 5) {
+        const theirs = topSurfaceZAt(c, model, x, y, chords);
+        const mine = surfaceZAt(surface, x, y, row);
+        if ((theirs === null) !== (mine === null)) { offEdge++; continue; }
+        if (theirs === null || mine === null) continue;
+        compared++;
+        expect(Math.abs(mine - theirs), `${plate} z at ${x},${y}`).toBeLessThan(0.01);
+      }
+    }
+    expect(compared).toBeGreaterThan(500);
+    // a sample within a chord's sagitta of the edge can fall either side of it
+    expect(offEdge).toBeLessThan(compared / 100);
+  }
+};
 
 // to a millionth: the Ceruti fixtures are solved through every outline stage, and its corners
 // leave a ~2e-8 residue on U1.end that its main bouts solve would have snapped to 0. Angles
@@ -443,6 +545,27 @@ describe.each(templateKeys())('parity with the Ceruti recipe: %s', key => {
       expect(Math.abs(a - b), label).toBeLessThan(0.006);
     }
   });
+
+  it('tilts the ribs and runs the long arches the same way, seeded where the fixture carries none', () => {
+    sameArching(templateViolin(key, true));
+  });
+
+  it('carves the same surface on each plate', () => {
+    sameSurface(templateViolin(key, true));
+  }, 60_000);
+
+  it('carves the same surface through two stations', () => {
+    const ca = templateViolin(key, true);
+    for (const plate of ['top', 'bottom'] as const) {
+      const cross = ca.arching![plate].cross ??= defaultCrossArchParams();
+      if (cross.type === 'catenary') continue;
+      const lo = Math.round(ca.height * 0.3), hi = Math.round(ca.height * 0.7);
+      cross.stations = cross.type === 'cycloid'
+        ? [{ type: 'cycloid', d: 0.6, pct: 0.8, y: lo }, { type: 'cycloid', d: 0.2, pct: 1, y: hi }]
+        : [{ type: 'spline', points: [{ x: 0.5, z: 0.7, mirror: true }], peak: 0.45, y: lo }, { type: 'spline', points: [{ x: 0.7, z: 0.4, mirror: true }], peak: 0.55, y: hi }];
+    }
+    sameSurface(ca);
+  }, 60_000);
 
   it('reads the same ratios', () => {
     const r = { ...solveMainBoutsRatios(p), ...solveCornersRatios(p), ...solveCenterBoutRatios(p) };

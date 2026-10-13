@@ -140,6 +140,24 @@ export function gougeHalfWidth(sweepRadius: number, depth: number): number {
   return Math.sqrt(2 * sweepRadius * depth - depth * depth);
 }
 
+// the channel's section across its run: the height relative to the plate's surface at s mm from
+// the centreline, -depth at the trough, 0 at the cut's edges and flat beyond. The arc the gouge
+// cuts, not a curve fitted to it; the arching lands on it
+export function gougeProfileZ(s: number, sweepRadius: number, depth: number): number {
+  let w = gougeHalfWidth(sweepRadius, depth);
+  if (w <= 0 || Math.abs(s) >= w) return 0;
+  return -depth + sweepRadius - Math.sqrt(Math.max(sweepRadius * sweepRadius - s * s, 0));
+}
+
+// its slope, dz/ds: positive climbing away from the trough either way, so the inner flank reads
+// straight
+export function gougeProfileSlope(s: number, sweepRadius: number, depth: number): number {
+  let w = gougeHalfWidth(sweepRadius, depth);
+  if (w <= 0 || Math.abs(s) >= w) return 0;
+  let denom = Math.sqrt(Math.max(sweepRadius * sweepRadius - s * s, 0));
+  return denom <= 0 ? 0 : s / denom;
+}
+
 // a flank is joined from a little way back from its end rather than the end itself, which is
 // somewhere up the next bout, so it stops there
 function angleBeforeEnd(arc: Arc, degrees: number): number {
@@ -308,10 +326,22 @@ function channelPath(p: ViolinFamilyParams, rib: RibArcs, offset: number, center
 // a later panel reads the channels by calling this; it returns and never writes to the params.
 // Each plate's channel is anchored at the fluting edge and grows inward by its gouge's width, so
 // its outer edge sits on the fluting edge by construction. A second gouge through the waist moves only
-// the C bout's inward offsets; the joins either side re-solve at the new radius
+// the C bout's inward offsets; the joins either side re-solve at the new radius.
+// The last answer is kept against the params it was solved from (~160ms a solve, and the arching
+// panels ask for it on every cursor move); nothing of it reaches the file
+let last: { key: string; solve: FlutingSolve } | null = null;
+
 export function solveFluting(p: ViolinFamilyParams): FlutingSolve | null {
   if (!p.fluting || !p.outerContour || !p.corners || !p.bouts) return null;
-  let f = p.fluting;
+  let key = JSON.stringify([p.body, p.bouts, p.corners, p.outerContour, p.fluting]);
+  if (last?.key === key) return last.solve;
+  let solve = solveFlutingUncached(p);
+  last = { key, solve };
+  return solve;
+}
+
+function solveFlutingUncached(p: ViolinFamilyParams): FlutingSolve {
+  let f = p.fluting!;
   let s: FlutingSolve = { outerEdge: null, top: null, back: null, failures: [] };
 
   let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);

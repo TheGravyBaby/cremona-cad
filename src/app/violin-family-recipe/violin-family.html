@@ -117,6 +117,24 @@
             (edit)="onPanelEdit()">
         </app-vf-f-hole-contours-panel>
         }
+
+        @if (openPanel === 'longArching') {
+        <app-vf-long-arching-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-long-arching-panel>
+        }
+
+        @if (openPanel === 'crossArching') {
+        <app-vf-cross-arching-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-cross-arching-panel>
+        }
     </div>
 </div>
 

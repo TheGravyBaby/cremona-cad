@@ -1,0 +1,181 @@
+@let arching = params.arching!;
+
+<section class="ui-group">
+    <div class="ui-group-title">
+        Section
+        <button type="button" class="info-icon" (click)="help('crossSectionStation')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row station-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Station <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [max]="params.body.height" [ngModel]="cursorY"
+                (ngModelChange)="setCursor($event)" />
+        </label>
+        <div class="station-slider">
+            <div class="station-marks" aria-hidden="true">
+                @for (mark of stationMarks; track mark.key) {
+                <button type="button" class="station-mark" [style.left]="mark.left" [title]="mark.title" (click)="jumpTo(mark.y)">
+                    @for (ink of mark.inks; track $index) {
+                    <span class="station-mark-seg" [style.color]="ink"></span>
+                    }
+                </button>
+                }
+            </div>
+            <input class="basic-input" type="range" step="1" min="0" [max]="params.body.height" [ngModel]="cursorY"
+                (ngModelChange)="setCursor($event)" aria-label="Cross section station" />
+            <div class="station-ticks" aria-hidden="true">
+                @for (mark of landmarks; track mark.label) {
+                <button type="button" class="station-tick" [style.left]="mark.left" [title]="mark.title" (click)="jumpTo(mark.y)">
+                    <span class="station-tick-mark"></span>
+                    <span class="station-tick-label">{{ mark.label }}</span>
+                </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    @for (plate of plates; track plate) {
+    @let cross = arching[plate].cross;
+    @if (cross.type !== 'catenary' && cross.stations.length) {
+    <div class="station-table" [style.border-color]="pal.ink(plate === 'top' ? 2 : 0)"
+        style="grid-template-columns: minmax(30px,auto) minmax(26px,auto) minmax(26px,auto) auto;">
+        <div class="station-table-row station-table-row--header">
+            <span>mm</span>
+            <span>{{ cross.type === 'cycloid' ? 'd' : 'Peak' }}</span>
+            <span>{{ cross.type === 'cycloid' ? '%' : 'Pts' }}</span>
+            <span></span>
+        </div>
+        @for (st of cross.stations; track $index) {
+        <div class="station-table-row">
+            <span class="station-table-y" title="Jump to this station" (click)="jumpTo(st.y)">{{ st.y }}</span>
+            <span>{{ cross.type === 'cycloid' ? st.d : st.peak }}</span>
+            <span>{{ cross.type === 'cycloid' ? st.pct : st.points.length }}</span>
+            <button type="button" class="info-icon" (click)="removeStation(plate, $index)" title="Remove station"
+                aria-label="Remove station">×</button>
+        </div>
+        }
+    </div>
+    }
+    }
+</section>
+
+@for (plate of plates; track plate) {
+@let pa = arching[plate];
+@let cross = pa.cross;
+@let ink = pal.ink(plate === 'top' ? 2 : 0);
+@let shape = shown(plate);
+@let editable = !!active(plate);
+@let at = stationAt(plate);
+@let sec = section[plate];
+<section class="ui-group">
+    <div class="ui-group-title">
+        {{ plate === 'top' ? 'Top Plate' : 'Back Plate' }}
+        <button type="button" class="info-icon" (click)="help('crossArchCurveType')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="radio" [name]="plate + '-cross-type'" value="catenary" [(ngModel)]="cross.type" (change)="edited()" />
+            <span>Catenary</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" [name]="plate + '-cross-type'" value="cycloid" [(ngModel)]="cross.type" (change)="edited()" />
+            <span>Cycloid</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" [name]="plate + '-cross-type'" value="spline" [(ngModel)]="cross.type" (change)="edited()" />
+            <span>Spline</span>
+        </div>
+    </div>
+
+    @if (cross.type === 'cycloid') {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Curtate <span class="unit-label">%</span></span>
+            <input type="number" class="basic-input" step="5" min="0" max="100" [(ngModel)]="shape.d" (input)="edited()"
+                [disabled]="!editable" [style.borderColor]="ink" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Percent <span class="unit-label">%</span></span>
+            <input type="number" class="basic-input" step="1" min="5" [max]="pctMax(plate)" [(ngModel)]="shape.pct" (input)="edited()"
+                [disabled]="!editable" />
+        </label>
+    </div>
+    }
+
+    @if (cross.type === 'spline') {
+    <div class="spline-points">
+        <div class="input-group basic-row spline-row spline-row--header">
+            <span class="field-cell">Position <span class="unit-label">%</span></span>
+            <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
+            <span class="field-cell">Height <span class="unit-label">%</span></span>
+        </div>
+        <div class="input-group basic-row field-row spline-row" role="group">
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="1" min="30" max="70" [(ngModel)]="shape.peak" (input)="edited()"
+                    [disabled]="!editable" [style.borderColor]="ink" />
+            </div>
+            <span class="field-separator" aria-hidden="true"></span>
+            <div class="field-cell">
+                <span class="basic-display">100</span>
+            </div>
+            <span>Peak</span>
+        </div>
+        @for (pt of shape.points; track $index) {
+        <div class="input-group basic-row field-row spline-row" role="group">
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="1" min="0" max="100" [(ngModel)]="pt.x" (input)="edited()"
+                    [disabled]="!editable" (focus)="focus(plate, $index)" (blur)="blur()" />
+            </div>
+            <span class="field-separator" aria-hidden="true"></span>
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="1" [min]="zFloor(plate)" max="100" [(ngModel)]="pt.z" (input)="edited()"
+                    [disabled]="!editable" (focus)="focus(plate, $index)" (blur)="blur()" />
+            </div>
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="pt.mirror" (change)="edited()" [disabled]="!editable" /><span>Mirror</span>
+            </div>
+            <button type="button" class="info-icon" (click)="removePoint(plate, $index)" title="Remove point" aria-label="Remove point"
+                [disabled]="!editable">×</button>
+        </div>
+        }
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <button type="button" class="panel-nav-btn" (click)="addPoint(plate)" [disabled]="!editable">+ Add Point</button>
+    </div>
+    }
+
+    @if (cross.type !== 'catenary') {
+    <div class="input-group basic-row field-row" role="group">
+        @if (at) {
+        <span class="station-note">The fields edit station {{ at.y }}mm</span>
+        } @else {
+        @if (!editable) {
+        <span class="station-note">Showing {{ shownLabel(plate) }}</span>
+        }
+        <button type="button" class="panel-nav-btn" [disabled]="!stationable" (click)="setStation(plate)">
+            + Set Station at {{ cursorY }}mm
+        </button>
+        }
+    </div>
+    }
+
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [checked]="view.overlay[plate] === 'contours'" (change)="toggleOverlay(plate, 'contours')" />
+            <span>Contours</span>
+        </div>
+        <div class="toggle">
+            <input type="checkbox" [checked]="view.overlay[plate] === 'wireframe'" (change)="toggleOverlay(plate, 'wireframe')" />
+            <span>Wireframe</span>
+        </div>
+    </div>
+
+    @if (sec && (!sec.left?.tangent || !sec.right?.tangent)) {
+    <div class="input-group basic-row field-row" role="group">
+        <span class="station-note">The crown can't quite meet the fluting channel here with a smooth join.</span>
+    </div>
+    }
+</section>
+}

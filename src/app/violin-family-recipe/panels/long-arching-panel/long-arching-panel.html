@@ -1,0 +1,105 @@
+@let arching = params.arching!;
+
+<section class="ui-group">
+    <div class="ui-group-title">
+        Ribs
+        <button type="button" class="info-icon" (click)="help('ribHeight')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Lower Rib <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="arching.ribHeightLower" (input)="edited()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Upper Rib <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="arching.ribHeightUpper" (input)="edited()" />
+        </label>
+    </div>
+</section>
+
+@for (plate of plates; track plate) {
+@let pa = arching[plate];
+@let arch = pa.arch;
+@let ink = pal.ink(plate === 'top' ? 2 : 0);
+@let solved = a?.[plate];
+<section class="ui-group">
+    <div class="ui-group-title">
+        {{ plate === 'top' ? 'Top Plate' : 'Back Plate' }}
+        <button type="button" class="info-icon" (click)="help('curveType')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="radio" [name]="plate + '-arch-type'" value="catenary" [(ngModel)]="arch.type" (change)="edited()" />
+            <span>Catenary</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" [name]="plate + '-arch-type'" value="spline" [(ngModel)]="arch.type" (change)="edited()" />
+            <span>Spline</span>
+        </div>
+    </div>
+
+    @if (arch.type === 'catenary') {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Arch Height <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="arch.height" (input)="edited()"
+                [style.borderColor]="ink" (focus)="focus(plate, peakSource)" (blur)="blur()" />
+        </label>
+    </div>
+    } @else {
+    <div class="spline-points">
+        <div class="input-group basic-row spline-row spline-row--header">
+            <span class="field-cell">Position <span class="unit-label">%</span></span>
+            <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
+            <span class="field-cell">Height <span class="unit-label">mm</span></span>
+        </div>
+        <div class="input-group basic-row field-row spline-row" role="group">
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="1" min="5" max="95" [(ngModel)]="arch.peak" (input)="edited()"
+                    (focus)="focus(plate, peakSource)" (blur)="blur()" />
+            </div>
+            <span class="field-separator" aria-hidden="true"></span>
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="arch.height" (input)="edited()"
+                    [style.borderColor]="ink" (focus)="focus(plate, peakSource)" (blur)="blur()" />
+            </div>
+            <span>Peak</span>
+        </div>
+        @for (pt of arch.points; track $index) {
+        <div class="input-group basic-row field-row spline-row" role="group">
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="1" min="1" max="99" [(ngModel)]="pt.t" (input)="edited()"
+                    (focus)="focus(plate, $index)" (blur)="blur()" />
+            </div>
+            <span class="field-separator" aria-hidden="true"></span>
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="0.1" [min]="-pa.thickness" [max]="arch.height" [(ngModel)]="pt.z" (input)="edited()"
+                    (focus)="focus(plate, $index)" (blur)="blur()" />
+            </div>
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="pt.mirror" (change)="edited()" /><span>Mirror</span>
+            </div>
+            <button type="button" class="info-icon" (click)="removePoint(plate, $index)" title="Remove point" aria-label="Remove point">×</button>
+        </div>
+        }
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <button type="button" class="panel-nav-btn" (click)="addPoint(plate)">+ Add Point</button>
+    </div>
+    }
+
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Thickness <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [(ngModel)]="pa.thickness" (input)="edited()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <span class="station-note" aria-label="Where the arch meets the channel">
+            @if (solved) { Lands on the channel at {{ solved.yStart.toFixed(1) }} and {{ solved.yEnd.toFixed(1) }} mm } @else { No arch drawn }
+        </span>
+    </div>
+</section>
+}
