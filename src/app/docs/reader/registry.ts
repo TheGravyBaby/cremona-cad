@@ -1,5 +1,5 @@
 import { Article, ArticleKind, ArticleParseError, parseArticle } from './article';
-import { markdownToText, renderMarkdown } from './markdown';
+import { PagePiece, componentProblems, markdownToText, renderPage } from './markdown';
 
 export interface Measurement {
   id: string;
@@ -10,10 +10,10 @@ export interface Measurement {
 
 // Every article, parsed once from its source. `problems` collects what a human has to fix —
 // parse failures, duplicate ids, links to nothing — rather than throwing, so one bad file
-// doesn't take the rest of the documentation down with it; docs.spec.ts asserts it is empty.
+// doesn't take the rest of the booth down with it; docs.spec.ts asserts it is empty.
 export class DocsRegistry {
   private readonly articles = new Map<string, Article>();
-  private readonly htmlCache = new Map<string, string>();
+  private readonly pieceCache = new Map<string, PagePiece[]>();
   readonly problems: string[] = [];
 
   constructor(sources: Record<string, string>) {
@@ -25,10 +25,11 @@ export class DocsRegistry {
         this.problems.push(e instanceof ArticleParseError ? e.message : `${file}: ${String(e)}`);
         continue;
       }
-      // folders under articles/ are for the author's filing; ids stay global so links never carry a path
+      // folders under pages/ are for the author's filing; ids stay global so links never carry a path
       const expected = file.replace(/^.*\//, '').replace(/\.md$/, '');
       if (article.id !== expected) this.problems.push(`${file}: id "${article.id}" does not match the file name`);
       if (this.articles.has(article.id)) this.problems.push(`${file}: duplicate id "${article.id}"`);
+      for (const p of componentProblems(article.body)) this.problems.push(`${file}: ${p}`);
       this.articles.set(article.id, article);
     }
     for (const a of this.articles.values()) {
@@ -60,13 +61,13 @@ export class DocsRegistry {
     return a ? markdownToText(a.summary, slug => this.articles.get(slug)?.title) : '';
   }
 
-  html(id: string): string {
-    const cached = this.htmlCache.get(id);
-    if (cached !== undefined) return cached;
+  pieces(id: string): PagePiece[] {
+    const cached = this.pieceCache.get(id);
+    if (cached) return cached;
     const a = this.articles.get(id);
-    const html = a ? renderMarkdown(a.body, slug => this.link(slug)) : '';
-    this.htmlCache.set(id, html);
-    return html;
+    const pieces = a ? renderPage(a.body, slug => this.link(slug)) : [];
+    this.pieceCache.set(id, pieces);
+    return pieces;
   }
 
   link(slug: string): { href: string; title: string } | null {

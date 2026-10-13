@@ -1,9 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { VIOLIN_FAMILY_PANEL_IDS } from '../../recipes/violin-family/violin-family-types';
-import { firstParagraph, parseArticle } from './article';
-import { ARTICLE_SOURCES } from './articles';
-import { markdownToText, renderMarkdown } from './markdown';
+import { firstParagraph, inWiki, parseArticle } from './article';
+import { BOOTH_TABS, PAGE_SOURCES } from '../pages';
+import { componentProblems, markdownToText, renderMarkdown, renderPage } from './markdown';
 import { DocsRegistry } from './registry';
 
 const sample = (extra = '', body = 'The first paragraph.\n\nMore, with a [[other]] link.') =>
@@ -26,6 +26,7 @@ describe('parseArticle', () => {
     expect(() => parseArticle(sample().replace('id: thing', 'id: Thing_1'))).toThrow(/kebab/);
     expect(() => parseArticle(sample('standard:\n  violin: 1\n'))).toThrow(/unit/);
     expect(() => parseArticle(sample('', '## Heading first\n\ntext'))).toThrow(/summary/);
+    expect(() => parseArticle(sample('date: Sep 14, 2026\n'))).toThrow(/date/);
   });
 
   it('joins a wrapped opening paragraph and stops at the blank line', () => {
@@ -66,6 +67,30 @@ describe('renderMarkdown', () => {
   });
 });
 
+describe('components', () => {
+  const resolve = () => null;
+
+  it('split a page into prose and the components between it', () => {
+    const pieces = renderPage('Before.\n\n<carousel>\n![One](a.png)\n\n![*Two*](b.png)\n</carousel>\n\nAfter.', resolve);
+    expect(pieces.map(p => p.kind)).toEqual(['prose', 'carousel', 'prose']);
+    const carousel = pieces[1];
+    expect(carousel.kind === 'carousel' && carousel.slides.map(s => s.src)).toEqual(['a.png', 'b.png']);
+    expect(carousel.kind === 'carousel' && carousel.slides[1].caption).toBe('<em>Two</em>');
+  });
+
+  it('reject a tag nobody defined, one left open, and the wrong thing inside', () => {
+    expect(componentProblems('<carousel>\n![One](a.png)\n</carousel>')).toEqual([]);
+    expect(componentProblems('<gallery>\n![One](a.png)\n</gallery>')).toEqual([expect.stringMatching(/not a component/)]);
+    expect(componentProblems('<carousel>\n![One](a.png)')).toEqual([expect.stringMatching(/opened and closed/)]);
+    expect(componentProblems('<carousel>\nwords\n</carousel>')).toEqual([expect.stringMatching(/images only/)]);
+  });
+
+  it('stay out of the summary and the search text', () => {
+    expect(firstParagraph('<carousel>\n![One](a.png)\n</carousel>\n\nThe summary.')).toBe('');
+    expect(markdownToText('<carousel>\n![One](a.png)\n</carousel>')).toBe('One');
+  });
+});
+
 describe('DocsRegistry', () => {
   it('collects problems instead of throwing', () => {
     const r = new DocsRegistry({
@@ -92,8 +117,8 @@ describe('DocsRegistry', () => {
   });
 });
 
-describe('the articles', () => {
-  const registry = new DocsRegistry(ARTICLE_SOURCES);
+describe('the pages', () => {
+  const registry = new DocsRegistry(PAGE_SOURCES);
   const articles = registry.all();
 
   // the specs are bundled for the browser, so node's fs can only be reached by a dynamic
@@ -102,9 +127,9 @@ describe('the articles', () => {
     const node = (name: string): Promise<any> => import(/* @vite-ignore */ name);
     const { readdirSync } = await node('node:fs');
     const { join } = await node('node:path');
-    const dir = join((globalThis as any).process.cwd(), 'src', 'app', 'docs', 'wiki', 'articles');
+    const dir = join((globalThis as any).process.cwd(), 'src', 'app', 'docs', 'pages');
     const onDisk = (readdirSync(dir, { recursive: true }) as string[]).filter(f => f.endsWith('.md')).sort();
-    expect(Object.keys(ARTICLE_SOURCES).sort()).toEqual(onDisk);
+    expect(Object.keys(PAGE_SOURCES).sort()).toEqual(onDisk);
   });
 
   it('show only images that exist under public/', async () => {
@@ -123,7 +148,13 @@ describe('the articles', () => {
   });
 
   it('keep the summary short enough for a tooltip', () => {
-    for (const a of articles) expect(a.summary.length, a.id).toBeLessThanOrEqual(240);
+    for (const a of articles.filter(inWiki)) expect(a.summary.length, a.id).toBeLessThanOrEqual(240);
+  });
+
+  it('give every booth tab but the wiki and the history a booth page', () => {
+    for (const tab of BOOTH_TABS) {
+      if (tab !== 'wiki' && tab !== 'history') expect(registry.get(tab)?.kind, tab).toBe('booth');
+    }
   });
 
   it('name real panels', () => {

@@ -13,9 +13,9 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  appearance: 'auto',
+  appearance: 'night',
   barAutoHide: false,
-  fitOnPanelChange: false,
+  fitOnPanelChange: true,
 };
 
 const STORAGE_KEY = 'settings';

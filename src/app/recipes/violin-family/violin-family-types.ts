@@ -334,8 +334,8 @@ export interface ScrollWidths {
 
 export const DEFAULT_VIOLIN_FAMILY_PARAMS: ViolinFamilyParams = {
   body: {
-    height: 350,
-    width: 200,
+    height: 356,
+    width: 203,
     overhang: 3,
     rib: 1,
   },
@@ -782,21 +782,21 @@ export interface ViolinFamilyRatios {
 export const SEED_RATIOS: ViolinFamilyRatios = {
   HtoW: 7 / 4,
   UBtoLB: 4 / 5,
-  U0toUBW: 5 / 6,
-  U1toUBW: 1 / 3,
+  U0toUBW: 8 / 9,
+  U1toUBW: 2 / 5,
   LBtoH: 4 / 7,
-  L0toLBW: 7 / 8,
+  L0toLBW: 2 / 1,
   L1toLBW: 1 / 3,
-  U2toUBW: 1 / 2,
+  U2toUBW: 3 / 5,
   U3toLBW: 1 / 8,
   U31toLBW: 1 / 16,
   L2toLBW: 1 / 2,
   L3toLBW: 1 / 8,
   L31toLBW: 1 / 16,
-  UCYtoH: 2 / 3,
+  UCYtoH: 23 / 36,
   LCYtoH: 6 / 15,
   CBWtoLBW: 1 / 2,
-  C0toLBW: 4 / 9,
+  C0toLBW: 1 / 2,
   C0YtoH: 9 / 16,
   C2toLBW: 1 / 12,
   C21toLBW: 1 / 16,
@@ -808,6 +808,8 @@ export const SEED_RATIOS: ViolinFamilyRatios = {
 
 export interface ViolinFamilyViewFlags {
   showModuleArcs: boolean;
+  // the other outline stages' arcs drawn as module arcs too, in their own inks
+  showAllArcs: boolean;
   showModuleGuides: boolean;
   renderOuterPath: boolean;
   showFholeBounds: boolean;
@@ -827,6 +829,7 @@ export type ViolinFamilyToggleKey = keyof ViolinFamilyViewFlags;
 
 export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
   showModuleArcs: true,
+  showAllArcs: false,
   showModuleGuides: false,
   renderOuterPath: true,
   showFholeBounds: true,

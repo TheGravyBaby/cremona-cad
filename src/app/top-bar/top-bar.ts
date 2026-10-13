@@ -1,7 +1,7 @@
 import { Component, ElementRef, EventEmitter, HostListener, Output, Input, inject } from '@angular/core';
 import { MessageCenterComponent } from '../shared/message-center.component';
 import { SettingsMenuComponent } from '../settings/settings-menu';
-import { HelpTab } from '../docs/help/help-dialog';
+import { BoothTab } from '../docs/pages';
 
 @Component({
   selector: 'app-top-bar',
@@ -14,7 +14,7 @@ export class TopBarComponent {
   @Input() selectedRecipe: string = 'Beard';
   @Output() recipeChange = new EventEmitter<string>();
 
-  @Output() helpRequested = new EventEmitter<HelpTab>();
+  @Output() boothRequested = new EventEmitter<BoothTab>();
 
   // The edit verbs live up here because they act on the document as a whole. See edit-menu.ts.
   protected editOpen = false;

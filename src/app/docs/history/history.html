@@ -1,0 +1,5 @@
+<app-indexed-pages label="Releases" [groups]="groups" [current]="current()" (picked)="current.set($event)">
+  <app-doc-page [id]="current()">
+    @if (date(current())) { <span pageBadge class="badge">{{ date(current()) }}</span> }
+  </app-doc-page>
+</app-indexed-pages>

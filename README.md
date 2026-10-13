@@ -14,7 +14,7 @@ CremonaCad draws instruments using a simple system of **intersecting arcs**, his
 
 The outline is drawn from parameters — bout widths, corner placements, cutoff angles — which then carry through to purfling, fluting, long and cross arching, and the internal mould. A **drawing toolbox** sits alongside the recipe for sketching and tracing directly on the canvas, snapping to the geometry underneath. Finished designs export as SVG, PDF and DXF for templates and moulds, and as STL for CNC-carved plates.
 
-See the in-app **About** and **Documentation** tabs for the full picture, including the design workflow and each panel in turn.
+The in-app **Info Booth** (the **?** button) has the rest: the wiki, the release history, acknowledgements and the author. Every page in it is a Markdown file under [`src/app/docs/pages/`](src/app/docs/pages/), written to the [style guide](src/app/docs/pages/wiki/style.md).
 
 ## Getting Started
 
@@ -71,9 +71,11 @@ A few conventions worth knowing before editing geometry code:
 ```
 src/app/
 ├── docs/                  # Every word the app says to the user: field help, tooltips, conditions
-│   ├── guide/             #   The Documentation tab
-│   ├── help/              #   The help dialog: documentation, change log, about
-│   └── wiki/              #   Markdown articles and the wiki that renders them (dev builds)
+│   ├── info-booth/        #   The info booth dialog, one tab per booth page plus wiki and history
+│   ├── pages/             #   Every page it shows, one Markdown file each: booth/, history/, wiki/
+│   ├── reader/            #   Parsing, the markdown subset, the page and contents-list components
+│   ├── wiki/              #   The wiki tab
+│   └── history/           #   The history tab
 ├── draft-canvas/          # SVG canvas, camera, axis grid
 │   ├── tools/             #   Drawing toolbox: tools, snapping, layers, images
 │   ├── tool-palette/      #   Toolbar
@@ -93,9 +95,6 @@ src/app/
 ├── settings/              # User preferences and the settings menu
 ├── shared/                # Message service and UI components
 ├── top-bar/               # Application toolbar
-
-
-CHANGELOG.md               # Rendered in the help dialog
 ```
 
 Earlier recipes (Enrico Ceruti, Beard, Kelly) live in the git history.
@@ -125,10 +124,4 @@ You are free to use, modify, and distribute this software under the terms of the
 
 ## Author
 
-Andrew Argraves — musician and software engineer based out of New Haven, CT.
-
-CremonaCad started as a personal tool to understand the geometry behind historical violin patterns. After months of development and experimentation, it became something that might be genuinely useful in developing the craft of violin-making.
-
-[andrewargraves@gmail.com](mailto:andrewargraves@gmail.com)
-
-Thanks, and happy drafting!
+Andrew Argraves. See [About Me](src/app/docs/pages/booth/about-me.md).

@@ -1,0 +1,29 @@
+@if (isOpen) {
+<div class="modal-backdrop" (click)="close()" role="dialog" aria-modal="true" aria-label="Cremona CAD info booth">
+  <div class="modal" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <div class="modal-tabs">
+        @for (tab of tabs; track tab.id) {
+        <button class="tab-btn" [class.active]="activeTab === tab.id" (click)="select(tab.id)">{{ tab.label }}</button>
+        }
+      </div>
+      <button class="modal-close" (click)="close()" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-body" (click)="onPageClick($event)">
+      @switch (activeTab) {
+        @case ('wiki') {
+        <section class="index-section"><app-wiki></app-wiki></section>
+        }
+        @case ('history') {
+        <section class="index-section"><app-history></app-history></section>
+        }
+        @default {
+        <app-doc-page [id]="activeTab"></app-doc-page>
+        }
+      }
+    </div>
+  </div>
+</div>
+}

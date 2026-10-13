@@ -74,15 +74,15 @@ export class BaseMeasurementsPanel implements ViolinFamilyPanel, OnInit {
       // the instrument as far as it's been drafted, in grey under the envelope. Once there are
       // corners, the bouts end where the corners take over
       if (m) {
-        layers.push(renderMainBouts(p, c ? { ...m, U1: c.U1, L1: c.L1 } : m, this.pal, { showModuleArcs: false, renderOuterPath: false }, false, null));
+        layers.push(renderMainBouts(p, c ? { ...m, U1: c.U1, L1: c.L1 } : m, this.pal, { showModuleArcs: false, showAllArcs: false, renderOuterPath: false }, false, null));
         layers.push(renderSolveFailures(m.failures, this.pal.alert, true));
       }
       if (c) {
-        layers.push(renderCorners(p, c, this.pal, { showModuleArcs: false, renderOuterPath: false }, false, null));
+        layers.push(renderCorners(p, c, this.pal, { showModuleArcs: false, showAllArcs: false, renderOuterPath: false }, false, null));
         layers.push(renderSolveFailures(c.failures, this.pal.alert, true));
       }
       if (cb) {
-        layers.push(renderCenterBout(p, cb, this.pal, { showModuleArcs: false, renderOuterPath: false }, false, null));
+        layers.push(renderCenterBout(p, cb, this.pal, { showModuleArcs: false, showAllArcs: false, renderOuterPath: false }, false, null));
         layers.push(renderSolveFailures(cb.failures, this.pal.alert, true));
       }
       if (this.body.outer && this.body.ribBox) {
