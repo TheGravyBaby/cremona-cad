@@ -7,7 +7,11 @@
             (newFile)="onNewClick()"
             (saveFile)="saveToDisk()"
             (loadFile)="loadFile($event)"
-            (debugDump)="copyRecipeToClipboard()">
+            (debugDump)="copyRecipeToClipboard()"
+            [showExport]="true"
+            [exportEnabled]="isPanelEnabled('export')"
+            [exportActive]="openPanel === 'export'"
+            (openExport)="onPanelSelect('export')">
 </app-recipe-toolbar>
 
 <div class="panel-nav-wrap">
@@ -188,6 +192,15 @@
             (drawn)="draftChange.emit($event)"
             (edit)="onPanelEdit()">
         </app-vf-mould-panel>
+        }
+
+        @if (openPanel === 'export') {
+        <app-vf-export-panel #panelRef
+            [params]="d.params"
+            [fileName]="d.fileName"
+            [description]="d.description ?? ''"
+            (drawn)="draftChange.emit($event)">
+        </app-vf-export-panel>
         }
     </div>
 </div>

@@ -1,0 +1,63 @@
+<section class="ui-group">
+    <div class="export-primary">
+        <button type="button" class="recipe-btn recipe-btn--primary" [disabled]="!ready.has('innerContour')" (click)="downloadFullPlan()">Full Plan PDF</button>
+    </div>
+    <div class="export-primary">
+        <button type="button" class="recipe-btn recipe-btn--primary" [disabled]="!readyCount(templateBundle)" (click)="downloadBundle('templates')">Templates SVG</button>
+        <button type="button" class="recipe-btn recipe-btn--primary" [disabled]="!ready.has('innerContour')" (click)="downloadBundle('full')">Full SVG</button>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="export-groups">
+        @for (group of groups; track group.label) {
+            @if (readyCount(group.rows)) {
+                <details class="export-group" [open]="$first">
+                    <summary><span class="export-group__chevron">▶</span>{{ group.label }}<span class="export-group__count">{{ readyCount(group.rows) }}</span></summary>
+                    <div class="export-group__body">
+                        @for (row of group.rows; track row.type) {
+                            @if (ready.has(row.type)) {
+                                <div class="export-row">
+                                    <span class="export-row__name">{{ row.name }}</span>
+                                    <span class="export-row__desc">{{ describe(row.type) }}</span>
+                                    <div class="export-row__actions">
+                                        <button type="button" class="recipe-btn" (click)="show(row.type)">Preview</button>
+                                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="download(row.type, 'svg')">SVG</button>
+                                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="download(row.type, 'pdf')">PDF</button>
+                                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="download(row.type, 'dxf')">DXF</button>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </details>
+            }
+        }
+
+        @if (readyCount(['stlTop', 'stlBack'])) {
+            <details class="export-group">
+                <summary><span class="export-group__chevron">▶</span>CNC<span class="export-group__count">{{ readyCount(['stlTop', 'stlBack']) }}</span></summary>
+                <div class="export-group__body">
+                    @if (ready.has('stlTop')) {
+                        <div class="export-row">
+                            <span class="export-row__name">Top Plate 3D</span>
+                            <span class="export-row__desc">{{ describe('stlTop') }}</span>
+                            <div class="export-row__actions">
+                                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadStl('top')">STL</button>
+                            </div>
+                        </div>
+                    }
+                    @if (ready.has('stlBack')) {
+                        <div class="export-row">
+                            <span class="export-row__name">Back Plate 3D</span>
+                            <span class="export-row__desc">{{ describe('stlBack') }}</span>
+                            <div class="export-row__actions">
+                                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadStl('back')">STL</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </details>
+        }
+    </div>
+</section>

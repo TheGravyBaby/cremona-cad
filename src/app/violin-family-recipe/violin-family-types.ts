@@ -859,7 +859,7 @@ export const VIOLIN_FAMILY_SCHEMA_VERSION = '1';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'scroll', 'scrollWidths', 'stringSetup', 'mould'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'scroll', 'scrollWidths', 'stringSetup', 'mould', 'export'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface {
@@ -871,7 +871,12 @@ export interface ViolinFamilyRecipe extends RecipeInterface {
   ratios?: Partial<ViolinFamilyRatios>;
 }
 
-export const blankViolinFamilyRecipe = (): ViolinFamilyRecipe => ({
+// a recipe served as a starting point; the key tells it from the others
+export interface ViolinFamilyTemplate extends ViolinFamilyRecipe {
+  key: string;
+}
+
+export const blankViolinFamilyRecipe =(): ViolinFamilyRecipe => ({
   recipeName: VIOLIN_FAMILY_RECIPE_NAME,
   fileName: 'New Instrument',
   version: VIOLIN_FAMILY_SCHEMA_VERSION,

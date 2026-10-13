@@ -1,15 +1,16 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { templateKeys, templateViolin } from '../enrico-ceruti-violin/ceruti-fixtures';
-import { calculateCenterBout, calculateCorners, calculateFholeContours, calculateMould, calculateOuterArcs } from '../enrico-ceruti-violin/calculation/outline/ceruti-calcs';
-import { defineInsetPath, defineOneFholePath, fingerboardEnd as cerutiBoardEnd, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../enrico-ceruti-violin/calculation/outline/ceruti-paths';
+import { calculateCenterBout, calculateCornerBlocks, calculateCorners, calculateFholeContours, calculateMould, calculateOuterArcs } from '../enrico-ceruti-violin/calculation/outline/ceruti-calcs';
+import { defineInnerPath, defineInsetPath, defineOneFholePath, fingerboardEnd as cerutiBoardEnd, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../enrico-ceruti-violin/calculation/outline/ceruti-paths';
 import { defaultFHolePlacement } from '../enrico-ceruti-violin/panels/f-hole-placement-panel/f-hole-placement-panel';
 import { channelPaths, crossArchSectionAt, defaultCrossArchParams, defaultFlutingParams, solveLongArch as cerutiLongArch } from '../enrico-ceruti-violin/calculation/arching/ceruti-arch-geometry';
 import { bodyLandmarks as cerutiLandmarks, defaultArchingParams, solveRibTaper as cerutiRibTaper } from '../enrico-ceruti-violin/calculation/arching/ceruti-arching';
-import { buildPlateSurfaceModel, stationChordsAt, topSurfaceZAt } from '../enrico-ceruti-violin/calculation/arching/ceruti-surface';
+import { buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, calculateLongArchTemplates, stationChordsAt, topSurfaceZAt } from '../enrico-ceruti-violin/calculation/arching/ceruti-surface';
 import { calculateNeck, defaultNeckParams, defaultStringSetup, fingerboardCrown as cerutiCrown, heelStands, heelFace as cerutiHeelFace, lowerThicknessLine, mortiseFingerboardIntersect, plateEdgeAtNeck, buttonTip } from '../enrico-ceruti-violin/calculation/neck/ceruti-neck';
 import { NeckParams as CerutiNeck, ScrollParams as CerutiScroll, StringSetup as CerutiStringSetup, VoluteStyle } from '../enrico-ceruti-violin/ceruti-types';
-import { calculateScroll, calculateScrollWidths, defaultVoluteParams, pegboxCavity as cerutiCavity, scrollPathStretches as cerutiStretches, scrollWidthStations as cerutiStations } from '../enrico-ceruti-violin/calculation/neck/ceruti-scroll';
+import { calculateScroll, calculateScrollWidths, defaultVoluteParams, pegboxCavity as cerutiCavity, scrollBackStrip as cerutiStrip, scrollCompassWalk as cerutiWalk, scrollPathStretches as cerutiStretches, scrollWidthStations as cerutiStations } from '../enrico-ceruti-violin/calculation/neck/ceruti-scroll';
+import { defineNeckTemplate as cerutiNeckTemplate } from '../enrico-ceruti-violin/calculation/neck/ceruti-neck-template';
 import { scrollBackViewStrokes as cerutiBackView, scrollFrontViewStrokes as cerutiFrontView } from '../enrico-ceruti-violin/calculation/neck/ceruti-scroll-views';
 import { ArchCurve, ArchingParams as CerutiArching, CrossArchShape, EnricoCerutiParams, FholeParams, FlutingParams } from '../enrico-ceruti-violin/ceruti-types';
 import { Arc, Pt, Pt3D, Rectangle } from '../models/types';
@@ -29,8 +30,9 @@ import { NeckPanel, solveNeck } from './panels/neck-panel/neck-panel';
 import { VolutePanel } from './panels/volute-panel/volute-panel';
 import { solveScroll } from './panels/scroll-panel/scroll-panel';
 import { fingerboardCrown, solveStringSetup, StringSetupPanel } from './panels/string-setup-panel/string-setup-panel';
-import { MOULD_EXPORT_STEP, MouldPanel, solveMould } from './panels/mould-panel/mould-panel';
-import { pegboxCavity, scrollBackViewStrokes, scrollFrontViewStrokes, scrollPathStretches, scrollWidthStations, solveScrollWidths } from './panels/scroll-widths-panel/scroll-widths-panel';
+import { blockLayout, MOULD_EXPORT_STEP, MouldPanel, solveMould } from './panels/mould-panel/mould-panel';
+import { crossArchTemplates, defineNeckTemplate, longArchTemplates, plateStl } from './panels/export-panel/export-panel';
+import { pegboxCavity, scrollBackStrip, scrollBackViewStrokes, scrollCompassWalk, scrollFrontViewStrokes, scrollPathStretches, scrollWidthStations, solveScrollWidths } from './panels/scroll-widths-panel/scroll-widths-panel';
 import { ArchingParams, MouldParams, NeckParams, ScrollParams, StringSetupParams, CrossArchParams, CrossShapeParams, FholeArcKey, FholeContourParams, FholePlacementParams, GougeParams, LongArchParams, ViolinFamilyParams } from './violin-family-types';
 
 // The port's acceptance test: every frozen Ceruti instrument, solved by both recipes from the same
@@ -329,6 +331,20 @@ const sameScroll = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
   const theirCavity = cerutiCavity(c);
   expect(!!cavity, 'hollow').toBe(!!theirCavity);
   cavity?.forEach((pt, i) => expect(Math.hypot(pt.x - theirCavity![i].x, pt.y - theirCavity![i].y), `hollow ${i}`).toBeLessThan(1e-6));
+  const strip = scrollBackStrip(p, s);
+  const theirStrip = cerutiStrip(c);
+  expect(strip.length, 'strip length').toBeCloseTo(theirStrip.length, 6);
+  expect(strip.outline.length, 'strip points').toBe(theirStrip.outline.length);
+  strip.outline.forEach((pt, i) => expect(Math.hypot(pt.x - theirStrip.outline[i].x, pt.y - theirStrip.outline[i].y), `strip ${i}`).toBeLessThan(1e-6));
+  const walk = scrollCompassWalk(p, s);
+  const theirWalk = cerutiWalk(c, 10);
+  expect(walk.stations.length, 'compass stations').toBe(theirWalk.stations.length);
+  expect(walk.step, 'compass step').toBeCloseTo(theirWalk.step, 6);
+  walk.stations.forEach((st, i) => {
+    expect(Math.hypot(st.at.x - theirWalk.stations[i].at.x, st.at.y - theirWalk.stations[i].at.y), `station ${i}`).toBeLessThan(1e-6);
+    expect(st.half, `station ${i} half`).toBeCloseTo(theirWalk.stations[i].half, 6);
+    expect(st.along, `station ${i} along`).toBeCloseTo(theirWalk.stations[i].along, 6);
+  });
   const place = (x: number, y: number) => new Pt(x, y);
   for (const [mine, theirView, label] of [
     [scrollBackViewStrokes(p, s, place, -20), cerutiBackView(c, place, -20), 'back view'],
@@ -437,7 +453,7 @@ const polyline = (d: string): Pt[] => {
 
 // two paths are the same curve when every point sampled along either lies on the other, to a
 // micron. Sampled finely enough that the chords of the tightest corner arc stay under that
-const samePath = (a: string | null, b: string | null, label: string) => {
+const samePath = (a: string | null, b: string | null, label: string, within = 1e-3) => {
   expect(a, `${label} drawn`).toBeTruthy();
   expect(b, `${label} drawn by Ceruti`).toBeTruthy();
   const A = polyline(a!);
@@ -446,8 +462,8 @@ const samePath = (a: string | null, b: string | null, label: string) => {
     const idx = buildPolylineIndex(onto);
     return Math.max(...pts.map(q => distPointToPolylineIndexed(q, idx)));
   };
-  expect(far(A, B), `${label}: ours strays off theirs`).toBeLessThan(1e-3);
-  expect(far(B, A), `${label}: theirs strays off ours`).toBeLessThan(1e-3);
+  expect(far(A, B), `${label}: ours strays off theirs`).toBeLessThan(within);
+  expect(far(B, A), `${label}: theirs strays off ours`).toBeLessThan(within);
 };
 
 // Ceruti keeps the blocks as rectangles whose places it rewrites on every solve, and one pad both
@@ -482,6 +498,50 @@ const sameMould = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
   sameRect(s.blocks!.lowerCorner, c.blocks.CL!, 'lower corner block');
   sameRect(s.blocks!.end, c.blocks.L!, 'end block');
   samePath(s.outline, theirs, 'mould outline');
+  const layout = blockLayout(s);
+  const theirLayout = calculateCornerBlocks(c, defineInnerPath(c));
+  expect(layout.map(b => b.label)).toEqual(theirLayout.map(b => b.label));
+  layout.forEach((b, i) => {
+    samePath(b.path, theirLayout[i].path, `block ${i}`);
+    // the label sits at the piece's box centre, read off an arc's samples, so it drifts by a few hundredths
+    expect(Math.hypot(b.x - theirLayout[i].x, b.y - theirLayout[i].y), `block ${i} label`).toBeLessThan(0.1);
+  });
+};
+
+// the template blanks and the plate solid, both recipes from the same arched instrument. The cross
+// arch blanks are read off surfaces that agree to a hundredth, so they are held to that; the long
+// arch blanks come off the same solve. The solid is meshed coarsely here, since a fine grid takes
+// seconds a plate, and its triangles are matched vertex by vertex within the surfaces' agreement
+const sameTemplates = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
+  const sameShapes = (ours: { path: string; label: string; labelPos: Pt; labelRotation: number }[], theirs: typeof ours, what: string, within: number, labelWithin: number) => {
+    expect(ours.map(t => t.label), what).toEqual(theirs.map(t => t.label));
+    ours.forEach((t, i) => {
+      samePath(t.path, theirs[i].path, `${what} ${t.label}`, within);
+      expect(Math.hypot(t.labelPos.x - theirs[i].labelPos.x, t.labelPos.y - theirs[i].labelPos.y), `${what} ${t.label} label`).toBeLessThan(labelWithin);
+      expect(t.labelRotation).toBe(theirs[i].labelRotation);
+    });
+  };
+  // a cross arch blank's label sits on the sample nearest its crown, which the hundredth can move a step
+  sameShapes(crossArchTemplates(p), calculateCrossArchTemplates(c), 'cross arch', 0.02, 0.3);
+  sameShapes(longArchTemplates(p), calculateLongArchTemplates(c), 'long arch', 1e-3, 1e-2);
+
+  const triangles = (buffer: ArrayBuffer) => {
+    const view = new DataView(buffer);
+    const count = view.getUint32(80, true);
+    const tris: number[][] = [];
+    for (let i = 0; i < count; i++) {
+      const at = 84 + i * 50 + 12;
+      tris.push(Array.from({ length: 9 }, (_, k) => view.getFloat32(at + 4 * k, true)));
+    }
+    return tris;
+  };
+  const surfaces = solveCrossArching(p)!;
+  for (const [plate, side] of [['top', 'top'], ['back', 'bottom']] as const) {
+    const ours = triangles(plateStl(p, surfaces[plate]!, plate, 5));
+    const theirs = triangles(buildPlateStl(c, buildPlateSurfaceModel(c, side)!, side, 5));
+    expect(ours.length, `${plate} triangles`).toBe(theirs.length);
+    ours.forEach((tri, i) => tri.forEach((v, k) => expect(Math.abs(v - theirs[i][k]), `${plate} triangle ${i}`).toBeLessThan(0.02)));
+  }
 };
 
 const OUTER_CORNER_KEYS = ['U3', 'U31', 'C2', 'C21', 'C1', 'C11', 'L3', 'L31'] as const;
@@ -837,6 +897,25 @@ describe.each(templateKeys())('parity with the Ceruti recipe: %s', key => {
       theirs.endBlock.width *= 1.5;
       expect({ ...own.mould, bitDiameter: fresh.bitDiameter }).toEqual(theirs);
     }
+  });
+
+  it('cuts the same arch templates and meshes the same plates', () => {
+    sameTemplates(templateViolin(key, true));
+  }, 60_000);
+
+  it('cuts the same neck template', () => {
+    const { c, q } = seededScroll(key);
+    const top = c.arching!.top;
+    calculateNeck(c, cerutiLongArch(c, top.arch, top.fluting ??= defaultFlutingParams(c)), top.fluting);
+    expect(calculateScroll(c)).toEqual([]);
+    const ours = defineNeckTemplate(q, solveNeck(q)!, solveScroll(q)!);
+    const theirs = cerutiNeckTemplate(c);
+    samePath(ours.outline, theirs.outline, 'template outline');
+    expect(ours.slots.length, 'slots').toBe(theirs.slots.length);
+    ours.slots.forEach((d, i) => samePath(d, theirs.slots[i], `slot ${i}`));
+    expect(ours.dots.length, 'dots').toBe(theirs.dots.length);
+    ours.dots.forEach((d, i) => samePath(d, theirs.dots[i], `dot ${i}`));
+    samePath(ours.eye, theirs.eye, 'eye');
   });
 
   it('reads the same ratios', () => {

@@ -1,0 +1,416 @@
+{
+  "key": "amati-violin-brookings",
+  "recipeName": "violin-family-recipe",
+  "fileName": "Violin - Nicolo Amati - Brookings",
+  "description": "Cremona, 1654. No dimensions published; height and width are placeholders.",
+  "source": "https://www.loc.gov/item/2022560097/",
+  "version": "1",
+  "params": {
+    "body": {
+      "height": 358,
+      "width": 209,
+      "overhang": 3,
+      "rib": 1
+    },
+    "bouts": {
+      "UBW": 168,
+      "U0R": 231,
+      "U1R": 63,
+      "L0R": 261,
+      "L1R": 67,
+      "useViolNeck": false,
+      "viol": null,
+      "CBW": 108,
+      "C0R": 74,
+      "C0Y": 197,
+      "useKellyC0": false
+    },
+    "corners": {
+      "UCr": {
+        "x": 76,
+        "y": 234.25
+      },
+      "LCr": {
+        "x": 89.5,
+        "y": 147.25
+      },
+      "U2R": 86,
+      "U3R": 26,
+      "U31R": 18,
+      "U31Start": -171.608122649,
+      "U31DoubleArc": false,
+      "useViolCornerUC": false,
+      "L2R": 95,
+      "L3R": 500,
+      "L31R": 28,
+      "L31Start": -158.003539594,
+      "L31DoubleArc": true,
+      "useViolCornerLC": false,
+      "C2R": 20,
+      "C21R": 14,
+      "C21Start": 96.18436598,
+      "C21DoubleArc": true,
+      "C1R": 24,
+      "C11R": 20,
+      "C11Start": -95.635190455,
+      "C11DoubleArc": true
+    },
+    "outerContour": {
+      "button": {
+        "width": 20,
+        "height": 10.5
+      },
+      "purflingOffset": 4.5,
+      "purflingChannelDepth": 1,
+      "U3Cutoff": -0.614058823,
+      "U31Cutoff": 0,
+      "C2Cutoff": 0,
+      "C21Cutoff": 20.745478943,
+      "C1Cutoff": 0,
+      "C11Cutoff": 8.538162569,
+      "L3Cutoff": 0,
+      "L31Cutoff": -1.405766457,
+      "upperRounding": 0.14,
+      "lowerRounding": 0.11
+    },
+    "fluting": {
+      "flutingEdge": 1.5,
+      "cornerGouge": true,
+      "top": {
+        "sweepRadius": 15,
+        "depth": 1,
+        "cBoutSweep": 7.5,
+        "useCBoutGouge": true
+      },
+      "back": {
+        "sweepRadius": 15,
+        "depth": 1,
+        "cBoutSweep": 7.5,
+        "useCBoutGouge": true
+      }
+    },
+    "fHoles": {
+      "UEye": {
+        "x": 22.25,
+        "y": 190.75,
+        "r": 3
+      },
+      "LEye": {
+        "x": 58,
+        "y": 140,
+        "r": 5
+      },
+      "URise": 5,
+      "LRise": 6,
+      "stem": {
+        "center": {
+          "x": 39.1,
+          "y": 163
+        },
+        "width": 5.75,
+        "angle": 93
+      }
+    },
+    "fHoleContours": {
+      "U1R": 8,
+      "U1End": 90,
+      "U2R": 12,
+      "U21DoubleArc": false,
+      "U21R": 12,
+      "U21Start": 0,
+      "U3R": 12,
+      "U3End": 73,
+      "UCut": {
+        "angleOnEye": 75,
+        "slope": 48,
+        "length": 4.8
+      },
+      "L1R": 10,
+      "L1End": -90,
+      "L2R": 14,
+      "L21DoubleArc": false,
+      "L21R": 14,
+      "L21Start": 0,
+      "L3R": 14,
+      "L3End": -98,
+      "LCut": {
+        "angleOnEye": 255.162149034,
+        "slope": -110,
+        "length": 4.5
+      },
+      "stemArcR": 36,
+      "stemArcsIndependent": false,
+      "S1R": 36,
+      "S2R": 36,
+      "S3R": 36,
+      "S4R": 36
+    },
+    "arching": {
+      "ribHeightLower": 31,
+      "ribHeightUpper": 29,
+      "top": {
+        "thickness": 3.5,
+        "arch": {
+          "type": "spline",
+          "height": 11,
+          "peak": 50,
+          "points": [
+            {
+              "t": 87.5,
+              "z": 3.4,
+              "mirror": false
+            },
+            {
+              "t": 75,
+              "z": 9,
+              "mirror": false
+            },
+            {
+              "t": 25,
+              "z": 9.3,
+              "mirror": false
+            },
+            {
+              "t": 12.5,
+              "z": 3.8,
+              "mirror": false
+            }
+          ]
+        },
+        "cross": {
+          "type": "cycloid",
+          "d": 40,
+          "pct": 90,
+          "peak": 50,
+          "points": [],
+          "stations": []
+        }
+      },
+      "back": {
+        "thickness": 3.5,
+        "arch": {
+          "type": "spline",
+          "height": 13,
+          "peak": 50,
+          "points": [
+            {
+              "t": 87.5,
+              "z": 3.6,
+              "mirror": false
+            },
+            {
+              "t": 75,
+              "z": 9.5,
+              "mirror": false
+            },
+            {
+              "t": 25,
+              "z": 10,
+              "mirror": false
+            },
+            {
+              "t": 12.5,
+              "z": 2.6,
+              "mirror": false
+            }
+          ]
+        },
+        "cross": {
+          "type": "cycloid",
+          "d": 40,
+          "pct": 90,
+          "peak": 50,
+          "points": [],
+          "stations": []
+        }
+      }
+    },
+    "neck": {
+      "length": 139,
+      "angle": 5.7,
+      "upperThickness": 13,
+      "lowerThickness": 15,
+      "topWidth": 24,
+      "rootWidth": 33,
+      "heelRadius": 10,
+      "mortiseDepth": 5,
+      "overstand": 5.5,
+      "nutHeight": 6,
+      "nutWidth": 24
+    },
+    "scroll": {
+      "style": "fourPoint",
+      "eye": {
+        "x": -15.89,
+        "y": 89.25,
+        "r": 3.75
+      },
+      "fitToNeck": false,
+      "pitch": 6.7,
+      "seedLength": 3.5,
+      "arcRadii": [
+        4.75,
+        5.25,
+        6.75,
+        9,
+        9.5,
+        12,
+        14.5,
+        17.75
+      ],
+      "S0R": 22.7,
+      "S0End": 84,
+      "S1R": 28.4,
+      "S1End": 165,
+      "S2R": 42,
+      "S2End": 210,
+      "backStraight": 26,
+      "S3R": 34,
+      "hang": -2,
+      "napeR": 9,
+      "napeCircle": false,
+      "flat": 15.5,
+      "F0R": 58.9,
+      "F0End": 41,
+      "frontStraight": 23,
+      "F1R": 8,
+      "widths": {
+        "hip": 27,
+        "throat": 20,
+        "duckTail": 27.5,
+        "foot": 27.5,
+        "backHip": 25,
+        "poll": 23.5,
+        "crown": 13,
+        "turn1Bottom": 26,
+        "turn2Top": 31,
+        "turn2Bottom": 35,
+        "eye": 42
+      },
+      "hipHeight": 6.5,
+      "backHipHeight": 0,
+      "wall": 4.5
+    },
+    "stringSetup": {
+      "bodyStop": 196.5,
+      "bridgeHeight": 33.5,
+      "nutThickness": 7.5,
+      "fingerboardLength": 270,
+      "fingerboardThickness": 5,
+      "fingerboardRadius": 42
+    }
+  },
+  "ratios": {
+    "HtoW": 1.71291866,
+    "UBtoLB": 0.803827751,
+    "U0toUBW": 1.44375,
+    "U1toUBW": 0.39375,
+    "LBtoH": 0.583798883,
+    "L0toLBW": 1.298507463,
+    "L1toLBW": 0.333333333,
+    "U2toUBW": 0.5375,
+    "U3toLBW": 0.129353234,
+    "U31toLBW": 0.089552239,
+    "L2toLBW": 0.472636816,
+    "L3toLBW": 2.487562189,
+    "L31toLBW": 0.139303483,
+    "UCYtoH": 0.654329609,
+    "LCYtoH": 0.411312849,
+    "CBWtoLBW": 0.516746411,
+    "C0toLBW": 0.368159204,
+    "C0YtoH": 0.55027933,
+    "C2toLBW": 0.099502488,
+    "C21toLBW": 0.069651741,
+    "C1toLBW": 0.119402985,
+    "C11toLBW": 0.099502488,
+    "FLtoW": 0.023923445,
+    "FUtoL": 0.6
+  },
+  "referenceImages": [
+    {
+      "id": "amati-violin-brookings-top",
+      "label": "Top (sp=2)",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154831:musihas-200154831.0002/full/pct:100.0/0/default.jpg",
+      "x": -112.90500000000003,
+      "y": -6.933073170989186,
+      "width": 231.01,
+      "height": 373.4661463419784,
+      "rotationDeg": 359.1,
+      "opacity": 0.4,
+      "suppressWhite": true,
+      "locked": true,
+      "scope": {
+        "except": [
+          "crossArching",
+          "volute",
+          "scroll",
+          "scrollWidths"
+        ]
+      },
+      "credit": {
+        "attribution": "Library of Congress, Music Division. Gift of Mrs. Brookings, 1938.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154831/?sp=2&st=image"
+      }
+    },
+    {
+      "id": "amati-violin-brookings-profiles",
+      "label": "Profiles, both sides (sp=3)",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154831:musihas-200154831.0003/full/pct:100.0/0/default.jpg",
+      "x": -273.8542666683075,
+      "y": -2.5499999999999994,
+      "width": 120.10853333661512,
+      "height": 388.3509033203125,
+      "rotationDeg": 0,
+      "opacity": 0.4,
+      "suppressWhite": true,
+      "locked": true,
+      "scope": {
+        "only": [
+          "longArching",
+          "neck",
+          "stringSetup"
+        ]
+      },
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0.5,
+        "bottom": 0
+      },
+      "credit": {
+        "attribution": "Library of Congress, Music Division. Gift of Mrs. Brookings, 1938.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154831/?sp=3&st=image"
+      }
+    },
+    {
+      "id": "amati-violin-brookings-scroll",
+      "label": "Scroll, side (sp=14)",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154831:musihas-200154831.0014/full/pct:100.0/0/default.jpg",
+      "x": -53.42981840965888,
+      "y": -10.480830383300777,
+      "width": 72.12547028220462,
+      "height": 132.6995849609375,
+      "rotationDeg": 0,
+      "opacity": 0.4,
+      "suppressWhite": true,
+      "locked": true,
+      "scope": {
+        "only": [
+          "volute",
+          "scroll",
+          "scrollWidths"
+        ]
+      },
+      "crop": {
+        "left": 0,
+        "top": 0.3063,
+        "right": 0.4927,
+        "bottom": 0
+      },
+      "credit": {
+        "attribution": "Library of Congress, Music Division. Gift of Mrs. Brookings, 1938.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154831/?sp=14&st=image"
+      }
+    }
+  ]
+}

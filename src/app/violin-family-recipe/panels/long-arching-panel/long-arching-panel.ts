@@ -1,8 +1,8 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TURN } from '../../../helpers/math/simpleGeometry';
+import { pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
 import { archSplineKnots, catenaryZAt, splineZAt, SPLINE_PEAK_SOURCE } from '../../../helpers/math/vibeMath';
-import { buildCatenaryPath, buildSplinePath } from '../../../helpers/math/pathVibes';
+import { buildCatenaryPath, buildSplinePath, occludePath } from '../../../helpers/math/pathVibes';
 import {
   renderGuideBaseline, renderGuideKnot, renderGuideMeasure, renderPath, renderPointHalo, renderSegment, renderSolveFailures,
 } from '../../../helpers/renderFuncs';
@@ -13,7 +13,7 @@ import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../theme/theme.service';
 import {
-  ArchTakeoff, GougeParams, LongArchCurve, LongArchingFailure, LongArchingSolve, LongArchParams, LongArchSolve, Plate,
+  ArchTakeoff, GougeParams, LongArchCurve, LongArchingFailure, LongArchingSolve, LongArchParams, LongArchSolve, OuterContourSolve, Plate,
   RenderLayer, RibTaper, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
 } from '../../violin-family-types';
 import { gougeHalfWidth, gougeProfileSlope, gougeProfileZ, renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
@@ -88,7 +88,7 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
       let f = solveFluting(p)!;
       let a = this.a = solveLongArching(p)!;
       let sideX = sideViewOffsetX(p);
-      let side = renderBodySideProfile(p, a, this.pal, { highlight: this.highlighted, showGuides: this.flags.showModuleGuides });
+      let side = renderBodySideProfile(p, a, o, this.pal, true, { highlight: this.highlighted, showGuides: this.flags.showModuleGuides });
       this.drawn.emit([
         renderOuterContour(p, o, this.pal, this.flags, false),
         renderFluting(p, f, this.pal, false),
@@ -155,19 +155,25 @@ export function sideViewOffsetX(p: ViolinFamilyParams): number {
   return p.body.width / 2 + p.body.overhang + p.body.rib + 20 + a.back.thickness + a.back.arch.height;
 }
 
-// the body's side profile cut down the centreline: the rib between the two plates, the top growing
-// up off it and the back down, each plate's channel at both caps and its arch running out of them.
-// The top plate is drawn flat and tilted onto the rib line by one transform, so the arch, channel
-// and guides know nothing of the taper. Ground, everything draws neutral: for a later panel where
-// the body is what the neck stands on
+// the body's side profile: the rib between the two plates, the top growing up off it and the back
+// down. As the current module it is cut down the centreline, each plate's channel at both caps and
+// its arch running out of them; otherwise it is seen from the side, the plate's edge standing its
+// full length over the channel and the arch below it, crossed where each corner's flat ends. The
+// top plate is drawn flat and tilted onto the rib line by one transform, so the arch, channel and
+// guides know nothing of the taper. Ground, everything draws neutral: for a later panel where the
+// body is what the neck stands on
 export const renderBodySideProfile = (
   p: ViolinFamilyParams,
   a: LongArchingSolve,
+  o: OuterContourSolve,
   pal: PanelPalette,
+  currentModule: boolean,
   opts: { highlight?: { plate: Plate; source: number } | null; showGuides?: boolean; ground?: boolean },
 ) => (g: any, ui: any): void => {
   let taper = a.ribs;
   if (!taper) return;
+  let c = o.corners;
+  let flatEnds = [c.U31 ?? c.U3, c.C21 ?? c.C2, c.C11 ?? c.C1, c.L31 ?? c.L3].flatMap(arc => arc ? [pointOnCircle(arc, arc.end).y] : []);
   let rib = ribLine(p, taper);
   renderPath(`M 0 ${rib.yLow} L ${rib.zLow} ${rib.yLow} L ${rib.zHigh} ${rib.yHigh} L 0 ${rib.yHigh} Z`, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   for (let corner of [p.corners!.UCr, p.corners!.LCr]) {
@@ -197,13 +203,21 @@ export const renderBodySideProfile = (
     let solved = a[plate];
 
     renderSegment(new Pt(innerZ, 0), new Pt(innerZ, p.body.height), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-    for (let [yEnd, yLand] of [[0, edge], [p.body.height, p.body.height - edge]] as const) {
-      renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-      renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+    let slab = `M ${innerZ} 0 L ${outerZ} 0 L ${outerZ} ${p.body.height} L ${innerZ} ${p.body.height} Z`;
+    if (currentModule) {
+      for (let [yEnd, yLand] of [[0, edge], [p.body.height, p.body.height - edge]] as const) {
+        renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+        renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+      }
+      // the channel is the tool, not a curve fitted to the arch, so it's the same at both caps
+      renderPath(channelCapPath(p, gouge, outerZ, sign, true, solved?.takeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
+      renderPath(channelCapPath(p, gouge, outerZ, sign, false, solved?.farTakeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
+    } else {
+      renderSegment(new Pt(innerZ, 0), new Pt(outerZ, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+      renderSegment(new Pt(innerZ, p.body.height), new Pt(outerZ, p.body.height), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+      renderSegment(new Pt(outerZ, 0), new Pt(outerZ, p.body.height), color, STROKE_WEIGHT.section)(g, ui);
+      for (let y of flatEnds) renderSegment(new Pt(innerZ, y), new Pt(outerZ, y), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
     }
-    // the channel is the tool, not a curve fitted to the arch, so it's the same at both caps
-    renderPath(channelCapPath(p, gouge, outerZ, sign, true, solved?.takeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
-    renderPath(channelCapPath(p, gouge, outerZ, sign, false, solved?.farTakeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
     if (!solved) return;
 
     let { span, yStart, lowered, takeoff, farZ } = solved;
@@ -214,7 +228,8 @@ export const renderBodySideProfile = (
         if (knot.source === opts.highlight.source) renderPointHalo(new Pt(xBase + sign * knot.z, yStart + knot.t * span), color)(g, ui);
       }
     }
-    renderPath(buildArchPathFor(lowered, span, yStart, xBase, sign, farZ), color, STROKE_WEIGHT.section)(g, ui);
+    let arch = buildArchPathFor(lowered, span, yStart, xBase, sign, farZ);
+    renderPath(currentModule ? arch : occludePath(arch, slab).visible, color, STROKE_WEIGHT.section)(g, ui);
 
     // the guide takes the arch as typed and the plate's outer surface, not the lowered arch against
     // its takeoff: the takeoff moves with the channel, and a guide counting from it would label a

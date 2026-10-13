@@ -594,6 +594,128 @@ export function scrollPathStretches(p: ViolinFamilyParams, s: ScrollSolve): Scro
   };
 }
 
+// the back unrolled into a strip, the duck tail to the bottom of the second turn: up the strip is
+// distance along the side profile, across it the back's width there, so laid on the carved back it
+// bends back into place and the maker draws round it. Below the path's start it is the duck tail's
+// round, closing to a point at the duck tail; a foot wider than the round steps out to it level, as
+// the shoulders do
+export type ScrollBackStrip = { outline: Pt[]; length: number };
+
+export function scrollBackStrip(p: ViolinFamilyParams, s: ScrollSolve): ScrollBackStrip {
+  let path = scrollPath(p, s);
+  let width = pathWidth(p, path);
+  let r = duckTailRadius(p);
+  let roundTop = path.at(0).y;
+  let end = path.turns[2] ?? path.length;
+  let up = (at: number) => at + path.round;
+  let step = 0.25;
+
+  let side: Pt[] = [];
+  let n = Math.ceil(path.round / step);
+  for (let k = 0; k <= n && n > 0; k++) {
+    let at = -path.round + path.round * k / n;
+    side.push(new Pt(Math.sqrt(Math.max(r * r - (roundTop - path.at(at).y) ** 2, 0)), up(at)));
+  }
+
+  // the hip and the poll are corners in the width, so the strip takes them exactly
+  let hipY = backHipY(p, path);
+  let hip = hipY === null ? null : riseAlongRun(path, hipY, path.crown);
+  let m = Math.max(Math.ceil(end / step), 1);
+  let along = Array.from({ length: m + 1 }, (_, k) => end * k / m);
+  for (let at of [hip, path.poll]) if (at !== null && at < end) along.push(at);
+  along.sort((a, b) => a - b);
+  for (let at of along) side.push(new Pt(width(at) / 2, up(at)));
+
+  return { outline: [...side, ...[...side].reverse().map(pt => new Pt(-pt.x, pt.y))], length: up(end) };
+}
+
+// the back's widths set out for a compass walk, the older way: the maker walks a compass up the
+// back and marks each width off the centreline. Each station sits along the spine the straight
+// compass distance from the last, not the distance along the path, so a compass set between two
+// crosshairs steps the same on the wood, and a circle its width across sets the compass for the
+// width. The duck tail is at the bottom, the foot about it where it is wider, the hip where there
+// is one, then the poll, and from there `steps` equal compass steps up the volute, the last landing
+// on the second turn's bottom. The step is found by halving: the stretch they divide, `volute`, is
+// the path's own length from the poll, while the compass cuts each bend short, so the step depends
+// on how many there are and the chords never sum to it. A violin's volute runs about 175 mm, a
+// cello's 375, so a count rather than a step size keeps the walk alike on every size of instrument
+export type CompassStation = { at: Pt; along: number; half: number };
+export type CompassWalk = { stations: CompassStation[]; length: number; step: number; volute: number };
+export const COMPASS_STEPS = 10;
+
+export function scrollCompassWalk(p: ViolinFamilyParams, s: ScrollSolve, steps = COMPASS_STEPS): CompassWalk {
+  let path = scrollPath(p, s);
+  let width = pathWidth(p, path);
+  let w = p.scroll!.widths;
+  let end = path.turns[2] ?? path.length;
+  steps = Math.max(1, Math.round(steps));
+
+  let marks: { s: number; half: number }[] = [{ s: 0, half: w.duckTail / 2 }];
+  if (w.foot > w.duckTail + 1e-9) marks.push({ s: 0, half: w.foot / 2 });
+  let hipY = backHipY(p, path);
+  if (hipY !== null) {
+    let hip = riseAlongRun(path, hipY, path.crown);
+    marks.push({ s: hip, half: width(hip) / 2 });
+  }
+  if (path.poll !== null && path.poll < end) marks.push({ s: path.poll, half: width(path.poll) / 2 });
+
+  // the first point along the path a compass step from `from`, found by marching then halving, or
+  // null where the end comes first
+  let onward = (from: number, step: number): number | null => {
+    let origin = path.at(from);
+    let reach = (at: number) => dist(origin, path.at(at));
+    let at = from;
+    while (at < end && reach(at) < step) at = Math.min(at + 0.5, end);
+    if (reach(at) < step) return null;
+    let lo = Math.max(at - 0.5, from), hi = at;
+    for (let i = 0; i < 40; i++) {
+      let mid = (lo + hi) / 2;
+      if (reach(mid) < step) lo = mid; else hi = mid;
+    }
+    return hi;
+  };
+  // how far short of the end the last step falls with a step this long, negative once it overshoots.
+  // The last step is found like the rest, the first point along the path a step away, never struck
+  // straight at the end: the spiral passes within a step of the end from stations still turns away,
+  // and an arc struck from one of those would cross the back twice
+  let short = (step: number): number => {
+    let at: number | null = from;
+    for (let k = 0; k < steps && at !== null; k++) at = onward(at, step);
+    return at === null ? -1 : end - at;
+  };
+
+  let from = marks.at(-1)!.s;
+  let volute = end - from;
+  let step = 0;
+  if (volute > 1e-6) {
+    // the step is between the straight distance and the path's length, each over the count. Too few
+    // steps and a chord spans a bend the path curls back round, so no step lands the last on the
+    // end exactly: it then comes as close as it can, and the last step is short of the rest
+    let lo = dist(path.at(from), path.at(end)) / steps, hi = volute / steps;
+    for (let i = 0; i < 48; i++) {
+      let mid = (lo + hi) / 2;
+      if (short(mid) > 0) lo = mid; else hi = mid;
+    }
+    step = hi;
+    for (let k = 1; k < steps; k++) {
+      let next = onward(from, step);
+      if (next === null) break;
+      from = next;
+      marks.push({ s: from, half: width(from) / 2 });
+    }
+    marks.push({ s: end, half: width(end) / 2 });
+  }
+
+  let stations: CompassStation[] = [];
+  let along = 0;
+  for (let m of marks) {
+    let at = path.at(m.s);
+    if (stations.length) along += dist(stations.at(-1)!.at, at);
+    stations.push({ at, along, half: m.half });
+  }
+  return { stations, length: along, step, volute };
+}
+
 // the front from the nut up to the throat the same way, as wide as the pegbox at each height
 export function scrollFrontWidths(p: ViolinFamilyParams, s: ScrollSolve): Pt3D[] {
   let front = scrollFront(p, s);

@@ -107,7 +107,7 @@ export class NeckPanel implements ViolinFamilyPanel, OnInit {
       let o = solveOuterContour(p)!;
       let sideX = sideViewOffsetX(p);
       let side = [
-        renderBodySideProfile(p, a, this.pal, { ground: true }),
+        renderBodySideProfile(p, a, o, this.pal, false, { ground: true }),
         renderNeck(p, n, this.pal, { guides: this.flags.showModuleGuides }),
         renderNeckHighlight(p, n, this.highlighted, 'side'),
         renderSolveFailures(n.failures, this.pal.alert),

@@ -1,0 +1,314 @@
+{
+  "key": "stradivari-violin-ward",
+  "recipeName": "violin-family-recipe",
+  "fileName": "Violin - Antonio Stradivari - Ward",
+  "description": "Cremona, 1700",
+  "source": "https://www.loc.gov/item/2022560100/",
+  "version": "1",
+  "params": {
+    "body": {
+      "height": 354,
+      "width": 206,
+      "overhang": 3.3,
+      "rib": 1
+    },
+    "bouts": {
+      "UBW": 165,
+      "U0R": 157,
+      "U1R": 59,
+      "L0R": 330,
+      "L1R": 67,
+      "useViolNeck": false,
+      "viol": null,
+      "CBW": 104,
+      "C0R": 91,
+      "C0Y": 196,
+      "useKellyC0": false
+    },
+    "corners": {
+      "UCr": {
+        "x": 71.75,
+        "y": 232
+      },
+      "LCr": {
+        "x": 85.75,
+        "y": 143
+      },
+      "U2R": 90,
+      "U3R": 300,
+      "U31R": 21,
+      "U31Start": 162.997544798,
+      "U31DoubleArc": true,
+      "useViolCornerUC": false,
+      "L2R": 80,
+      "L3R": 300,
+      "L31R": 20,
+      "L31Start": -158.470068872,
+      "L31DoubleArc": true,
+      "useViolCornerLC": false,
+      "C2R": 17,
+      "C21R": 16,
+      "C21Start": 103.441264502,
+      "C21DoubleArc": true,
+      "C1R": 33,
+      "C11R": 17,
+      "C11Start": -110.030296906,
+      "C11DoubleArc": true
+    },
+    "outerContour": {
+      "button": {
+        "width": 20,
+        "height": 14.69
+      },
+      "purflingOffset": 4.9,
+      "purflingChannelDepth": 1,
+      "U3Cutoff": 0,
+      "U31Cutoff": 0.639835591,
+      "C2Cutoff": 0,
+      "C21Cutoff": 11.811651801,
+      "C1Cutoff": 0,
+      "C11Cutoff": 13.770847629,
+      "L3Cutoff": 0,
+      "L31Cutoff": 2.311309412,
+      "upperRounding": 0.21,
+      "lowerRounding": 0.1
+    },
+    "fluting": {
+      "flutingEdge": 1.65,
+      "cornerGouge": true,
+      "top": {
+        "sweepRadius": 15,
+        "depth": 1,
+        "cBoutSweep": 7.5,
+        "useCBoutGouge": true
+      },
+      "back": {
+        "sweepRadius": 15,
+        "depth": 1,
+        "cBoutSweep": 7.5,
+        "useCBoutGouge": true
+      }
+    },
+    "fHoles": {
+      "UEye": {
+        "x": 23,
+        "y": 187.25,
+        "r": 3.25
+      },
+      "LEye": {
+        "x": 58.25,
+        "y": 136.5,
+        "r": 4.5
+      },
+      "URise": 5,
+      "LRise": 6.35,
+      "stem": {
+        "center": {
+          "x": 38.75,
+          "y": 160.316666667
+        },
+        "width": 5.3,
+        "angle": 94.3
+      }
+    },
+    "fHoleContours": {
+      "U1R": 7.5,
+      "U1End": 60,
+      "U2R": 15,
+      "U21DoubleArc": false,
+      "U21R": 15,
+      "U21Start": 0,
+      "U3R": 15,
+      "U3End": 56,
+      "UCut": {
+        "angleOnEye": 74.78312037,
+        "slope": 51,
+        "length": 5.75
+      },
+      "L1R": 9.7,
+      "L1End": -120,
+      "L2R": 15,
+      "L21DoubleArc": false,
+      "L21R": 15,
+      "L21Start": 0,
+      "L3R": 15,
+      "L3End": -113,
+      "LCut": {
+        "angleOnEye": 262.78312037,
+        "slope": -129,
+        "length": 6.75
+      },
+      "stemArcR": 30,
+      "stemArcsIndependent": false,
+      "S1R": 30,
+      "S2R": 30,
+      "S3R": 30,
+      "S4R": 30
+    },
+    "arching": {
+      "ribHeightLower": 30.25,
+      "ribHeightUpper": 28.5,
+      "top": {
+        "thickness": 3.75,
+        "arch": {
+          "type": "spline",
+          "height": 12,
+          "peak": 50,
+          "points": [
+            {
+              "t": 15,
+              "z": 4.5,
+              "mirror": false
+            },
+            {
+              "t": 31,
+              "z": 10,
+              "mirror": false
+            },
+            {
+              "t": 76,
+              "z": 9.75,
+              "mirror": false
+            },
+            {
+              "t": 91,
+              "z": 3.05,
+              "mirror": false
+            }
+          ]
+        },
+        "cross": {
+          "type": "cycloid",
+          "d": 40,
+          "pct": 90,
+          "peak": 50,
+          "points": [],
+          "stations": []
+        }
+      },
+      "back": {
+        "thickness": 4.5,
+        "arch": {
+          "type": "spline",
+          "height": 11.25,
+          "peak": 50,
+          "points": [
+            {
+              "t": 15,
+              "z": 3.4,
+              "mirror": false
+            },
+            {
+              "t": 30,
+              "z": 9.5,
+              "mirror": false
+            },
+            {
+              "t": 62.5,
+              "z": 10.5,
+              "mirror": false
+            },
+            {
+              "t": 75,
+              "z": 8,
+              "mirror": false
+            },
+            {
+              "t": 87.5,
+              "z": 3.05,
+              "mirror": false
+            }
+          ]
+        },
+        "cross": {
+          "type": "cycloid",
+          "d": 40,
+          "pct": 90,
+          "peak": 50,
+          "points": [],
+          "stations": []
+        }
+      }
+    }
+  },
+  "ratios": {
+    "HtoW": 1.718446602,
+    "UBtoLB": 0.800970874,
+    "U0toUBW": 1.003836317,
+    "U1toUBW": 0.377237852,
+    "LBtoH": 0.581920904,
+    "L0toLBW": 1.671732523,
+    "L1toLBW": 0.339412361,
+    "U2toUBW": 0.57544757,
+    "U3toLBW": 1.519756839,
+    "U31toLBW": 0.106382979,
+    "L2toLBW": 0.40526849,
+    "L3toLBW": 1.519756839,
+    "L31toLBW": 0.101317123,
+    "UCYtoH": 0.655367232,
+    "LCYtoH": 0.403954802,
+    "CBWtoLBW": 0.504854369,
+    "C0toLBW": 0.460992908,
+    "C0YtoH": 0.553672316,
+    "C2toLBW": 0.086119554,
+    "C21toLBW": 0.081053698,
+    "C1toLBW": 0.167173252,
+    "C11toLBW": 0.086119554,
+    "FLtoW": 0.02184466,
+    "FUtoL": 0.722222222
+  },
+  "referenceImages": [
+    {
+      "id": "ward-top",
+      "label": "Top (sp=2)",
+      "scope": {
+        "except": [
+          "fluting",
+          "longArching",
+          "crossArching"
+        ]
+      },
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0002/full/pct:100.0/0/default.jpg",
+      "x": -107.33233320122301,
+      "y": -9.33460350036621,
+      "width": 217.06466640244588,
+      "height": 372.6486110687256,
+      "rotationDeg": 0,
+      "opacity": 0.4,
+      "suppressWhite": true,
+      "locked": true,
+      "credit": {
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154810/?sp=2&st=image"
+      }
+    },
+    {
+      "id": "ward-profiles",
+      "label": "Profiles, both sides (sp=3)",
+      "scope": {
+        "only": [
+          "longArching"
+        ]
+      },
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0003/full/pct:100.0/0/default.jpg",
+      "x": -40.60670187611326,
+      "y": -4.4277,
+      "width": 121.35340375222657,
+      "height": 382.6171592285156,
+      "rotationDeg": 0.2,
+      "opacity": 0.4,
+      "suppressWhite": true,
+      "locked": true,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0.51,
+        "bottom": 0
+      },
+      "credit": {
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154810/?sp=3&st=image"
+      }
+    }
+  ]
+}

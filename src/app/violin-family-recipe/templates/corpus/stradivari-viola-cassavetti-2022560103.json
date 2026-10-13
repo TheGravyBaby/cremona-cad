@@ -1,0 +1,309 @@
+{
+  "key": "stradivari-viola-cassavetti",
+  "recipeName": "violin-family-recipe",
+  "fileName": "Viola - Antonio Stradivari - Cassavetti",
+  "description": "Cremona, 1727. LoC catalogue dimensions; no arching published.",
+  "source": "https://www.loc.gov/item/2022560103/",
+  "version": "1",
+  "params": {
+    "body": {
+      "height": 410.6,
+      "width": 237,
+      "overhang": 3,
+      "rib": 1
+    },
+    "bouts": {
+      "UBW": 182,
+      "U0R": 176,
+      "U1R": 67,
+      "L0R": 231,
+      "L1R": 83,
+      "useViolNeck": false,
+      "viol": null,
+      "CBW": 122,
+      "C0R": 94,
+      "C0Y": 233,
+      "useKellyC0": false
+    },
+    "corners": {
+      "UCr": {
+        "x": 85.25,
+        "y": 272.25
+      },
+      "LCr": {
+        "x": 102.5,
+        "y": 175.75
+      },
+      "U2R": 120,
+      "U3R": 56,
+      "U31R": 24,
+      "U31Start": -173.075311525,
+      "U31DoubleArc": true,
+      "useViolCornerUC": false,
+      "L2R": 125,
+      "L3R": 38,
+      "L31R": 24,
+      "L31Start": 168.75011504,
+      "L31DoubleArc": false,
+      "useViolCornerLC": false,
+      "C2R": 24,
+      "C21R": 16,
+      "C21Start": 106.686617195,
+      "C21DoubleArc": true,
+      "C1R": 31,
+      "C11R": 22,
+      "C11Start": -89.207458044,
+      "C11DoubleArc": true
+    },
+    "outerContour": {
+      "button": {
+        "width": 20,
+        "height": 14.72
+      },
+      "purflingOffset": 5.45,
+      "purflingChannelDepth": 1.2,
+      "U3Cutoff": 0,
+      "U31Cutoff": 2.001971617,
+      "C2Cutoff": 0,
+      "C21Cutoff": 16.666651653,
+      "C1Cutoff": 0,
+      "C11Cutoff": 8.630199026,
+      "L3Cutoff": -4.030206814,
+      "L31Cutoff": 0,
+      "upperRounding": 0.06,
+      "lowerRounding": 0.23
+    },
+    "fluting": {
+      "flutingEdge": 1.5,
+      "cornerGouge": true,
+      "top": {
+        "sweepRadius": 18,
+        "depth": 1.5,
+        "cBoutSweep": 9,
+        "useCBoutGouge": true
+      },
+      "back": {
+        "sweepRadius": 18,
+        "depth": 1.5,
+        "cBoutSweep": 9,
+        "useCBoutGouge": true
+      }
+    },
+    "fHoles": {
+      "UEye": {
+        "x": 29.5,
+        "y": 223.75,
+        "r": 4
+      },
+      "LEye": {
+        "x": 66.25,
+        "y": 168,
+        "r": 4.25
+      },
+      "URise": 5.5,
+      "LRise": 7.75,
+      "stem": {
+        "center": {
+          "x": 46.25,
+          "y": 195
+        },
+        "width": 5.5,
+        "angle": 94
+      }
+    },
+    "fHoleContours": {
+      "U1R": 9,
+      "U1End": 90,
+      "U2R": 9,
+      "U21DoubleArc": false,
+      "U21R": 9,
+      "U21Start": 0,
+      "U3R": 18,
+      "U3End": 46,
+      "UCut": {
+        "angleOnEye": 68.392584324,
+        "slope": 39,
+        "length": 6.5
+      },
+      "L1R": 10,
+      "L1End": -121,
+      "L2R": 18,
+      "L21DoubleArc": false,
+      "L21R": 18,
+      "L21Start": 0,
+      "L3R": 19,
+      "L3End": -125,
+      "LCut": {
+        "angleOnEye": 263.392584324,
+        "slope": -130,
+        "length": 8.25
+      },
+      "stemArcR": 43,
+      "stemArcsIndependent": false,
+      "S1R": 43,
+      "S2R": 43,
+      "S3R": 43,
+      "S4R": 43
+    },
+    "arching": {
+      "ribHeightLower": 35,
+      "ribHeightUpper": 32.75,
+      "top": {
+        "thickness": 4,
+        "arch": {
+          "type": "spline",
+          "height": 17,
+          "peak": 50,
+          "points": [
+            {
+              "t": 91,
+              "z": 6,
+              "mirror": false
+            },
+            {
+              "t": 75,
+              "z": 14.4,
+              "mirror": false
+            },
+            {
+              "t": 25,
+              "z": 14.4,
+              "mirror": false
+            },
+            {
+              "t": 12.5,
+              "z": 9.4,
+              "mirror": false
+            }
+          ]
+        },
+        "cross": {
+          "type": "cycloid",
+          "d": 40,
+          "pct": 90,
+          "peak": 50,
+          "points": [],
+          "stations": []
+        }
+      },
+      "back": {
+        "thickness": 4,
+        "arch": {
+          "type": "spline",
+          "height": 13,
+          "peak": 50,
+          "points": [
+            {
+              "t": 87.5,
+              "z": 5.5,
+              "mirror": false
+            },
+            {
+              "t": 75,
+              "z": 10,
+              "mirror": false
+            },
+            {
+              "t": 25,
+              "z": 10.5,
+              "mirror": false
+            },
+            {
+              "t": 12.5,
+              "z": 5,
+              "mirror": false
+            }
+          ]
+        },
+        "cross": {
+          "type": "cycloid",
+          "d": 40,
+          "pct": 90,
+          "peak": 50,
+          "points": [],
+          "stations": []
+        }
+      }
+    }
+  },
+  "ratios": {
+    "HtoW": 1.732489451,
+    "UBtoLB": 0.767932489,
+    "U0toUBW": 1.011494253,
+    "U1toUBW": 0.385057471,
+    "LBtoH": 0.577204092,
+    "L0toLBW": 1.008733624,
+    "L1toLBW": 0.362445415,
+    "U2toUBW": 0.689655172,
+    "U3toLBW": 0.244541485,
+    "U31toLBW": 0.104803493,
+    "L2toLBW": 0.545851528,
+    "L3toLBW": 0.165938865,
+    "L31toLBW": 0.104803493,
+    "UCYtoH": 0.663054067,
+    "LCYtoH": 0.428032148,
+    "CBWtoLBW": 0.514767932,
+    "C0toLBW": 0.410480349,
+    "C0YtoH": 0.56746225,
+    "C2toLBW": 0.104803493,
+    "C21toLBW": 0.069868996,
+    "C1toLBW": 0.135371179,
+    "C11toLBW": 0.096069869,
+    "FLtoW": 0.017932489,
+    "FUtoL": 0.941176471
+  },
+  "referenceImages": [
+    {
+      "id": "stradivari-viola-cassavetti-top",
+      "label": "Top (sp=2)",
+      "scope": {
+        "except": [
+          "fluting",
+          "longArching",
+          "crossArching"
+        ]
+      },
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154830:musihas-200154830.0002/full/pct:100.0/0/default.jpg",
+      "x": -123.58262698406119,
+      "y": -2.2049999999999725,
+      "width": 251.32538275230212,
+      "height": 421.01,
+      "rotationDeg": 359.7,
+      "opacity": 0.4,
+      "suppressWhite": true,
+      "locked": true,
+      "credit": {
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154830/?sp=2&st=image"
+      }
+    },
+    {
+      "id": "stradivari-viola-cassavetti-profiles",
+      "label": "Profiles, both sides (sp=3)",
+      "scope": {
+        "only": [
+          "longArching"
+        ]
+      },
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154830:musihas-200154830.0003/full/pct:100.0/0/default.jpg",
+      "x": -59.47749999999998,
+      "y": -2.465000000000001,
+      "width": 160.01473477051314,
+      "height": 449.852646484375,
+      "rotationDeg": 359.6,
+      "opacity": 0.4,
+      "suppressWhite": true,
+      "locked": false,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0.5,
+        "bottom": 0
+      },
+      "credit": {
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154830/?sp=3&st=image"
+      }
+    }
+  ]
+}
