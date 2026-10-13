@@ -20,6 +20,7 @@ export interface ViolinFamilyParams {
   fHoles?: FholePlacementParams;
   fHoleContours?: FholeContourParams;
   arching?: ArchingParams;
+  neck?: NeckParams;
 }
 
 // the outer envelope of the finished body. Every field is a number once typed, null while a field
@@ -204,6 +205,26 @@ export interface CrossArchPoint {
   x: number;
   z: number;
   mirror: boolean;
+}
+
+// the neck set in the side elevation and its widths in plan. Length runs along the fingerboard
+// plane from the mortise floor to the nut's foot, which it places; the angle is the fingerboard
+// plane's tilt off the top plate's square, in degrees. The thicknesses are the wood alone, the upper
+// square to that plane at the nut, the lower through the button tip. The overstand is how far the
+// fingerboard plane stands off the plate's edge at the root. The nut's height and width shape the
+// scroll; they are seeded here, with the neck they sit on
+export interface NeckParams {
+  length: number;
+  angle: number;
+  upperThickness: number;
+  lowerThickness: number;
+  topWidth: number;
+  rootWidth: number;
+  heelRadius: number;
+  mortiseDepth: number;
+  overstand: number;
+  nutHeight: number;
+  nutWidth: number;
 }
 
 export const DEFAULT_VIOLIN_FAMILY_PARAMS: ViolinFamilyParams = {
@@ -544,6 +565,30 @@ export interface CrossArchingSolve {
   failures: CrossArchingFailure[];
 }
 
+export type NeckKey = 'neck' | 'heel';
+export type NeckFailure = SolveFailure<NeckKey>;
+
+// the neck in the side elevation, in the body section's frame (x up off the back's inner face, y up
+// the body). `root` is where the fingerboard plane stands off the plate edge, `glue` where it
+// crosses the mortise floor, `neckTop` the nut's foot; `backNut`/`backRoot` the back line's ends,
+// `lowerThickness` the line the heel's foot is cut along. The heel is null where it can't stand,
+// and the back then runs straight to the root; `heelFace` is the flat on to the tip when the arc
+// stops short of it
+export interface NeckSolve {
+  plateEdge: Pt | null;
+  root: Pt | null;
+  glue: Pt | null;
+  neckTop: Pt | null;
+  backNut: Pt | null;
+  backRoot: Pt | null;
+  plateAtMortise: Pt | null;
+  lowerThickness: [Pt, Pt] | null;
+  tip: Pt | null;
+  heel: Arc | null;
+  heelFace: [Pt, Pt] | null;
+  failures: NeckFailure[];
+}
+
 // named <thing>to<datum>. The radius ratios are taken against the bout's inner width (the width
 // less the inset both sides), as the Ceruti recipe always measured them, so the two compare
 export interface ViolinFamilyRatios {
@@ -642,7 +687,7 @@ export const VIOLIN_FAMILY_SCHEMA_VERSION = '1';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface {
