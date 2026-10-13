@@ -33,17 +33,17 @@
     </div>
   </div>
 
-  <div class="setting-row" docTip="prefs.barAutoHide">
-    <span class="setting-label">Auto-hide top bar</span>
-    <button type="button" role="switch" class="switch" [class.on]="settings.barAutoHide()"
-      [attr.aria-checked]="settings.barAutoHide()" aria-label="Auto-hide top bar"
-      (click)="settings.set('barAutoHide', !settings.barAutoHide())"></button>
-  </div>
-
   <div class="setting-row" docTip="prefs.fitOnPanelChange">
     <span class="setting-label">Fit view on panel change</span>
     <button type="button" role="switch" class="switch" [class.on]="settings.fitOnPanelChange()"
       [attr.aria-checked]="settings.fitOnPanelChange()" aria-label="Fit view on panel change"
       (click)="settings.set('fitOnPanelChange', !settings.fitOnPanelChange())"></button>
+  </div>
+
+   <div class="setting-row" docTip="prefs.barAutoHide">
+    <span class="setting-label">Auto-hide top bar</span>
+    <button type="button" role="switch" class="switch" [class.on]="settings.barAutoHide()"
+      [attr.aria-checked]="settings.barAutoHide()" aria-label="Auto-hide top bar"
+      (click)="settings.set('barAutoHide', !settings.barAutoHide())"></button>
   </div>
 </div>

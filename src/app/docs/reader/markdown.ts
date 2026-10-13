@@ -1,5 +1,5 @@
 // The subset of Markdown the articles use: headings, paragraphs, lists, tables, and inline code,
-// bold, italic, external links and [[wiki links]]. Anything else renders as text. Output goes
+// bold, italic, web and mail links and [[wiki links]]. Anything else renders as text. Output goes
 // through Angular's [innerHTML] sanitiser, so the article html carries nothing it would strip.
 
 import { LINK_PATTERN } from './article';
@@ -24,7 +24,7 @@ function inline(text: string, resolve: LinkResolver): string {
         ? `<a class="doc-link" href="${target.href}">${text}</a>`
         : `<span class="doc-link-missing" title="no article: ${slug.trim()}">${text}</span>`;
     });
-    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    s = s.replace(/\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
     s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
     return s;
@@ -109,13 +109,71 @@ export function renderMarkdown(md: string, resolve: LinkResolver): string {
   return out.join('\n');
 }
 
+// A page is prose with the odd component between: a known tag on a line of its own, opened and
+// closed, with its markdown inside. Each becomes a piece the doc page draws as a component.
+export const COMPONENTS = ['carousel'] as const;
+export type ComponentName = typeof COMPONENTS[number];
+
+export interface Slide { src: string; alt: string; caption: string }
+export type PagePiece =
+  | { kind: 'prose'; html: string }
+  | { kind: 'carousel'; slides: Slide[] };
+
+const TAG = /^<\/?([a-z][a-z-]*)>$/;
+const FIGURE = /^!\[([^\]]*)\]\((\S+)\)$/;
+
+function blocks(md: string): ({ prose: string } | { tag: string; lines: string[] })[] {
+  const lines = md.replace(/\r\n/g, '\n').split('\n');
+  const out: ({ prose: string } | { tag: string; lines: string[] })[] = [];
+  let prose: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const open = /^<([a-z][a-z-]*)>$/.exec(lines[i].trim());
+    const close = open ? lines.findIndex((l, j) => j > i && l.trim() === `</${open[1]}>`) : -1;
+    if (!open || close < 0) { prose.push(lines[i]); continue; }
+    if (prose.length) out.push({ prose: prose.join('\n') });
+    prose = [];
+    out.push({ tag: open[1], lines: lines.slice(i + 1, close).map(l => l.trim()).filter(Boolean) });
+    i = close;
+  }
+  if (prose.length) out.push({ prose: prose.join('\n') });
+  return out;
+}
+
+// what a reader would trip on: a tag nobody defined, one left open, or the wrong thing inside
+export function componentProblems(md: string): string[] {
+  const problems: string[] = [];
+  for (const b of blocks(md)) {
+    if ('prose' in b) {
+      for (const line of b.prose.split('\n')) {
+        if (TAG.test(line.trim())) problems.push(`"${line.trim()}" is not an opened and closed component`);
+      }
+    } else if (!(COMPONENTS as readonly string[]).includes(b.tag)) {
+      problems.push(`<${b.tag}> is not a component; the components are ${COMPONENTS.join(', ')}`);
+    } else if (b.tag === 'carousel') {
+      if (!b.lines.length) problems.push('<carousel> is empty');
+      for (const l of b.lines) if (!FIGURE.test(l)) problems.push(`<carousel> holds images only, not "${l}"`);
+    }
+  }
+  return problems;
+}
+
+export function renderPage(md: string, resolve: LinkResolver): PagePiece[] {
+  return blocks(md).map((b): PagePiece => {
+    if ('prose' in b) return { kind: 'prose', html: renderMarkdown(b.prose, resolve) };
+    const slides = b.lines.map(l => FIGURE.exec(l)).filter((m): m is RegExpExecArray => !!m)
+      .map(([, alt, src]) => ({ src, alt, caption: inline(alt, resolve) }));
+    return { kind: 'carousel', slides };
+  });
+}
+
 // Markdown reduced to the words, for a tooltip or a search index.
 export function markdownToText(md: string, titleFor: (slug: string) => string | undefined = () => undefined): string {
   return md
+    .replace(/^\s*<\/?[a-z][a-z-]*>\s*$/gm, '')
     .replace(/`([^`]*)`/g, '$1')
     .replace(/^!\[([^\]]*)\]\(\S+\)$/gm, '$1')
     .replace(LINK_PATTERN, (_, slug: string, label?: string) => label?.trim() || titleFor(slug.trim()) || slug.trim())
-    .replace(/\[([^\]]+)\]\(https?:\/\/[^)\s]+\)/g, '$1')
+    .replace(/\[([^\]]+)\]\((?:https?:\/\/|mailto:)[^)\s]+\)/g, '$1')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1$2')
     .replace(/^#{1,4}\s+/gm, '')

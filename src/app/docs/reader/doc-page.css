@@ -1,0 +1,133 @@
+:host {
+  display: block;
+}
+
+.page-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ui-accent, #6f8fb8) 40%, transparent 60%);
+}
+
+.page-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  flex: 1;
+}
+
+/* the body is innerHTML and the slots are projected, so everything after the head reaches through
+   ::ng-deep; kept at one class of specificity so a tab's own stylesheet still wins */
+:host ::ng-deep .badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--ui-bg-surface, rgba(255, 255, 255, 0.08));
+  opacity: 0.7;
+}
+
+:host ::ng-deep h4 {
+  margin: 14px 0 5px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+:host ::ng-deep h5 {
+  margin: 10px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+:host ::ng-deep p {
+  margin: 0 0 10px;
+}
+
+:host ::ng-deep ul,
+:host ::ng-deep ol {
+  padding-left: 20px;
+  margin: 0 0 10px;
+}
+
+:host ::ng-deep li {
+  margin-bottom: 6px;
+}
+
+:host ::ng-deep code {
+  background: var(--ui-bg-surface, rgba(255, 255, 255, 0.08));
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+:host ::ng-deep a {
+  color: var(--ui-accent, #6f8fb8);
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+}
+
+:host ::ng-deep a:hover {
+  border-bottom-style: solid;
+}
+
+:host ::ng-deep .doc-link-missing {
+  color: var(--ui-severity-error, #d06060);
+  border-bottom: 1px dashed currentColor;
+}
+
+/* a figure is a thumbnail pinned to the right, as on Wikipedia; the text runs round it */
+:host ::ng-deep figure {
+  float: right;
+  clear: right;
+  width: 220px;
+  margin: 2px 0 10px 16px;
+  padding: 4px;
+  text-align: center;
+  background: var(--ui-bg-surface, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--ui-border-soft, #444);
+  border-radius: 4px;
+}
+
+:host ::ng-deep img {
+  max-width: 100%;
+  max-height: 260px;
+  height: auto;
+}
+
+:host ::ng-deep figcaption {
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.65;
+  margin-top: 4px;
+}
+
+:host ::ng-deep .article-body::after {
+  content: '';
+  display: block;
+  clear: both;
+}
+
+:host ::ng-deep table {
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+:host ::ng-deep th,
+:host ::ng-deep td {
+  text-align: left;
+  padding: 3px 10px 3px 0;
+  border-bottom: 1px solid var(--ui-border-soft, #444);
+  vertical-align: top;
+}
+
+:host ::ng-deep th {
+  font-weight: 600;
+  opacity: 0.8;
+}

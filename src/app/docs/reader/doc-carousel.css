@@ -1,0 +1,38 @@
+:host {
+  display: contents;
+}
+
+.carousel-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--ui-border-soft, #444);
+  font-size: 11px;
+}
+
+.carousel-nav span {
+  opacity: 0.6;
+  min-width: 30px;
+}
+
+.carousel-nav button {
+  background: none;
+  border: 1px solid var(--ui-border-soft, #444);
+  color: var(--ui-text-primary, #e0e0e0);
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.carousel-nav button:hover {
+  opacity: 1;
+  background: var(--ui-control-bg-hover, rgba(255, 255, 255, 0.08));
+}

@@ -5,7 +5,7 @@ import { map } from 'rxjs';
 import { setGlobalEmitter } from './shared/message-emitter';
 import { isSmallViewport, trackViewportHeight } from './helpers/viewport';
 import { MessageService } from './shared/message.service';
-import { HelpDialogComponent } from './docs/help/help-dialog';
+import { InfoBoothComponent } from './docs/info-booth/info-booth';
 import { SettingsService } from './settings/settings.service';
 import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
@@ -18,19 +18,19 @@ import { ThemeService } from './theme/theme.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, HelpDialogComponent, DraftCanvasComponent, ViolinFamily, HelloWorldRecipe],
+  imports: [TopBarComponent, InfoBoothComponent, DraftCanvasComponent, ViolinFamily, HelloWorldRecipe],
   template: `
     <div class="app" [class.sidebar-collapsed]="!sidebarOpen"
       [class.bar-autohide]="settings.barAutoHide() && !hasMessages()" [class.bar-revealed]="barRevealed()">
      <app-top-bar class="top"
       [selectedRecipe]="selectedRecipe"
       (recipeChange)="selectRecipe($event)"
-      (helpRequested)="help.open($event)">
+      (boothRequested)="booth.open($event)">
     </app-top-bar>
 
     <!-- outside the bar: the unpinned bar is transformed, which would make this fixed backdrop
          relative to it and slide it away -->
-    <app-help-dialog #help></app-help-dialog>
+    <app-info-booth #booth></app-info-booth>
 
       <div class="main">
         <app-draft-canvas class="canvas"

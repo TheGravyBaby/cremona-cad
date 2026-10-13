@@ -30,7 +30,7 @@ type CenterBoutHighlightKey = CenterBoutKey | 'UCr' | 'LCr';
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
 export class CenterBoutPanel implements ViolinFamilyPanel, OnInit {
-  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'renderOuterPath'];
+  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleGuides', 'renderOuterPath'];
   protected readonly pal = ThemeService.getPalette('classicCremona');
   protected readonly help = showFieldHelp;
 
@@ -125,26 +125,26 @@ export class CenterBoutPanel implements ViolinFamilyPanel, OnInit {
   }
 }
 
-// the C bout in its own colours on this panel, where its fields are; grey under a later panel's
-// work. The plate edge offsets in from C0, and from a corner arc whichever way that arc turns:
+// the C bout in its own colours on this panel, where its fields are; grey under another panel's
+// work unless all arcs are shown. The plate edge offsets in from C0, and from a corner arc whichever way that arc turns:
 // out when it sits outside C0, in when it has inverted into it. A corner whose section failed
 // isn't drawn; its failure is
 export const renderCenterBout = (
   p: ViolinFamilyParams,
   cb: CenterBoutSolve,
   pal: PanelPalette,
-  flags: Pick<ViolinFamilyViewFlags, 'showModuleArcs' | 'renderOuterPath'>,
+  flags: Pick<ViolinFamilyViewFlags, 'showModuleArcs' | 'showAllArcs' | 'renderOuterPath'>,
   currentModule: boolean,
   highlighted: { key: CenterBoutHighlightKey; color: string } | null,
 ) => (g: any, ui: any): void => {
   let k = p.corners!;
   let inset = p.body.overhang + p.body.rib;
-  let moduleArcs = currentModule && flags.showModuleArcs;
+  let moduleArcs = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
   let mirror = (P: Pt): Pt => new Pt(-P.x, P.y);
 
-  let upperTip = currentModule ? pal.ink(4) : pal.neutral;
-  let bout = currentModule ? pal.ink(3) : pal.neutral;
-  let lowerTip = currentModule ? pal.ink(2) : pal.neutral;
+  let upperTip = pal.ink(4);
+  let bout = pal.ink(3);
+  let lowerTip = pal.ink(2);
 
   type Part = [Arc | null, string, 1 | -1];
   let parts = ([
@@ -171,9 +171,11 @@ export const renderCenterBout = (
     }
   }
 
-  if (moduleArcs) {
+  if (currentModule && flags.showModuleArcs) {
     for (let P of [k.UCr, mirror(k.UCr)]) renderCrosshair(P, pal.ink(4).faint(5))(g, ui);
     for (let P of [k.LCr, mirror(k.LCr)]) renderCrosshair(P, pal.ink(2).faint(5))(g, ui);
+  }
+  if (moduleArcs) {
     for (let [arc, color] of parts) {
       renderArcFromArcFancy(arc, color)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(arc), color)(g, ui);
@@ -186,8 +188,9 @@ export const renderCenterBout = (
   for (let d of offsets) {
     for (let [arc, color, out] of parts) {
       let edge = offsetArcRadius(arc, out * d);
-      renderArcFromArc(edge, color, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(flipArcAboutY(edge), color, STROKE_WEIGHT.trace)(g, ui);
+      let trace = currentModule ? color : pal.neutral;
+      renderArcFromArc(edge, trace, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(flipArcAboutY(edge), trace, STROKE_WEIGHT.trace)(g, ui);
     }
   }
 };

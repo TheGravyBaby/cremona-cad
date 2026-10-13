@@ -1,8 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { dist, pointOnCircle } from '../../../../helpers/math/simpleGeometry';
+import { recordLayers } from '../../../../helpers/layer-recorder';
 import { Arc } from '../../../../models/types';
-import { CornersPanel, defaultCornerTips, solveCorners, solveCornersRatios } from './corners-panel';
+import { ThemeService } from '../../../../theme/theme.service';
+import { CornersPanel, defaultCornerTips, renderCorners, solveCorners, solveCornersRatios } from './corners-panel';
 import { MainBoutsPanel, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS, SEED_RATIOS, ViolinFamilyParams } from '../../violin-family-types';
 
@@ -371,5 +373,23 @@ describe('ratios', () => {
     expect(r.U2toUBW).toBeCloseTo(c.U2!.r / (p.bouts!.UBW - 2 * inset), 12);
     expect(r.L3toLBW).toBeCloseTo(c.L3!.r / (p.body.width - 2 * inset), 12);
     expect(r.UCYtoH).toBeCloseTo(end(c.U3!).y / p.body.height, 6);
+  });
+});
+
+describe('all arcs', () => {
+  // under another panel the corners draw as plain traces, unless all arcs are asked for: then
+  // they carry the same construction as on their own panel
+  it('draws the corners under another panel as their own panel would', () => {
+    const p = seeded();
+    const c = solveCorners(p)!;
+    const pal = ThemeService.getPalette('classicCremona');
+    const drawn = (current: boolean, flags: { showModuleArcs: boolean; showAllArcs: boolean }) =>
+      recordLayers([renderCorners(p, c, pal, { ...flags, renderOuterPath: true }, current, null)]);
+
+    const own = drawn(true, { showModuleArcs: true, showAllArcs: false });
+    const plain = drawn(false, { showModuleArcs: true, showAllArcs: false });
+    const all = drawn(false, { showModuleArcs: false, showAllArcs: true });
+    expect(all.paths).toEqual(own.paths);
+    expect(all.elements.length).toBeGreaterThan(plain.elements.length);
   });
 });

@@ -1,0 +1,13 @@
+@if (slide(); as s) {
+<figure>
+  <img [src]="s.src" [alt]="s.alt" />
+  @if (s.caption) { <figcaption [innerHTML]="s.caption"></figcaption> }
+  @if (slides().length > 1) {
+  <div class="carousel-nav">
+    <button type="button" (click)="step(-1)" aria-label="Previous image">‹</button>
+    <span>{{ index() + 1 }} / {{ slides().length }}</span>
+    <button type="button" (click)="step(1)" aria-label="Next image">›</button>
+  </div>
+  }
+</figure>
+}

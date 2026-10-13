@@ -1,10 +1,10 @@
-import { Component, DestroyRef, ElementRef, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Article, ArticleKind } from './article';
-import { WikiService } from './wiki.service';
+import { Article, ArticleKind, inWiki } from '../reader/article';
+import { DocPageComponent } from '../reader/doc-page';
+import { DocsService } from '../reader/docs.service';
+import { IndexGroup, IndexedPagesComponent } from '../reader/indexed-pages';
 import { VIOLIN_FAMILY_PANEL_IDS } from '../../recipes/violin-family/violin-family-types';
-
-interface NavGroup { label: string; articles: Article[] }
 
 // The wiki: a contents list down the side, one article at a time beside it. Fields aren't in
 // the contents, which would run to a hundred lines; each panel's page lists its own, and search
@@ -12,40 +12,49 @@ interface NavGroup { label: string; articles: Article[] }
 @Component({
   selector: 'app-wiki',
   standalone: true,
-  imports: [],
+  imports: [IndexedPagesComponent, DocPageComponent],
   templateUrl: './wiki.html',
   styleUrls: ['./wiki.css'],
 })
 export class WikiComponent {
-  private readonly docs = inject(WikiService);
+  private readonly docs = inject(DocsService);
   readonly registry = this.docs.registry;
 
-  readonly current = signal<string>('style');
+  readonly current = signal<string>(this.startAt());
   readonly query = signal('');
   readonly history = signal<string[]>([]);
 
-  @ViewChild('page') private page?: ElementRef<HTMLElement>;
-
   readonly article = computed(() => this.registry.get(this.current()));
-  readonly html = computed(() => this.registry.html(this.current()));
   readonly fields = computed(() => {
     const a = this.article();
     return a?.kind === 'panel' && a.panel ? this.registry.onPanel(a.panel) : [];
   });
   readonly backlinks = computed(() => this.registry.backlinks(this.current()));
-  readonly results = computed(() => this.registry.search(this.query()));
+  readonly results = computed(() => this.registry.search(this.query()).filter(inWiki));
   readonly measurements = computed(() => this.registry.measurements());
 
-  readonly groups: NavGroup[] = [
-    { label: 'Panels', articles: this.panelsInOrder() },
-    { label: 'Concepts', articles: this.registry.byKind('concept') },
-    { label: 'Tools', articles: this.registry.byKind('tool') },
-    { label: 'Conditions', articles: this.registry.byKind('condition') },
-    { label: 'About these docs', articles: this.registry.byKind('meta') },
-  ].filter(g => g.articles.length);
+  private readonly contents: IndexGroup[] = [
+    { label: 'Panels', entries: this.panelsInOrder() },
+    { label: 'Concepts', entries: this.registry.byKind('concept') },
+    { label: 'Tools', entries: this.registry.byKind('tool') },
+    { label: 'Conditions', entries: this.registry.byKind('condition') },
+    { label: 'About these docs', entries: this.registry.byKind('meta') },
+  ].filter(g => g.entries.length);
+
+  readonly nav = computed<IndexGroup[]>(() => {
+    if (!this.query()) return this.contents;
+    const hits = this.results().map(a => ({ id: a.id, title: a.title, note: this.kindLabel(a.kind) }));
+    return hits.length ? [{ entries: hits }] : [];
+  });
 
   constructor() {
     this.docs.opens$.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe(id => this.show(id));
+    effect(() => this.docs.shown(this.current()));
+  }
+
+  private startAt(): string {
+    const asked = this.registry.get(this.docs.requested() ?? '');
+    return asked && inWiki(asked) ? asked.id : 'style';
   }
 
   private panelsInOrder(): Article[] {
@@ -55,11 +64,11 @@ export class WikiComponent {
   }
 
   show(id: string): void {
-    if (!this.registry.has(id) || id === this.current()) return;
+    const a = this.registry.get(id);
+    if (!a || !inWiki(a) || id === this.current()) return;
     this.history.update(h => [...h, this.current()]);
     this.current.set(id);
     this.query.set('');
-    if (this.page) this.page.nativeElement.scrollTop = 0;
   }
 
   back(): void {
@@ -69,18 +78,8 @@ export class WikiComponent {
     this.history.set(h.slice(0, -1));
   }
 
-  // links in the rendered article are plain anchors to #doc/<id>; catch them here rather than
-  // letting the browser scroll the page to a fragment that isn't there
-  onPageClick(e: Event): void {
-    const a = (e.target as Element | null)?.closest?.('a.doc-link') as HTMLAnchorElement | null;
-    if (!a) return;
-    e.preventDefault();
-    const id = a.getAttribute('href')?.replace(/^#doc\//, '');
-    if (id) this.show(id);
-  }
-
   kindLabel(kind: ArticleKind): string {
-    return { concept: 'Concept', field: 'Field', panel: 'Panel', tool: 'Tool', condition: 'Condition', howto: 'How to', meta: '' }[kind];
+    return { concept: 'Concept', field: 'Field', panel: 'Panel', tool: 'Tool', condition: 'Condition', howto: 'How to', meta: '', booth: '', release: 'Release' }[kind];
   }
 
   standardRows(a: { standard?: Record<string, string> }): { key: string; value: string }[] {

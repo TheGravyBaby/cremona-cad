@@ -1,0 +1,23 @@
+<div class="page-head">
+  <ng-content select="[pageLead]" />
+  <h3>{{ article()?.title ?? id() }}</h3>
+  <ng-content select="[pageBadge]" />
+</div>
+
+<ng-content select="[pageAside]" />
+
+@if (article()) {
+  <div class="article-body">
+    @for (piece of pieces(); track $index) {
+      @if (piece.kind === 'carousel') {
+        <app-doc-carousel [slides]="piece.slides" />
+      } @else {
+        <div [innerHTML]="piece.html"></div>
+      }
+    }
+  </div>
+} @else {
+  <p>No page named <code>{{ id() }}</code>.</p>
+}
+
+<ng-content />

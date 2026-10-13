@@ -1,6 +1,6 @@
 <div class="bar">
   <div class="title">
-    <img src="CremonaCadLogo.svg" alt="Cremona CAD" (click)="helpRequested.emit('about')"/>
+    <img src="CremonaCadLogo.svg" alt="Cremona CAD" (click)="boothRequested.emit('cremona-cad')"/>
   </div>
 
   <!-- Hosted only: the bar lends the space after the wordmark and knows nothing of the messages. -->
@@ -30,7 +30,7 @@
       <option value="hello-world-recipe" [selected]="selectedRecipe === 'hello-world-recipe'">Hello World Recipe</option>
     </select> -->
 
-    <button class="btn help-btn" (click)="helpRequested.emit('guide')" aria-label="Help" title="Help">?</button>
+    <button class="btn booth-btn" (click)="boothRequested.emit('wiki')" aria-label="Info booth" title="Info booth">?</button>
 
     <span class="settings-menu">
       <button class="btn icon-btn settings-btn" [class.active]="settingsOpen" (click)="settingsOpen = !settingsOpen"

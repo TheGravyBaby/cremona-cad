@@ -29,7 +29,7 @@ type CornerHighlightKey = CornerKey | 'UCr' | 'LCr';
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
 export class CornersPanel implements ViolinFamilyPanel, OnInit {
-  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'renderOuterPath'];
+  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleGuides', 'renderOuterPath'];
   protected readonly pal = ThemeService.getPalette('classicCremona');
   protected readonly help = showFieldHelp;
 
@@ -148,27 +148,27 @@ export class CornersPanel implements ViolinFamilyPanel, OnInit {
   }
 }
 
-// the corners in their own colours on this panel, where their fields are; grey under a later
-// panel's work. Each corner is listed as its arcs with the way the plate edge offsets from them:
+// the corners in their own colours on this panel, where their fields are; grey under another
+// panel's work unless all arcs are shown. Each corner is listed as its arcs with the way the plate edge offsets from them:
 // out from the bout-side arcs, in from the corner arcs that turn back onto the tip. A corner whose
 // section failed isn't drawn; its failure is
 export const renderCorners = (
   p: ViolinFamilyParams,
   c: CornersSolve,
   pal: PanelPalette,
-  flags: Pick<ViolinFamilyViewFlags, 'showModuleArcs' | 'renderOuterPath'>,
+  flags: Pick<ViolinFamilyViewFlags, 'showModuleArcs' | 'showAllArcs' | 'renderOuterPath'>,
   currentModule: boolean,
   highlighted: { key: CornerHighlightKey; color: string } | null,
 ) => (g: any, ui: any): void => {
   let k = p.corners!;
   let inset = p.body.overhang + p.body.rib;
-  let moduleArcs = currentModule && flags.showModuleArcs;
+  let moduleArcs = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
   let mirror = (P: Pt): Pt => new Pt(-P.x, P.y);
 
-  let upperSide = currentModule ? pal.ink(1).faint(-2) : pal.neutral;
-  let upperTip = currentModule ? pal.ink(4) : pal.neutral;
-  let lowerSide = currentModule ? pal.ink(0).faint(-2) : pal.neutral;
-  let lowerTip = currentModule ? pal.ink(2) : pal.neutral;
+  let upperSide = pal.ink(1).faint(-2);
+  let upperTip = pal.ink(4);
+  let lowerSide = pal.ink(0).faint(-2);
+  let lowerTip = pal.ink(2);
 
   type Part = [Arc | null, string, 1 | -1];
   let upper: Part[] = k.useViolCornerUC
@@ -197,9 +197,11 @@ export const renderCorners = (
     }
   }
 
-  if (moduleArcs) {
+  if (currentModule && flags.showModuleArcs) {
     for (let P of [k.UCr, mirror(k.UCr)]) renderCrosshair(P, pal.ink(4).faint(5))(g, ui);
     for (let P of [k.LCr, mirror(k.LCr)]) renderCrosshair(P, pal.ink(2).faint(5))(g, ui);
+  }
+  if (moduleArcs) {
     for (let [arc, color] of parts) {
       renderArcFromArcFancy(arc, color)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(arc), color)(g, ui);
@@ -212,8 +214,9 @@ export const renderCorners = (
   for (let d of offsets) {
     for (let [arc, color, out] of parts) {
       let edge = offsetArcRadius(arc, out * d);
-      renderArcFromArc(edge, color, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(flipArcAboutY(edge), color, STROKE_WEIGHT.trace)(g, ui);
+      let trace = currentModule ? color : pal.neutral;
+      renderArcFromArc(edge, trace, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(flipArcAboutY(edge), trace, STROKE_WEIGHT.trace)(g, ui);
     }
   }
 };
@@ -232,12 +235,12 @@ export function defaultCornerTips(p: ViolinFamilyParams): { UCr: Pt; LCr: Pt } |
   // we set a line at the ratio height of the body, then draw a guide circle from the bout to that line
   // the intersection defines the "default" corner position
   let lgPt = new Pt(-(LBW - inset) / 2, m.L1.y);
-  let lgC = new Circle(lgPt.x, lgPt.y, LBW - inset)
+  let lgC = new Circle(lgPt.x, lgPt.y, LBW)
   let lgH = p.body.height * SEED_RATIOS.LCYtoH
   let LCr = lineCircleIntersection(lineFromPointAndSlope({ x: 0, y: lgH }, 0), lgC).sort((a, b) => a.x - b.x)[1]
 
-  let ugPt = new Pt(-UBW / 2, m.U1.y);
-  let ugC = new Circle(ugPt.x, ugPt.y, UBW)
+  let ugPt = new Pt((-UBW + 2 * inset) / 2, m.U1.y);
+  let ugC = new Circle(ugPt.x, ugPt.y, UBW) // scaler to make it a bit wider
   let ugH = p.body.height * SEED_RATIOS.UCYtoH
   let UCr = lineCircleIntersection(lineFromPointAndSlope({ x: 0, y: ugH }, 0), ugC).sort((a, b) => a.x - b.x)[1]
 

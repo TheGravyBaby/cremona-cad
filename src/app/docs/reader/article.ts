@@ -1,9 +1,14 @@
-// An article is one Markdown file with a front-matter block. The first paragraph after the
-// front matter is its summary, which is what a tooltip shows; the whole body is what the wiki
-// renders. `[[slug]]` in the body links another article by id.
+// An article is one Markdown file with a front-matter block: a wiki article, a booth tab of its
+// own, or a release in the history. The first paragraph after the front matter is its summary,
+// which is what a tooltip shows; the whole body is what the booth renders. `[[slug]]` in the body
+// links another article by id, wherever in the booth it shows.
 
-export const ARTICLE_KINDS = ['concept', 'field', 'panel', 'tool', 'condition', 'howto', 'meta'] as const;
+export const ARTICLE_KINDS = ['concept', 'field', 'panel', 'tool', 'condition', 'howto', 'meta', 'booth', 'release'] as const;
 export type ArticleKind = typeof ARTICLE_KINDS[number];
+
+export function inWiki(a: { kind: ArticleKind }): boolean {
+  return a.kind !== 'booth' && a.kind !== 'release';
+}
 
 export const ARTICLE_STATUSES = ['unreviewed', 'stale'] as const;
 export type ArticleStatus = typeof ARTICLE_STATUSES[number];
@@ -18,6 +23,8 @@ export interface Article {
   // instrument or part → figure, as written: '195', '29–32'
   standard?: Record<string, string>;
   status?: ArticleStatus;
+  // YYYY-MM-DD; a release without one is unreleased
+  date?: string;
   summary: string;
   body: string;
   links: string[];
@@ -25,7 +32,7 @@ export interface Article {
   images: string[];
 }
 
-const FRONT_MATTER_KEYS = new Set(['id', 'title', 'kind', 'panel', 'aliases', 'unit', 'standard', 'status']);
+const FRONT_MATTER_KEYS = new Set(['id', 'title', 'kind', 'panel', 'aliases', 'unit', 'standard', 'status', 'date']);
 
 export class ArticleParseError extends Error {}
 
@@ -78,7 +85,7 @@ export function firstParagraph(body: string): string {
   const para: string[] = [];
   for (const line of lines) {
     if (!line.trim()) { if (para.length) break; else continue; }
-    if (para.length === 0 && /^(#|[-*] |\d+\. |\||!\[)/.test(line)) break;
+    if (para.length === 0 && /^(#|[-*] |\d+\. |\||!\[|<)/.test(line)) break;
     para.push(line.trim());
   }
   return para.join(' ');
@@ -103,7 +110,7 @@ export function parseArticle(source: string, file?: string): Article {
   const title = str('title');
   const kind = str('kind');
   if (!id) throw new ArticleParseError(`missing id${where}`);
-  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id)) throw new ArticleParseError(`id "${id}" is not kebab-case${where}`);
+  if (!/^[a-z0-9]+([.-][a-z0-9]+)*$/.test(id)) throw new ArticleParseError(`id "${id}" is not kebab-case${where}`);
   if (!title) throw new ArticleParseError(`missing title${where}`);
   if (!kind || !(ARTICLE_KINDS as readonly string[]).includes(kind)) {
     throw new ArticleParseError(`kind "${kind}" is not one of ${ARTICLE_KINDS.join(', ')}${where}`);
@@ -119,8 +126,12 @@ export function parseArticle(source: string, file?: string): Article {
     throw new ArticleParseError(`standard must be an indented block${where}`);
   }
   if (standard && !fm['unit']) throw new ArticleParseError(`standard figures need a unit${where}`);
+  const date = str('date');
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new ArticleParseError(`date "${date}" is not YYYY-MM-DD${where}`);
   const summary = firstParagraph(body);
-  if (!summary) throw new ArticleParseError(`no opening paragraph to use as the summary${where}`);
+  if (!summary && inWiki({ kind: kind as ArticleKind })) {
+    throw new ArticleParseError(`no opening paragraph to use as the summary${where}`);
+  }
 
   return {
     id, title, kind: kind as ArticleKind,
@@ -129,6 +140,7 @@ export function parseArticle(source: string, file?: string): Article {
     unit: str('unit'),
     standard: standard as Record<string, string> | undefined,
     status: status as ArticleStatus | undefined,
+    date,
     summary, body, links: linksIn(body), images: imagesIn(body),
   };
 }

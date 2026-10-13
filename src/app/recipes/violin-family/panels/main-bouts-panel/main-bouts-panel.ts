@@ -29,7 +29,7 @@ type MainBoutArcKey = 'U0' | 'U1' | 'L0' | 'L1' | 'V0';
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
 export class MainBoutsPanel implements ViolinFamilyPanel, OnInit {
-  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'renderOuterPath'];
+  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleGuides', 'renderOuterPath'];
   protected readonly pal = ThemeService.getPalette('classicCremona');
   protected readonly help = showFieldHelp;
 
@@ -159,19 +159,19 @@ export const renderBoutBounds = (p: ViolinFamilyParams, pal: PanelPalette) => (g
   ]) layer(g, ui);
 };
 
-// the main bouts in their own colours on this panel, where their fields are; grey under a later
-// panel's work. A bout whose section failed isn't drawn; its failure is
+// the main bouts in their own colours on this panel, where their fields are; grey under another
+// panel's work unless all arcs are shown. A bout whose section failed isn't drawn; its failure is
 export const renderMainBouts = (
   p: ViolinFamilyParams,
   m: MainBoutsSolve,
   pal: PanelPalette,
-  flags: Pick<ViolinFamilyViewFlags, 'showModuleArcs' | 'renderOuterPath'>,
+  flags: Pick<ViolinFamilyViewFlags, 'showModuleArcs' | 'showAllArcs' | 'renderOuterPath'>,
   currentModule: boolean,
   highlighted: HighlightedArc | null,
 ) => (g: any, ui: any): void => {
   let inset = p.body.overhang + p.body.rib;
   let viol = p.bouts!.useViolNeck && !!m.V0;
-  let moduleArcs = currentModule && flags.showModuleArcs;
+  let moduleArcs = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
 
   if (highlighted) {
     renderArcHalo(highlighted.arc, highlighted.color)(g, ui);

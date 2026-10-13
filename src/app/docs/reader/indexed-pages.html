@@ -1,0 +1,18 @@
+<nav class="index-nav" [attr.aria-label]="label()">
+  <ng-content select="[indexHead]" />
+
+  @for (group of groups(); track $index) {
+    @if (group.label) { <div class="nav-group-label">{{ group.label }}</div> }
+    @for (e of group.entries; track e.id) {
+      <button class="nav-topic" [class.active]="e.id === current()" (click)="picked.emit(e.id)">
+        {{ e.title }}@if (e.note) {<span class="nav-note">{{ e.note }}</span>}
+      </button>
+    }
+  } @empty {
+    @if (empty()) { <div class="nav-empty">{{ empty() }}</div> }
+  }
+</nav>
+
+<div class="index-page" #page>
+  <ng-content />
+</div>

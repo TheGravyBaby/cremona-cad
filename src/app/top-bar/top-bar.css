@@ -145,7 +145,7 @@
   padding-right: 24px;
 }
 
-.help-btn {
+.booth-btn {
   width: 28px;
   min-width: 28px;
   padding: 0;
@@ -154,6 +154,6 @@
   color: var(--ui-text-muted);
 }
 
-.help-btn:hover {
+.booth-btn:hover {
   color: var(--ui-text-primary);
 }

@@ -1,52 +1,28 @@
-<nav class="wiki-nav" aria-label="Documentation contents">
-  <input class="wiki-search" type="search" placeholder="Search" [value]="query()"
+@let a = article();
+<app-indexed-pages label="Wiki contents" empty="Nothing matches." [groups]="nav()" [current]="current()"
+  (picked)="show($event)">
+  <input indexHead class="wiki-search" type="search" placeholder="Search" [value]="query()"
     (input)="query.set($any($event.target).value)" />
 
-  @if (query()) {
-    @if (results().length) {
-      @for (a of results(); track a.id) {
-        <button class="nav-topic" [class.active]="a.id === current()" (click)="show(a.id)">
-          {{ a.title }}<span class="nav-kind">{{ kindLabel(a.kind) }}</span>
-        </button>
-      }
-    } @else {
-      <div class="nav-empty">Nothing matches.</div>
+  <app-doc-page [id]="current()">
+    @if (history().length) {
+      <button pageLead type="button" class="page-back" (click)="back()" title="Back">‹</button>
     }
-  } @else {
-    @for (group of groups; track group.label) {
-      <div class="nav-group-label">{{ group.label }}</div>
-      @for (a of group.articles; track a.id) {
-        <button class="nav-topic" [class.active]="a.id === current()" (click)="show(a.id)">{{ a.title }}</button>
-      }
-    }
-  }
-</nav>
+    @if (a && kindLabel(a.kind)) { <span pageBadge class="badge">{{ kindLabel(a.kind) }}</span> }
+    @if (a?.status) { <span pageBadge class="badge badge-status">{{ a?.status }}</span> }
 
-<div class="wiki-page" #page (click)="onPageClick($event)">
-  @if (article(); as a) {
-    <div class="page-head">
-      @if (history().length) {
-        <button type="button" class="page-back" (click)="back()" title="Back">‹</button>
-      }
-      <h3>{{ a.title }}</h3>
-      @if (kindLabel(a.kind)) { <span class="badge">{{ kindLabel(a.kind) }}</span> }
-      @if (a.status) { <span class="badge badge-status">{{ a.status }}</span> }
-    </div>
-
-    @if (a.standard) {
-      <table class="standard">
-        <thead><tr><th colspan="2">Standard, {{ a.unit }}</th></tr></thead>
+    @if (a?.standard) {
+      <table pageAside class="standard">
+        <thead><tr><th colspan="2">Standard, {{ a?.unit }}</th></tr></thead>
         <tbody>
-          @for (row of standardRows(a); track row.key) {
+          @for (row of standardRows(a ?? {}); track row.key) {
             <tr><td>{{ row.key }}</td><td>{{ row.value }}</td></tr>
           }
         </tbody>
       </table>
     }
 
-    <div class="article-body" [innerHTML]="html()"></div>
-
-    @if (a.id === 'measurements') {
+    @if (a?.id === 'measurements') {
       <table class="library">
         <thead><tr><th>Figure</th><th>Of</th><th>Value</th></tr></thead>
         <tbody>
@@ -80,7 +56,5 @@
         }
       </ul>
     }
-  } @else {
-    <p>No article named <code>{{ current() }}</code>.</p>
-  }
-</div>
+  </app-doc-page>
+</app-indexed-pages>
