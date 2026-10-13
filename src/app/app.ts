@@ -10,8 +10,8 @@ import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
 import { ToolboxStore } from './draft-canvas/tools/toolbox-store';
 import { readWorkingState, SELECTED_RECIPE_KEY, writeWorkingState } from './helpers/workingStorage';
-import { HelloWorldRecipe } from './hello-world-recipe/hello-world-recipe';
-import { ViolinFamily } from './violin-family-recipe/violin-family-recipe';
+import { HelloWorldRecipe } from './recipes/hello-world/hello-world-recipe';
+import { ViolinFamily } from './recipes/violin-family/violin-family-recipe';
 import { ThemeService } from './theme/theme.service';
 
 @Component({

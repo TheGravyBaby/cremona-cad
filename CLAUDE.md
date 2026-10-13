@@ -25,10 +25,11 @@ these globs only runs under the full `ng test`.
 
 | Path | What lives there |
 |---|---|
-| `src/app/violin-family-recipe/` | The one instrument model. `violin-family-recipe.ts` is a shell owning panel order, seeding, the commit and the view toggles. |
+| `src/app/recipes/violin-family/` | The one instrument model. `violin-family-recipe.ts` is a shell owning panel order, seeding, the commit and the view toggles. |
 | `…/violin-family-types.ts` | Every data shape, in three families: `params` (the file), `*Solve` (derived, never saved), `ratios` (stamped on the file, never read). Read its header. |
 | `…/panels/<stage>-panel/` | One folder per drafting stage. The `.ts` holds, top to bottom, the component, its `render*` layers and its `solve*`; a later stage reads an earlier one by calling its solver. Body side profile lives in `long-arching-panel`, the scroll views in `scroll-widths-panel`. |
 | `…/templates/corpus/` | Served instruments, one JSON each, with `source` and image `credit`. `violin-family-templates.spec.ts` is the only spec that reads them. |
+| `src/app/recipes/hello-world/` | A four-circle toy recipe, about 150 lines: the starting point for trying out a new recipe. Recipes are picked in `app.ts`; each extends `recipe-base/`. |
 | `src/app/draft-canvas/` | SVG canvas, camera, snapping, pointer routing. `tools/` holds the toolbox. |
 | `src/app/helpers/` | Instrument-agnostic math, rendering, exporters, `validators.ts` (`solveSection`), `workingStorage.ts`. |
 | `src/app/models/types.ts` | `Pt`/`Circle`/`Arc`/`Rectangle`. Read its header. |
