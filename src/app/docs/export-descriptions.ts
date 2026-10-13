@@ -1,5 +1,8 @@
 // The line under each export on the export panel, keyed by the export's id there.
 export const EXPORT_DESCRIPTIONS: Record<string, string> = {
+  topPlate: 'Top of the instrument, with the f-holes',
+  backPlate: 'Back of the instrument, with button',
+  innerContour: 'Rib outline, for the mould and rib bending',
   outerTrace: 'Top of the instrument',
   back: 'Back of the instrument, with button',
   innerTrace: 'Inner body outline for mould & rib bending',

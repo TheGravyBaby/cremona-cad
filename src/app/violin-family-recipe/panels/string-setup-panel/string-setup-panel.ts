@@ -103,7 +103,7 @@ export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
       let scrollInPlan = scroll && !w!.failures.some(f => f.unsolved.length) ? scroll : null;
       let sideX = sideViewOffsetX(p);
       let side = [
-        renderBodySideProfile(p, a, this.pal, { ground: true }),
+        renderBodySideProfile(p, a, o, this.pal, false, { ground: true }),
         renderNeck(p, s.neck, this.pal, { ground: true, scroll }),
         renderStringSetup(p, s, this.pal, { fingerboard: this.flags.showFingerboard, fretMarks: this.flags.showFretMarks }),
         renderStringSetupHighlight(p, s, this.highlighted),

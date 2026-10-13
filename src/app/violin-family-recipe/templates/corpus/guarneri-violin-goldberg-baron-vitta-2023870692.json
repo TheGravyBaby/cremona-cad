@@ -1,0 +1,185 @@
+{
+  "key": "guarneri-violin-goldberg-baron-vitta",
+  "recipeName": "violin-family-recipe",
+  "fileName": "Violin - Giuseppe Guarneri - Goldberg-Baron Vitta",
+  "description": "Cremona, c.1730. Scale inherited from the Kreisler (357 mm); proportions fitted to the back scan. Outline only.",
+  "source": "https://www.loc.gov/item/2023870692/",
+  "version": "1",
+  "params": {
+    "body": {
+      "height": 357,
+      "width": 204,
+      "overhang": 3,
+      "rib": 1
+    },
+    "bouts": {
+      "UBW": 165.2,
+      "U0R": 156,
+      "U1R": 63,
+      "L0R": 193,
+      "L1R": 65.4,
+      "useViolNeck": false,
+      "viol": null,
+      "CBW": 106.1,
+      "C0R": 91,
+      "C0Y": 198,
+      "useKellyC0": false
+    },
+    "corners": {
+      "UCr": {
+        "x": 74.496875,
+        "y": 237.5
+      },
+      "LCr": {
+        "x": 85.1,
+        "y": 144.16875
+      },
+      "U2R": 98.4,
+      "U3R": 24,
+      "U31R": 19,
+      "U31Start": 168.182637841,
+      "U31DoubleArc": false,
+      "useViolCornerUC": false,
+      "L2R": 108,
+      "L3R": 24,
+      "L31R": 20,
+      "L31Start": -157.295021671,
+      "L31DoubleArc": false,
+      "useViolCornerLC": false,
+      "C2R": 20,
+      "C21R": 20,
+      "C21Start": 122.120378075,
+      "C21DoubleArc": false,
+      "C1R": 30,
+      "C11R": 17,
+      "C11Start": -105.176058729,
+      "C11DoubleArc": false
+    },
+    "outerContour": {
+      "button": {
+        "width": 20,
+        "height": 14.69
+      },
+      "purflingOffset": 5.1,
+      "purflingChannelDepth": 0.9,
+      "U3Cutoff": -0.472930094,
+      "U31Cutoff": -3.162152359,
+      "C2Cutoff": 7.432353272,
+      "C21Cutoff": 12.484231506,
+      "C1Cutoff": -0.256685593,
+      "C11Cutoff": 1.519412418,
+      "L3Cutoff": -6.074870648,
+      "L31Cutoff": -12.332333299,
+      "upperRounding": 0.29,
+      "lowerRounding": 0.27
+    },
+    "fHoles": {
+      "UEye": {
+        "x": 22.9,
+        "y": 189,
+        "r": 2.558139535
+      },
+      "LEye": {
+        "x": 60.9,
+        "y": 138.51,
+        "r": 4.5
+      },
+      "URise": 6,
+      "LRise": 6.5,
+      "stem": {
+        "center": {
+          "x": 40.4,
+          "y": 162
+        },
+        "width": 5,
+        "angle": 94
+      }
+    },
+    "fHoleContours": {
+      "U1R": 8,
+      "U1End": 75,
+      "U2R": 12,
+      "U21DoubleArc": false,
+      "U21R": 12,
+      "U21Start": 0,
+      "U3R": 12,
+      "U3End": 58,
+      "UCut": {
+        "angleOnEye": 94.966007073,
+        "slope": 40,
+        "length": 8.5
+      },
+      "L1R": 10.6,
+      "L1End": -90,
+      "L2R": 13,
+      "L21DoubleArc": false,
+      "L21R": 13,
+      "L21Start": 0,
+      "L3R": 13,
+      "L3End": -114,
+      "LCut": {
+        "angleOnEye": 267.966007073,
+        "slope": -141,
+        "length": 9.3
+      },
+      "stemArcR": 32,
+      "stemArcsIndependent": false,
+      "S1R": 32,
+      "S2R": 32,
+      "S3R": 32,
+      "S4R": 32
+    }
+  },
+  "ratios": {
+    "HtoW": 1.75,
+    "UBtoLB": 0.809803922,
+    "U0toUBW": 0.992366412,
+    "U1toUBW": 0.400763359,
+    "LBtoH": 0.571428571,
+    "L0toLBW": 0.984693878,
+    "L1toLBW": 0.333673469,
+    "U2toUBW": 0.625954198,
+    "U3toLBW": 0.12244898,
+    "U31toLBW": 0.096938776,
+    "L2toLBW": 0.551020408,
+    "L3toLBW": 0.12244898,
+    "L31toLBW": 0.102040816,
+    "UCYtoH": 0.665266106,
+    "LCYtoH": 0.403834034,
+    "CBWtoLBW": 0.520098039,
+    "C0toLBW": 0.464285714,
+    "C0YtoH": 0.554621849,
+    "C2toLBW": 0.102040816,
+    "C21toLBW": 0.102040816,
+    "C1toLBW": 0.153061224,
+    "C11toLBW": 0.086734694,
+    "FLtoW": 0.022058824,
+    "FUtoL": 0.568475452
+  },
+  "referenceImages": [
+    {
+      "id": "goldberg-baron-vitta-top",
+      "label": "Top (sp=2)",
+      "scope": {
+        "except": [
+          "fluting",
+          "longArching",
+          "crossArching"
+        ]
+      },
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154815:musihas-200154815.0002/full/pct:100.0/0/default.jpg",
+      "x": -118,
+      "y": -4.542465563879347,
+      "width": 239.01,
+      "height": 375.8019311277587,
+      "rotationDeg": 0,
+      "opacity": 0.4,
+      "suppressWhite": true,
+      "locked": true,
+      "credit": {
+        "attribution": "Library of Congress, Music Division. Photographs by Michael Zirkle.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154815/?sp=2&st=image"
+      }
+    }
+  ]
+}

@@ -415,6 +415,11 @@ function sampleSegments(segments: PathSeg[], distancePerSample: number): TaggedP
     }
   });
 
+  // a closed path ends where it starts, to floating point: a closing sample a hair off the first
+  // reads to polygon-clipping as a segment of its own, which it then can't ring
+  const first = pts[0], last = pts[pts.length - 1];
+  if (pts.length > 2 && Math.hypot(last.x - first.x, last.y - first.y) < 1e-6) pts.pop();
+
   return pts;
 }
 
