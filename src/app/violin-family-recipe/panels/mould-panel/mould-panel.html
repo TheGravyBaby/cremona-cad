@@ -1,0 +1,112 @@
+@let mo = params.mould!;
+
+<section class="ui-group">
+    <div class="ui-group-title">Neck Block</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1)"
+                [(ngModel)]="mo.neckBlock.height" (input)="edited()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1)"
+                [(ngModel)]="mo.neckBlock.width" (input)="edited()" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Upper Corner Blocks</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(4)"
+                [(ngModel)]="mo.upperCornerBlock.height" (input)="edited()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(4)"
+                [(ngModel)]="mo.upperCornerBlock.width" (input)="edited()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">Pad X <span class="unit-label">mm</span></span>
+                <span class="field-title">Pad Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Upper corner block pad"
+                [style.borderColor]="pal.ink(4).faint(5)" title="Arrow keys move the block from either box">
+                <input type="number" class="basic-input" step="0.5" data-xy="x" aria-label="Upper corner block pad X"
+                    [(ngModel)]="mo.upperCornerBlock.pad.x" (input)="edited()" />
+                <input type="number" class="basic-input" step="0.5" data-xy="y" aria-label="Upper corner block pad Y"
+                    [(ngModel)]="mo.upperCornerBlock.pad.y" (input)="edited()" />
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Lower Corner Blocks</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(2)"
+                [(ngModel)]="mo.lowerCornerBlock.height" (input)="edited()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(2)"
+                [(ngModel)]="mo.lowerCornerBlock.width" (input)="edited()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">Pad X <span class="unit-label">mm</span></span>
+                <span class="field-title">Pad Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Lower corner block pad"
+                [style.borderColor]="pal.ink(2).faint(5)" title="Arrow keys move the block from either box">
+                <input type="number" class="basic-input" step="0.5" data-xy="x" aria-label="Lower corner block pad X"
+                    [(ngModel)]="mo.lowerCornerBlock.pad.x" (input)="edited()" />
+                <input type="number" class="basic-input" step="0.5" data-xy="y" aria-label="Lower corner block pad Y"
+                    [(ngModel)]="mo.lowerCornerBlock.pad.y" (input)="edited()" />
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">End Block</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="mo.endBlock.height" (input)="edited()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="mo.endBlock.width" (input)="edited()" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Bit Diameter <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0"
+                [(ngModel)]="mo.bitDiameter" (input)="edited()" />
+        </label>
+        <button type="button" class="info-icon" (click)="help('bitDiameter')" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="mo.clampBox" (change)="edited()" /><span>Clamp Box</span>
+        </div>
+    </div>
+</section>

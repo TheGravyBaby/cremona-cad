@@ -26,6 +26,7 @@ import { VolutePanel } from './panels/volute-panel/volute-panel';
 import { ScrollPanel, solveScroll } from './panels/scroll-panel/scroll-panel';
 import { ScrollWidthsPanel } from './panels/scroll-widths-panel/scroll-widths-panel';
 import { StringSetupPanel } from './panels/string-setup-panel/string-setup-panel';
+import { MouldPanel } from './panels/mould-panel/mould-panel';
 
 // The Violin Family recipe: the Ceruti model rebuilt on a split between what the user sets
 // (`d.params`, the file) and what each panel's solver derives from it (never written out). The
@@ -37,7 +38,7 @@ import { StringSetupPanel } from './panels/string-setup-panel/string-setup-panel
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, ScrollPanel, ScrollWidthsPanel, StringSetupPanel],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, ScrollPanel, ScrollWidthsPanel, StringSetupPanel, MouldPanel],
   templateUrl: './violin-family.html',
   styleUrls: ['../sidebar.css', './violin-family.css'],
 })
@@ -62,6 +63,7 @@ export class ViolinFamily extends RecipeComponentBase {
     { id: 'scroll', label: 'Scroll', toggles: ScrollPanel.renderToggles },
     { id: 'scrollWidths', label: 'Scroll Widths', toggles: ScrollWidthsPanel.renderToggles },
     { id: 'stringSetup', label: 'String Setup', toggles: StringSetupPanel.renderToggles, seed: StringSetupPanel.seed },
+    { id: 'mould', label: 'Mould', toggles: MouldPanel.renderToggles, seed: MouldPanel.seed },
   ];
 
   private readonly themeService = inject(ThemeService);
@@ -128,7 +130,8 @@ export class ViolinFamily extends RecipeComponentBase {
         return !!(m?.U0 && m.U1 && m.L0 && m.L1);
       }
       case 'centerBout': return !!p.corners;
-      case 'outerContour': {
+      case 'outerContour':
+      case 'mould': {
         let cb = solveCenterBout(p);
         return !!(cb?.C0 && cb.C2 && cb.C1);
       }

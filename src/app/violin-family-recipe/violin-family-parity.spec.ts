@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { templateKeys, templateViolin } from '../enrico-ceruti-violin/ceruti-fixtures';
-import { calculateCenterBout, calculateCorners, calculateFholeContours, calculateOuterArcs } from '../enrico-ceruti-violin/calculation/outline/ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateFholeContours, calculateMould, calculateOuterArcs } from '../enrico-ceruti-violin/calculation/outline/ceruti-calcs';
 import { defineInsetPath, defineOneFholePath, fingerboardEnd as cerutiBoardEnd, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../enrico-ceruti-violin/calculation/outline/ceruti-paths';
 import { defaultFHolePlacement } from '../enrico-ceruti-violin/panels/f-hole-placement-panel/f-hole-placement-panel';
 import { channelPaths, crossArchSectionAt, defaultCrossArchParams, defaultFlutingParams, solveLongArch as cerutiLongArch } from '../enrico-ceruti-violin/calculation/arching/ceruti-arch-geometry';
@@ -12,9 +12,9 @@ import { NeckParams as CerutiNeck, ScrollParams as CerutiScroll, StringSetup as 
 import { calculateScroll, calculateScrollWidths, defaultVoluteParams, pegboxCavity as cerutiCavity, scrollPathStretches as cerutiStretches, scrollWidthStations as cerutiStations } from '../enrico-ceruti-violin/calculation/neck/ceruti-scroll';
 import { scrollBackViewStrokes as cerutiBackView, scrollFrontViewStrokes as cerutiFrontView } from '../enrico-ceruti-violin/calculation/neck/ceruti-scroll-views';
 import { ArchCurve, ArchingParams as CerutiArching, CrossArchShape, EnricoCerutiParams, FholeParams, FlutingParams } from '../enrico-ceruti-violin/ceruti-types';
-import { Arc, Pt, Pt3D } from '../models/types';
+import { Arc, Pt, Pt3D, Rectangle } from '../models/types';
 import { signedRadianDelta, TURN } from '../helpers/math/simpleGeometry';
-import { samplePathToPolyline } from '../helpers/math/pathMath';
+import { samplePathToPolyline, splitPathStrings } from '../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../helpers/math/vibeMath';
 import { solveMainBoutsRatios, solveMainBouts } from './panels/main-bouts-panel/main-bouts-panel';
 import { solveCorners, solveCornersRatios } from './panels/corners-panel/corners-panel';
@@ -29,8 +29,9 @@ import { NeckPanel, solveNeck } from './panels/neck-panel/neck-panel';
 import { VolutePanel } from './panels/volute-panel/volute-panel';
 import { solveScroll } from './panels/scroll-panel/scroll-panel';
 import { fingerboardCrown, solveStringSetup, StringSetupPanel } from './panels/string-setup-panel/string-setup-panel';
+import { MOULD_EXPORT_STEP, MouldPanel, solveMould } from './panels/mould-panel/mould-panel';
 import { pegboxCavity, scrollBackViewStrokes, scrollFrontViewStrokes, scrollPathStretches, scrollWidthStations, solveScrollWidths } from './panels/scroll-widths-panel/scroll-widths-panel';
-import { ArchingParams, NeckParams, ScrollParams, StringSetupParams, CrossArchParams, CrossShapeParams, FholeArcKey, FholeContourParams, FholePlacementParams, GougeParams, LongArchParams, ViolinFamilyParams } from './violin-family-types';
+import { ArchingParams, MouldParams, NeckParams, ScrollParams, StringSetupParams, CrossArchParams, CrossShapeParams, FholeArcKey, FholeContourParams, FholePlacementParams, GougeParams, LongArchParams, ViolinFamilyParams } from './violin-family-types';
 
 // The port's acceptance test: every frozen Ceruti instrument, solved by both recipes from the same
 // inputs, gives the same arcs and reads the same ratios. Goes when the Ceruti recipe does.
@@ -449,6 +450,40 @@ const samePath = (a: string | null, b: string | null, label: string) => {
   expect(far(B, A), `${label}: theirs strays off ours`).toBeLessThan(1e-3);
 };
 
+// Ceruti keeps the blocks as rectangles whose places it rewrites on every solve, and one pad both
+// ways; here only the sizes are typed, and the pad is an offset from the corner tip
+const mould = (c: EnricoCerutiParams): MouldParams => {
+  const b = c.blocks;
+  return {
+    neckBlock: { width: b.U!.width!, height: b.U!.height! },
+    upperCornerBlock: { width: b.CU!.width!, height: b.CU!.height!, pad: { x: b.CUPad!, y: -b.CUPad! } },
+    lowerCornerBlock: { width: b.CL!.width!, height: b.CL!.height!, pad: { x: b.CLPad!, y: b.CLPad! } },
+    endBlock: { width: b.L!.width!, height: b.L!.height! },
+    bitDiameter: c.bitDiameter,
+    clampBox: true,
+  };
+};
+
+const sameRect = (a: Rectangle, b: Rectangle, label: string) => {
+  const box = (r: Rectangle) => [Math.min(r.Pt1.x, r.Pt2.x), Math.min(r.Pt1.y, r.Pt2.y), Math.max(r.Pt1.x, r.Pt2.x), Math.max(r.Pt1.y, r.Pt2.y)];
+  box(a).forEach((v, i) => expect(Math.abs(v - box(b)[i]), `${label}[${i}]`).toBeLessThan(1e-9));
+};
+
+// the blocks and the outline they leave, Ceruti's blocks seeded where the fixture carries none. Its
+// simple clamp box comes first in the path, two rectangles; the clamp box here is its own (the
+// walls are thicker), so only the outline is compared
+const sameMould = (c: EnricoCerutiParams, p = fromCeruti(c)) => {
+  const theirs = splitPathStrings(calculateMould(c, true, true)).slice(2).join(' ');
+  p.mould = mould(c);
+  const s = solveMould(p, MOULD_EXPORT_STEP)!;
+  expect(s.failures.filter(f => f.unsolved.length)).toEqual([]);
+  sameRect(s.blocks!.neck, c.blocks.U!, 'neck block');
+  sameRect(s.blocks!.upperCorner, c.blocks.CU!, 'upper corner block');
+  sameRect(s.blocks!.lowerCorner, c.blocks.CL!, 'lower corner block');
+  sameRect(s.blocks!.end, c.blocks.L!, 'end block');
+  samePath(s.outline, theirs, 'mould outline');
+};
+
 const OUTER_CORNER_KEYS = ['U3', 'U31', 'C2', 'C21', 'C1', 'C11', 'L3', 'L31'] as const;
 
 // the plate edges, purfling and corner arcs, both recipes solved from the same Ceruti instrument
@@ -785,6 +820,23 @@ describe.each(templateKeys())('parity with the Ceruti recipe: %s', key => {
     sameScroll(c, q);
     ({ c, q } = seededScroll(key, v => { v.flushWithNeck = false; v.eye.x -= 3; }));
     sameScroll(c, q);
+  });
+
+  it('cuts the same blocks out of the same mould, seeded where the fixture carries none', () => {
+    const fresh = withPlacement(templateViolin(key));
+    const seeded = !fresh.blocks?.CU;
+    const q = fromCeruti(fresh);
+    sameMould(fresh, q);
+    if (seeded) {
+      const own = fromCeruti(fresh);
+      MouldPanel.seed(own);
+      // the fixtures were saved with a quarter-inch bit; both recipes seed an eighth. The neck and end
+      // blocks seed half again as wide here, the viol neck's still spanning its root
+      const theirs = mould(fresh);
+      if (!fresh.options.useViolNeck) theirs.neckBlock.width *= 1.5;
+      theirs.endBlock.width *= 1.5;
+      expect({ ...own.mould, bitDiameter: fresh.bitDiameter }).toEqual(theirs);
+    }
   });
 
   it('reads the same ratios', () => {
