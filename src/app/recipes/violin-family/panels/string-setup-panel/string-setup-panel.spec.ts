@@ -11,7 +11,8 @@ import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, StringSetupKey, StringSetupSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { StringSetupKey, StringSetupSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 // what a maker would check with a ruler on the set-up instrument: the bridge stands its height off
 // the arch the stop down from the neck end, the nut its thickness off the neck, the board its length
@@ -137,9 +138,9 @@ describe('the string setup solve', () => {
     }
   });
 
-  it('reports a radius tighter than the board is wide, keeping the board but not its crown', () => {
+  it('reports a radius tighter than the board\'s half width, keeping the board but not its crown', () => {
     const p = seeded();
-    p.stringSetup!.fingerboardRadius = p.neck!.topWidth;
+    p.stringSetup!.fingerboardRadius = p.neck!.topWidth / 2;
     const s = solveStringSetup(p)!;
     expect(unsolved(s, 'fingerboard')).toBe(true);
     expect(s.fingerboardEnd).not.toBeNull();

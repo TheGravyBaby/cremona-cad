@@ -10,14 +10,13 @@ import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
 import { renderArcFromArc, renderArcFromArcFancy, renderPath, renderSolveFailures } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { showFieldHelp } from '../../../../docs/field-help';
+import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { Arc, arcFromCircle, Circle, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import {
-  ButtonParams, CenterBoutSolve, CornersSolve, MainBoutsSolve, OuterContourFailure, OuterContourKey, OuterContourSolve,
-  OuterCornerKey, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
-} from '../../violin-family-types';
+import { ButtonParams, CenterBoutSolve, CornersSolve, MainBoutsSolve, OuterContourFailure, OuterContourKey, OuterContourSolve, OuterCornerKey, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
 import { solveMainBouts, violNeckCap } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { cornerTurn, solveCenterBout } from '../center-bout-panel/center-bout-panel';
@@ -46,15 +45,14 @@ export class OuterContourPanel implements ViolinFamilyPanel, OnInit {
   // the first draft of the plate edge, once the C bout has solved: each corner arc runs on a few
   // degrees past the rib corner so the plate's corner stands proud of the ribs', a compound
   // corner carrying that on its second arc scaled by radius so the run along the edge is the
-  // same; the purfling a channel's width in from the edge; the button in proportion to the body
+  // same; the purfling a channel's width in from the edge; the button off the seed ratios
   static seed(p: ViolinFamilyParams): void {
     if (p.outerContour || !p.corners) return;
     let cb = solveCenterBout(p);
     if (!cb?.C0 || !cb.C2 || !cb.C1) return;
     let k = p.corners;
     let inset = p.body.overhang + p.body.rib;
-    // violin numbers scaled by body length, so the larger sizes get a button in proportion
-    let s = p.body.height / 355;
+    let buttonWidth = Math.round(p.body.width * SEED_RATIOS.BWtoLBW);
     let C2Sign = cornerTurn(cb.C2, cb.C0);
     let C1Sign = cornerTurn(cb.C1, cb.C0);
     let U3Cutoff = 2.5;
@@ -63,7 +61,7 @@ export class OuterContourPanel implements ViolinFamilyPanel, OnInit {
     let L3Cutoff = 2.5;
 
     p.outerContour = {
-      button: { width: Math.round(20 * s * 2) / 2, height: Math.round(14 * s * 2) / 2 },
+      button: { width: buttonWidth, height: Math.round(buttonWidth * SEED_RATIOS.BHtoBW) },
       purflingOffset: inset + 1.2,
       purflingChannelDepth: 1.2,
       U3Cutoff,
@@ -86,6 +84,7 @@ export class OuterContourPanel implements ViolinFamilyPanel, OnInit {
 
   // what the last draw solved; report() reads it rather than solving again
   o!: OuterContourSolve;
+  ratios: Partial<ViolinFamilyRatios> = {};
 
   ngOnInit(): void {
     this.draw();
@@ -98,6 +97,11 @@ export class OuterContourPanel implements ViolinFamilyPanel, OnInit {
     this.draw();
   }
 
+  ratio(key: keyof ViolinFamilyRatios): string {
+    let value = this.ratios[key];
+    return Number.isFinite(value) ? nearestFraction(value!) : '–';
+  }
+
   // messages for what didn't solve, raised once the edit settles rather than on every keystroke
   report(): void {
     reportFailures(this.o.failures, 'Outer Contour');
@@ -107,6 +111,7 @@ export class OuterContourPanel implements ViolinFamilyPanel, OnInit {
     safeRun(() => {
       let p = this.params;
       let o = this.o = solveOuterContour(p)!;
+      this.ratios = solveOuterContourRatios(p);
       // the holes, once cut, ride on the top plate here as on every panel after this one
       this.drawn.emit([
         renderOuterContour(p, o, this.pal, this.flags, true),
@@ -510,6 +515,14 @@ export function outerPath(p: ViolinFamilyParams, rib: RibArcs, outer: OuterCorne
 
   let path = unifyConnectedSvgPaths([...paths, ...buttonPaths]);
   return { path, button: bt ? { path: combinePathStrings(bt.paths), cap: bt.cap } : null };
+}
+
+// the button's proportions, read off the params every solve so they can't drift: its width
+// against the lower bout, its height against its width
+export function solveOuterContourRatios(p: ViolinFamilyParams): Partial<ViolinFamilyRatios> {
+  if (!p.outerContour) return {};
+  let b = p.outerContour.button;
+  return { BWtoLBW: b.width / p.body.width, BHtoBW: b.height / b.width };
 }
 
 // a purfling line: the rib outline at `arcOffset` out (in when negative), its corners pure offsets

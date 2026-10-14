@@ -10,10 +10,8 @@ import { Pt, Vect2D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import {
-  OuterContourSolve, RenderLayer, ScrollSolve, StringSetupFailure, StringSetupSolve, ViolinFamilyPanel, ViolinFamilyParams,
-  ViolinFamilyToggleKey, ViolinFamilyViewFlags,
-} from '../../violin-family-types';
+import { OuterContourSolve, RenderLayer, ScrollSolve, StringSetupFailure, StringSetupSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { familyStandards } from '../../violin-family-seed';
 import { solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
 import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
@@ -39,20 +37,9 @@ export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFingerboard', 'showFretMarks'];
   protected readonly pal = ThemeService.getPalette('varnish');
 
-  // violin numbers, scaled by body length for the larger sizes, in half millimetres; the board's
-  // length is a standard size for the size class rather than scaled
   static seed(p: ViolinFamilyParams): void {
     if (p.stringSetup || !p.neck) return;
-    let k = p.body.height / REFERENCE_BODY_HEIGHT;
-    let mm = (v: number) => Math.round(v * k * 2) / 2;
-    p.stringSetup = {
-      bodyStop: mm(195),
-      bridgeHeight: mm(33),
-      nutThickness: mm(7.5),
-      fingerboardLength: standardFingerboardLength(p.body.height),
-      fingerboardThickness: mm(5),
-      fingerboardRadius: mm(42),
-    };
+    p.stringSetup = { ...familyStandards(p.body.height).strings };
   }
 
   @Input({ required: true }) params!: ViolinFamilyParams;
@@ -120,7 +107,6 @@ export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
   }
 }
 
-const REFERENCE_BODY_HEIGHT = 355;
 // the bridge's blank, drawn as a wedge: how much narrower the feet are than its height, and the top
 // than the feet
 const BRIDGE_FOOT_HALF_WIDTH_RATIO = 0.07;
@@ -132,14 +118,6 @@ const FINGERBOARD_CROWN_OPACITY = 0.45;
 const FRET_MARK_SEMITONES = 12;
 const FRET_TICK_HALF_LENGTH = 1;
 const LANDMARK_TICK_HALF_LENGTH = 3;
-
-// fingerboards run standard lengths by instrument size, the size classes the mould's blocks use
-function standardFingerboardLength(bodyHeight: number): number {
-  if (bodyHeight < 400) return 270;
-  if (bodyHeight < 500) return 310;
-  if (bodyHeight < 800) return 580;
-  return 850;
-}
 
 // the bridge, the board, the nut and the string, over the neck renderNeck draws. The neck's front is
 // in colour since its length is set here
@@ -383,9 +361,9 @@ export function solveStringSetup(p: ViolinFamilyParams): StringSetupSolve | null
     if (!(ss.fingerboardLength > 0)) return fail('Fingerboard: the length needs a value above 0.', ['fingerboard']);
     if (ss.fingerboardThickness < 0) return fail('Fingerboard: the thickness can\'t be negative.', ['fingerboard']);
     let end = s.fingerboardEnd = pointAtDistanceToward(neckTop, root, ss.fingerboardLength);
-    let widest = 2 * Math.max(neckHalfWidthAt(p, neck, neckTop.y), neckHalfWidthAt(p, neck, end.y));
+    let widest = Math.max(neckHalfWidthAt(p, neck, neckTop.y), neckHalfWidthAt(p, neck, end.y));
     if (ss.fingerboardRadius <= widest) {
-      return fail(`Fingerboard: the radius has to be larger than the board is wide, ${widest.toFixed(1)} mm at its widest.`, ['fingerboard'],
+      return fail(`Fingerboard: the radius has to span the board's half width, ${widest.toFixed(1)} mm at its widest.`, ['fingerboard'],
         [moveInVectorSpace(end, [{ ...normal, mag: ss.fingerboardThickness }])]);
     }
     return null;

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
+import { OuterContourPanel, solveOuterContourRatios } from '../outer-contour-panel/outer-contour-panel';
 import { FHolePlacementPanel, solveFholePlacementRatios } from '../fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel, solveFholeContoursRatios } from '../fhole-contours-panel/fhole-contours-panel';
 import { dist, pointOnCircle } from '../../../../helpers/math/simpleGeometry';
@@ -9,7 +9,8 @@ import { solveCenterBout, solveCenterBoutRatios } from './center-bout-panel';
 import { CornersPanel, solveCorners, solveCornersRatios } from '../corners-panel/corners-panel';
 import { MainBoutsPanel, solveMainBouts, solveMainBoutsRatios } from '../main-bouts-panel/main-bouts-panel';
 import { solveBodyRatios } from '../base-measurements-panel/base-measurements-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, FHOLE_SEED_RATIOS, SEED_RATIOS, ViolinFamilyParams } from '../../violin-family-types';
+import { ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS, FHOLE_SEED_RATIOS, SEED_RATIOS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
 
@@ -288,10 +289,11 @@ describe('ratios', () => {
     OuterContourPanel.seed(p);
     FHolePlacementPanel.seed(p);
     FHoleContoursPanel.seed(p);
-    const keys = Object.keys({ ...solveBodyRatios(p), ...solveMainBoutsRatios(p), ...solveCornersRatios(p), ...solveCenterBoutRatios(p) }).sort();
-    // the seed also carries the measurements the ratios are drawn from; those are not read back
-    const measurements = ['height', 'overhang', 'rib'];
-    expect(keys).toEqual(Object.keys(SEED_RATIOS).filter(k => !measurements.includes(k)).sort());
+    const keys = Object.keys({
+      ...solveBodyRatios(p), ...solveMainBoutsRatios(p), ...solveCornersRatios(p), ...solveCenterBoutRatios(p), ...solveOuterContourRatios(p),
+    }).sort();
+    // the seed also carries the height the ratios are drawn from; that is not read back
+    expect(keys).toEqual(Object.keys(SEED_RATIOS).filter(k => k !== 'height').sort());
   });
 
   it('names every f-hole seed fraction a ratio some panel reports', () => {

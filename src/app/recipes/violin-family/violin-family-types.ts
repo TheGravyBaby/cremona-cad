@@ -1,6 +1,7 @@
 import { Arc, Circle, Pt, Rectangle, RecipeInterface } from '../../models/types';
 import { SolveFailure } from '../../helpers/validators';
 import { PolylineIndex } from '../../helpers/math/vibeMath';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS, FholeRatios, ViolinFamilyRatios } from './violin-family-seed';
 
 // Every data shape the Violin Family recipe passes around, in one place. Three families:
 //
@@ -9,6 +10,8 @@ import { PolylineIndex } from '../../helpers/math/vibeMath';
 //           never saved. A later panel reads an earlier one's by calling its solver.
 //   ratios  the proportions the drawing reads at, for study. Derived like the solved stages, and
 //           stamped onto the file as a record; nothing reads them back.
+//
+// the seeds live in violin-family-seed.ts.
 
 // one sub-object per drafting stage, absent until that stage is first opened and seeded
 export interface ViolinFamilyParams {
@@ -135,16 +138,17 @@ export interface ButtonParams {
 export interface FlutingParams {
   flutingEdge: number;
   cornerGouge: boolean;
-  top: GougeParams;
-  back: GougeParams;
+  top: ChannelParams;
+  back: ChannelParams;
 }
 
-// a gouge is its sweep radius and how deep it is run; the channel's width follows from the two.
-// A second, narrower gouge may take the waist, where the first can't follow the C bout's curve
-export interface GougeParams {
-  sweepRadius: number;
+// a channel is its width, chord to chord where the gouge enters the plate and comes back out, and
+// its depth at the trough; the gouge that cuts it follows from the two. A second, narrower channel
+// may take the waist, where the bouts' gouge can't follow the C bout's curve
+export interface ChannelParams {
+  width: number;
   depth: number;
-  cBoutSweep: number;
+  cBoutWidth: number;
   useCBoutGouge: boolean;
 }
 
@@ -488,15 +492,15 @@ export type FlutingKey = 'top' | 'back';
 export type FlutingFailure = SolveFailure<FlutingKey>;
 
 // one plate's channel as three closed loops: its outer edge on the fluting edge, its centreline,
-// and its inner edge, each a gouge's half width further in, with the inner edge's offset from the
-// plate edge read off for the arching. The fluting edge itself is the plate edge that width in,
-// corners followed, which the channel bypasses
+// and its inner edge, each half the channel's width further in, with the inner edge's offset from
+// the plate edge read off for the arching, and the sweep of the gouge that cuts each width. The
+// fluting edge itself is the plate edge that width in, corners followed, which the channel bypasses
 export interface ChannelSolve {
   outer: string;
   center: string;
   inner: string;
-  width: number;
-  cBoutWidth: number;
+  sweep: number;
+  cBoutSweep: number;
   innerEdgeOffset: number;
   innerEdgeOffset_cBout: number;
 }
@@ -612,7 +616,7 @@ export interface CrossArchRow {
 export interface CrossArchSection {
   centerHalf: number;
   halfWidth: number;
-  sweepRadius: number;
+  width: number;
   archH: number;
   xPeak: number;
   left: ArchTakeoff | null;
@@ -625,11 +629,11 @@ export interface CrossArchSection {
   zAt: (x: number) => number;
 }
 
-// the gouge as the surface reads it, with the band between the corners the C bout sweep takes
+// the channel as the surface reads it, with the band between the corners the C bout width takes
 export interface SurfaceGouge {
-  sweepRadius: number;
+  width: number;
   depth: number;
-  cBoutSweep: number;
+  cBoutWidth: number;
   cornerGouge: boolean;
   lowerCornerY: number;
   upperCornerY: number;
@@ -741,145 +745,6 @@ export interface MouldSolve {
   failures: MouldFailure[];
 }
 
-// what a drafted outline reads as, named <thing>to<datum>. The radius ratios are taken against the
-// bout's inner width (the width less the inset both sides), as the Ceruti recipe always measured
-// them, so the two compare. Stamped on the file for study; nothing reads them back
-export interface ViolinFamilyRatios {
-  HtoW: number;
-  UBtoLB: number;
-  U0toUBW: number;
-  U1toUBW: number;
-  LBtoH: number;
-  L0toLBW: number;
-  L1toLBW: number;
-  U2toUBW: number;
-  U3toLBW: number;
-  U31toLBW: number;
-  L2toLBW: number;
-  L3toLBW: number;
-  L31toLBW: number;
-  UCYtoH: number;
-  LCYtoH: number;
-  CBWtoLBW: number;
-  C0toLBW: number;
-  C0YtoH: number;
-  C2toLBW: number;
-  C21toLBW: number;
-  C1toLBW: number;
-  C11toLBW: number;
-}
-
-// the f-holes' proportions, named the same way. The lower eye is drawn from the body's width and
-// everything after it from an eye: the placement guides (the lower eye in from the lower corner;
-// the upper eye where a circle about the lower eye, through the waist, meets one about the waist),
-// the rises, the stem's seat in the frame the eyes and rises carve out, and each cut's length
-// against its eye. The contours describe how smooth the curve is: the stem arc is the largest,
-// set against the eye span (the hole's own length), and every shoulder, arm and wing is a
-// fraction of it. The stem arcs read as one radius, or their mean once set free
-export interface FholeRatios {
-  LEyetoW: number;
-  UEyetoLEye: number;
-  LEyeXtoLCX: number;
-  LEyeYtoLCY: number;
-  UEyeGuidetoWaist: number;
-  EyeSpantoWaist: number;
-  URisetoUEye: number;
-  LRisetoLEye: number;
-  StemXtoFrame: number;
-  StemYtoFrame: number;
-  StemWtoUEye: number;
-  UCuttoUEye: number;
-  LCuttoLEye: number;
-  StoEyeSpan: number;
-  U1toS: number;
-  U2toS: number;
-  U3toS: number;
-  L1toS: number;
-  L2toS: number;
-  L3toS: number;
-}
-
-// the one instrument the app drafts from nothing: a height, and the ratios every outline value is
-// drawn from it by. The overhang and rib are trade standards rather than proportions, kept here
-// until a family table holds them. The base stage has no absolute number anywhere else
-export const SEED_RATIOS: ViolinFamilyRatios & { height: number; overhang: number; rib: number } = {
-  height: 356,
-  overhang: 3,
-  rib: 1,
-  HtoW: 7 / 4,
-  UBtoLB: 4 / 5,
-  U0toUBW: 8 / 9,
-  U1toUBW: 2 / 5,
-  LBtoH: 4 / 7,
-  L0toLBW: 2 / 1,
-  L1toLBW: 1 / 3,
-  U2toUBW: 3 / 5,
-  U3toLBW: 1 / 8,
-  U31toLBW: 1 / 16,
-  L2toLBW: 1 / 2,
-  L3toLBW: 1 / 8,
-  L31toLBW: 1 / 16,
-  UCYtoH: 23 / 36,
-  LCYtoH: 6 / 15,
-  CBWtoLBW: 1 / 2,
-  C0toLBW: 1 / 2,
-  C0YtoH: 9 / 16,
-  C2toLBW: 1 / 12,
-  C21toLBW: 1 / 16,
-  C1toLBW: 1 / 8,
-  C11toLBW: 1 / 16,
-};
-
-// the f-holes drafted from nothing but the outline: keyed off the lower eye, itself a fraction of
-// the width. One drawing rather than a corpus mean: a Stradivari-pattern hole drawn by hand on the
-// seed outline (2026-10), with the Betts and the Ward as the check. The angles ride with the
-// fractions because a radius says nothing without where its arc takes off and hands over: the
-// shoulders' ends, the angle each wing meets its cut at, where each cut leaves its eye and the
-// slope it leaves on, and the stem's lean, all in degrees
-export const FHOLE_SEED_RATIOS: FholeRatios & {
-  U1End: number; U3Angle: number; UCutAt: number; UCutSlope: number;
-  L1End: number; L3Angle: number; LCutAt: number; LCutSlope: number;
-  stemAngle: number;
-} = {
-  LEyetoW: 3 / 128,
-  UEyetoLEye: 5 / 8,
-  LEyeXtoLCX: 2 / 3,
-  LEyeYtoLCY: 29 / 30,
-  UEyeGuidetoWaist: 6 / 11,
-  EyeSpantoWaist: 1,
-  URisetoUEye: 5 / 3,
-  LRisetoLEye: 11 / 8,
-  StemXtoFrame: 5 / 12,
-  StemYtoFrame: 1 / 2,
-  StemWtoUEye: 2,
-  UCuttoUEye: 2,
-  LCuttoLEye: 8 / 5,
-  StoEyeSpan: 5 / 8,
-  U1toS: 1 / 5,
-  U2toS: 3 / 10,
-  U3toS: 2 / 5,
-  L1toS: 1 / 4,
-  L2toS: 3 / 8,
-  L3toS: 1 / 2,
-  U1End: 60,
-  U3Angle: 85,
-  UCutAt: 70,
-  UCutSlope: 45,
-  L1End: -90,
-  L3Angle: 100,
-  LCutAt: 255,
-  LCutSlope: -130,
-  stemAngle: 92,
-};
-
-export const DEFAULT_VIOLIN_FAMILY_PARAMS: ViolinFamilyParams = {
-  body: {
-    height: SEED_RATIOS.height,
-    width: Math.round(SEED_RATIOS.height / SEED_RATIOS.HtoW),
-    overhang: SEED_RATIOS.overhang,
-    rib: SEED_RATIOS.rib,
-  },
-};
 
 export interface ViolinFamilyViewFlags {
   showModuleArcs: boolean;

@@ -10,7 +10,8 @@ import { FlutingPanel, gougeHalfWidth, gougeProfileSlope } from '../fluting-pane
 import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { CrossArchParams, DEFAULT_VIOLIN_FAMILY_PARAMS, PlateSurface, ViolinFamilyParams } from '../../violin-family-types';
+import { CrossArchParams, PlateSurface, ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
 
@@ -30,7 +31,8 @@ const topSurface = (p: ViolinFamilyParams): PlateSurface => {
 };
 
 // a gouge that cuts 4mm wide at 1.2mm deep, and a wide station
-const R = 2.2667;
+// a channel 4 mm wide at 1.2 deep, the sweep that cut it 2.2667
+const W = 4;
 const D = 1.2;
 const ARCH = 15;
 const HALF = 100;
@@ -93,26 +95,26 @@ describe('the cross arching solve', () => {
 
 describe('a section', () => {
   it('meets the channel tangentially on both sides, symmetric when the crown is', () => {
-    const s = solveCrossArchSection(ARCH, HALF, R, D, row)!;
+    const s = solveCrossArchSection(ARCH, HALF, W, D, row)!;
     for (const side of [s.left!, s.right!]) {
       expect(side.tangent).toBe(true);
-      expect(gougeProfileSlope(side.contactS, R, D)).toBeCloseTo(side.slope, 9);
+      expect(gougeProfileSlope(side.contactS, W, D)).toBeCloseTo(side.slope, 9);
       expect(side.contactS).toBeGreaterThan(0);
-      expect(side.contactS).toBeLessThan(gougeHalfWidth(R, D));
+      expect(side.contactS).toBeLessThan(gougeHalfWidth(W, D));
     }
     expect(s.left!.contactS).toBeCloseTo(s.right!.contactS, 9);
     for (const x of [10, 45, 80, 99]) expect(s.zAt(-x)).toBeCloseTo(s.zAt(x), 9);
     // crown at the arch height, the trough a full depth down, plate level past the cut
     expect(s.zAt(0)).toBeCloseTo(ARCH, 9);
     expect(s.zAt(HALF)).toBeCloseTo(-D, 9);
-    expect(s.zAt(HALF + gougeHalfWidth(R, D))).toBeCloseTo(0, 9);
+    expect(s.zAt(HALF + gougeHalfWidth(W, D))).toBeCloseTo(0, 9);
     // no seam where the arch hands over to the channel
     const xEnd = HALF - s.right!.contactS;
     expect(s.zAt(xEnd - 1e-6)).toBeCloseTo(s.zAt(xEnd + 1e-6), 6);
   });
 
   it('holds a point where it was put while an uneven crown lands its two sides apart', () => {
-    const s = solveCrossArchSection(ARCH, HALF, R, D, {
+    const s = solveCrossArchSection(ARCH, HALF, W, D, {
       left: [{ x: 0.3, z: 0.9 }, { x: 0.6, z: 0.8 }], right: [{ x: 0.3, z: 0.9 }, { x: 0.6, z: 0.2 }],
     })!;
     expect(s.left!.contactS).not.toBeCloseTo(s.right!.contactS, 3);
@@ -121,16 +123,16 @@ describe('a section', () => {
 
   it('still solves with the crown below plate level, and meets the outer flank when a point dips under', () => {
     for (const archH of [-0.9, 0, 0.4]) {
-      const s = solveCrossArchSection(archH, HALF, R, D, row)!;
+      const s = solveCrossArchSection(archH, HALF, W, D, row)!;
       expect(s.zAt(0)).toBeCloseTo(archH, 9);
       expect(s.zAt(0)).toBeGreaterThan(s.zAt(HALF));
     }
-    const dip = solveCrossArchSection(ARCH, HALF, R, D, { left: [{ x: 0.9, z: -0.1 }], right: [{ x: 0.9, z: -0.1 }] })!;
+    const dip = solveCrossArchSection(ARCH, HALF, W, D, { left: [{ x: 0.9, z: -0.1 }], right: [{ x: 0.9, z: -0.1 }] })!;
     for (const side of [dip.left!, dip.right!]) {
       expect(side.tangent).toBe(true);
       expect(side.contactS).toBeLessThan(0);
     }
-    expect(solveCrossArchSection(ARCH, 1, R, D, row)).toBeNull();
+    expect(solveCrossArchSection(ARCH, 1, W, D, row)).toBeNull();
   });
 
   it('ramps a crown between stations without overshooting either, the base anchoring both ends', () => {
@@ -177,7 +179,7 @@ describe('the surface', () => {
     q.fluting!.cornerGouge = false;
     const s = topSurface(q);
     const poly = s.centerPoly;
-    const w = gougeHalfWidth(s.gouge.sweepRadius, s.gouge.depth);
+    const w = gougeHalfWidth(s.gouge.width, s.gouge.depth);
     let checked = 0;
     for (let i = 0; i < poly.length; i += 23) {
       const prev = poly[(i - 1 + poly.length) % poly.length], next = poly[(i + 1) % poly.length];

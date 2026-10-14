@@ -14,10 +14,8 @@ import { Arc, Circle, Pt, Rectangle } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import {
-  FHOLE_SEED_RATIOS, FholePlacementParams, FholeRatios, FholeStemParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams,
-  ViolinFamilyToggleKey, ViolinFamilyViewFlags,
-} from '../../violin-family-types';
+import { FholePlacementParams, FholeStemParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { FHOLE_SEED_RATIOS, FholeRatios } from '../../violin-family-seed';
 import { renderBoutBounds, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';

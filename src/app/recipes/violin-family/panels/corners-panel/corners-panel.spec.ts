@@ -6,7 +6,8 @@ import { Arc } from '../../../../models/types';
 import { ThemeService } from '../../../../theme/theme.service';
 import { CornersPanel, defaultCornerTips, renderCorners, solveCorners, solveCornersRatios } from './corners-panel';
 import { MainBoutsPanel, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, SEED_RATIOS, ViolinFamilyParams } from '../../violin-family-types';
+import { ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS, SEED_RATIOS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
 
@@ -174,11 +175,13 @@ describe('a viol corner', () => {
   const k = p.corners!;
   const c = solveCorners(p)!;
 
+  // the sweep reads the bout arc's end before the corner solve re-reads it through a tangent-circle
+  // intersection, which is only good to the square root of machine precision
   it('sweeps from the bout arc\'s end to the tip in one arc', () => {
     expect(c.failures).toEqual([]);
-    expect(dist(start(c.U4!), end(c.U1!))).toBeCloseTo(0, 6);
+    expect(dist(start(c.U4!), end(c.U1!))).toBeCloseTo(0, 4);
     expect(dist(end(c.U4!), k.UCr)).toBeCloseTo(0, 6);
-    expect(dist(start(c.L4!), end(c.L1!))).toBeCloseTo(0, 6);
+    expect(dist(start(c.L4!), end(c.L1!))).toBeCloseTo(0, 4);
     expect(dist(end(c.L4!), k.LCr)).toBeCloseTo(0, 6);
   });
 

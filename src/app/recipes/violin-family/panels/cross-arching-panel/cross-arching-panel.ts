@@ -606,15 +606,15 @@ export function makeCrossArchResolver(cross: CrossArchParams, bodyHeight: number
   return (y: number) => ({ left: read(left, y), right: read(right, y), peak: peakTrack(y), fromTakeoff });
 }
 
-// which gouge is cutting at a station: the C bout tool between the corners, else the main one,
-// eased across each corner over one gouge width. A hard switch would be a step in sweep at an
+// which channel is cut at a station: the C bout's between the corners, else the bouts', eased
+// across each corner over one channel width. A hard switch would be a step in width at an
 // arbitrary station, a seam in the surface exactly at the corner
-export function gougeAtY(g: SurfaceGouge, y: number): { sweepRadius: number; halfWidth: number } {
+export function gougeAtY(g: SurfaceGouge, y: number): { width: number; halfWidth: number } {
   let lo = Math.min(g.lowerCornerY, g.upperCornerY), hi = Math.max(g.lowerCornerY, g.upperCornerY);
-  let band = Math.max(gougeHalfWidth(g.sweepRadius, g.depth), gougeHalfWidth(g.cBoutSweep, g.depth));
+  let band = Math.max(gougeHalfWidth(g.width, g.depth), gougeHalfWidth(g.cBoutWidth, g.depth));
   let wC = smoothstep(y, lo - band, lo + band) * (1 - smoothstep(y, hi - band, hi + band));
-  let sweepRadius = g.sweepRadius + wC * (g.cBoutSweep - g.sweepRadius);
-  return { sweepRadius, halfWidth: gougeHalfWidth(sweepRadius, g.depth) };
+  let width = g.width + wC * (g.cBoutWidth - g.width);
+  return { width, halfWidth: gougeHalfWidth(width, g.depth) };
 }
 
 // how far up the outer flank a landing must sit, in half widths, before the corner stretch eases out
@@ -627,15 +627,15 @@ const CORNER_EASE_BAND = 0.25;
 // landing up the flank the stretch eases out, leaving at the flank's grade and flattening toward
 // the edge, so the arch's climb runs out flat across the wedge instead of creasing. Never above
 // the flank, so composing by minimum only removes wood
-export function cornerSmoothZ(s: number, edgeDist: number, sweepRadius: number, depth: number, from = 0): number {
-  let w = gougeHalfWidth(sweepRadius, depth);
+export function cornerSmoothZ(s: number, edgeDist: number, width: number, depth: number, from = 0): number {
+  let w = gougeHalfWidth(width, depth);
   if (w <= 0 || s >= from || edgeDist <= 0) return 0;
   let left = w + from;
   let run = Math.max(edgeDist - s + from, left);
   let u = (from - s) / run;
   let stretch = run / left;
   let ease = 1 + (stretch - 1) * smoothstep(-from, 0, CORNER_EASE_BAND * w);
-  return gougeProfileZ(from - left * (1 - Math.pow(1 - u, ease)), sweepRadius, depth);
+  return gougeProfileZ(from - left * (1 - Math.pow(1 - u, ease)), width, depth);
 }
 
 interface SideEnd { xEnd: number; zEnd: number }
@@ -739,8 +739,8 @@ const PEAK_TAPER_DEPTHS = 2;
 // stays put. The crown may sit below plate level (the recurve bands near the caps) and even below
 // the trough, where both sides meet the outer flank. Its offset is tapered by how much crown there
 // is and by how much the chord describes, smoothstepped so the ridge line carries no kink
-export function solveCrossArchSection(archH: number, centerHalf: number, sweepRadius: number, depth: number, row: CrossArchRow, chordFrac = 1): CrossArchSection | null {
-  let halfWidth = gougeHalfWidth(sweepRadius, depth);
+export function solveCrossArchSection(archH: number, centerHalf: number, width: number, depth: number, row: CrossArchRow, chordFrac = 1): CrossArchSection | null {
+  let halfWidth = gougeHalfWidth(width, depth);
   if (halfWidth <= 0 || centerHalf <= halfWidth) return null;
   let isCatenary = !!row.catenary;
 
@@ -752,7 +752,7 @@ export function solveCrossArchSection(archH: number, centerHalf: number, sweepRa
   let peakLimit = 0.9 * Math.max(centerHalf - halfWidth, 0);
   let xPeak = clamp(((row.peak ?? 0.5) - 0.5) * 2 * centerHalf * taper, -peakLimit, peakLimit);
 
-  let endAt = (s: number): SideEnd => ({ xEnd: centerHalf - s, zEnd: gougeProfileZ(s, sweepRadius, depth) });
+  let endAt = (s: number): SideEnd => ({ xEnd: centerHalf - s, zEnd: gougeProfileZ(s, width, depth) });
   // the seed the sweeps start from; overwritten on the first pass in every case that draws
   let endL = endAt(halfWidth * (1 - 1e-3));
   let endR = endL;
@@ -775,7 +775,7 @@ export function solveCrossArchSection(archH: number, centerHalf: number, sweepRa
         : crossProfile(archH, xPeak, frame, row.left, row.right, mine, endR);
       return (f(side * (mine.xEnd - eps)) - mine.zEnd) / eps;
     };
-    return solveArchTakeoff(sweepRadius, depth, slopeAt);
+    return solveArchTakeoff(width, depth, slopeAt);
   };
 
   // both sides live on one spline, so each landing nudges the other's arrival slope; the coupling
@@ -798,11 +798,11 @@ export function solveCrossArchSection(archH: number, centerHalf: number, sweepRa
       return isCatenary ? catenarySideZAt(archH, x < 0 ? endL.zEnd : endR.zEnd, x < 0 ? endL.xEnd : endR.xEnd, x) : profile!(x);
     }
     // past the arch's reach the channel is the surface, and past that the flat land
-    return gougeProfileZ(centerHalf - Math.abs(x), sweepRadius, depth);
+    return gougeProfileZ(centerHalf - Math.abs(x), width, depth);
   };
 
   return {
-    centerHalf, halfWidth, sweepRadius, archH, xPeak,
+    centerHalf, halfWidth, width, archH, xPeak,
     left: takeL, right: takeR,
     xEndLeft: endL.xEnd, xEndRight: endR.xEnd,
     innerEdge: frame.innerEdge,
@@ -863,11 +863,11 @@ export function solvedLongArchHeightAt(surface: PlateSurface, y: number): number
 export function sectionAt(surface: PlateSurface, y: number): CrossArchSection | null {
   let centerHalf = loopHalfChordAtY(surface.centerPoly, y);
   if (centerHalf === null) return null;
-  let { sweepRadius } = gougeAtY(surface.gouge, y);
+  let { width } = gougeAtY(surface.gouge, y);
   // measured at the joint, where the sign-of-x ambiguity lives: the half chord through the body,
   // falling away as the channel wraps round each cap
   let chordFrac = centerHalf > 1e-9 ? closestPointToPolylineIndexed({ x: 0, y }, surface.centerIdx).dist / centerHalf : 1;
-  return solveCrossArchSection(solvedLongArchHeightAt(surface, y), centerHalf, sweepRadius, surface.gouge.depth, surface.resolveCross(y), chordFrac);
+  return solveCrossArchSection(solvedLongArchHeightAt(surface, y), centerHalf, width, surface.gouge.depth, surface.resolveCross(y), chordFrac);
 }
 
 // half width of the run of plate the centreline sits in at a station, bounded by the crossings
@@ -925,7 +925,7 @@ function withCornerPass(surface: PlateSurface, row: SurfaceRow, x: number, y: nu
   if (s >= from || !surface.gouge.cornerGouge) return z;
   if (!insideCrossings(x, row.landCrossings)) return z;
   let edgeDist = closestPointToPolylineIndexed({ x, y }, surface.flutingEdgeIdx).dist;
-  return Math.min(z, cornerSmoothZ(s, edgeDist, gougeAtY(surface.gouge, y).sweepRadius, surface.gouge.depth, from));
+  return Math.min(z, cornerSmoothZ(s, edgeDist, gougeAtY(surface.gouge, y).width, surface.gouge.depth, from));
 }
 
 // the height at (x, y) relative to the plate's outer surface, null off the plate. The channel goes
@@ -949,10 +949,10 @@ export function surfaceZAt(surface: PlateSurface, x: number, y: number, row = ro
       let t = (1 - w) * tDist + w * tChord;
       return section.zAt((x < 0 ? -1 : 1) * xEnd * (1 - t));
     }
-    return withCornerPass(surface, row, x, y, s, gougeProfileZ(s, section.sweepRadius, surface.gouge.depth), Math.min(contact, 0));
+    return withCornerPass(surface, row, x, y, s, gougeProfileZ(s, section.width, surface.gouge.depth), Math.min(contact, 0));
   }
   // past the long arch's reach there is no crown, but the channel still runs through the caps
-  return withCornerPass(surface, row, x, y, s, gougeProfileZ(s, gougeAtY(surface.gouge, y).sweepRadius, surface.gouge.depth));
+  return withCornerPass(surface, row, x, y, s, gougeProfileZ(s, gougeAtY(surface.gouge, y).width, surface.gouge.depth));
 }
 
 export type SurfacePart = 'arch' | 'channel' | 'land';
@@ -1146,7 +1146,7 @@ function solvePlateSurface(p: ViolinFamilyParams, plate: Plate): { surface: Plat
 
     let g = p.fluting![plate];
     let gouge: SurfaceGouge = {
-      sweepRadius: g.sweepRadius, depth: g.depth, cBoutSweep: g.useCBoutGouge ? g.cBoutSweep : g.sweepRadius,
+      width: g.width, depth: g.depth, cBoutWidth: g.useCBoutGouge ? g.cBoutWidth : g.width,
       cornerGouge: p.fluting!.cornerGouge, lowerCornerY: p.corners!.LCr.y, upperCornerY: p.corners!.UCr.y,
     };
     let flutingEdge = samplePathToPolyline(f.outerEdge);

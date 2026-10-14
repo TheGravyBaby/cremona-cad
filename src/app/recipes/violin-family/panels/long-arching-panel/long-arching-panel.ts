@@ -12,10 +12,8 @@ import { Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import {
-  ArchTakeoff, GougeParams, LongArchCurve, LongArchingFailure, LongArchingSolve, LongArchParams, LongArchSolve, OuterContourSolve, Plate,
-  RenderLayer, RibTaper, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
-} from '../../violin-family-types';
+import { ArchTakeoff, ChannelParams, LongArchCurve, LongArchingFailure, LongArchingSolve, LongArchParams, LongArchSolve, OuterContourSolve, Plate, RenderLayer, RibTaper, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { familyStandards } from '../../violin-family-seed';
 import { gougeHalfWidth, gougeProfileSlope, gougeProfileZ, renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
 import { renderOuterContour, solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
@@ -39,22 +37,19 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
   protected readonly peakSource = SPLINE_PEAK_SOURCE;
   protected readonly plates: readonly Plate[] = ['top', 'back'];
 
-  // ribs and arches sized by instrument family, with a ~0.6% rib taper; every curve type's fields
-  // written at once, the spline's points hung off the seeded height, so a type switch only reveals
+  // the ribs and the edge off the family's standards, the arch heights the maker's eye by family;
+  // every curve type's fields written at once, the spline's points hung off the seeded height, so
+  // a type switch only reveals
   static seed(p: ViolinFamilyParams): void {
     if (p.arching || !p.fluting) return;
-    let h = p.body.height;
-    let [ribLower, ribUpper, topH, backH, thickness] =
-      h < 400 ? [32, 30, 15, 14, 3.5] :      // violin
-      h < 500 ? [40, 38, 20, 18, 4] :        // viola
-      h < 800 ? [120, 116, 27, 25, 6] :      // cello
-      [185, 179, 55, 50, 9];                 // bass
+    let s = familyStandards(p.body.height);
+    let [topH, backH] = { violin: [15, 14], viola: [20, 18], cello: [27, 25], bass: [55, 50] }[s.family];
     let plate = (height: number) => ({
-      thickness,
+      thickness: s.edgeThickness,
       arch: { type: 'catenary' as const, height, peak: 50, points: seedPoints(height) },
       cross: { type: 'cycloid' as const, d: 40, pct: 90, peak: 50, points: [{ x: 83, z: 50, mirror: true }], stations: [] },
     });
-    p.arching = { ribHeightLower: ribLower, ribHeightUpper: ribUpper, top: plate(topH), back: plate(backH) };
+    p.arching = { ribHeightLower: s.ribHeightLower, ribHeightUpper: s.ribHeightUpper, top: plate(topH), back: plate(backH) };
   }
 
   @Input({ required: true }) params!: ViolinFamilyParams;
@@ -263,8 +258,8 @@ export function buildArchPathFor(arch: LongArchCurve, span: number, yStart: numb
 
 // the channel's own section at a body cap, in the side view (canvas X = Z, canvas Y = body length),
 // stopped at the arch's contact when one is given: past it the arch is the surface
-export function channelCapPath(p: ViolinFamilyParams, g: GougeParams, xBase: number, sign: 1 | -1, atStart: boolean, sEnd?: number, n = 40): string {
-  let w = gougeHalfWidth(g.sweepRadius, g.depth);
+export function channelCapPath(p: ViolinFamilyParams, g: ChannelParams, xBase: number, sign: 1 | -1, atStart: boolean, sEnd?: number, n = 40): string {
+  let w = gougeHalfWidth(g.width, g.depth);
   if (w <= 0) return '';
   let centerY = p.fluting!.flutingEdge + w;
   let end = Math.min(sEnd ?? w, w);
@@ -272,7 +267,7 @@ export function channelCapPath(p: ViolinFamilyParams, g: GougeParams, xBase: num
   for (let i = 0; i <= n; i++) {
     let s = -w + ((end + w) * i) / n;
     let y = atStart ? centerY + s : p.body.height - centerY - s;
-    pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * gougeProfileZ(s, g.sweepRadius, g.depth)} ${y}`);
+    pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * gougeProfileZ(s, g.width, g.depth)} ${y}`);
   }
   return pts.join(' ');
 }
@@ -356,17 +351,17 @@ export function longArchCurve(arch: LongArchParams): LongArchCurve {
 // caps the two slopes go to zero together and whether they cross comes down to the last digits,
 // and a station pinned at the flank's top beside neighbours at the trough rang a seam round the cap
 export function solveArchTakeoff(
-  sweepRadius: number, depth: number,
+  width: number, depth: number,
   archSlopeAt: (takeoffDepth: number, contactS: number) => number,
   scanSteps = 32,
 ): ArchTakeoff | null {
-  let w = gougeHalfWidth(sweepRadius, depth);
+  let w = gougeHalfWidth(width, depth);
   if (w <= 0) return null;
   // held just inside both ends: at 0 the channel is exactly flat, at w it has left the cut
   let lo = w * 1e-3, hi = w * (1 - 1e-3);
-  let residual = (s: number): number => archSlopeAt(-gougeProfileZ(s, sweepRadius, depth), s) - gougeProfileSlope(s, sweepRadius, depth);
+  let residual = (s: number): number => archSlopeAt(-gougeProfileZ(s, width, depth), s) - gougeProfileSlope(s, width, depth);
   let takeoffAt = (contactS: number, tangent: boolean): ArchTakeoff =>
-    ({ contactS, takeoffDepth: -gougeProfileZ(contactS, sweepRadius, depth), slope: gougeProfileSlope(contactS, sweepRadius, depth), tangent });
+    ({ contactS, takeoffDepth: -gougeProfileZ(contactS, width, depth), slope: gougeProfileSlope(contactS, width, depth), tangent });
 
   let nearest = { s: lo, mag: Infinity };
   let bracketOn = (dir: 1 | -1): [number, number, number] | null => {
@@ -426,15 +421,15 @@ function mirrored(arch: LongArchCurve): LongArchCurve {
 // seeing the mirrored arch; the ends nudge each other's span and level only weakly, so a few
 // sweeps settle it. The C bout gouge never reaches a cap, so the main sweep governs both. Null
 // when the gouge doesn't cut, the arch has no height, or the two landings leave no span
-export function solveLongArch(p: ViolinFamilyParams, arch: LongArchCurve, g: GougeParams): LongArchSolve | null {
-  let w = gougeHalfWidth(g.sweepRadius, g.depth);
+export function solveLongArch(p: ViolinFamilyParams, arch: LongArchCurve, g: ChannelParams): LongArchSolve | null {
+  let w = gougeHalfWidth(g.width, g.depth);
   if (w <= 0 || arch.archHeight <= 0) return null;
   let centerY = p.fluting!.flutingEdge + w;
   let height = p.body.height;
   let eps = Math.max(height * 1e-5, 1e-4);
 
   let solveEnd = (a: LongArchCurve, other: ArchTakeoff | null): ArchTakeoff | null =>
-    solveArchTakeoff(g.sweepRadius, g.depth, (takeoffDepth, contactS) => {
+    solveArchTakeoff(g.width, g.depth, (takeoffDepth, contactS) => {
       let o = other ?? { takeoffDepth, contactS };
       let span = height - 2 * centerY - contactS - o.contactS;
       if (span <= 0) return 0;
@@ -468,12 +463,12 @@ export function solveLongArch(p: ViolinFamilyParams, arch: LongArchCurve, g: Gou
 // the channel, then the arch over and back. One function across the body, since the arch's takeoff
 // meets the channel's flank at the same height and slope. Without an arch the plate is channel and
 // land only
-export function channelCenterlineZAt(p: ViolinFamilyParams, g: GougeParams, la: LongArchSolve | null, y: number): number {
-  let w = gougeHalfWidth(g.sweepRadius, g.depth);
+export function channelCenterlineZAt(p: ViolinFamilyParams, g: ChannelParams, la: LongArchSolve | null, y: number): number {
+  let w = gougeHalfWidth(g.width, g.depth);
   let centerY = p.fluting!.flutingEdge + w;
   let s = Math.min(y, p.body.height - y) - centerY;
   if (la && y > la.yStart && y < la.yEnd) return archZAt(la.lowered, la.span, y - la.yStart, la.farZ) - la.takeoff.takeoffDepth;
-  return s <= -w ? 0 : gougeProfileZ(Math.min(s, w), g.sweepRadius, g.depth);
+  return s <= -w ? 0 : gougeProfileZ(Math.min(s, w), g.width, g.depth);
 }
 
 // a later panel reads the ribs and the arches by calling this; it returns and never writes to the

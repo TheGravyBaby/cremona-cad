@@ -10,7 +10,8 @@ import { FlutingPanel, gougeProfileSlope, gougeProfileZ } from '../fluting-panel
 import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, ViolinFamilyParams } from '../../violin-family-types';
+import { ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
 
@@ -142,8 +143,8 @@ describe('the long arch', () => {
         expect(end.contactS).toBeGreaterThan(0);
         expect(end.contactS).toBeLessThan(la.halfWidth);
         expect(end.takeoffDepth).toBeGreaterThan(0);
-        expect(gougeProfileSlope(end.contactS, g.sweepRadius, g.depth)).toBeCloseTo(end.slope, 9);
-        expect(-gougeProfileZ(end.contactS, g.sweepRadius, g.depth)).toBeCloseTo(end.takeoffDepth, 9);
+        expect(gougeProfileSlope(end.contactS, g.width, g.depth)).toBeCloseTo(end.slope, 9);
+        expect(-gougeProfileZ(end.contactS, g.width, g.depth)).toBeCloseTo(end.takeoffDepth, 9);
       }
       // the arch runs from its takeoff to the far one, the span inside the channel's centrelines
       expect(la.yStart).toBeCloseTo(la.centerY + la.takeoff.contactS, 9);

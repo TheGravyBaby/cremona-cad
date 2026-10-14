@@ -9,7 +9,8 @@ import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, ScrollSolve, ViolinFamilyParams, VoluteStyle } from '../../violin-family-types';
+import { ScrollSolve, ViolinFamilyParams, VoluteStyle } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
 

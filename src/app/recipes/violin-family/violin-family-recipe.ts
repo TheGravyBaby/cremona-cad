@@ -16,7 +16,7 @@ import { BaseMeasurementsPanel, solveBodyRatios } from './panels/base-measuremen
 import { MainBoutsPanel, solveMainBouts, solveMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel, solveCornersRatios } from './panels/corners-panel/corners-panel';
 import { CenterBoutPanel, solveCenterBout, solveCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
-import { OuterContourPanel, solveOuterContour } from './panels/outer-contour-panel/outer-contour-panel';
+import { OuterContourPanel, solveOuterContour, solveOuterContourRatios } from './panels/outer-contour-panel/outer-contour-panel';
 import { FlutingPanel, solveFluting } from './panels/fluting-panel/fluting-panel';
 import { FHolePlacementPanel, solveFholePlacementRatios } from './panels/fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel, solveFholeContoursRatios } from './panels/fhole-contours-panel/fhole-contours-panel';
@@ -236,6 +236,7 @@ export class ViolinFamily extends RecipeComponentBase {
       ...solveMainBoutsRatios(p),
       ...solveCornersRatios(p),
       ...solveCenterBoutRatios(p),
+      ...solveOuterContourRatios(p),
       ...solveFholePlacementRatios(p),
       ...solveFholeContoursRatios(p),
     };

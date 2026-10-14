@@ -8,7 +8,8 @@ import { FHolePlacementPanel } from '../fhole-placement-panel/fhole-placement-pa
 import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, FHOLE_SEED_RATIOS, FholeContoursSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { FholeContoursSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS, FHOLE_SEED_RATIOS } from '../../violin-family-seed';
 
 // The property tests say what the drawing is: every joint is tangent-continuous, the shoulder
 // touches its own eye and its bound, and the tip is where the cut says it is. Those hold for any

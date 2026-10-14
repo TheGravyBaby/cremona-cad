@@ -13,9 +13,8 @@ import { Arc, Circle, Line, Pt, Rectangle } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import {
-  MouldFailure, MouldKey, MouldSolve, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
-} from '../../violin-family-types';
+import { MouldFailure, MouldKey, MouldSolve, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
@@ -35,11 +34,13 @@ export class MouldPanel implements ViolinFamilyPanel, OnInit {
   protected readonly pal = ThemeService.getPalette('classicCremona');
   protected readonly help = showFieldHelp;
 
-  // the blocks by size class, each corner block padded the same distance out and toward the waist; a
-  // viol neck's block spans the neck's root and 2 mm past it each side
+  // the blocks by size class, each corner block padded the same distance out and toward the waist.
+  // The neck and end blocks are three times as wide as they are high, half again the Ceruti
+  // recipe's, which left too little glue face for the ribs; a viol neck's block spans the neck's
+  // root and 2 mm past it each side
   static seed(p: ViolinFamilyParams): void {
     if (p.mould || !p.corners) return;
-    let size = BLOCK_SIZES.find(b => p.body.height < b.below)!;
+    let size = familyStandards(p.body.height).blocks;
     let neckWidth = 3 * size.end;
     let V0 = p.bouts!.useViolNeck ? solveMainBouts(p)?.V0 : null;
     if (V0) neckWidth = 2 * Math.abs(pointOnCircle(V0, V0.start).x) + 4;
@@ -84,16 +85,6 @@ export class MouldPanel implements ViolinFamilyPanel, OnInit {
     });
   }
 }
-
-// the corner blocks' pad, height and width, and the neck and end blocks' height, by size class:
-// violin, viola, cello, bass. The neck and end blocks are three times as wide as they are high, half
-// again the Ceruti recipe's, which left too little glue face for the ribs
-const BLOCK_SIZES = [
-  { below: 400, pad: 3, height: 20, width: 12, end: 20 },
-  { below: 500, pad: 4, height: 30, width: 18, end: 25 },
-  { below: 800, pad: 5, height: 40, width: 24, end: 45 },
-  { below: Infinity, pad: 8, height: 50, width: 30, end: 70 },
-];
 
 // used to be a user-facing param; in practice one depth suited every instrument, so it's fixed
 const MOULD_CHANNEL_DEPTH = 4;
