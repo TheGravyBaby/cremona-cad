@@ -231,6 +231,8 @@ function legacyPlacement(f: any): FholePlacementParams | undefined {
     URise: f.URise,
     LRise: f.LRise,
     stem: { center: { x: f.stem.center.x, y: f.stem.center.y }, width: f.stem.width, angle: deg(f.stem.angle) },
+    // a ceruti file predates the notches; they come in on as a fresh draft would
+    notches: true,
   };
 }
 

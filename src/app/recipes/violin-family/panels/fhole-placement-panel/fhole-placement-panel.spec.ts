@@ -1,10 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { FHolePlacementPanel, fholeBounds, solveFholePlacementRatios, stemRun } from './fhole-placement-panel';
+import { dist, TURN } from '../../../../helpers/math/simpleGeometry';
+import { FHolePlacementPanel, fholeBounds, fholeNotches, solveFholePlacementRatios, stemEdgeAt, stemEdgePoints, stemRun } from './fhole-placement-panel';
 import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
+import { Pt } from '../../../../models/types';
 import { ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS, FHOLE_SEED_RATIOS } from '../../violin-family-seed';
 
@@ -75,6 +77,53 @@ describe('the f-hole placement', () => {
   it('leans the stem by its angle: upright runs straight, past upright its top leans toward the upper eye', () => {
     expect(stemRun({ center: { x: 0, y: 0 }, width: 6, angle: 90 })).toBeCloseTo(0, 9);
     expect(stemRun({ center: { x: 0, y: 0 }, width: 6, angle: 92 })).toBeLessThan(0);
+  });
+
+  it('measures the stem square across itself, half the width either side of the centre', () => {
+    const stem = { center: new Pt(40, 160), width: 6, angle: 94 };
+    const { inner, outer } = stemEdgePoints(stem);
+    expect(dist(inner, outer)).toBeCloseTo(stem.width, 9);
+    expect((inner.x + outer.x) / 2).toBeCloseTo(stem.center.x, 9);
+    expect((inner.y + outer.y) / 2).toBeCloseTo(stem.center.y, 9);
+    // square to the stem's own direction, so the edges measured along x stand wider than the width
+    const angle = stem.angle * TURN.degree;
+    expect((outer.x - inner.x) * Math.cos(angle) + (outer.y - inner.y) * Math.sin(angle)).toBeCloseTo(0, 9);
+    expect(stemEdgeAt(stem, outer, stem.center.y).x - stemEdgeAt(stem, inner, stem.center.y).x).toBeGreaterThan(stem.width);
+  });
+
+  it('cuts a notch into each stem edge off the perpendicular through the stem centre, the inner below it and the outer above, sized by the upper eye', () => {
+    const p = placed();
+    const f = p.fHoles!;
+    f.stem.angle = 94;
+    const angle = f.stem.angle * TURN.degree;
+    const along = (a: Pt, b: Pt) => (b.x - a.x) * Math.cos(angle) + (b.y - a.y) * Math.sin(angle);
+    const across = (a: Pt, b: Pt) => (b.x - a.x) * Math.sin(angle) - (b.y - a.y) * Math.cos(angle);
+    const mid = (n: { top: Pt; bottom: Pt }) => new Pt((n.top.x + n.bottom.x) / 2, (n.top.y + n.bottom.y) / 2);
+    const depthOf = (n: { top: Pt; apex: Pt; bottom: Pt }) => across(mid(n), n.apex);
+    const { inner, outer } = fholeNotches(f);
+    // one corner of each mouth is where the perpendicular through the centre meets its edge
+    const edges = stemEdgePoints(f.stem);
+    expect(dist(inner.top, edges.inner)).toBeLessThan(1e-9);
+    expect(dist(outer.bottom, edges.outer)).toBeLessThan(1e-9);
+    // the inner notch hangs below the perpendicular, the outer stands above it
+    expect(along(inner.top, inner.bottom)).toBeLessThan(0);
+    expect(along(outer.bottom, outer.top)).toBeGreaterThan(0);
+    expect(dist(outer.top, outer.bottom)).toBeCloseTo(dist(inner.top, inner.bottom), 9);
+    for (const [n, side] of [[inner, -1], [outer, 1]] as const) {
+      // the mouth runs along the edge, the apex midway along it and square out into the wood
+      expect(across(n.top, n.bottom)).toBeCloseTo(0, 9);
+      expect(along(mid(n), n.apex)).toBeCloseTo(0, 9);
+      expect(side * depthOf(n)).toBeGreaterThan(0);
+      // shallow: well under half as deep as the mouth is long
+      expect(Math.abs(depthOf(n))).toBeLessThan(dist(n.top, n.bottom) / 2);
+    }
+    expect(depthOf(outer)).toBeCloseTo(-depthOf(inner), 9);
+
+    const depth = depthOf(outer);
+    f.UEye.r *= 2;
+    expect(depthOf(fholeNotches(f).outer)).toBeCloseTo(2 * depth, 9);
+    f.stem.width *= 2;
+    expect(depthOf(fholeNotches(f).outer)).toBeCloseTo(2 * depth, 9);
   });
 
   it('reads the eyes against the body and each other', () => {

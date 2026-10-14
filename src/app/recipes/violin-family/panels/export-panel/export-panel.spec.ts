@@ -253,6 +253,13 @@ describe('the f-hole cutting template', () => {
     expect(flags(eyed).filter(f => f === 1)).toHaveLength(2);
     expect(flags(noEyes).filter(f => f === 1)).toHaveLength(0);
   });
+
+  it('leaves the stem runs straight when the placement has its notches off', () => {
+    const corners = (p: ViolinFamilyParams) => (exportSheet(p, 'fholeTemplate')!.paths.map(path => path.d).join(' ').match(/L/g) ?? []).length;
+    const plain = holed();
+    plain.fHoles!.notches = false;
+    expect(corners(holed())).toBeGreaterThan(corners(plain));
+  });
 });
 
 describe('the mould sheets', () => {
