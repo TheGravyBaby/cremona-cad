@@ -9,8 +9,8 @@
                 [style.borderColor]="pal.ink(1).faint(3)" (focus)="highlight('U1', pal.ink(1).faint(3))" (blur)="highlight(null)" />
         </label>
         <label class="field-cell">
-            <span class="field-title">End Angle <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" [(ngModel)]="k.U1End" (input)="edited()"
+            <span class="field-title">U1 Sweep <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="k.U1Sweep" (input)="edited()"
                 (focus)="highlight('U1', pal.ink(1).faint(3))" (blur)="highlight(null)" />
         </label>
         <label class="field-cell">
@@ -42,8 +42,8 @@
                 [style.borderColor]="pal.ink(1).faint(3)" (focus)="highlight('U21', pal.ink(1).faint(3))" (blur)="highlight(null)" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Split Angle <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" [(ngModel)]="k.U21Start" (input)="edited()"
+            <span class="field-title">U2 Sweep <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="k.U2Sweep" (input)="edited()"
                 (focus)="highlight('U21', pal.ink(1).faint(3))" (blur)="highlight(null)" />
         </label>
     </div>
@@ -144,8 +144,8 @@
                 [style.borderColor]="pal.ink(0).faint(3)" (focus)="highlight('L1', pal.ink(0).faint(3))" (blur)="highlight(null)" />
         </label>
         <label class="field-cell">
-            <span class="field-title">End Angle <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" [(ngModel)]="k.L1End" (input)="edited()"
+            <span class="field-title">L1 Sweep <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="k.L1Sweep" (input)="edited()"
                 (focus)="highlight('L1', pal.ink(0).faint(3))" (blur)="highlight(null)" />
         </label>
         <label class="field-cell">
@@ -177,8 +177,8 @@
                 [style.borderColor]="pal.ink(0).faint(3)" (focus)="highlight('L21', pal.ink(0).faint(3))" (blur)="highlight(null)" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Split Angle <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" [(ngModel)]="k.L21Start" (input)="edited()"
+            <span class="field-title">L2 Sweep <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="k.L2Sweep" (input)="edited()"
                 (focus)="highlight('L21', pal.ink(0).faint(3))" (blur)="highlight(null)" />
         </label>
     </div>

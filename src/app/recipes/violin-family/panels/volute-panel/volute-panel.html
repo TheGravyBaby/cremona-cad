@@ -76,9 +76,9 @@
                 [(ngModel)]="v.S0R" (input)="edited()" (focus)="focus('S0', pal.ink(1).faint(3))" (blur)="blur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">End <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1"
-                [(ngModel)]="v.S0End" (input)="edited()" (focus)="focus('S0', pal.ink(1).faint(3))" (blur)="blur()" />
+            <span class="field-title">Sweep <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1" min="0" max="360"
+                [(ngModel)]="v.S0Sweep" (input)="edited()" (focus)="focus('S0', pal.ink(1).faint(3))" (blur)="blur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
@@ -88,9 +88,9 @@
                 [(ngModel)]="v.S1R" (input)="edited()" (focus)="focus('S1', pal.ink(1))" (blur)="blur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">End <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1"
-                [(ngModel)]="v.S1End" (input)="edited()" (focus)="focus('S1', pal.ink(1))" (blur)="blur()" />
+            <span class="field-title">Sweep <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1" min="0" max="360"
+                [(ngModel)]="v.S1Sweep" (input)="edited()" (focus)="focus('S1', pal.ink(1))" (blur)="blur()" />
         </label>
     </div>
 </section>

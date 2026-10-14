@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { dist, pointOnCircle } from '../../../../helpers/math/simpleGeometry';
+import { dist, pointOnCircle, signedArcSweep, TURN } from '../../../../helpers/math/simpleGeometry';
 import { recordLayers } from '../../../../helpers/layer-recorder';
 import { Arc } from '../../../../models/types';
 import { ThemeService } from '../../../../theme/theme.service';
@@ -150,18 +150,19 @@ describe('a compound corner', () => {
     expect(dist(end(c.U2!), start(c.U3!))).toBeCloseTo(0, 6);
   });
 
-  it('takes the split as the typed degrees: the handover lies along that direction from U3\'s centre', () => {
-    const handover = start(c.U31!);
-    const direction = Math.atan2(handover.y - c.U3!.y, handover.x - c.U3!.x);
-    const typed = k.U31Start * Math.PI / 180;
-    expect(Math.abs(Math.cos(direction) - Math.cos(typed))).toBeLessThan(1e-6);
-    expect(Math.abs(Math.sin(direction) - Math.sin(typed))).toBeLessThan(1e-6);
+  it('turns the second arc through the typed sweep onto the tip, back against its bout like the first', () => {
+    expect(Math.abs(signedArcSweep(c.U31!)) / TURN.degree).toBeCloseTo(k.U31Sweep, MEETS);
+    expect(Math.abs(signedArcSweep(c.L31!)) / TURN.degree).toBeCloseTo(k.L31Sweep, MEETS);
+    for (const [bout, first, second] of [[c.U1!, c.U3!, c.U31!], [c.L1!, c.L3!, c.L31!]]) {
+      expect(Math.sign(signedArcSweep(first))).toBe(-Math.sign(signedArcSweep(bout)));
+      expect(Math.sign(signedArcSweep(second))).toBe(Math.sign(signedArcSweep(first)));
+    }
   });
 
-  it('moves the handover when the split is retyped', () => {
+  it('moves the handover when the sweep is retyped', () => {
     const q = seeded();
     q.corners!.U31DoubleArc = true;
-    q.corners!.U31Start += 10;
+    q.corners!.U31Sweep += 10;
     const moved = solveCorners(q)!;
     expect(moved.failures).toEqual([]);
     expect(dist(start(moved.U31!), start(c.U31!))).toBeGreaterThan(0.1);
@@ -287,16 +288,16 @@ describe('seeding', () => {
     expect(k.useViolCornerUC).toBe(false);
     expect(k.U31R).toBeGreaterThan(0);
     expect(k.L31R).toBeGreaterThan(0);
-    expect(Number.isFinite(k.U31Start)).toBe(true);
-    expect(Number.isFinite(k.L31Start)).toBe(true);
+    expect(Number.isFinite(k.U31Sweep)).toBe(true);
+    expect(Number.isFinite(k.L31Sweep)).toBe(true);
   });
 
-  it('stores the split in degrees, a half turn and a little either side', () => {
+  it('seeds each sweep as a modest turn, in degrees', () => {
     const k = seeded().corners!;
-    expect(k.U31Start).toBeGreaterThan(180);
-    expect(k.U31Start).toBeLessThan(200);
-    expect(k.L31Start).toBeGreaterThan(160);
-    expect(k.L31Start).toBeLessThan(180);
+    for (const sweep of [k.U31Sweep, k.L31Sweep]) {
+      expect(sweep).toBeGreaterThan(0);
+      expect(sweep).toBeLessThan(90);
+    }
   });
 });
 

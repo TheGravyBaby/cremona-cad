@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompound } from '../../../../helpers/math/draftMath';
-import { angleFromCenter, dist, flipArcAboutY, lineCircleIntersection, lineFromPointAndSlope, offsetArcRadius, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
+import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompoundBySweep } from '../../../../helpers/math/draftMath';
+import { angleFromCenter, dist, flipArcAboutY, lineCircleIntersection, lineFromPointAndSlope, offsetArcRadius, pointOnCircle, signedArcSweep, TURN } from '../../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCrosshair, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, SolveFailure, solveSection } from '../../../../helpers/validators';
@@ -48,22 +48,22 @@ export class CornersPanel implements ViolinFamilyPanel, OnInit {
       U2R: Math.round(UBWI * SEED_RATIOS.U2toUBW),
       U3R: Math.round(LBWI * SEED_RATIOS.U3toLBW),
       U31R: Math.round(LBWI * SEED_RATIOS.U31toLBW),
-      U31Start: 17 / 16 * 180,
+      U31Sweep: 30,
       U31DoubleArc: false,
       useViolCornerUC: false,
       L2R: Math.round(LBWI * SEED_RATIOS.L2toLBW),
       L3R: Math.round(LBWI * SEED_RATIOS.L3toLBW),
       L31R: Math.round(LBWI * SEED_RATIOS.L31toLBW),
-      L31Start: 15 / 16 * 180,
+      L31Sweep: 45,
       L31DoubleArc: false,
       useViolCornerLC: false,
       C2R: Math.round(LBWI * SEED_RATIOS.C2toLBW),
       C21R: Math.round(LBWI * SEED_RATIOS.C21toLBW),
-      C21Start: 15 / 16 * 180,
+      C21Sweep: 65,
       C21DoubleArc: false,
       C1R: Math.round(LBWI * SEED_RATIOS.C1toLBW),
       C11R: Math.round(LBWI * SEED_RATIOS.C11toLBW),
-      C11Start: 17 / 16 * 180,
+      C11Sweep: 60,
       C11DoubleArc: false,
     };
   }
@@ -273,7 +273,7 @@ export function solveCorners(p: ViolinFamilyParams): CornersSolve | null {
     null;
 
   solveSection(s.failures, 'Upper corner', ['U2', 'U3', 'U31', 'U4'], () => {
-    let missing = blank('Upper corner', ['U2', 'U3', 'U31', 'U4'], 'upper bout', m.U1, [k.U2R, k.UCr.x, k.UCr.y, k.U3R, ...(k.U31DoubleArc ? [k.U31R, k.U31Start] : [])]);
+    let missing = blank('Upper corner', ['U2', 'U3', 'U31', 'U4'], 'upper bout', m.U1, [k.U2R, k.UCr.x, k.UCr.y, k.U3R, ...(k.U31DoubleArc ? [k.U31R, k.U31Sweep] : [])]);
     if (missing) return missing;
     // a copy, so the trim below is this stage's and the main bouts' own arc stays whole
     let U1 = arcFromCircle(m.U1!, m.U1!.start, m.U1!.end);
@@ -294,10 +294,9 @@ export function solveCorners(p: ViolinFamilyParams): CornersSolve | null {
     }
 
     if (k.U31DoubleArc) {
-      let U3r = k.U3R
-      let U31 = k.U31R
-      let theta = k.U31Start * TURN.degree
-      let compoundCircles = interceptCirclesAndPointCompound(U2, UCr, U3r, U31, theta).sort((a, b) => a.C1.y - b.C1.y)[1];
+      // both corner arcs turn back against the bout; U31 turns through the typed sweep onto the tip
+      let sweep = -Math.sign(signedArcSweep(U1)) * k.U31Sweep * TURN.degree;
+      let compoundCircles = interceptCirclesAndPointCompoundBySweep(U2, UCr, k.U3R, k.U31R, sweep).sort((a, b) => a.C1.y - b.C1.y)[1];
       if (!compoundCircles)
         return cornerMiss('Upper corner', 'U2', U2, 'U3', UCr, true, ['U2', 'U3', 'U31', 'U4'])
       let U3start = circleCircleIntersections(compoundCircles.C1, U2)[0]
@@ -342,7 +341,7 @@ export function solveCorners(p: ViolinFamilyParams): CornersSolve | null {
   });
 
   solveSection(s.failures, 'Lower corner', ['L2', 'L3', 'L31', 'L4'], () => {
-    let missing = blank('Lower corner', ['L2', 'L3', 'L31', 'L4'], 'lower bout', m.L1, [k.L2R, k.LCr.x, k.LCr.y, k.L3R, ...(k.L31DoubleArc ? [k.L31R, k.L31Start] : [])]);
+    let missing = blank('Lower corner', ['L2', 'L3', 'L31', 'L4'], 'lower bout', m.L1, [k.L2R, k.LCr.x, k.LCr.y, k.L3R, ...(k.L31DoubleArc ? [k.L31R, k.L31Sweep] : [])]);
     if (missing) return missing;
     let L1 = arcFromCircle(m.L1!, m.L1!.start, m.L1!.end);
     let LCr = k.LCr;
@@ -374,10 +373,8 @@ export function solveCorners(p: ViolinFamilyParams): CornersSolve | null {
       L4 = arcFromCircleAndPoints(l4, L1EndPt, LCr);
     }
     if (k.L31DoubleArc) {
-      let L3r = k.L3R
-      let L31r = k.L31R
-      let theta = k.L31Start * TURN.degree
-      let compoundCircles = interceptCirclesAndPointCompound(L2, LCr, L3r, L31r, theta).sort((a, b) => a.C1.y - b.C1.y)[0];
+      let sweep = -Math.sign(signedArcSweep(L1)) * k.L31Sweep * TURN.degree;
+      let compoundCircles = interceptCirclesAndPointCompoundBySweep(L2, LCr, k.L3R, k.L31R, sweep).sort((a, b) => a.C1.y - b.C1.y)[0];
       if (!compoundCircles)
         return cornerMiss('Lower corner', 'L2', L2, 'L3', LCr, true, ['L2', 'L3', 'L31', 'L4'])
       let L3start = circleCircleIntersections(compoundCircles.C1, L2)[0]

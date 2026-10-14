@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { dist, normalizeRadians, pointOnCircle, travelAtArcEnd, travelAtArcStart, TURN } from '../../../../helpers/math/simpleGeometry';
+import { dist, normalizeRadians, pointOnCircle, signedArcSweep, travelAtArcEnd, travelAtArcStart, TURN } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { Arc, Pt } from '../../../../models/types';
 import { FHoleContoursPanel, fholePath, solveFholeContours, solveFholeContoursRatios } from './fhole-contours-panel';
@@ -41,19 +41,18 @@ const shaped = (shape: Shape): ViolinFamilyParams => {
 
   if (shape === 'extended') {
     // a user extending both shoulders further past their apex, then dialling the stem's one shared
-    // arc radius off its seed. turn is -1 both sides by construction here, so subtracting from the
-    // end continues the shoulder's own turn; much further and the upper one reaches its own cut
-    k.U1End -= 0.1 / deg;
-    k.L1End -= 0.25 / deg;
+    // arc radius off its seed; much further and the upper one reaches its own cut
+    k.U1Sweep += 0.1 / deg;
+    k.L1Sweep += 0.25 / deg;
     k.stemArcR += 8;
   }
 
   if (shape === 'short') {
     // the late del Gesu move: stop each shoulder before its apex and let a tighter arm take the
-    // top of the hole. adding to the end backs the shoulder up toward the eye
-    k.U1End += 0.7 / deg;
+    // top of the hole
+    k.U1Sweep -= 0.7 / deg;
     k.U2R = k.U1R / 2;
-    k.L1End += 0.3 / deg;
+    k.L1Sweep -= 0.3 / deg;
     k.L2R = k.L1R * 0.75;
   }
 
@@ -217,6 +216,13 @@ describe('f-hole contour properties', () => {
         expect(farthest).toBeLessThan(1e-6);
         if (shape === 'short') expect(owner, 'short scenario must stop the shoulder short').not.toBe(shoulder);
       }
+    });
+
+    it(`turns each shoulder clockwise from its eye through its typed sweep, and a split arm through its, ${label}`, () => {
+      expect(signedArcSweep(s.U1!) / TURN.degree).toBeCloseTo(-k.U1Sweep, 6);
+      expect(signedArcSweep(s.L1!) / TURN.degree).toBeCloseTo(-k.L1Sweep, 6);
+      if (k.U21DoubleArc) expect(signedArcSweep(s.U2!) / TURN.degree).toBeCloseTo(-k.U2Sweep, 6);
+      if (k.L21DoubleArc) expect(signedArcSweep(s.L2!) / TURN.degree).toBeCloseTo(-k.L2Sweep, 6);
     });
 
     it(`puts each tip one cut length off its own eye, the way the slope says, ${label}`, () => {

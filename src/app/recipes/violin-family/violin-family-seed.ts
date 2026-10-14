@@ -96,12 +96,12 @@ export const SEED_RATIOS: ViolinFamilyRatios & { height: number } = {
 // the f-holes drafted from nothing but the outline: keyed off the lower eye, itself a fraction of
 // the width. One drawing rather than a corpus mean: a Stradivari-pattern hole drawn by hand on the
 // seed outline (2026-10), with the Betts and the Ward as the check. The angles ride with the
-// fractions because a radius says nothing without where its arc takes off and hands over: the
-// shoulders' ends, the angle each wing meets its cut at, where each cut leaves its eye and the
+// fractions because a radius says nothing without where its arc takes off and hands over: how far
+// the shoulders sweep from their eyes, the angle each wing meets its cut at, where each cut leaves its eye and the
 // slope it leaves on, and the stem's lean, all in degrees
 export const FHOLE_SEED_RATIOS: FholeRatios & {
-  U1End: number; U3Angle: number; UCutAt: number; UCutSlope: number;
-  L1End: number; L3Angle: number; LCutAt: number; LCutSlope: number;
+  U1Sweep: number; U3Angle: number; UCutAt: number; UCutSlope: number;
+  L1Sweep: number; L3Angle: number; LCutAt: number; LCutSlope: number;
   stemAngle: number;
 } = {
   LEyetoW: 3 / 128,
@@ -124,11 +124,11 @@ export const FHOLE_SEED_RATIOS: FholeRatios & {
   L1toS: 1 / 4,
   L2toS: 3 / 8,
   L3toS: 1 / 2,
-  U1End: 60,
+  U1Sweep: 120,
   U3Angle: 85,
   UCutAt: 70,
   UCutSlope: 45,
-  L1End: -90,
+  L1Sweep: 105,
   L3Angle: 100,
   LCutAt: 255,
   LCutSlope: -130,

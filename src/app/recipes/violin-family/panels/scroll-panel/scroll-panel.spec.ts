@@ -54,9 +54,9 @@ describe('the back', () => {
   const v = p.scroll!;
   const s = solved(p);
 
-  it('runs S2 on tangent from S1 to its own end, then the straight on along S2\'s heading', () => {
+  it('runs S2 on tangent from S1 through its own sweep, then the straight on along S2\'s heading', () => {
     meets(start(s.S2!), end(s.S1!));
-    expect(s.S2!.end).toBeCloseTo(v.S2End * Math.PI / 180, 12);
+    expect(s.S2!.end - s.S2!.start).toBeCloseTo(v.S2Sweep * Math.PI / 180, 12);
     const [a, b] = scrollLines(p, s).backStraight;
     meets(a, end(s.S2!));
     expect(dist(a, b)).toBeCloseTo(v.backStraight, 9);
@@ -124,7 +124,7 @@ describe('the front', () => {
   it('reports an F1 that never meets the spiral, the back untouched', () => {
     const q = seeded();
     q.scroll!.F1R = 0.5;
-    q.scroll!.F0End = 10;
+    q.scroll!.F0Sweep = 10;
     const t = solveScroll(q)!;
     expect(t.F1).toBeNull();
     expect(t.nape).not.toBeNull();

@@ -92,7 +92,7 @@ export const TOOLTIPS = {
 
   // scroll
   'scroll.s2': 'The arc from the crown on down the back toward the pegbox',
-  'scroll.s2End': 'Where the arc ends, as the angle round its own center from the front: 180° the back. It starts where S1 ended',
+  'scroll.s2Sweep': 'How far the arc turns on from where S1 ended, round its own center. The back is where S0, S1 and S2 add up to 180°',
   'scroll.backStraight': "The straight run on down the back of the scroll from S2's end, along its heading",
   'scroll.s3': "Where the back of the scroll turns into the back of the pegbox: an arc off the straight's end, curving the other way. Its end is the duck tail",
   'scroll.hang': "The duck tail: where the pegbox's back ends and the neck's back begins. How far it hangs below the nut's lower edge; S3 ends where it comes down to it. 0 lands it level with the nut; a cello's hangs about half the neck's width, so the round seen from behind tops out at the pegbox's foot",
@@ -103,7 +103,7 @@ export const TOOLTIPS = {
   'scroll.flat': "The front of the pegbox rising straight up the neck's front from the top of the nut, before it turns back under the volute",
   'scroll.nutHeight': "The nut's length along the neck. The flat rises from its top",
   'scroll.f0': 'The arc turning the front of the pegbox back from the flat, in under the volute',
-  'scroll.f0End': 'Where the arc ends, as the angle round its own center from the front: the more it turns, the further back the straight after it leans',
+  'scroll.f0Sweep': 'How far the arc turns from the front, round its own center: the more it turns, the further back the straight after it leans',
   'scroll.frontStraight': "The straight run on from F0's end, along its heading, in under the volute",
   'scroll.f1': 'The small arc curving the front up off the straight to meet the scroll. It ends where it meets it',
 
@@ -133,9 +133,9 @@ export const TOOLTIPS = {
   'volute.seed': "The column of four squares the spiral's centers are struck round, top of it to bottom. The longer the seed, the wider each turn opens",
   'volute.flushWithNeck': "Slide the eye so the spiral's front is flush with the neck's front, Y still setting its height. Off, X is yours too",
   'volute.s0': "The arc carrying the spiral's front on up to the top of the scroll",
-  'volute.s0End': "Where the arc ends, as the angle round its own center from the front: 90° the top of the scroll, 180° the back. It starts where the spiral's front ends",
+  'volute.s0Sweep': "How far the arc turns on from where the spiral's front ends, round its own center: 90° reaches the top of the scroll, 180° the back",
   'volute.s1': 'The arc from the top of the scroll on over to the back',
-  'volute.s1End': 'Where the arc ends, as the angle round its own center from the front: 180° the back. It starts where S0 ended',
+  'volute.s1Sweep': 'How far the arc turns on from where S0 ended, round its own center. The back is where S0 and S1 add up to 180°',
 } as const satisfies Record<string, string>;
 
 export type TooltipId = keyof typeof TOOLTIPS;

@@ -43,6 +43,22 @@ export function signedRadianDelta(rad: number): number {
   return Math.atan2(Math.sin(rad), Math.cos(rad));
 }
 
+// the angles φ at which Σ aᵢ·sin(φ + cᵢ) = target. The terms add as phasors into one sinusoid
+// R·sin(φ + δ), so there are two solutions, one where the target is R itself, and none past it.
+// What a chain of arcs reaches in one direction is a sum like this when each centre is set off
+// the last by a fixed radius at an angle that turns with the first
+export function solveSineSum(terms: { a: number; c: number }[], target: number): number[] {
+  let x = 0, y = 0;
+  for (const { a, c } of terms) { x += a * Math.cos(c); y += a * Math.sin(c); }
+  const R = Math.hypot(x, y);
+  if (R < 1e-12 || Math.abs(target) > R * (1 + 1e-9)) return [];
+  const t = clamp(target / R, -1, 1);
+  const delta = Math.atan2(y, x);
+  const base = Math.asin(t);
+  const roots = Math.abs(t) === 1 ? [base - delta] : [base - delta, TURN.half - base - delta];
+  return roots.map(signedRadianDelta);
+}
+
 // ===== Points =====
 
 export function dist(a: Pt, b: Pt): number {

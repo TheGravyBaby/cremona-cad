@@ -102,11 +102,12 @@ describe.each(STYLES)('the %s volute', style => {
     expect(furthest).toBeLessThan(front.x + 1e-9);
   });
 
-  it('runs the crown on from the front, S0 then S1, each tangent to the last and ending at its own angle', () => {
+  it('runs the crown on from the front, S0 then S1, each tangent to the last and turning through its own sweep', () => {
     const joint = end(spiral[0]);
     expect(Math.hypot(start(s.S0!).x - joint.x, start(s.S0!).y - joint.y)).toBeLessThan(1e-9);
     expect(Math.hypot(start(s.S1!).x - end(s.S0!).x, start(s.S1!).y - end(s.S0!).y)).toBeLessThan(1e-9);
-    expect(s.S1!.end).toBeCloseTo(p.scroll!.S1End * Math.PI / 180, 12);
+    expect(s.S0!.end - s.S0!.start).toBeCloseTo(p.scroll!.S0Sweep * Math.PI / 180, 12);
+    expect(s.S1!.end - s.S1!.start).toBeCloseTo(p.scroll!.S1Sweep * Math.PI / 180, 12);
   });
 
   it('marks the figure its centres are found on', () => {
@@ -140,7 +141,7 @@ describe('the volute\'s failures', () => {
 
   it('stops the crown at S1 when it doesn\'t sweep on past S0', () => {
     const p = seeded();
-    p.scroll!.S1End = p.scroll!.S0End - 5;
+    p.scroll!.S1Sweep = -5;
     const s = solveVolute(p)!;
     expect(s.S0).not.toBeNull();
     expect(s.S1).toBeNull();

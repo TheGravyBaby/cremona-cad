@@ -2,8 +2,8 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections, inscribeCircleWithinCircle, solveTangentCircleAndLine } from '../../../../helpers/math/draftMath';
 import {
-  angleFromCenter, dist, flipArcAboutY, flipPointAboutY, lineCircleIntersectionWithTolerance, lineFromPointAndSlope,
-  moveInVectorSpace, placeCircleOnPointAtAngle, pointOnCircle, tangentUnitVectorFromLine, TURN, vectorFromSlope,
+  angleFromCenter, dist, flipArcAboutY, flipPointAboutY, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, moveInVectorSpace,
+  normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, signedArcSweep, signedRadianDelta, solveSineSum, tangentUnitVectorFromLine, TURN, vectorFromSlope,
 } from '../../../../helpers/math/simpleGeometry';
 import { pathFromArc, pathFromArcLongWay, pathFromLine } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
@@ -44,7 +44,7 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
   // the Stradivari-pattern hole in FHOLE_SEED_RATIOS: every radius a fraction of the stem arc,
   // itself set against the eye span, each cut a fraction of its eye, and the takeoff angles as
   // drawn. A compound arm is seeded split halfway along the sweep the plain arm draws, so turning
-  // it on changes nothing until a number does
+  // it on changes nothing until a radius does
   static seed(p: ViolinFamilyParams): void {
     if (p.fHoleContours || !p.fHoles) return;
     let f = p.fHoles;
@@ -54,20 +54,20 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
     let stemArcR = Math.round(dist(f.UEye, f.LEye) * r.StoEyeSpan);
     p.fHoleContours = {
       U1R: Math.round(stemArcR * r.U1toS),
-      U1End: r.U1End,
+      U1Sweep: r.U1Sweep,
       U2R: Math.round(stemArcR * r.U2toS),
       U21DoubleArc: false,
       U21R: Math.round(stemArcR * r.U2toS),
-      U21Start: 0,
+      U2Sweep: 0,
       U3R: Math.round(stemArcR * r.U3toS),
       U3Angle: r.U3Angle,
       UCut: { angleOnEye: r.UCutAt, slope: r.UCutSlope, length: quarter(f.UEye.r * r.UCuttoUEye) },
       L1R: Math.round(stemArcR * r.L1toS),
-      L1End: r.L1End,
+      L1Sweep: r.L1Sweep,
       L2R: Math.round(stemArcR * r.L2toS),
       L21DoubleArc: false,
       L21R: Math.round(stemArcR * r.L2toS),
-      L21Start: 0,
+      L2Sweep: 0,
       L3R: Math.round(stemArcR * r.L3toS),
       L3Angle: r.L3Angle,
       LCut: { angleOnEye: r.LCutAt, slope: r.LCutSlope, length: quarter(f.LEye.r * r.LCuttoLEye) },
@@ -79,9 +79,9 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
       S4R: stemArcR,
     };
     let s = solveFholeContours(p)!;
-    let halfway = (arm: Arc | null) => arm ? Math.round((arm.start + arm.end) / 2 / TURN.degree * 100) / 100 : 0;
-    p.fHoleContours.U21Start = halfway(s.U2);
-    p.fHoleContours.L21Start = halfway(s.L2);
+    let halfway = (arm: Arc | null) => arm ? Math.round(Math.abs(signedArcSweep(arm)) / 2 / TURN.degree * 100) / 100 : 0;
+    p.fHoleContours.U2Sweep = halfway(s.U2);
+    p.fHoleContours.L2Sweep = halfway(s.L2);
   }
 
   @Input({ required: true }) params!: ViolinFamilyParams;
@@ -134,7 +134,7 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
       let highlighted = this.highlightedKey ? { key: this.highlightedKey, color: this.highlightedColor } : null;
       let layers: RenderLayer[] = [renderFholePlate(p, this.pal, null, true)];
       if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
-      if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, ThemeService.getPalette('classicCremona')), renderFholeAngleGuides(p, s, this.pal));
+      if (this.flags.showModuleGuides) layers.push(renderFholeAngleGuides(p, s, this.pal));
       if (this.flags.showFholeBounds) layers.push(renderFholeBounds(p.fHoles!, this.pal));
       layers.push(
         renderFholeContours(p, s, this.pal, this.flags, true, highlighted),
@@ -272,21 +272,46 @@ export const renderFholes = (p: ViolinFamilyParams, pal: PanelPalette) => (g: an
   for (let d of [s.path, fholePath(p, s, true)!]) renderPath(d, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
 };
 
-// on some weird f-holes, we need to pull back the shoulder end angle from a simple 90 deg peak
-// in this situation, it is not the shoulder that hits the upper peak, but the arm
-// this method solves the difference in bounds, we can simply take he difference in height
-// and get a new bounds for the shoulder height
-function shoulderReach(shoulderR: number, shoulderEnd: number, armR: number, arm2: { r: number; start: number } | null, extreme: number): number {
-  if (shoulderEnd <= extreme) return shoulderR;
-
-  // sin of the shoulder represents the y component of the rise
-  // multiply by the difference in the circles yields the rise in the arm
-  let armCentreRise = (shoulderR - armR) * Math.abs(Math.sin(shoulderEnd));
-  if (!arm2 || arm2.start <= extreme) return armCentreRise + armR;
-
-  // a compound arm split before the peak hands it on once more, by the same rule
-  let arm2CentreRise = armCentreRise + (armR - arm2.r) * Math.abs(Math.sin(arm2.start));
-  return arm2CentreRise + arm2.r;
+// where a shoulder sits: tangent inside its eye, so its centre rides a circle about the eye, and
+// turning clockwise through its sweep to hand over to the arm. Whichever arc passes the apex, the
+// shoulder, the arm, or the second arm once the first is split off before it, has to touch the
+// bound there. The shoulder's height, its end and so each arm's centre are all sinusoids of the
+// one angle round the eye, so each case is a sine sum to solve, checked after against which arc
+// its answer puts at the apex. `up` is where the bound lies, `side` which side of the eye the
+// centre sits
+function placeShoulder(
+  eye: Circle,
+  r: number,
+  sweep: number,
+  armR: number,
+  split: { r: number; after: number } | null,
+  bound: number,
+  up: 1 | -1,
+  side: 1 | -1,
+): Arc | null {
+  let rho = Math.abs(r - eye.r);
+  // the shoulder leaves its eye looking back through it when it is the larger circle
+  let out = r >= eye.r ? TURN.half : 0;
+  let apex = up * TURN.quarter;
+  let endPhase = out - sweep;
+  let cases = [
+    { top: r, terms: [{ a: rho, c: 0 }] },
+    { top: armR, terms: [{ a: rho, c: 0 }, { a: r - armR, c: endPhase }] },
+    ...(split ? [{ top: split.r, terms: [{ a: rho, c: 0 }, { a: r - armR, c: endPhase }, { a: armR - split.r, c: endPhase - split.after }] }] : []),
+  ];
+  for (let [owner, { top, terms }] of cases.entries()) {
+    for (let phi of solveSineSum(terms, bound - eye.y - up * top)) {
+      if (side * Math.cos(phi) < 0) continue;
+      let C = pointOnCircle({ ...eye, r: rho }, phi);
+      let start = out ? angleFromCenter(C, eye) : angleFromCenter(eye, C);
+      let end = signedRadianDelta(start - sweep);
+      let shoulderOwns = normalizeRadians(start - apex) <= sweep + 1e-9;
+      let armOwns = !shoulderOwns && (!split || normalizeRadians(end - apex) <= split.after + 1e-9);
+      if ((shoulderOwns ? 0 : armOwns ? 1 : 2) !== owner) continue;
+      return new Arc(C.x, C.y, r, start, end);
+    }
+  }
+  return null;
 }
 
 // one f-hole's solved arcs stitched into a single closed outline, the way the render draws them
@@ -422,24 +447,14 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
 
   // first the upper curve that connects to the eye
   solveSection(s.failures, 'Upper arm', ['U1', 'U2', 'U21', 'S2'], () => {
-    let missing = blank('Upper arm', ['U1', 'U2', 'U21', 'S2'], [k.U1R, k.U1End, k.U2R, stemR('S2'), f.URise, ...(k.U21DoubleArc ? [k.U21R, k.U21Start] : [])]);
+    let missing = blank('Upper arm', ['U1', 'U2', 'U21', 'S2'], [k.U1R, k.U1Sweep, k.U2R, stemR('S2'), f.URise, ...(k.U21DoubleArc ? [k.U21R, k.U2Sweep] : [])]);
     if (missing) return missing;
-    let upperArm2 = k.U21DoubleArc ? { r: k.U21R, start: k.U21Start * deg } : null;
+    let upperSplit = k.U21DoubleArc ? { r: k.U21R, after: k.U2Sweep * deg } : null;
 
-    // first we need to determine the placement of the arc that connects to each eye
     let upperBound = f.UEye.y + f.UEye.r + f.URise;
-    let upperShoulderY = upperBound - shoulderReach(k.U1R, k.U1End * deg, k.U2R, upperArm2, TURN.quarter);
-    let upperShoulderXs = lineCircleIntersectionWithTolerance(
-      { m: 0, y: upperShoulderY, x: 0 },
-      { x: f.UEye.x, y: f.UEye.y, r: Math.abs(k.U1R - f.UEye.r) },
-    );
-    if (!upperShoulderXs.length)
-      return shoulderMiss('Upper arm', 'U1', k.U1R, f.UEye, upperShoulderY, upperBound, 1, ['U1', 'U2', 'U21', 'S2']);
-
-    let upperShoulder = new Arc(upperShoulderXs[0].x, upperShoulderY, k.U1R);
-    let upperShoulderStartPt = circleCircleIntersections(f.UEye, upperShoulder);
-    upperShoulder.start = angleFromCenter(upperShoulder, upperShoulderStartPt[0]);
-    upperShoulder.end = k.U1End * deg;
+    let upperShoulder = placeShoulder(f.UEye, k.U1R, k.U1Sweep * deg, k.U2R, upperSplit, upperBound, 1, 1);
+    if (!upperShoulder)
+      return shoulderMiss('Upper arm', 'U1', k.U1R, f.UEye, upperBound - k.U1R, upperBound, 1, ['U1', 'U2', 'U21', 'S2']);
     s.U1 = upperShoulder;
 
     // now continue from the shoulder, we will call this the arm
@@ -448,16 +463,16 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
 
     // the arc the stem arc has to reach: the arm, or its second half once split
     let upperStemReach = s.U2;
-    if (upperArm2) {
-      s.U2.end = upperArm2.start;
-      let secondArm = inscribeCircleWithinCircle(s.U2, upperArm2.r, upperArm2.start);
-      s.U21 = new Arc(secondArm.x, secondArm.y, secondArm.r, upperArm2.start, 0);
+    if (upperSplit) {
+      s.U2.end = upperShoulder.end - upperSplit.after;
+      let secondArm = inscribeCircleWithinCircle(s.U2, upperSplit.r, s.U2.end);
+      s.U21 = new Arc(secondArm.x, secondArm.y, secondArm.r, s.U2.end, 0);
       upperStemReach = s.U21;
     }
 
     let S2 = solveTangentCircleAndLine(outerStemLine, upperStemReach, stemR('S2'), true, 1, f.stem.center);
     if (!S2)
-      return upperArm2
+      return upperSplit
         ? stemMiss('Upper arm', 'U21', upperStemReach, 'S2', outerStemLine, outerStemPt, 'outer', 1, 'Shrink U1, U2 or U21')
         : stemMiss('Upper arm', 'U2', upperStemReach, 'S2', outerStemLine, outerStemPt, 'outer', 1, 'Shrink U1 or U2');
 
@@ -497,40 +512,30 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
 
   // now the lower arm, upside down: bound drops below the eye, and the arm meets the inner stem
   solveSection(s.failures, 'Lower arm', ['L1', 'L2', 'L21', 'S3'], () => {
-    let missing = blank('Lower arm', ['L1', 'L2', 'L21', 'S3'], [k.L1R, k.L1End, k.L2R, stemR('S3'), f.LRise, ...(k.L21DoubleArc ? [k.L21R, k.L21Start] : [])]);
+    let missing = blank('Lower arm', ['L1', 'L2', 'L21', 'S3'], [k.L1R, k.L1Sweep, k.L2R, stemR('S3'), f.LRise, ...(k.L21DoubleArc ? [k.L21R, k.L2Sweep] : [])]);
     if (missing) return missing;
-    let lowerArm2 = k.L21DoubleArc ? { r: k.L21R, start: k.L21Start * deg } : null;
+    let lowerSplit = k.L21DoubleArc ? { r: k.L21R, after: k.L2Sweep * deg } : null;
 
     let lowerBound = f.LEye.y - f.LEye.r - f.LRise;
-    let lowerShoulderY = lowerBound + shoulderReach(k.L1R, k.L1End * deg, k.L2R, lowerArm2, -TURN.quarter);
-    let lowerShoulderXs = lineCircleIntersectionWithTolerance(
-      { m: 0, y: lowerShoulderY, x: 0 },
-      { x: f.LEye.x, y: f.LEye.y, r: Math.abs(k.L1R - f.LEye.r) },
-    );
-    if (!lowerShoulderXs.length)
-      return shoulderMiss('Lower arm', 'L1', k.L1R, f.LEye, lowerShoulderY, lowerBound, -1, ['L1', 'L2', 'L21', 'S3']);
-
-    // a tangent miss comes back as one point, so the far side falls back to it
-    let lowerShoulder = new Arc((lowerShoulderXs[1] ?? lowerShoulderXs[0]).x, lowerShoulderY, k.L1R);
-    let lowerShoulderStartPt = circleCircleIntersections(f.LEye, lowerShoulder);
-    lowerShoulder.start = angleFromCenter(lowerShoulder, lowerShoulderStartPt[0]);
-    lowerShoulder.end = k.L1End * deg;
+    let lowerShoulder = placeShoulder(f.LEye, k.L1R, k.L1Sweep * deg, k.L2R, lowerSplit, lowerBound, -1, -1);
+    if (!lowerShoulder)
+      return shoulderMiss('Lower arm', 'L1', k.L1R, f.LEye, lowerBound + k.L1R, lowerBound, -1, ['L1', 'L2', 'L21', 'S3']);
     s.L1 = lowerShoulder;
 
     let lowerArm = inscribeCircleWithinCircle(lowerShoulder, k.L2R, lowerShoulder.end);
     s.L2 = new Arc(lowerArm.x, lowerArm.y, lowerArm.r, lowerShoulder.end, 0);
 
     let lowerStemReach = s.L2;
-    if (lowerArm2) {
-      s.L2.end = lowerArm2.start;
-      let secondArm = inscribeCircleWithinCircle(s.L2, lowerArm2.r, lowerArm2.start);
-      s.L21 = new Arc(secondArm.x, secondArm.y, secondArm.r, lowerArm2.start, 0);
+    if (lowerSplit) {
+      s.L2.end = lowerShoulder.end - lowerSplit.after;
+      let secondArm = inscribeCircleWithinCircle(s.L2, lowerSplit.r, s.L2.end);
+      s.L21 = new Arc(secondArm.x, secondArm.y, secondArm.r, s.L2.end, 0);
       lowerStemReach = s.L21;
     }
 
     let S3 = solveTangentCircleAndLine(innerStemLine, lowerStemReach, stemR('S3'), true, -1, f.stem.center);
     if (!S3)
-      return lowerArm2
+      return lowerSplit
         ? stemMiss('Lower arm', 'L21', lowerStemReach, 'S3', innerStemLine, innerStemPt, 'inner', -1, 'Shrink L1, L2 or L21')
         : stemMiss('Lower arm', 'L2', lowerStemReach, 'S3', innerStemLine, innerStemPt, 'inner', -1, 'Shrink L1 or L2');
 

@@ -60,8 +60,8 @@ export class MainBoutsPanel implements ViolinFamilyPanel, OnInit {
         width: p.bouts.UBW * .1,
         neckRadius: 0,
         V0R: p.bouts.UBW / 5,
-        V0Start: 180 * 1.05,
-        V0End: 270 * .92,
+        joinTurn: 81,
+        V0Sweep: 60,
       };
     }
   }
@@ -315,7 +315,7 @@ export function solveMainBouts(p: ViolinFamilyParams): MainBoutsSolve | null {
   });
 
   solveSection(s.failures, 'Upper bout', ['U0', 'U1'], () => {
-    let viol = b.useViolNeck && b.viol ? [b.viol.width, b.viol.neckRadius, b.viol.V0R, b.viol.V0Start, b.viol.V0End] : [];
+    let viol = b.useViolNeck && b.viol ? [b.viol.width, b.viol.neckRadius, b.viol.V0R, b.viol.joinTurn, b.viol.V0Sweep] : [];
     let missing = blank('U0', 'U1', 'upper bout', [inset, p.body.height, b.UBW, b.U0R, b.U1R, ...viol]);
     if (missing) return missing;
     if (b.useViolNeck && b.viol) {
@@ -323,9 +323,10 @@ export function solveMainBouts(p: ViolinFamilyParams): MainBoutsSolve | null {
       // the flat top face runs out to width/2, then a join of neckRadius turns the corner into
       // the flank. V0 begins where that join ends, so its centre goes back (Vr + R) along the
       // start ray from the join's centre, which puts V0.start *on* the tangency instead of
-      // somewhere the join later trims off. At R = 0 the join centre is the corner itself
-      let start = v.V0Start * TURN.degree;
-      let end = v.V0End * TURN.degree;
+      // somewhere the join later trims off. At R = 0 the join centre is the corner itself. The join
+      // turns the outline down from the level top face, and V0 runs on from that heading
+      let start = 3 * TURN.quarter - v.joinTurn * TURN.degree;
+      let end = start + v.V0Sweep * TURN.degree;
       let joinCenter = new Pt(v.width / 2, p.body.height - inset - v.neckRadius);
       let VyDiff = Math.sin(start) * (v.V0R + v.neckRadius);
       let VxDiff = Math.cos(start) * (v.V0R + v.neckRadius);
@@ -401,8 +402,8 @@ export function violNeckJoinLimit(p: ViolinFamilyParams): ViolNeckJoin | null {
   let v = b.viol;
   let inset = p.body.overhang + p.body.rib;
 
-  let start = v.V0Start * TURN.degree;
-  let end = v.V0End * TURN.degree;
+  let start = 3 * TURN.quarter - v.joinTurn * TURN.degree;
+  let end = start + v.V0Sweep * TURN.degree;
 
   let reach = v.width / 2 - (v.V0R + v.neckRadius) * Math.cos(start) + v.V0R * Math.cos(end);
   let limit = b.UBW / 2 - inset - b.U1R * (1 + Math.cos(end));

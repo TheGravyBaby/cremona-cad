@@ -8,7 +8,7 @@ export function violNeckJoinExceeded(mm: number): void {
   error(
     `The neck reaches ${mm.toFixed(1)}mm further than the upper bout can recieve, ` +
     `so U0 doubles back to meet U1, this should look pretty weird.\n\n` +
-    `You have some options. Narrow the neck, shorten V0's radius, or lower V0s end angle. Play with it, I'm sure you'll figure it out.` +
+    `You have some options. Narrow the neck, shorten V0's radius, or shorten V0's sweep. Play with it, I'm sure you'll figure it out.` +
     `Widening the upper bout or shrinking U1 also buys room.`,
     'Viol Neck Join',
   );

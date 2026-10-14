@@ -208,10 +208,10 @@ export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
   if (s.S1) solveSection(s.failures, 'Back', ['S2', 'S3', 'nape', 'backStraight'], () => {
     let S1 = s.S1!;
     let joint = pointOnCircle(S1, S1.end);
-    let S2End = v.S2End * TURN.degree;
-    if (!(v.S2R > 0) || !(S2End > S1.end) || S2End - S1.end > TURN.full) return badArc('Back', 'S2', v.S2R, ['S2', 'S3', 'nape', 'backStraight']);
+    let S2Sweep = v.S2Sweep * TURN.degree;
+    if (!(v.S2R > 0) || !(S2Sweep > 0) || S2Sweep > TURN.full) return badArc('Back', 'S2', v.S2R, ['S2', 'S3', 'nape', 'backStraight']);
     let S2 = placeCircleOnPointAtAngle(v.S2R, joint, S1.end);
-    s.S2 = new Arc(S2.x, S2.y, S2.r, S1.end, S2End);
+    s.S2 = new Arc(S2.x, S2.y, S2.r, S1.end, S1.end + S2Sweep);
 
     if (!Number.isFinite(v.backStraight) || v.backStraight < 0) return badLength('Back', 'backStraight', ['S3', 'nape', 'backStraight']);
     let foot = moveInVectorSpace(pointOnCircle(s.S2, s.S2.end), [{ ...vectorFromSlope(s.S2.end + TURN.quarter), mag: v.backStraight }]);
@@ -270,7 +270,7 @@ export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
     if (!Number.isFinite(v.flat) || v.flat < 0) return badLength('Front', 'flat', ['F0', 'F1', 'flat', 'frontStraight']);
     let top = new Pt(nutTop.x, nutTop.y + v.flat);
 
-    let F0End = v.F0End * TURN.degree;
+    let F0End = v.F0Sweep * TURN.degree;
     if (!(v.F0R > 0) || !(F0End > 0) || F0End > TURN.full) return badArc('Front', 'F0', v.F0R, ['F0', 'F1', 'frontStraight']);
     let F0 = placeCircleOnPointAtAngle(v.F0R, top, 0);
     s.F0 = new Arc(F0.x, F0.y, F0.r, 0, F0End);

@@ -63,18 +63,18 @@ export interface ViolNeckParams {
   width: number;
   neckRadius: number;
   V0R: number;
-  // degrees, as the fields show them; the solver turns them to radians. Start at the join, end
-  // where U0 takes over
-  V0Start: number;
-  V0End: number;
+  // degrees: how far the join turns the outline down from the level top face, and how far V0 then
+  // sweeps on from that heading before U0 takes over
+  joinTurn: number;
+  V0Sweep: number;
 }
 
 // the corner tips and the arcs that turn each bout into them. The tips are typed points: the seed
 // puts them on their guide circles and the Default button puts them back there. Radii are of the
-// rib outline. Where a corner is compound, the split angle is the direction from the first arc's
-// centre to the point the second takes over at, in degrees as the field shows it. The center
-// bout's corner arcs (C2 under the upper tip, C1 over the lower) are corners too, so they live
-// here, seeded with the others and edited on the Center Bout panel
+// rib outline. Where a corner is compound, the sweep is how far the second arc turns, in degrees,
+// from where it takes over to the tip; the solve finds where the first hands it over. The center bout's corner arcs
+// (C2 under the upper tip, C1 over the lower) are corners too, so they live here, seeded with the
+// others and edited on the Center Bout panel
 export interface CornersParams {
   UCr: Pt;
   LCr: Pt;
@@ -85,22 +85,22 @@ export interface CornersParams {
   U2R: number;
   U3R: number;
   U31R: number;
-  U31Start: number;
+  U31Sweep: number;
   U31DoubleArc: boolean;
   useViolCornerUC: boolean;
   L2R: number;
   L3R: number;
   L31R: number;
-  L31Start: number;
+  L31Sweep: number;
   L31DoubleArc: boolean;
   useViolCornerLC: boolean;
   C2R: number;
   C21R: number;
-  C21Start: number;
+  C21Sweep: number;
   C21DoubleArc: boolean;
   C1R: number;
   C11R: number;
-  C11Start: number;
+  C11Sweep: number;
   C11DoubleArc: boolean;
 }
 
@@ -278,9 +278,9 @@ export interface CornerBlockParams extends BlockParams {
 // toward the back -x. The volute is a style's spiral about the eye, run out two turns to its front;
 // with Fit to Neck on, the eye's x is solved to bring that front flush with the neck's front, and the
 // typed x waits until it's off. The back runs on from the spiral: S0 to S2 tangent each to the last,
-// each to its own end angle (degrees), a straight, then S3 turning back down to hang below the nut,
-// and the nape into the neck's back. The front runs up from the nut: a flat, F0 to its end, a
-// straight, and F1 curving back until it meets the spiral. Radii in mm
+// each through its own sweep (degrees), a straight, then S3 turning back down to hang below the
+// nut, and the nape into the neck's back. The front runs up from the nut: a flat, F0 through its
+// sweep, a straight, and F1 curving back until it meets the spiral. Radii in mm
 export type VoluteStyle = 'fourPoint' | 'archimedean' | 'serlio' | 'salviati' | 'goldmann' | 'kelly';
 
 export interface ScrollParams {
@@ -291,12 +291,13 @@ export interface ScrollParams {
   pitch: number;
   seedLength: number;
   arcRadii: number[];
+  // each back arc turns on counterclockwise from the last through its own sweep, in degrees
   S0R: number;
-  S0End: number;
+  S0Sweep: number;
   S1R: number;
-  S1End: number;
+  S1Sweep: number;
   S2R: number;
-  S2End: number;
+  S2Sweep: number;
   backStraight: number;
   S3R: number;
   hang: number;
@@ -305,7 +306,7 @@ export interface ScrollParams {
   napeCircle: boolean;
   flat: number;
   F0R: number;
-  F0End: number;
+  F0Sweep: number;
   frontStraight: number;
   F1R: number;
   widths: ScrollWidths;
@@ -448,27 +449,28 @@ export interface FholeStemParams {
   angle: number;
 }
 
-// what bends between the eyes and the stem: each end's shoulder (U1/L1, ends in degrees), arm
-// (U2/L2, or a compound pair split at an angle), wing (U3/L3) and the cut that sets the wing's
-// tip, and the four arcs that land the outline on the stem, one radius for all four unless set
-// free. Radii in mm, angles in degrees as the fields show them
+// what bends between the eyes and the stem: each end's shoulder (U1/L1, with how far it sweeps
+// from its eye), arm (U2/L2, or a compound pair, with how far the first sweeps before the second
+// takes over), wing (U3/L3) and the cut that sets the wing's tip, and the four arcs that land the
+// outline on the stem, one radius for all four unless set free. Radii in mm, angles in degrees as
+// the fields show them
 export interface FholeContourParams {
   U1R: number;
-  U1End: number;
+  U1Sweep: number;
   U2R: number;
   U21DoubleArc: boolean;
   U21R: number;
-  U21Start: number;
+  U2Sweep: number;
   U3R: number;
   // the angle the wing meets its cut at, read at the tip
   U3Angle: number;
   UCut: FholeCutParams;
   L1R: number;
-  L1End: number;
+  L1Sweep: number;
   L2R: number;
   L21DoubleArc: boolean;
   L21R: number;
-  L21Start: number;
+  L2Sweep: number;
   L3R: number;
   L3Angle: number;
   LCut: FholeCutParams;
@@ -776,7 +778,7 @@ export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
   showFholePlacementGuides: false,
   showFlutingEdge: false,
   showVoluteConstruction: true,
-  showFingerboard: false,
+  showFingerboard: true,
   showFretMarks: false,
   showBlocks: true,
   showRibOutline: false,
