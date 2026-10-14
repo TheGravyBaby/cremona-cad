@@ -4,7 +4,7 @@
   "fileName": "Violin - Giuseppe Guarneri - Kreisler",
   "description": "Cremona, c.1730. LoC catalogue dimensions; no arching published.",
   "source": "https://www.loc.gov/item/2022560099/",
-  "version": "1",
+  "version": "0.9.0",
   "params": {
     "body": {
       "height": 357,

@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, HostListener, output, afterNextRender, inject, Injector } from '@angular/core';
 import { Output, EventEmitter } from "@angular/core";
-import { RecipeInterface } from '../models/types';
+import { APP_VERSION, RecipeInterface } from '../models/types';
 import { PanelFlow, PanelDefinition } from '../helpers/panelFlow';
 import { DebounceController } from '../helpers/debounce-controller';
 import { NamedConstant, DEFAULT_NAMED_CONSTANTS, nearestFraction, nearestSmallFraction } from '../helpers/nearestFraction';
@@ -10,6 +10,7 @@ import { ImageAssetStore } from '../draft-canvas/tools/image-asset-store';
 import { UndoCoordinator, Undoable } from '../helpers/undoCoordinator';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
 import { copyToClipboard } from '../helpers/debugDump';
+import { error } from '../shared/message-emitter';
 import { SettingsService } from '../settings/settings.service';
 import {
   ReferenceImageSource, imageShapesFromRecipe, imageShapesToRecipe,
@@ -24,7 +25,7 @@ export type { NamedConstant };
   styleUrl: './recipe-base.css',
 })
 
-export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
+export abstract class RecipeComponentBase<R extends RecipeInterface = RecipeInterface> implements AfterViewInit, Undoable {
   static readonly DEFAULT_NAMED_CONSTANTS: readonly NamedConstant[] = DEFAULT_NAMED_CONSTANTS;
 
   readonly id = 'recipe';
@@ -63,7 +64,19 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     });
   }
 
-  loadFile(file: RecipeInterface): void {
+  // every recipe that arrives from outside the running tab passes through here: a picked file, a
+  // template, the tab's stored session. it returns the recipe in this build's shape, or null to
+  // turn it away
+  protected normalize(file: any): R | null {
+    return file?.recipeName === this.d.recipeName ? file : null;
+  }
+
+  loadFile(raw: unknown): void {
+    const file = this.normalize(raw);
+    if (!file) {
+      error(`That file isn't a recipe this one can open.`, 'Load Recipe');
+      return;
+    }
     // Snapshot the file's reference images before touching the stores. resetAll() below both
     // clears the asset table and (through the sync subscription) rewrites `d.referenceImages`
     // from the now-empty canvas — and `file` becomes `this.d`, so reading it afterwards would
@@ -129,13 +142,7 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     }, 300);
   }
 
-  d: RecipeInterface = {
-    recipeName: "",
-    fileName: "tst",
-    version: "",
-    params: undefined,
-    paths: undefined
-  }
+  abstract d: R;
 
   openPanel: string = "base";
 
@@ -398,10 +405,10 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     this.toolboxSyncUnsub = this.toolbox.onChange(() => this.syncReferenceImages());
     this.undoCoordinatorUnsub = this.undoCoordinator.register(this);
 
-    const recipeData = this.loadMatchingStoredRecipe();
+    const recipeData = this.readStoredRecipe();
     if (recipeData) {
       this.d = recipeData;
-        this.loadReferenceImages(recipeData);
+      this.loadReferenceImages(recipeData);
       this.panelFlow?.refreshEnabledPanels();
     }
     // whatever `this.d` holds now — a restored session, or just the field initializer — is where
@@ -409,23 +416,13 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     this.pushHistory();
   }
 
-  /**
-   * Reads the stored working recipe, but only returns it if its `recipeName` matches this
-   * component's current recipe. Every recipe shares the one key, so this guards against e.g.
-   * switching between recipes and loading incompatible data.
-   */
-  protected loadMatchingStoredRecipe<T extends RecipeInterface = RecipeInterface>(): T | null {
+  // every recipe shares the one key, so another recipe's session normalizes to null
+  protected readStoredRecipe(): R | null {
     const saved = readWorkingState(RECIPE_KEY);
     if (!saved) return null;
     try {
-      const recipeData = JSON.parse(saved);
-      if (recipeData.recipeName === this.d.recipeName) {
-        return recipeData as T;
-      }
-      console.warn('Saved recipe does not match current recipe. Ignoring saved data.');
-      return null;
-    } catch (e) {
-      console.error('Failed to load stored recipe', e);
+      return this.normalize(JSON.parse(saved));
+    } catch {
       return null;
     }
   }
@@ -459,6 +456,7 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
    * through here; see copyRecipeToClipboard.
    */
   protected serializeRecipe(): string {
+    this.d.version = APP_VERSION;
     this.d.toolboxState = this.toolbox.exportState();
     // Writes `referenceImages` in exactly the format every previous version of the app wrote, so
     // a file saved here still opens in an older build.
@@ -518,15 +516,6 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     const details = event.target as HTMLDetailsElement;
     if (details.open) {
       this.setOpenPanel(panel);
-    }
-  }
-
-  addCalcs(calcs: { name: string, d: any }[]) {
-    this.d.paths = this.d.paths || [];
-    for (const entry of calcs) {
-      const idx = this.d.paths.findIndex((c: any) => c.name === entry.name);
-      if (idx === -1) this.d.paths.push(entry);
-      else this.d.paths[idx] = entry;
     }
   }
 

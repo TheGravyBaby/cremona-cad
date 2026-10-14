@@ -1,7 +1,5 @@
 import { Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RecipeInterface } from '../models/types';
-import { MessageService } from '../shared/message.service';
 import { isLocalHost } from '../helpers/debugDump';
 import { TooltipDirective } from '../docs/tooltips';
 
@@ -13,11 +11,6 @@ import { TooltipDirective } from '../docs/tooltips';
   styleUrls: ['../sidebar.css', './recipe-toolbar.css'],
 })
 export class RecipeToolbarComponent {
-  private messages = inject(MessageService);
-
-  @Input() recipeName = '';
-  // the recipe's own schema version; a file carrying another is loaded with a warning
-  @Input() version = '';
   // a recipe with nothing to start from (see hello-recipe) leaves the templates row off
   @Input() hasTemplates = false;
   @Input() fileName = '';
@@ -28,7 +21,8 @@ export class RecipeToolbarComponent {
 
   @Output() newFile = new EventEmitter<void>();
   @Output() saveFile = new EventEmitter<void>();
-  @Output() loadFile = new EventEmitter<RecipeInterface>();
+  // the parsed JSON, unread: the recipe's normalize decides what it is
+  @Output() loadFile = new EventEmitter<unknown>();
   @Output() openTemplates = new EventEmitter<void>();
   @Output() fileNameChange = new EventEmitter<string>();
   @Output() openExport = new EventEmitter<void>();
@@ -73,26 +67,7 @@ export class RecipeToolbarComponent {
     reader.onload = () => {
       try {
         const text = String(reader.result ?? '');
-        const data = JSON.parse(text) as RecipeInterface;
-
-        const fileRecipe = (data.recipeName ?? '').toLowerCase();
-        const expected = (this.recipeName ?? '').toLowerCase();
-
-        if (fileRecipe !== expected) {
-          alert(`That file is for "${fileRecipe}", but this is the "${expected}" recipe.`);
-          input.value = '';
-          return;
-        }
-
-        if (this.version && data.version && data.version !== this.version) {
-          this.messages.emit({
-            severity: 'warn',
-            title: 'Older file format',
-            message: `This file uses schema version "${data.version}" (current: "${this.version}"). It has been loaded, but some fields may be missing or behave unexpectedly.`,
-            autoDismiss: false,
-          });
-        }
-
+        const data: unknown = JSON.parse(text);
         this.loadFile.emit(data);
       } catch (e) {
         console.error('Failed to load/parse recipe file:', e);

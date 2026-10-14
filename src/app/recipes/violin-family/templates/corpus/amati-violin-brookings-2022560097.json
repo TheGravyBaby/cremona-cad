@@ -4,7 +4,7 @@
   "fileName": "Violin - Nicolo Amati - Brookings",
   "description": "Cremona, 1654. No dimensions published; height and width are placeholders.",
   "source": "https://www.loc.gov/item/2022560097/",
-  "version": "1",
+  "version": "0.9.0",
   "params": {
     "body": {
       "height": 358,

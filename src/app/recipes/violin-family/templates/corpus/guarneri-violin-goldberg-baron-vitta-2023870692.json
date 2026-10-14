@@ -4,7 +4,7 @@
   "fileName": "Violin - Giuseppe Guarneri - Goldberg-Baron Vitta",
   "description": "Cremona, c.1730. Scale inherited from the Kreisler (357 mm); proportions fitted to the back scan. Outline only.",
   "source": "https://www.loc.gov/item/2023870692/",
-  "version": "1",
+  "version": "0.9.0",
   "params": {
     "body": {
       "height": 357,

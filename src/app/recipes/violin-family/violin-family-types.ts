@@ -1,4 +1,4 @@
-import { Arc, Circle, Pt, Rectangle, RecipeInterface } from '../../models/types';
+import { APP_VERSION, Arc, Circle, Pt, Rectangle, RecipeInterface } from '../../models/types';
 import { SolveFailure } from '../../helpers/validators';
 import { PolylineIndex } from '../../helpers/math/vibeMath';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS, FholeRatios, ViolinFamilyRatios } from './violin-family-seed';
@@ -797,7 +797,6 @@ export interface ViolinFamilyPanel {
 }
 
 export const VIOLIN_FAMILY_RECIPE_NAME = 'violin-family-recipe';
-export const VIOLIN_FAMILY_SCHEMA_VERSION = '1';
 // its own key: the Ceruti recipe's flags are a different shape
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
@@ -805,12 +804,10 @@ export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'scroll', 'scrollWidths', 'stringSetup', 'mould', 'export'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
-export interface ViolinFamilyRecipe extends RecipeInterface {
+export interface ViolinFamilyRecipe extends RecipeInterface<ViolinFamilyParams> {
   recipeName: typeof VIOLIN_FAMILY_RECIPE_NAME;
-  version: string;
   description?: string;
   source?: string;
-  params: ViolinFamilyParams;
   ratios?: Partial<ViolinFamilyRatios & FholeRatios>;
 }
 
@@ -822,7 +819,7 @@ export interface ViolinFamilyTemplate extends ViolinFamilyRecipe {
 export const blankViolinFamilyRecipe =(): ViolinFamilyRecipe => ({
   recipeName: VIOLIN_FAMILY_RECIPE_NAME,
   fileName: 'New Instrument',
-  version: VIOLIN_FAMILY_SCHEMA_VERSION,
+  version: APP_VERSION,
   params: JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS)),
   referenceImages: [],
 });

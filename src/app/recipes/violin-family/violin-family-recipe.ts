@@ -4,11 +4,9 @@ import { RecipeComponentBase } from '../../recipe-base/recipe-base';
 import { RecipeToolbarComponent } from '../../recipe-toolbar/recipe-toolbar';
 import { ThemeService } from '../../theme/theme.service';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../../helpers/workingStorage';
-import { error } from '../../shared/message-emitter';
 import { isLocalHost } from '../../helpers/debugDump';
-import { RecipeInterface } from '../../models/types';
 import {
-  blankViolinFamilyRecipe, DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS, VIOLIN_FAMILY_PANEL_IDS, VIOLIN_FAMILY_RECIPE_NAME,
+  blankViolinFamilyRecipe, DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS, VIOLIN_FAMILY_PANEL_IDS,
   VIOLIN_FAMILY_VIEW_FLAGS_KEY, ViolinFamilyPanel, ViolinFamilyPanelId, ViolinFamilyParams, ViolinFamilyRecipe,
   ViolinFamilyTemplate, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
 } from './violin-family-types';
@@ -45,7 +43,7 @@ import { CORPUS_TEMPLATES, isLocSourced, thumbnailHref } from './templates/corpu
   templateUrl: './violin-family.html',
   styleUrls: ['../../sidebar.css', './violin-family.css'],
 })
-export class ViolinFamily extends RecipeComponentBase {
+export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
 
   protected readonly panelOrder: readonly PanelEntry[] = [
     { id: 'base', label: 'Base Measurements', toggles: BaseMeasurementsPanel.renderToggles },
@@ -131,7 +129,7 @@ export class ViolinFamily extends RecipeComponentBase {
 
   // the session's panel is put back before the first draw, so the right panel is the one that mounts
   override ngOnInit(): void {
-    let freshVisit = !this.loadMatchingStoredRecipe();
+    let freshVisit = !this.readStoredRecipe();
     super.ngOnInit();
     this.galleryOpen = freshVisit;
     this.panelFlow?.refreshEnabledPanels();
@@ -247,14 +245,8 @@ export class ViolinFamily extends RecipeComponentBase {
     return super.serializeRecipe();
   }
 
-  // the toolbar hands over whatever JSON was picked; another recipe's file is turned away whole
-  // rather than opened onto params it doesn't have
-  override loadFile(file: RecipeInterface): void {
-    if (file.recipeName !== VIOLIN_FAMILY_RECIPE_NAME) {
-      error(`This file is a ${file.recipeName || 'different'} recipe, not a Violin Family one.`, 'Load Recipe');
-      return;
-    }
-    super.loadFile(file as ViolinFamilyRecipe);
+  override loadFile(raw: unknown): void {
+    super.loadFile(raw);
     this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
     this.panelFlow?.refreshEnabledPanels();
     this.setOpenPanel('base');

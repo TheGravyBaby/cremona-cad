@@ -1,3 +1,4 @@
+import { version } from '../../../package.json';
 export class Pt { x: number; y: number; constructor(x: number, y: number) { this.x = x; this.y = y; } };
 export class Pt3D { x: number; y: number; z: number; constructor(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; } };
 export class Vect2D { a: number; b: number; mag: number; constructor(a: number, b: number, mag: number) { this.a = a; this.b = b; this.mag = mag; } }
@@ -95,14 +96,24 @@ export type ReferenceImage = {
   locked?: boolean;
 }
 
-export interface RecipeInterface {
+// the release that wrote a file, so a loader can tell which shape it is reading
+export const APP_VERSION: string = version;
+
+// dotted releases, compared part by part; a missing part reads as 0, so 0.9 equals 0.9.0
+export function compareVersions(a: string, b: string): number {
+    const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        const d = (pa[i] || 0) - (pb[i] || 0);
+        if (d) return Math.sign(d);
+    }
+    return 0;
+}
+
+export interface RecipeInterface<P = unknown> {
     recipeName: string;
     fileName: string;
     version: string;
-    params: any;
-    /** Solved path strings the Ceruti recipe keeps on the file. A recipe that derives its geometry
-     * from params alone (violin-family) leaves this off. */
-    paths?: any;
+    params: P;
     referenceImages?: ReferenceImage[];
     /** Shapes drawn with the draft-canvas toolbox — see ToolboxStore.exportState/loadState.
      * Untyped here (rather than importing DraftShape) to avoid a models/types.ts <-> draft-canvas

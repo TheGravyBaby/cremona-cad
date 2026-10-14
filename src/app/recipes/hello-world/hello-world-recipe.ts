@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../../recipe-base/recipe-base';
 import { RecipeToolbarComponent } from '../../recipe-toolbar/recipe-toolbar';
 import { NumberStepperDirective } from '../../shared/number-stepper';
-import { Arc, arcFromCircle, Circle, RecipeInterface } from '../../models/types';
+import { APP_VERSION, Arc, arcFromCircle, Circle, RecipeInterface } from '../../models/types';
 import { circleCircleIntersections } from '../../helpers/math/draftMath';
 import {
   angleFromCenter, flipArcAboutY, flipCircleAboutY, flipPointAboutY, offsetCircleRadius, pointOnCircle,
@@ -15,12 +15,11 @@ import { error } from '../../shared/message-emitter';
 import { FOUR_CIRCLES_DEFAULTS, FourCircles, FourCirclesParams, FourCirclesViewFlags } from './hello-world-types';
 
 
-const blankRecipe = (): RecipeInterface => ({
+const blankRecipe = (): RecipeInterface<FourCirclesParams> => ({
   recipeName: 'hello-world',
   fileName: 'hello-world',
-  version: '1',
+  version: APP_VERSION,
   params: { ...FOUR_CIRCLES_DEFAULTS },
-  paths: undefined,
 });
 
 @Component({
@@ -30,10 +29,10 @@ const blankRecipe = (): RecipeInterface => ({
   templateUrl: './hello-world-recipe.html',
   styleUrls: ['../../sidebar.css', './hello-world-recipe.css'],
 })
-export class HelloWorldRecipe extends RecipeComponentBase {
+export class HelloWorldRecipe extends RecipeComponentBase<RecipeInterface<FourCirclesParams>> {
   // a field initializer, not a lifecycle hook: the base class restores a session in ngOnInit by
   // matching the stored recipeName against this one, so it has to be set before then
-  override d: RecipeInterface = blankRecipe();
+  override d = blankRecipe();
   override openPanel = 'fourCircles';
 
   protected readonly panelOrder = [{ id: 'fourCircles', label: 'Four Circles' }] as const;
@@ -64,8 +63,8 @@ export class HelloWorldRecipe extends RecipeComponentBase {
   override firstRender = (): void => this.render();
 
   // a loaded file is a new drawing, so it gets framed. an edit never is: the user set that view
-  override loadFile(file: RecipeInterface): void {
-    super.loadFile(file);
+  override loadFile(raw: unknown): void {
+    super.loadFile(raw);
     this.requestFit.emit();
   }
 
@@ -86,7 +85,7 @@ export class HelloWorldRecipe extends RecipeComponentBase {
 
   private render(): void {
     try {
-      const solved = solveFourCircles(this.d.params as FourCirclesParams);
+      const solved = solveFourCircles(this.d.params);
       this.draftChange.emit([renderFourCircles(solved, this.flags, this.pal)]);
     } catch (e) {
       error(e instanceof Error ? e.message : String(e), 'Four Circles');
