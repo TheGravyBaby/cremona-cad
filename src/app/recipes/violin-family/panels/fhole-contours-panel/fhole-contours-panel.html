@@ -13,6 +13,10 @@
             <input type="number" class="basic-input" step="1" [(ngModel)]="k.U1End" (input)="edited()"
                 (focus)="highlight('U1', pal.ink(1).faint(3))" (blur)="highlight(null)" />
         </label>
+        <label class="field-cell">
+            <span class="field-title">to S</span>
+            <div class="basic-display" aria-label="U1 to S ratio value">{{ ratio('U1toS') }}</div>
+        </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -24,6 +28,10 @@
             <div class="toggle">
                 <input type="checkbox" [(ngModel)]="k.U21DoubleArc" (change)="edited()" /><span>Compound</span>
             </div>
+        </label>
+        <label class="field-cell">
+            <span class="field-title">to S</span>
+            <div class="basic-display" aria-label="U2 to S ratio value">{{ ratio('U2toS') }}</div>
         </label>
     </div>
     @if (k.U21DoubleArc) {
@@ -50,6 +58,10 @@
             <span class="field-title">U3 End Angle <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" [(ngModel)]="k.U3End" (input)="edited()"
                 (focus)="highlight('U3', pal.ink(1).faint(-3))" (blur)="highlight(null)" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">to S</span>
+            <div class="basic-display" aria-label="U3 to S ratio value">{{ ratio('U3toS') }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
@@ -115,6 +127,10 @@
                 <input type="checkbox" [(ngModel)]="k.stemArcsIndependent" (change)="edited()" /><span>Unique radii</span>
             </div>
         </label>
+        <label class="field-cell">
+            <span class="field-title">to Eye Span</span>
+            <div class="basic-display" aria-label="S to EyeSpan ratio value">{{ ratio('StoEyeSpan') }}</div>
+        </label>
     </div>
     }
 </section>
@@ -132,6 +148,10 @@
             <input type="number" class="basic-input" step="1" [(ngModel)]="k.L1End" (input)="edited()"
                 (focus)="highlight('L1', pal.ink(0).faint(3))" (blur)="highlight(null)" />
         </label>
+        <label class="field-cell">
+            <span class="field-title">to S</span>
+            <div class="basic-display" aria-label="L1 to S ratio value">{{ ratio('L1toS') }}</div>
+        </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -143,6 +163,10 @@
             <div class="toggle">
                 <input type="checkbox" [(ngModel)]="k.L21DoubleArc" (change)="edited()" /><span>Compound</span>
             </div>
+        </label>
+        <label class="field-cell">
+            <span class="field-title">to S</span>
+            <div class="basic-display" aria-label="L2 to S ratio value">{{ ratio('L2toS') }}</div>
         </label>
     </div>
     @if (k.L21DoubleArc) {
@@ -169,6 +193,10 @@
             <span class="field-title">L3 End Angle <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" [(ngModel)]="k.L3End" (input)="edited()"
                 (focus)="highlight('L3', pal.ink(0).faint(-3))" (blur)="highlight(null)" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">to S</span>
+            <div class="basic-display" aria-label="L3 to S ratio value">{{ ratio('L3toS') }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">

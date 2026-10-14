@@ -11,6 +11,7 @@ import {
   renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderPath, renderPointHalo, renderSegment, renderSolveFailures,
 } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { Arc, Circle, Line, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
@@ -51,24 +52,24 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
     let r = FHOLE_SEED_RATIOS;
     // the cuts to the quarter millimetre, as the field steps them
     let quarter = (v: number) => Math.round(v * 4) / 4;
-    let stemArcR = Math.round(f.LEye.r * r.StoLEye);
+    let stemArcR = Math.round(dist(f.UEye, f.LEye) * r.StoEyeSpan);
     p.fHoleContours = {
-      U1R: Math.round(f.UEye.r * r.U1toUEye),
+      U1R: Math.round(stemArcR * r.U1toS),
       U1End: r.U1End,
-      U2R: Math.round(f.UEye.r * r.U2toUEye),
+      U2R: Math.round(stemArcR * r.U2toS),
       U21DoubleArc: false,
-      U21R: Math.round(f.UEye.r * r.U2toUEye),
+      U21R: Math.round(stemArcR * r.U2toS),
       U21Start: 0,
-      U3R: Math.round(f.UEye.r * r.U3toUEye),
+      U3R: Math.round(stemArcR * r.U3toS),
       U3End: r.U3End,
       UCut: { angleOnEye: r.UCutAt, slope: r.UCutSlope, length: quarter(f.UEye.r * r.UCuttoUEye) },
-      L1R: Math.round(f.LEye.r * r.L1toLEye),
+      L1R: Math.round(stemArcR * r.L1toS),
       L1End: r.L1End,
-      L2R: Math.round(f.LEye.r * r.L2toLEye),
+      L2R: Math.round(stemArcR * r.L2toS),
       L21DoubleArc: false,
-      L21R: Math.round(f.LEye.r * r.L2toLEye),
+      L21R: Math.round(stemArcR * r.L2toS),
       L21Start: 0,
-      L3R: Math.round(f.LEye.r * r.L3toLEye),
+      L3R: Math.round(stemArcR * r.L3toS),
       L3End: r.L3End,
       LCut: { angleOnEye: r.LCutAt, slope: r.LCutSlope, length: quarter(f.LEye.r * r.LCuttoLEye) },
       stemArcR,
@@ -89,8 +90,10 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
   @Output() drawn = new EventEmitter<RenderLayer[]>();
   @Output() edit = new EventEmitter<void>();
 
-  // what the last draw solved; report() reads it rather than solving again
+  // what the last draw solved; report() reads it rather than solving again, and the template reads
+  // the fractions beside each radius
   s!: FholeContoursSolve;
+  ratios: Partial<FholeRatios> = {};
 
   // held as a key rather than the arc: every solve builds new arcs
   private highlightedKey: FholeHighlightKey | null = null;
@@ -105,6 +108,11 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
   edited(): void {
     this.edit.emit();
     this.draw();
+  }
+
+  ratio(key: keyof FholeRatios): string {
+    let value = this.ratios[key];
+    return Number.isFinite(value) ? nearestFraction(value!) : '–';
   }
 
   // the arc or tip a field sets, haloed while the field has focus; null on blur
@@ -123,6 +131,7 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
     safeRun(() => {
       let p = this.params;
       let s = this.s = solveFholeContours(p)!;
+      this.ratios = solveFholeContoursRatios(p);
       let highlighted = this.highlightedKey ? { key: this.highlightedKey, color: this.highlightedColor } : null;
       let layers: RenderLayer[] = [renderFholePlate(p, this.pal, null, true)];
       if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
@@ -203,10 +212,10 @@ export const renderFholeContours = (
   cut(f.UEye, k.UCut.angleOnEye, s.UTip);
   cut(f.LEye, k.LCut.angleOnEye, s.LTip);
 
-  // now we need to render the segments between the arc ends
+  // the straight runs between the stem arcs, fainter than the arcs they join
   let run = (from: Pt, to: Pt) => {
-    renderSegment(from, to, ink(pal.ink(2)), STROKE_WEIGHT.trace)(g, ui);
-    renderSegment(flipPointAboutY(from), flipPointAboutY(to), ink(pal.ink(2)), STROKE_WEIGHT.trace)(g, ui);
+    renderSegment(from, to, ink(pal.ink(2).faint(3)), STROKE_WEIGHT.trace)(g, ui);
+    renderSegment(flipPointAboutY(from), flipPointAboutY(to), ink(pal.ink(2).faint(3)), STROKE_WEIGHT.trace)(g, ui);
   };
   if (s.S2 && s.S4) run(pointOnCircle(s.S2, s.S2.end), pointOnCircle(s.S4, s.S4.start));
   if (s.S1 && s.S3) run(pointOnCircle(s.S1, s.S1.start), pointOnCircle(s.S3, s.S3.end));
@@ -528,22 +537,22 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
   return s;
 }
 
-// each arc read back against the eye it springs from, as the seed drew it; the stem arcs read as
-// one radius, or their mean once set free
+// the contours read back as the seed drew them: the stem arc against the eye span and every other
+// arc against the stem arc, which reads as one radius, or the mean of four once set free
 export function solveFholeContoursRatios(p: ViolinFamilyParams): Partial<FholeRatios> {
   let f = p.fHoles;
   let k = p.fHoleContours;
   if (!f || !k) return {};
   let stem = k.stemArcsIndependent ? (k.S1R + k.S2R + k.S3R + k.S4R) / 4 : k.stemArcR;
   return {
-    U1toUEye: k.U1R / f.UEye.r,
-    U2toUEye: k.U2R / f.UEye.r,
-    U3toUEye: k.U3R / f.UEye.r,
     UCuttoUEye: k.UCut.length / f.UEye.r,
-    L1toLEye: k.L1R / f.LEye.r,
-    L2toLEye: k.L2R / f.LEye.r,
-    L3toLEye: k.L3R / f.LEye.r,
     LCuttoLEye: k.LCut.length / f.LEye.r,
-    StoLEye: stem / f.LEye.r,
+    StoEyeSpan: stem / dist(f.UEye, f.LEye),
+    U1toS: k.U1R / stem,
+    U2toS: k.U2R / stem,
+    U3toS: k.U3R / stem,
+    L1toS: k.L1R / stem,
+    L2toS: k.L2R / stem,
+    L3toS: k.L3R / stem,
   };
 }
