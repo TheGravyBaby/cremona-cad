@@ -106,10 +106,12 @@ export const FHOLE_SEED_RATIOS: FholeRatios & {
 } = {
   LEyetoW: 3 / 128,
   UEyetoLEye: 5 / 8,
-  LEyeXtoLCX: 2 / 3,
-  LEyeYtoLCY: 29 / 30,
-  UEyeGuidetoWaist: 6 / 11,
+
+  LEyeXtoLCX: 2 / 3, // these numbers do not really capture accurately how eyes were placed
+  LEyeYtoLCY: 14 / 15, // they do work cosmetically though
+  UEyeGuidetoWaist: 4 / 7,
   EyeSpantoWaist: 1,
+
   URisetoUEye: 5 / 3,
   LRisetoLEye: 11 / 8,
   StemXtoFrame: 5 / 12,

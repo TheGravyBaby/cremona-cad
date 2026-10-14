@@ -50,7 +50,14 @@
 </section>
 
 <section class="ui-group">
-    <div class="ui-group-title">Set</div>
+    <div class="ui-group-title">Mortise</div>
+     <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Mortise Depth <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0).faint(-3)"
+                [(ngModel)]="neck.mortiseDepth" (input)="edited()" (focus)="focus('mortise', pal.ink(0).faint(-3))" (blur)="blur()" />
+        </label>
+    </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Overstand <span class="unit-label">mm</span></span>
@@ -61,13 +68,6 @@
             <span class="field-title">Neck Projection <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" max="30"
                 [(ngModel)]="neck.angle" (input)="edited()" (focus)="focus('angle', pal.ink(0))" (blur)="blur()" />
-        </label>
-    </div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Mortise <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0).faint(-3)"
-                [(ngModel)]="neck.mortiseDepth" (input)="edited()" (focus)="focus('mortise', pal.ink(0).faint(-3))" (blur)="blur()" />
         </label>
     </div>
 </section>
