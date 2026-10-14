@@ -230,7 +230,9 @@ function legacyPlacement(f: any): FholePlacementParams | undefined {
     LEye: { x: f.LEye.x, y: f.LEye.y, r: f.LEye.r },
     URise: f.URise,
     LRise: f.LRise,
-    stem: { center: { x: f.stem.center.x, y: f.stem.center.y }, width: f.stem.width, angle: deg(f.stem.angle) },
+    // ceruti measured the stem's width along x; it is now measured square across the stem, so the
+    // same edges need the width foreshortened by the lean
+    stem: { center: { x: f.stem.center.x, y: f.stem.center.y }, width: f.stem.width * Math.sin(f.stem.angle), angle: deg(f.stem.angle) },
     // a ceruti file predates the notches; they come in on as a fresh draft would
     notches: true,
   };
@@ -260,8 +262,7 @@ function legacyContours(c: any): FholeContourParams | undefined {
     L1R: f.L1.r, L1Sweep: shoulder(f.LEye, f.L1),
     L2R: f.L2.r, L21DoubleArc: L21, L21R: L21 ? f.L21.r : f.L2.r, L2Sweep: arm(f.L1, f.L2, f.L21, L21),
     L3R: f.L3.r, L3Angle: wing(f.L3, f.LCut, -1), LCut: cut(f.LCut),
-    stemArcR: f.stem.arcR, stemArcsIndependent: !!o.stemArcsIndependent,
-    S1R: f.S1.r, S2R: f.S2.r, S3R: f.S3.r, S4R: f.S4.r,
+    stemArcR: f.stem.arcR,
   };
 }
 

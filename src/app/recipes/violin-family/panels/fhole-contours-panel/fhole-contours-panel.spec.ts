@@ -124,7 +124,7 @@ describe('the f-hole contours solve', () => {
     expect(JSON.stringify(p)).toBe(edited);
   });
 
-  it('seeds every radius a whole millimetre, the stem arcs to one radius, and each cut a fraction of its eye', () => {
+  it('seeds every radius a whole millimetre and each cut a fraction of its eye', () => {
     const p = seeded();
     const k = p.fHoleContours!;
     const f = p.fHoles!;
@@ -132,7 +132,6 @@ describe('the f-hole contours solve', () => {
       expect(r).toBeGreaterThan(0);
       expect(Math.round(r)).toBe(r);
     }
-    for (const r of [k.S1R, k.S2R, k.S3R, k.S4R]) expect(r).toBe(k.stemArcR);
     expect(k.UCut.length).toBeCloseTo(f.UEye.r * FHOLE_SEED_RATIOS.UCuttoUEye, 0);
     expect(k.LCut.length).toBeCloseTo(f.LEye.r * FHOLE_SEED_RATIOS.LCuttoLEye, 0);
     expect(solveFholeContours(p)!.failures).toEqual([]);
@@ -288,28 +287,10 @@ describe('f-hole contour properties', () => {
     }
   });
 
-  it('holds all four stem arcs to the one radius the stem was pinned at', () => {
+  it('holds all four stem arcs to the one stem radius', () => {
     const p = shaped('extended');
     const s = solveFholeContours(p)!;
     for (const key of ['S1', 'S2', 'S3', 'S4'] as const) expect(s[key]!.r).toBeCloseTo(p.fHoleContours!.stemArcR, 9);
-  });
-
-  it('lets each stem arc take its own radius once set free, and gathers them again when not', () => {
-    const p = seeded();
-    const k = p.fHoleContours!;
-    const shared = k.stemArcR;
-    k.stemArcsIndependent = true;
-    k.S1R = shared + 2;
-    k.S2R = shared + 4;
-    k.S3R = shared + 6;
-    k.S4R = shared + 8;
-    let s = solveFholeContours(p)!;
-    expect(s.failures).toEqual([]);
-    expect([s.S1!.r, s.S2!.r, s.S3!.r, s.S4!.r]).toEqual([shared + 2, shared + 4, shared + 6, shared + 8]);
-
-    k.stemArcsIndependent = false;
-    s = solveFholeContours(p)!;
-    for (const key of ['S1', 'S2', 'S3', 'S4'] as const) expect(s[key]!.r).toBe(shared);
   });
 });
 

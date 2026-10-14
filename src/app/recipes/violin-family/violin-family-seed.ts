@@ -39,7 +39,7 @@ export interface ViolinFamilyRatios {
 // the rises, the stem's seat in the frame the eyes and rises carve out, and each cut's length
 // against its eye. The contours describe how smooth the curve is: the stem arc is the largest,
 // set against the eye span (the hole's own length), and every shoulder, arm and wing is a
-// fraction of it. The stem arcs read as one radius, or their mean once set free
+// fraction of it. The four stem arcs share one radius
 export interface FholeRatios {
   LEyetoW: number;
   UEyetoLEye: number;
