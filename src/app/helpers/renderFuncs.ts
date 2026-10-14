@@ -1,5 +1,6 @@
 import { Pt, Circle, Line, Rectangle, Arc } from "../models/types";
-import { normalizeRadians, pointOnCircle, TURN } from "./math/simpleGeometry";
+import { angleFromCenter, normalizeRadians, pointOnCircle, TURN } from "./math/simpleGeometry";
+import { arcPathData } from "./math/pathMath";
 import { SolveFailure } from "./validators";
 import { DASH, STROKE_WEIGHT } from "../theme/palettes";
 
@@ -733,3 +734,72 @@ export const renderStroke = (stroke: StrokeShape & { weight: number }, color: st
     'line' in stroke ? renderSegment(stroke.line[0], stroke.line[1], color, stroke.weight)
         : 'polygon' in stroke ? renderPolygon(stroke.polygon, color, stroke.weight)
             : renderPath(stroke.d, color, stroke.weight);
+
+// an angle at a vertex, drawn the way the toolbox's angle tool draws one: arms out to the two
+// points, an arc swept counterclockwise from the first to the second with an arrowhead at each
+// end, and the degrees floated off the arc's middle, level. Every size is in drawing mm: the
+// canvas passes screen px over its scale so its marks hold through a zoom, a panel passes mm so
+// its guides zoom with the drawing. The arms' overrun to the arc is there to carry the eye to the
+// number, so it doesn't snap
+export interface AngleMarkSize {
+    strokeWidth: number;
+    arrowLen: number;
+    arrowHalfWidth: number;
+    overshoot: number;
+    textGap: number;
+    fontSize: number;
+}
+export const renderAngle = (vertex: Pt, start: Pt, end: Pt, radius: number, color: string, size: AngleMarkSize, preview = false) => (g: any, ui: any): void => {
+    const stroke = (sel: any) => {
+        sel.attr('fill', 'none').attr('stroke', color).attr('stroke-width', size.strokeWidth).attr('vector-effect', 'non-scaling-stroke');
+        if (preview) sel.attr('stroke-dasharray', DASH.preview).style('pointer-events', 'none');
+        return sel;
+    };
+    const segment = (a: Pt, b: Pt) => stroke(g.append('line').attr('x1', a.x).attr('y1', a.y).attr('x2', b.x).attr('y2', b.y));
+
+    const startAngle = angleFromCenter(vertex, start);
+    const endAngle = angleFromCenter(vertex, end);
+    const sweep = normalizeRadians(endAngle - startAngle);
+    const reach = radius + size.overshoot;
+    for (const [arm, angle] of [[start, startAngle], [end, endAngle]] as const) {
+        segment(vertex, arm);
+        if (Math.hypot(arm.x - vertex.x, arm.y - vertex.y) < reach) {
+            segment(arm, pointOnCircle({ ...vertex, r: reach }, angle)).attr('data-no-snap', '');
+        }
+    }
+    if (sweep < 1e-6) return;
+
+    stroke(g.append('path').attr('d', arcPathData(vertex, radius, startAngle, endAngle)));
+
+    // skipped on an arc too short to hold both heads without them overlapping
+    if (radius * sweep > size.arrowLen * 2.5) {
+        const arrow = (angle: number, turn: 1 | -1) => {
+            const tip = pointOnCircle({ ...vertex, r: radius }, angle);
+            const d = { x: -Math.sin(angle) * turn, y: Math.cos(angle) * turn };
+            const base = { x: tip.x - d.x * size.arrowLen, y: tip.y - d.y * size.arrowLen };
+            const wing = { x: -d.y * size.arrowHalfWidth, y: d.x * size.arrowHalfWidth };
+            const poly = g.append('polygon')
+                .attr('points', `${tip.x},${tip.y} ${base.x + wing.x},${base.y + wing.y} ${base.x - wing.x},${base.y - wing.y}`)
+                .attr('fill', color)
+                .attr('data-no-snap', '');
+            if (preview) poly.style('pointer-events', 'none');
+        };
+        arrow(startAngle, -1);
+        arrow(endAngle, 1);
+    }
+
+    // level rather than turned along the arc, anchored on the side facing away from the vertex so
+    // the number grows outward instead of back across the arc
+    const bisector = startAngle + sweep / 2;
+    const at = pointOnCircle({ ...vertex, r: radius + size.textGap }, bisector);
+    const cos = Math.cos(bisector);
+    const text = ui.append('text')
+        .attr('x', at.x).attr('y', -at.y)
+        .attr('text-anchor', cos > 0.3 ? 'start' : cos < -0.3 ? 'end' : 'middle')
+        .attr('dominant-baseline', 'central')
+        .attr('fill', color)
+        .attr('font-size', size.fontSize)
+        .style('user-select', 'none')
+        .text(`${(sweep / TURN.degree).toFixed(1)}°`);
+    if (preview) text.style('pointer-events', 'none');
+};

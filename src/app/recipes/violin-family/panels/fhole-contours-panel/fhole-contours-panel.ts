@@ -8,7 +8,8 @@ import {
 import { pathFromArc, pathFromArcLongWay, pathFromLine } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
 import {
-  renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderPath, renderPointHalo, renderSegment, renderSolveFailures,
+  AngleMarkSize, renderAngle, renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderPath, renderPointHalo, renderSegment,
+  renderSolveFailures,
 } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
@@ -17,7 +18,7 @@ import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
-  FHOLE_SEED_RATIOS, FholeArcKey, FholeContoursSolve, FholeFailure, FholeRatios, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey,
+  FHOLE_SEED_RATIOS, FholeArcKey, FholeContoursSolve, FholeCutParams, FholeFailure, FholeRatios, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey,
   ViolinFamilyViewFlags,
 } from '../../violin-family-types';
 import { renderBoutBounds } from '../main-bouts-panel/main-bouts-panel';
@@ -61,7 +62,7 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
       U21R: Math.round(stemArcR * r.U2toS),
       U21Start: 0,
       U3R: Math.round(stemArcR * r.U3toS),
-      U3End: r.U3End,
+      U3Angle: r.U3Angle,
       UCut: { angleOnEye: r.UCutAt, slope: r.UCutSlope, length: quarter(f.UEye.r * r.UCuttoUEye) },
       L1R: Math.round(stemArcR * r.L1toS),
       L1End: r.L1End,
@@ -70,7 +71,7 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
       L21R: Math.round(stemArcR * r.L2toS),
       L21Start: 0,
       L3R: Math.round(stemArcR * r.L3toS),
-      L3End: r.L3End,
+      L3Angle: r.L3Angle,
       LCut: { angleOnEye: r.LCutAt, slope: r.LCutSlope, length: quarter(f.LEye.r * r.LCuttoLEye) },
       stemArcR,
       stemArcsIndependent: false,
@@ -135,7 +136,7 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
       let highlighted = this.highlightedKey ? { key: this.highlightedKey, color: this.highlightedColor } : null;
       let layers: RenderLayer[] = [renderFholePlate(p, this.pal, null, true)];
       if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
-      if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, ThemeService.getPalette('classicCremona')));
+      if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, ThemeService.getPalette('classicCremona')), renderFholeAngleGuides(p, s, this.pal));
       if (this.flags.showFholeBounds) layers.push(renderFholeBounds(p.fHoles!, this.pal));
       layers.push(
         renderFholeContours(p, s, this.pal, this.flags, true, highlighted),
@@ -145,6 +146,35 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
     });
   }
 }
+
+// how the angle fields read, marked on the treble hole as the toolbox's angle tool would mark
+// them: at each eye the cut's seat from the eye's level ray and its slope from level at the
+// cut's start, and at each tip the wing against the cut. Sized in mm so they zoom with the hole
+export const renderFholeAngleGuides = (p: ViolinFamilyParams, s: FholeContoursSolve, pal: PanelPalette) => (g: any, ui: any): void => {
+  let f = p.fHoles!;
+  let k = p.fHoleContours!;
+  let deg = TURN.degree;
+  let size: AngleMarkSize = { strokeWidth: 1, arrowLen: 1, arrowHalfWidth: 0.35, overshoot: 0.5, textGap: 1.5, fontSize: 2 };
+  let mark = (vertex: Pt, start: Pt, end: Pt, radius: number, color: string) => renderAngle(vertex, start, end, radius, color, size)(g, ui);
+
+  let hole = (eye: Circle, cut: FholeCutParams, tip: Pt | null, wing: Arc | null, up: 1 | -1, wingInk: string) => {
+    let cutStart = pointOnCircle(eye, cut.angleOnEye * deg);
+    mark(eye, new Pt(eye.x + eye.r, eye.y), cutStart, eye.r * 1.6, pal.ink(3));
+    if (!tip) return;
+    // the slope reads clockwise below level, so the sweep runs from the cut up to level there
+    let level = new Pt(cutStart.x + cut.length, cutStart.y);
+    if (cut.slope >= 0) mark(cutStart, level, tip, cut.length * 0.5, pal.ink(3));
+    else mark(cutStart, tip, level, cut.length * 0.5, pal.ink(3));
+    if (!wing) return;
+    // the wing's tangent at the tip, heading back along the wing toward the stem
+    let heading = wing.end + up * TURN.quarter;
+    let along = new Pt(tip.x + Math.cos(heading) * cut.length, tip.y + Math.sin(heading) * cut.length);
+    if (up > 0) mark(tip, along, cutStart, cut.length * 0.6, wingInk);
+    else mark(tip, cutStart, along, cut.length * 0.6, wingInk);
+  };
+  hole(f.UEye, k.UCut, s.UTip, s.U3, 1, pal.ink(1).faint(-3));
+  hole(f.LEye, k.LCut, s.LTip, s.L3, -1, pal.ink(0).faint(-3));
+};
 
 // the hole's arcs in their own inks on this panel, each eye drawn as the arc that is left of it
 // between its shoulder and its cut, the two straight runs along the stem between the stem arcs,
@@ -333,6 +363,11 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
 
   let stemR = (key: 'S1' | 'S2' | 'S3' | 'S4') => k.stemArcsIndependent ? k[`${key}R`] : k.stemArcR;
 
+  // where a wing ends on its own circle, from the angle it meets the cut at: its tangent at the
+  // tip stands (90° − angle) round from the cut's own direction, the upper wing turning one way
+  // round the tip and the lower the other
+  let wingEnd = (cut: FholeCutParams, angle: number, up: 1 | -1) => (cut.slope + up * (90 - angle)) * deg;
+
   let stemHalf = dist(f.UEye, f.LEye) / 2;
   let stemEdge = (pt: Pt): [Pt, Pt] => [
     new Pt(pt.x - Math.cos(stemAngle) * stemHalf, pt.y - Math.sin(stemAngle) * stemHalf),
@@ -439,14 +474,15 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
 
   // now we do the upper wing
   solveSection(s.failures, 'Upper wing', ['U3', 'S1'], () => {
-    let missing = blank('Upper wing', ['U3', 'S1'], [k.U3R, k.U3End, k.UCut.angleOnEye, k.UCut.slope, k.UCut.length, stemR('S1')]);
+    let missing = blank('Upper wing', ['U3', 'S1'], [k.U3R, k.U3Angle, k.UCut.angleOnEye, k.UCut.slope, k.UCut.length, stemR('S1')]);
     if (missing) return missing;
     let cutStart = pointOnCircle(f.UEye, k.UCut.angleOnEye * deg);
     let cutVector = vectorFromSlope(k.UCut.slope * deg);
     cutVector.mag = k.UCut.length;
     let cutEnd = moveInVectorSpace(cutStart, [cutVector]);
     s.UTip = cutEnd;
-    let cutCircle = placeCircleOnPointAtAngle(k.U3R, cutEnd, k.U3End * deg);
+    let U3End = wingEnd(k.UCut, k.U3Angle, 1);
+    let cutCircle = placeCircleOnPointAtAngle(k.U3R, cutEnd, U3End);
 
     let S1 = solveTangentCircleAndLine(innerStemLine, cutCircle, stemR('S1'), true, 1, f.stem.center);
     if (!S1)
@@ -456,7 +492,7 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
     let S1StemIntersect = lineCircleIntersectionWithTolerance(innerStemLine, S1);
     let S1StemEndAngle = angleFromCenter(S1, S1StemIntersect[0]);
 
-    s.U3 = new Arc(cutCircle.x, cutCircle.y, cutCircle.r, angleFromCenter(cutCircle, S1U3Pt[0]), k.U3End * deg);
+    s.U3 = new Arc(cutCircle.x, cutCircle.y, cutCircle.r, angleFromCenter(cutCircle, S1U3Pt[0]), U3End);
     s.S1 = new Arc(S1.x, S1.y, S1.r, S1StemEndAngle, angleFromCenter(S1, S1U3Pt[0]));
     return null;
   });
@@ -510,14 +546,15 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
 
   // now the lower wing, which connects to the outer stem
   solveSection(s.failures, 'Lower wing', ['L3', 'S4'], () => {
-    let missing = blank('Lower wing', ['L3', 'S4'], [k.L3R, k.L3End, k.LCut.angleOnEye, k.LCut.slope, k.LCut.length, stemR('S4')]);
+    let missing = blank('Lower wing', ['L3', 'S4'], [k.L3R, k.L3Angle, k.LCut.angleOnEye, k.LCut.slope, k.LCut.length, stemR('S4')]);
     if (missing) return missing;
     let cutStart = pointOnCircle(f.LEye, k.LCut.angleOnEye * deg);
     let cutVector = vectorFromSlope(k.LCut.slope * deg);
     cutVector.mag = k.LCut.length;
     let cutEnd = moveInVectorSpace(cutStart, [cutVector]);
     s.LTip = cutEnd;
-    let cutCircle = placeCircleOnPointAtAngle(k.L3R, cutEnd, k.L3End * deg);
+    let L3End = wingEnd(k.LCut, k.L3Angle, -1);
+    let cutCircle = placeCircleOnPointAtAngle(k.L3R, cutEnd, L3End);
 
     let S4 = solveTangentCircleAndLine(outerStemLine, cutCircle, stemR('S4'), true, -1, f.stem.center);
     if (!S4)
@@ -527,7 +564,7 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
     let S4StemIntersect = lineCircleIntersectionWithTolerance(outerStemLine, S4);
     let S4StemEndAngle = angleFromCenter(S4, S4StemIntersect[0]);
 
-    s.L3 = new Arc(cutCircle.x, cutCircle.y, cutCircle.r, angleFromCenter(cutCircle, S4L3Pt[0]), k.L3End * deg);
+    s.L3 = new Arc(cutCircle.x, cutCircle.y, cutCircle.r, angleFromCenter(cutCircle, S4L3Pt[0]), L3End);
     s.S4 = new Arc(S4.x, S4.y, S4.r, S4StemEndAngle, angleFromCenter(S4, S4L3Pt[0]));
     return null;
   });
