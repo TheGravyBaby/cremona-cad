@@ -11,10 +11,8 @@ import { Arc, arcFromCircle, Pt, Rectangle } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import {
-  HighlightedArc, MainBoutFailure, MainBoutsSolve, RenderLayer, SEED_RATIOS, ViolinFamilyPanel, ViolinFamilyParams,
-  ViolinFamilyRatios, ViolinFamilyToggleKey, ViolinFamilyViewFlags, ViolNeckCap, ViolNeckJoin,
-} from '../../violin-family-types';
+import { HighlightedArc, MainBoutFailure, MainBoutsSolve, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags, ViolNeckCap, ViolNeckJoin } from '../../violin-family-types';
+import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
 import { renderCorners, solveCorners } from '../corners-panel/corners-panel';
 import { renderCenterBout, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 

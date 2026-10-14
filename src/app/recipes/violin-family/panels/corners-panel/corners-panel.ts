@@ -10,10 +10,8 @@ import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt } from '../../..
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import {
-  CornerFailure, CornerKey, CornersSolve, MainBoutsSolve, RenderLayer, SEED_RATIOS, ViolinFamilyPanel, ViolinFamilyParams,
-  ViolinFamilyRatios, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
-} from '../../violin-family-types';
+import { CornerFailure, CornerKey, CornersSolve, MainBoutsSolve, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
 import { renderBoutBounds, renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCenterBout, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 
@@ -234,12 +232,12 @@ export function defaultCornerTips(p: ViolinFamilyParams): { UCr: Pt; LCr: Pt } |
 
   // we set a line at the ratio height of the body, then draw a guide circle from the bout to that line
   // the intersection defines the "default" corner position
-  let lgPt = new Pt(-(LBW - inset) / 2, m.L1.y);
+  let lgPt = new Pt(-LBW / 2, m.L1.y);
   let lgC = new Circle(lgPt.x, lgPt.y, LBW)
   let lgH = p.body.height * SEED_RATIOS.LCYtoH
   let LCr = lineCircleIntersection(lineFromPointAndSlope({ x: 0, y: lgH }, 0), lgC).sort((a, b) => a.x - b.x)[1]
 
-  let ugPt = new Pt((-UBW + 2 * inset) / 2, m.U1.y);
+  let ugPt = new Pt(-UBW / 2, m.U1.y);
   let ugC = new Circle(ugPt.x, ugPt.y, UBW) // scaler to make it a bit wider
   let ugH = p.body.height * SEED_RATIOS.UCYtoH
   let UCr = lineCircleIntersection(lineFromPointAndSlope({ x: 0, y: ugH }, 0), ugC).sort((a, b) => a.x - b.x)[1]

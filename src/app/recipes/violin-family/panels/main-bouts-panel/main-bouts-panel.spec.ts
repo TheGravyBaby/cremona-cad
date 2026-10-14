@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { dist, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
 import { MainBoutsPanel, solveMainBoutsRatios, solveMainBouts, violNeckJoinLimit } from './main-bouts-panel';
 import { solveBodyRatios } from '../base-measurements-panel/base-measurements-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, SEED_RATIOS, ViolinFamilyParams } from '../../violin-family-types';
+import { ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS, SEED_RATIOS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
 

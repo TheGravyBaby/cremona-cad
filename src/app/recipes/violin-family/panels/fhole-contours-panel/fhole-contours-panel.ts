@@ -17,10 +17,8 @@ import { Arc, Circle, Line, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import {
-  FHOLE_SEED_RATIOS, FholeArcKey, FholeContoursSolve, FholeCutParams, FholeFailure, FholeRatios, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey,
-  ViolinFamilyViewFlags,
-} from '../../violin-family-types';
+import { FholeArcKey, FholeContoursSolve, FholeCutParams, FholeFailure, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { FHOLE_SEED_RATIOS, FholeRatios } from '../../violin-family-seed';
 import { renderBoutBounds } from '../main-bouts-panel/main-bouts-panel';
 import { renderFholeBounds, renderFholePlate, renderFlutingEdgeGuide } from '../fhole-placement-panel/fhole-placement-panel';
 
@@ -43,10 +41,10 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFholeBounds', 'showModuleArcs', 'showFlutingEdge', 'showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('orchid');
 
-  // off a traced Amati, nice historical defaults: every radius a whole multiple of its own eye,
-  // the stem's four arcs one radius off the lower eye, and each cut one eye radius long. A
-  // compound arm is seeded split halfway along the sweep the plain arm draws, so turning it on
-  // changes nothing until a number does
+  // the Stradivari-pattern hole in FHOLE_SEED_RATIOS: every radius a fraction of the stem arc,
+  // itself set against the eye span, each cut a fraction of its eye, and the takeoff angles as
+  // drawn. A compound arm is seeded split halfway along the sweep the plain arm draws, so turning
+  // it on changes nothing until a number does
   static seed(p: ViolinFamilyParams): void {
     if (p.fHoleContours || !p.fHoles) return;
     let f = p.fHoles;

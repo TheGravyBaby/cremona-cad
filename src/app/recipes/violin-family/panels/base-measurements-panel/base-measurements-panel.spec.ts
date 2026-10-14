@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { solveBody, solveBodyRatios } from './base-measurements-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, ViolinFamilyParams } from '../../violin-family-types';
+import { ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
 

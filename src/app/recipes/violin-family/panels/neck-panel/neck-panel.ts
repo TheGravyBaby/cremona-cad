@@ -14,10 +14,8 @@ import { Arc, arcFromCircle, Circle, Pt, Vect2D } from '../../../../models/types
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import {
-  NeckFailure, NeckSolve, OuterContourSolve, RenderLayer, ScrollSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey,
-  ViolinFamilyViewFlags,
-} from '../../violin-family-types';
+import { NeckFailure, NeckSolve, OuterContourSolve, RenderLayer, ScrollSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { familyStandards } from '../../violin-family-seed';
 import { PLATE_LAYOUT_GAP, solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
 import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
@@ -44,25 +42,13 @@ export class NeckPanel implements ViolinFamilyPanel, OnInit {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('varnish');
 
-  // violin numbers, scaled by body length for the larger sizes: generic for the size class rather
-  // than measured. Half millimetres, so the fields read clean
+  // the length runs along the fingerboard plane from the mortise floor, so the stop grows by the
+  // overhang and the mortise, at the neck's lean
   static seed(p: ViolinFamilyParams): void {
     if (p.neck || !p.arching) return;
-    let k = p.body.height / REFERENCE_BODY_HEIGHT;
-    let mm = (v: number) => Math.round(v * k * 2) / 2;
-    p.neck = {
-      length: mm(144),
-      angle: 7.5,
-      upperThickness: mm(13),
-      lowerThickness: mm(15),
-      topWidth: mm(24),
-      rootWidth: mm(33),
-      heelRadius: mm(10),
-      mortiseDepth: mm(6.5),
-      overstand: mm(6.5),
-      nutHeight: mm(6),
-      nutWidth: mm(24),
-    };
+    let s = familyStandards(p.body.height);
+    let inPlate = (p.body.overhang + s.neck.mortiseDepth) / Math.cos(s.neck.angle * TURN.degree);
+    p.neck = { length: Math.round((s.neckStop + inPlate) * 2) / 2, ...s.neck };
   }
 
   @Input({ required: true }) params!: ViolinFamilyParams;
@@ -123,8 +109,6 @@ export class NeckPanel implements ViolinFamilyPanel, OnInit {
     });
   }
 }
-
-const REFERENCE_BODY_HEIGHT = 355;
 
 // the neck in the side elevation, over the body's side profile. Only what a field sets is in
 // colour: the front, the two thicknesses, the heel; the rest of the outline is plain. Ground,

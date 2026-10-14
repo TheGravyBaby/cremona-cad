@@ -9,7 +9,8 @@ import { OuterContourPanel, solveOuterContour } from '../outer-contour-panel/out
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
-import { ChannelSolve, DEFAULT_VIOLIN_FAMILY_PARAMS, ViolinFamilyParams } from '../../violin-family-types';
+import { ChannelSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
 
@@ -52,11 +53,11 @@ describe('the fluting solve', () => {
     expect(solveFluting(withPlates())).toBeNull();
   });
 
-  it('seeds once: a gouge that cuts, a narrower one for the waist, and a larger pair for a cello', () => {
+  it('seeds once: a channel a gouge cuts, a narrower one for the waist, and a larger pair for a cello', () => {
     const p = seeded();
     const g = { ...p.fluting!.top };
-    expect(gougeHalfWidth(g.sweepRadius, g.depth)).toBeGreaterThan(0);
-    expect(g.cBoutSweep).toBeLessThan(g.sweepRadius);
+    expect(gougeHalfWidth(g.width, g.depth)).toBeGreaterThan(0);
+    expect(g.cBoutWidth).toBeLessThan(g.width);
     expect(g.useCBoutGouge).toBe(true);
     expect(p.fluting!.flutingEdge).toBeGreaterThan(0);
     expect(p.fluting!.back).toEqual(g);
@@ -70,7 +71,7 @@ describe('the fluting solve', () => {
     cello.body.height = 750;
     cello.body.width = 440;
     seeded(cello);
-    expect(cello.fluting!.top.sweepRadius).toBeGreaterThan(g.sweepRadius);
+    expect(cello.fluting!.top.width).toBeGreaterThan(g.width);
     expect(cello.fluting!.top.depth).toBeGreaterThan(g.depth);
   });
 });
@@ -106,13 +107,15 @@ describe('the channel', () => {
     }
   });
 
-  it('runs its inner edge a gouge\'s width inside its outer, along the bouts', () => {
-    for (const channel of [s.top!, s.back!]) {
+  it('runs its inner edge the channel\'s width inside its outer, along the bouts', () => {
+    for (const plate of ['top', 'back'] as const) {
+      const channel = s[plate]!;
+      const width = p.fluting![plate].width;
       const outer = points(channel.outer);
       const alongTheBouts = points(channel.inner, 0.5).filter(q => q.y < 60 || q.y > p.body.height - 60);
       expect(alongTheBouts.length).toBeGreaterThan(100);
-      for (const d of offTheLine(alongTheBouts, outer)) expect(d).toBeCloseTo(channel.width, 3);
-      expect(channel.innerEdgeOffset).toBeCloseTo(f.flutingEdge + channel.width, 9);
+      for (const d of offTheLine(alongTheBouts, outer)) expect(d).toBeCloseTo(width, 3);
+      expect(channel.innerEdgeOffset).toBeCloseTo(f.flutingEdge + width, 9);
     }
   });
 
@@ -131,19 +134,22 @@ describe('the channel', () => {
     }
   });
 
-  it('reads the gouge\'s width: wider for a deeper cut or a broader sweep, narrower through the waist', () => {
+  it('reads the gouge\'s sweep: tighter for a deeper cut, flatter for a wider one, tighter through the waist', () => {
     const deeper = seeded();
     deeper.fluting!.top.depth *= 1.5;
-    const broader = seeded();
-    broader.fluting!.top.sweepRadius *= 1.5;
-    expect(solveFluting(deeper)!.top!.width).toBeGreaterThan(s.top!.width);
-    expect(solveFluting(broader)!.top!.width).toBeGreaterThan(s.top!.width);
-    expect(s.top!.cBoutWidth).toBeLessThan(s.top!.width);
+    const wider = seeded();
+    wider.fluting!.top.width *= 1.5;
+    expect(solveFluting(deeper)!.top!.sweep).toBeLessThan(s.top!.sweep);
+    expect(solveFluting(wider)!.top!.sweep).toBeGreaterThan(s.top!.sweep);
+    expect(s.top!.cBoutSweep).toBeLessThan(s.top!.sweep);
+    // the sweep's circle passes through the chord's ends and the trough
+    const g = p.fluting!.top;
+    expect(Math.hypot(g.width / 2, s.top!.sweep - g.depth)).toBeCloseTo(s.top!.sweep, 9);
 
     const one = seeded();
     one.fluting!.top.useCBoutGouge = false;
     const single = solveFluting(one)!.top!;
-    expect(single.cBoutWidth).toBe(single.width);
+    expect(single.cBoutSweep).toBe(single.sweep);
     expect(single.innerEdgeOffset_cBout).toBe(single.innerEdgeOffset);
   });
 
@@ -156,8 +162,8 @@ describe('the channel', () => {
     const lowerBout = (d: string) => points(d).filter(q => q.y < 60);
 
     expect(s.top!.innerEdgeOffset_cBout).toBeLessThan(s.top!.innerEdgeOffset);
-    // the narrower gouge leaves the inner edge nearer the plate edge through the waist
-    expect(waist(s.top!.inner)).toBeCloseTo(waist(single.inner) + (single.width - s.top!.cBoutWidth), 2);
+    // the narrower channel leaves the inner edge nearer the plate edge through the waist
+    expect(waist(s.top!.inner)).toBeCloseTo(waist(single.inner) + (p.fluting!.top.width - p.fluting!.top.cBoutWidth), 2);
     expect(waist(s.top!.outer)).toBeCloseTo(waist(single.outer), 3);
     // and the lower bout's inner edge is the same line with either gouge
     expect(Math.max(...offTheLine(lowerBout(s.top!.inner), points(single.inner, 0.1)))).toBeLessThan(1e-3);
@@ -186,12 +192,12 @@ describe('the channel', () => {
 });
 
 describe('what cannot be cut', () => {
-  it('fails the plate whose gouge can\'t reach its depth, and leaves the other', () => {
+  it('fails the plate whose channel no gouge cuts, deeper than half its width, and leaves the other', () => {
     const p = seeded();
-    p.fluting!.top.depth = p.fluting!.top.sweepRadius;
+    p.fluting!.top.depth = p.fluting!.top.width;
     const s = solveFluting(p)!;
     expect(s.failures.map(f => f.unsolved)).toEqual([['top']]);
-    expect(s.failures[0].message).toContain('sweep');
+    expect(s.failures[0].message).toContain('half its width');
     expect(s.top).toBeNull();
     expect(s.back).not.toBeNull();
   });
@@ -208,9 +214,9 @@ describe('what cannot be cut', () => {
     expect(s.outerEdge).not.toBeNull();
   });
 
-  it('fails the plate whose C bout gouge can\'t cut this deep, until that gouge is turned off', () => {
+  it('fails the plate whose C bout channel no gouge cuts this deep, until that channel is turned off', () => {
     const p = seeded();
-    p.fluting!.back.cBoutSweep = p.fluting!.back.depth / 2;
+    p.fluting!.back.cBoutWidth = p.fluting!.back.depth;
     expect(solveFluting(p)!.failures.map(f => f.unsolved)).toEqual([['back']]);
     p.fluting!.back.useCBoutGouge = false;
     expect(solveFluting(p)!.failures).toEqual([]);
@@ -218,7 +224,7 @@ describe('what cannot be cut', () => {
 
   it('fails a plate while one of its gouge fields is cleared, and both while the fluting edge is', () => {
     const p = seeded();
-    (p.fluting!.top as any).sweepRadius = null;
+    (p.fluting!.top as any).width = null;
     let s = solveFluting(p)!;
     expect(s.failures.map(f => f.unsolved)).toEqual([['top']]);
     expect(s.failures[0].message).toContain('needs a value');

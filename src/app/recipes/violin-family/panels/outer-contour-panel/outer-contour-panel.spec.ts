@@ -8,7 +8,8 @@ import { OuterContourPanel, solveOuterContour } from './outer-contour-panel';
 import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
 import { cornerTurn, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, ViolinFamilyParams } from '../../violin-family-types';
+import { ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
 

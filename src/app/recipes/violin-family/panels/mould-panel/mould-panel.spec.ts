@@ -7,7 +7,8 @@ import { Pt, Rectangle } from '../../../../models/types';
 import { blockLayout, MOULD_EXPORT_STEP, MouldPanel, solveMould } from './mould-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, MouldSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { MouldSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 // what a maker would check on the cut mould: one closed outline inside the ribs, the same both sides,
 // the blocks where the pads put them, and every clamp window a full wall in from the ribs and clear

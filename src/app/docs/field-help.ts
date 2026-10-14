@@ -157,15 +157,15 @@ export const FIELD_HELP = {
       "When in doubt, leave the corner a little long — the tip gets slightly rounded during final fitting.",
   },
   gougeSection: {
-    title: "Gouge Section",
+    title: "Channel Section",
     text:
-      "Sweep corresponds to the sweep of a real gouge tool, which is used to carve the fluting channel. Depth refers to the fluting channel depth, so its width is reported rather than set.\n\n" +
-      "Small sweep cuts deep and narrow, large sweep broad and shallow. Fluting gouges typically run 8–25 mm of sweep at 1–1.5 mm depth.\n\n",
+      "The fluting channel's section is a circular segment: its width is the chord, from where the gouge enters the plate to where it comes back out, and its depth is the trough below the plate's surface.\n\n" +
+      "Width and depth are set; the sweep of the gouge that cuts them is reported, the circle through the chord's ends and the trough. A narrow, deep channel wants a tight sweep, a broad, shallow one a flat sweep. Violin channels run about 10–12 mm wide at 1–1.5 mm deep.\n\n",
   },
   gougeCBout: {
-    title: "C-Bout Gouge",
+    title: "C-Bout Channel",
     text:
-      "An optional second, narrower gouge for the waist. Same land edge, same depth — only the tool changes, so the inner edge pulls back where a tighter gouge cannot reach.\n\n" +
+      "An optional narrower channel for the waist. Same land edge, same depth — only the width changes, so the inner edge pulls back where a tighter gouge takes the C bout's curve.\n\n" +
       "The junctions either side of the waist are joined by biarcs, so the line stays closed and smooth at the new radius.",
   },
   gougeCenterline: {

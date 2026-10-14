@@ -77,15 +77,15 @@
       "flutingEdge": 1.65,
       "cornerGouge": true,
       "top": {
-        "sweepRadius": 15,
+        "width": 11,
         "depth": 1,
-        "cBoutSweep": 7.5,
+        "cBoutWidth": 7.5,
         "useCBoutGouge": true
       },
       "back": {
-        "sweepRadius": 15,
+        "width": 11,
         "depth": 1,
-        "cBoutSweep": 7.5,
+        "cBoutWidth": 7.5,
         "useCBoutGouge": true
       }
     },

@@ -8,7 +8,8 @@ import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, NeckSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { NeckSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 // the properties a maker would check with a ruler on the finished neck: its length places the
 // nut, the heel is one cove tangent to the back reaching the button, the wood is the thickness typed

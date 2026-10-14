@@ -13,10 +13,8 @@ import { Arc, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import {
-  ChannelSolve, FlutingFailure, FlutingSolve, GougeParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams,
-  ViolinFamilyToggleKey, ViolinFamilyViewFlags,
-} from '../../violin-family-types';
+import { ChannelParams, ChannelSolve, FlutingFailure, FlutingSolve, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
@@ -42,17 +40,14 @@ export class FlutingPanel implements ViolinFamilyPanel, OnInit {
   protected readonly pal = ThemeService.getPalette('classicCremona');
   protected readonly help = showFieldHelp;
 
-  // the first gouges, sized by instrument family, with a narrower one through the waist, and the
+  // the first channels, sized by instrument family, with a narrower one through the waist, and the
   // flat at the edge half the overhang wide
   static seed(p: ViolinFamilyParams): void {
     if (p.fluting || !p.outerContour) return;
-    let [sweepRadius, depth, cBoutSweep] =
-      p.body.height < 400 ? [15, 1, 7.5] :    // violin
-      p.body.height < 500 ? [18, 1.5, 9] :    // viola
-      p.body.height < 800 ? [28, 2, 14] :     // cello
-      [38, 2.5, 19];                           // bass
-    let gouge = (): GougeParams => ({ sweepRadius, depth, cBoutSweep, useCBoutGouge: true });
-    p.fluting = { flutingEdge: p.body.overhang * 0.5, cornerGouge: true, top: gouge(), back: gouge() };
+    let [width, depth, cBoutWidth] =
+      { violin: [11, 1, 7.5], viola: [14.5, 1.5, 10], cello: [21, 2, 14.5], bass: [27, 2.5, 19] }[familyStandards(p.body.height).family];
+    let channel = (): ChannelParams => ({ width, depth, cBoutWidth, useCBoutGouge: true });
+    p.fluting = { flutingEdge: p.body.overhang * 0.5, cornerGouge: true, top: channel(), back: channel() };
   }
 
   @Input({ required: true }) params!: ViolinFamilyParams;
@@ -129,34 +124,37 @@ export const renderFlutingInnerEdge = (f: FlutingSolve) => (g: any, ui: any): vo
   if (f.top) renderPath(f.top.inner, ThemeService.getPalette('classicCremona').ink(TOP_GOUGE_INK).faint(3), STROKE_WEIGHT.guide)(g, ui);
 };
 
-// a gouge sweep this shallow relative to its depth isn't a real tool; guards the sqrt below
-const MIN_SWEEP_RATIO = 1.0001;
+// half the channel's width, the chord where the gouge's circular section comes back up to the
+// plate's surface. Zero when no gouge cuts it: a channel no wider than twice its depth is past a
+// semicircle, undercut
+export function gougeHalfWidth(width: number, depth: number): number {
+  if (!(width > 0 && depth > 0) || width <= 2 * depth) return 0;
+  return width / 2;
+}
 
-// the half width of the cut a gouge of sweep radius R leaves at depth D: the chord where its
-// circular section comes back up to the plate's surface. It depends only on the tool, so it is
-// the same at the waist, at the widest bout and round the corners. Zero when the gouge can't
-// reach D at all
-export function gougeHalfWidth(sweepRadius: number, depth: number): number {
-  if (sweepRadius <= 0 || depth <= 0) return 0;
-  if (depth * MIN_SWEEP_RATIO >= sweepRadius) return 0;
-  return Math.sqrt(2 * sweepRadius * depth - depth * depth);
+// the sweep radius of the gouge that cuts a channel this wide and deep: the circle through the
+// chord's two ends and the trough
+export function gougeSweep(width: number, depth: number): number {
+  return (width * width / 4 + depth * depth) / (2 * depth);
 }
 
 // the channel's section across its run: the height relative to the plate's surface at s mm from
 // the centreline, -depth at the trough, 0 at the cut's edges and flat beyond. The arc the gouge
 // cuts, not a curve fitted to it; the arching lands on it
-export function gougeProfileZ(s: number, sweepRadius: number, depth: number): number {
-  let w = gougeHalfWidth(sweepRadius, depth);
+export function gougeProfileZ(s: number, width: number, depth: number): number {
+  let w = gougeHalfWidth(width, depth);
   if (w <= 0 || Math.abs(s) >= w) return 0;
-  return -depth + sweepRadius - Math.sqrt(Math.max(sweepRadius * sweepRadius - s * s, 0));
+  let R = gougeSweep(width, depth);
+  return -depth + R - Math.sqrt(Math.max(R * R - s * s, 0));
 }
 
 // its slope, dz/ds: positive climbing away from the trough either way, so the inner flank reads
 // straight
-export function gougeProfileSlope(s: number, sweepRadius: number, depth: number): number {
-  let w = gougeHalfWidth(sweepRadius, depth);
+export function gougeProfileSlope(s: number, width: number, depth: number): number {
+  let w = gougeHalfWidth(width, depth);
   if (w <= 0 || Math.abs(s) >= w) return 0;
-  let denom = Math.sqrt(Math.max(sweepRadius * sweepRadius - s * s, 0));
+  let R = gougeSweep(width, depth);
+  let denom = Math.sqrt(Math.max(R * R - s * s, 0));
   return denom <= 0 ? 0 : s / denom;
 }
 
@@ -362,12 +360,12 @@ function solveFlutingUncached(p: ViolinFamilyParams): FlutingSolve {
     let fail = (message: string): FlutingFailure => ({ message, unsolved: [plate], circles: [], segments: [] });
     solveSection(s.failures, label, [plate], () => {
       let g = f[plate];
-      let typed = [g.sweepRadius, g.depth, ...(g.useCBoutGouge ? [g.cBoutSweep] : [])];
-      if (!typed.every(Number.isFinite)) return fail(`${label}: every gouge field needs a value.`);
-      let w = gougeHalfWidth(g.sweepRadius, g.depth);
-      if (w <= 0) return fail(`${label}: the gouge has to cut, so its depth has to be above 0 and under its sweep radius.`);
-      let wC = gougeHalfWidth(g.useCBoutGouge ? g.cBoutSweep : g.sweepRadius, g.depth);
-      if (wC <= 0) return fail(`${label}: the C bout gouge can't cut this deep. Its sweep has to be above the depth.`);
+      let typed = [g.width, g.depth, ...(g.useCBoutGouge ? [g.cBoutWidth] : [])];
+      if (!typed.every(Number.isFinite)) return fail(`${label}: every channel field needs a value.`);
+      let w = gougeHalfWidth(g.width, g.depth);
+      if (w <= 0) return fail(`${label}: no gouge cuts this channel. Its depth has to be above 0 and under half its width.`);
+      let wC = gougeHalfWidth(g.useCBoutGouge ? g.cBoutWidth : g.width, g.depth);
+      if (wC <= 0) return fail(`${label}: no gouge cuts the C bout channel this deep. Its width has to be over twice the depth.`);
 
       let edge = f.flutingEdge;
       let edges = [channelPath(p, rib, edge, edge), channelPath(p, rib, edge + w, edge + wC), channelPath(p, rib, edge + 2 * w, edge + 2 * wC)];
@@ -376,7 +374,10 @@ function solveFlutingUncached(p: ViolinFamilyParams): FlutingSolve {
       if (edges.some(e => !e.path))
         return fail(`${label}: the channel doesn't close into one loop at this width; it has eaten the neck face. Narrow the gouge or bring the fluting edge in.`);
       let [outer, center, inner] = edges.map(e => e.path!);
-      s[plate] = { outer, center, inner, width: 2 * w, cBoutWidth: 2 * wC, innerEdgeOffset: edge + 2 * w, innerEdgeOffset_cBout: edge + 2 * wC };
+      s[plate] = {
+        outer, center, inner, sweep: gougeSweep(2 * w, g.depth), cBoutSweep: gougeSweep(2 * wC, g.depth),
+        innerEdgeOffset: edge + 2 * w, innerEdgeOffset_cBout: edge + 2 * wC,
+      };
       return null;
     });
   }

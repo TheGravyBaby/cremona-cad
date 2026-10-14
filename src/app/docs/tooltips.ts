@@ -85,10 +85,10 @@ export const TOOLTIPS = {
   // fluting
   'fluting.landEdge': 'Where the flat land ends and the channel begins — shared by both plates, since it belongs to the outline and the purfling',
   'fluting.gougeCorners': 'Smooth the corners down to meet the channel, instead of leaving them flat',
-  'fluting.sweep': 'Sweep radius of the gouge',
-  'fluting.depth': 'Depth at the trough — held below the sweep radius',
-  'fluting.cBout': 'A second, narrower gouge for the waist',
-  'fluting.cBoutSweep': 'Same land edge, same depth — only the inner edge moves',
+  'fluting.width': 'Chord to chord, where the gouge enters the plate and comes back out',
+  'fluting.depth': 'Depth at the trough — held under half the width',
+  'fluting.cBout': 'A narrower channel for the waist',
+  'fluting.cBoutWidth': 'Same land edge, same depth — only the inner edge moves',
 
   // scroll
   'scroll.s2': 'The arc from the crown on down the back toward the pegbox',
