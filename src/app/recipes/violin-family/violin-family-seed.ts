@@ -110,8 +110,13 @@ export const FHOLE_SEED_RATIOS: FholeRatios & {
   LEyeXtoLCX: 2 / 3, // these numbers do not really capture accurately how eyes were placed
   LEyeYtoLCY: 14 / 15, // they do work cosmetically though
   UEyeGuidetoWaist: 4 / 7,
-  EyeSpantoWaist: 1,
 
+  // a very simple scaler that sets the eye gap
+  // what we really need is a better theory on eye placement
+  // rather than a BS number I pulled out of a hat
+  // but for now this produces good looking results
+  // fake it till u make it baybee
+  EyeSpantoWaist: .95, 
   URisetoUEye: 5 / 3,
   LRisetoLEye: 11 / 8,
   StemXtoFrame: 5 / 12,
