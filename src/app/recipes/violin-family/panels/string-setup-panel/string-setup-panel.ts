@@ -128,7 +128,7 @@ export const renderStringSetup = (
   opts: { fingerboard?: boolean; fretMarks?: boolean } = {},
 ) => (g: any, ui: any): void => {
   let n = s.neck;
-  if (!n.neckTop || !n.root || !n.glue) return;
+  if (!n.neckTop || !n.root || !n.bottomFront) return;
   let ss = p.stringSetup!;
   let seg = (a: Pt, b: Pt, color: string) => renderSegment(a, b, color, STROKE_WEIGHT.section)(g, ui);
   let up = vectorFromSlope(p.neck!.angle * TURN.degree + TURN.quarter);
@@ -151,7 +151,7 @@ export const renderStringSetup = (
     renderPolygon([n.neckTop, nutFar, nutFarTop, s.nutTop], pal.ink(0).faint(-3), STROKE_WEIGHT.section)(g, ui);
   }
 
-  seg(n.glue, n.root, pal.ink(2));
+  seg(n.bottomFront, n.root, pal.ink(2));
   seg(n.root, n.neckTop, pal.ink(2));
 
   if (s.nutTop && s.bridgeTop) {
@@ -166,7 +166,7 @@ const renderStringSetupHighlight = (
   highlighted: { key: StringSetupHighlightKey; color: string } | null,
 ) => (g: any, ui: any): void => {
   let n = s.neck;
-  if (!highlighted || !n.neckTop || !n.glue) return;
+  if (!highlighted || !n.neckTop || !n.bottomFront) return;
   let { key, color } = highlighted;
   let ss = p.stringSetup!;
   let normal = vectorFromSlope(p.neck!.angle * TURN.degree);
@@ -175,7 +175,7 @@ const renderStringSetupHighlight = (
   let end = s.fingerboardEnd;
 
   switch (key) {
-    case 'length': line(n.glue, n.neckTop); break;
+    case 'length': line(n.bottomFront, n.neckTop); break;
     case 'bodyStop': if (s.bridgeFoot) line(new Pt(s.bridgeFoot.x, p.body.height), s.bridgeFoot); break;
     case 'bridgeHeight': if (s.bridgeFoot && s.bridgeTop) line(s.bridgeFoot, s.bridgeTop); break;
     case 'nutThickness': if (s.nutTop) line(n.neckTop, s.nutTop); break;

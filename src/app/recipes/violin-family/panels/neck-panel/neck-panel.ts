@@ -121,7 +121,7 @@ export const renderNeck = (
   pal: PanelPalette,
   opts: { guides?: boolean; ground?: boolean; scroll?: ScrollSolve } = {},
 ) => (g: any, ui: any): void => {
-  if (!n.root || !n.neckTop || !n.backNut || !n.backRoot || !n.glue || !n.lowerThickness || !n.tip) return;
+  if (!n.root || !n.neckTop || !n.backNut || !n.backRoot || !n.bottomFront || !n.lowerThickness || !n.tip) return;
   let nk = p.neck!;
   let onNeck = opts.scroll ? scrollOnNeck(p, n) : null;
   let backTop = onNeck ? applyMatrix(onNeck, new Pt(-nk.upperThickness, opts.scroll!.nape!.y)) : n.backNut;
@@ -137,7 +137,7 @@ export const renderNeck = (
 
   // the foot from where it comes out of the plate at the mortise floor up to the fingerboard plane;
   // below it the foot is hidden in the block
-  if (n.plateAtMortise) seg(n.plateAtMortise, n.glue, ink(pal.ink(3).faint(-3)));
+  if (n.plateAtMortise) seg(n.plateAtMortise, n.bottomFront, ink(pal.ink(0).faint(-3)));
 
   if (onNeck) {
     seg(n.neckTop, applyMatrix(onNeck, new Pt(0, nk.nutHeight)));
@@ -164,18 +164,18 @@ export const renderNeck = (
       hidden(backHeel, pointOnCircle(heel, heel.end));
     }
     seg(n.neckTop, n.backNut, pal.ink(2).faint(3));
-    seg(frontHeel, backHeel, pal.ink(3).faint(-5));
+    seg(frontHeel, backHeel, pal.ink(2).faint(-3));
   }
-  seg(n.glue, n.root, ink(pal.ink(2)));
+  seg(n.bottomFront, n.root, ink(pal.ink(2)));
   seg(n.root, n.neckTop, ink(pal.ink(2)));
 
   if (!opts.guides || !n.plateEdge) return;
   let rootPlaneY = h - p.body.overhang;
   // offsets scale with the neck's own thickness, so the dimensions clear a cello neck as a violin's
   renderGuideMeasure(n.plateEdge, n.root, pal.neutral, -nk.upperThickness)(g, ui);
-  renderGuideBaseline(new Pt(0, rootPlaneY), new Pt(n.glue.x, rootPlaneY), pal.neutral)(g, ui);
-  renderGuideMeasure(new Pt(n.glue.x, rootPlaneY), n.glue, pal.neutral, 2 * nk.upperThickness)(g, ui);
-  renderGuideMeasure(n.glue, n.neckTop, pal.neutral, -2 * nk.upperThickness)(g, ui);
+  renderGuideBaseline(new Pt(0, rootPlaneY), new Pt(n.bottomFront.x, rootPlaneY), pal.neutral)(g, ui);
+  renderGuideMeasure(new Pt(n.bottomFront.x, rootPlaneY), n.bottomFront, pal.neutral, 2 * nk.upperThickness)(g, ui);
+  renderGuideMeasure(n.bottomFront, n.neckTop, pal.neutral, -2 * nk.upperThickness)(g, ui);
   renderGuideMeasure(n.neckTop, n.backNut, pal.neutral, nk.upperThickness / 2)(g, ui);
   renderGuideMeasure(frontHeel, backHeel, pal.neutral, -nk.upperThickness / 2)(g, ui);
 };
@@ -188,14 +188,14 @@ const renderNeckHighlight = (
   highlighted: { key: NeckHighlightKey; color: string } | null,
   view: 'side' | 'front',
 ) => (g: any, ui: any): void => {
-  if (!highlighted || !n.root || !n.neckTop || !n.backNut || !n.glue || !n.lowerThickness || !n.tip || !n.plateEdge) return;
+  if (!highlighted || !n.root || !n.neckTop || !n.backNut || !n.bottomFront || !n.lowerThickness || !n.tip || !n.plateEdge) return;
   let { key, color } = highlighted;
   if ((key === 'topWidth' || key === 'rootWidth') !== (view === 'front')) return;
   let nk = p.neck!;
   let line = (a: Pt, b: Pt) => renderSegmentHalo(a, b, color)(g, ui);
   let floorY = mortiseFloorY(p);
   switch (key) {
-    case 'length': line(n.glue, n.neckTop); break;
+    case 'length': line(n.bottomFront, n.neckTop); break;
     case 'upperThickness': line(n.neckTop, n.backNut); break;
     case 'lowerThickness': line(...n.lowerThickness); break;
     case 'topWidth': line(new Pt(-nk.topWidth / 2, n.neckTop.y), new Pt(nk.topWidth / 2, n.neckTop.y)); break;
@@ -256,8 +256,8 @@ const renderNeckFrontView = (p: ViolinFamilyParams, n: NeckSolve, o: OuterContou
   }
 
   // drawn last, since they lie along the neck's own ends
-  renderSegment(new Pt(-nk.topWidth / 2, n.neckTop.y), new Pt(nk.topWidth / 2, n.neckTop.y), pal.ink(2).faint(-3), STROKE_WEIGHT.section)(g, ui);
-  renderSegment(new Pt(-nk.rootWidth / 2, mortiseFloorY(p)), new Pt(nk.rootWidth / 2, mortiseFloorY(p)), pal.ink(3).faint(3), STROKE_WEIGHT.section)(g, ui);
+  renderSegment(new Pt(-nk.topWidth / 2, n.neckTop.y), new Pt(nk.topWidth / 2, n.neckTop.y), pal.ink(2).faint(3), STROKE_WEIGHT.section)(g, ui);
+  renderSegment(new Pt(-nk.rootWidth / 2, mortiseFloorY(p)), new Pt(nk.rootWidth / 2, mortiseFloorY(p)), pal.ink(2).faint(-3), STROKE_WEIGHT.section)(g, ui);
 };
 
 // the mortise floor, inside the rib's outer face by the mortise depth
@@ -322,7 +322,7 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
   if (!p.neck || !p.arching) return null;
   let nk = p.neck;
   let s: NeckSolve = {
-    plateEdge: null, root: null, glue: null, neckTop: null, backNut: null, backRoot: null, plateAtMortise: null,
+    plateEdge: null, root: null, bottomFront: null, neckTop: null, backNut: null, backRoot: null, plateAtMortise: null,
     lowerThickness: null, tip: null, heel: null, heelFace: null, failures: [],
   };
   let fail = (message: string, unsolved: NeckFailure['unsolved']): NeckFailure => ({ message, unsolved, circles: [], segments: [] });
@@ -355,8 +355,8 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
     // sits the upper thickness under the nut and runs straight through the lower under the heel
     let tip = s.tip = new Pt(0, h + buttonHeight);
     let floorY = mortiseFloorY(p);
-    let glue = s.glue = intersectLines(fingerboardPlane, lineFromTwoPoints(new Pt(0, floorY), new Pt(1, floorY)))!;
-    let neckTop = s.neckTop = moveInVectorSpace(glue, [{ ...direction, mag: nk.length }]);
+    let bottomFront = s.bottomFront = intersectLines(fingerboardPlane, lineFromTwoPoints(new Pt(0, floorY), new Pt(1, floorY)))!;
+    let neckTop = s.neckTop = moveInVectorSpace(bottomFront, [{ ...direction, mag: nk.length }]);
     let backNut = s.backNut = moveInVectorSpace(neckTop, [{ ...normal, mag: -nk.upperThickness }]);
 
     // the lower thickness is taken square to the plane through the button tip: the line the heel's

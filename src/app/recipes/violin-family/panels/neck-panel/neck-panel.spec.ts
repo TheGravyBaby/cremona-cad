@@ -93,9 +93,9 @@ describe('the nut', () => {
   it('sits `length` mm from the mortise floor, along the fingerboard plane', () => {
     const p = seeded();
     const s = solved(p);
-    expect(dist(s.glue!, s.neckTop!)).toBeCloseTo(p.neck!.length, 9);
-    expect(s.glue!.y).toBeCloseTo(mortiseFloorY(p), 9);
-    expect(shortestDistanceFromPtToLine(s.glue!, lineFromTwoPoints(s.root!, s.neckTop!))).toBeLessThan(1e-9);
+    expect(dist(s.bottomFront!, s.neckTop!)).toBeCloseTo(p.neck!.length, 9);
+    expect(s.bottomFront!.y).toBeCloseTo(mortiseFloorY(p), 9);
+    expect(shortestDistanceFromPtToLine(s.bottomFront!, lineFromTwoPoints(s.root!, s.neckTop!))).toBeLessThan(1e-9);
   });
 
   it('sits in the same place whether or not the heel can stand', () => {
@@ -144,7 +144,7 @@ describe('the root', () => {
     const s = solved(p);
     expect(s.plateAtMortise!.y).toBe(mortiseFloorY(p));
     // the plate's surface is under the fingerboard plane there, and over the rib
-    expect(s.plateAtMortise!.x).toBeLessThan(s.glue!.x);
+    expect(s.plateAtMortise!.x).toBeLessThan(s.bottomFront!.x);
     expect(s.plateAtMortise!.x).toBeGreaterThan(p.arching!.ribHeightUpper);
   });
 });

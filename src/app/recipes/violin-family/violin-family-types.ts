@@ -670,7 +670,7 @@ export type NeckKey = 'neck' | 'heel';
 export type NeckFailure = SolveFailure<NeckKey>;
 
 // the neck in the side elevation, in the body section's frame (x up off the back's inner face, y up
-// the body). `root` is where the fingerboard plane stands off the plate edge, `glue` where it
+// the body). `root` is where the fingerboard plane stands off the plate edge, `bottomFront` where it
 // crosses the mortise floor, `neckTop` the nut's foot; `backNut`/`backRoot` the back line's ends,
 // `lowerThickness` the line the heel's foot is cut along. The heel is null where it can't stand,
 // and the back then runs straight to the root; `heelFace` is the flat on to the tip when the arc
@@ -678,7 +678,7 @@ export type NeckFailure = SolveFailure<NeckKey>;
 export interface NeckSolve {
   plateEdge: Pt | null;
   root: Pt | null;
-  glue: Pt | null;
+  bottomFront: Pt | null;
   neckTop: Pt | null;
   backNut: Pt | null;
   backRoot: Pt | null;
