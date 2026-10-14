@@ -5,6 +5,7 @@ import { RecipeToolbarComponent } from '../../recipe-toolbar/recipe-toolbar';
 import { ThemeService } from '../../theme/theme.service';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../../helpers/workingStorage';
 import { isLocalHost } from '../../helpers/debugDump';
+import { normalizeViolinFamilyRecipe } from './normalizer/violin-family-normalizer';
 import {
   blankViolinFamilyRecipe, DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS, VIOLIN_FAMILY_PANEL_IDS,
   VIOLIN_FAMILY_VIEW_FLAGS_KEY, ViolinFamilyPanel, ViolinFamilyPanelId, ViolinFamilyParams, ViolinFamilyRecipe,
@@ -243,6 +244,10 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
   protected override serializeRecipe(): string {
     this.stampRatios();
     return super.serializeRecipe();
+  }
+
+  protected override normalize(file: unknown): ViolinFamilyRecipe | null {
+    return normalizeViolinFamilyRecipe(file);
   }
 
   override loadFile(raw: unknown): void {

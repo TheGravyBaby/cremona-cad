@@ -72,7 +72,12 @@ export abstract class RecipeComponentBase<R extends RecipeInterface = RecipeInte
   }
 
   loadFile(raw: unknown): void {
-    const file = this.normalize(raw);
+    let file: R | null = null;
+    try {
+      file = this.normalize(raw);
+    } catch (e) {
+      console.error('Failed to normalize recipe file:', e);
+    }
     if (!file) {
       error(`That file isn't a recipe this one can open.`, 'Load Recipe');
       return;
