@@ -109,7 +109,8 @@
         },
         "width": 5.5,
         "angle": 94
-      }
+      },
+      "notches": true
     },
     "fHoleContours": {
       "U1R": 9,

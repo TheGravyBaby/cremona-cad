@@ -441,6 +441,8 @@ export interface FholePlacementParams {
   URise: number;
   LRise: number;
   stem: FholeStemParams;
+  // the nicks in the stem's edges, drawn and cut, or left off the hole altogether
+  notches: boolean;
 }
 
 export interface FholeStemParams {

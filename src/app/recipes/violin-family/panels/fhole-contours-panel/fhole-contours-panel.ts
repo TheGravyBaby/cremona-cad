@@ -5,7 +5,7 @@ import {
   angleFromCenter, dist, flipArcAboutY, flipPointAboutY, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, moveInVectorSpace,
   normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, signedArcSweep, signedRadianDelta, solveSineSum, tangentUnitVectorFromLine, TURN, vectorFromSlope,
 } from '../../../../helpers/math/simpleGeometry';
-import { pathFromArc, pathFromArcLongWay, pathFromLine } from '../../../../helpers/math/pathMath';
+import { pathFromArc, pathFromArcLongWay, pathFromLine, pathFromPolyline } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
 import {
   AngleMarkSize, renderAngle, renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderPath, renderPointHalo, renderSegment,
@@ -20,7 +20,7 @@ import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { FholeArcKey, FholeContoursSolve, FholeCutParams, FholeFailure, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { FHOLE_SEED_RATIOS, FholeRatios } from '../../violin-family-seed';
 import { renderBoutBounds } from '../main-bouts-panel/main-bouts-panel';
-import { renderFholeBounds, renderFholePlate, renderFlutingEdgeGuide } from '../fhole-placement-panel/fhole-placement-panel';
+import { FholeNotch, fholeNotches, renderFholeBounds, renderFholeNotches, renderFholePlate, renderFlutingEdgeGuide, stemEdgePoints } from '../fhole-placement-panel/fhole-placement-panel';
 
 // The f-hole contours: what bends between the eyes and the stem. From each eye a shoulder (U1/L1)
 // springs tangent and turns up to the hole's bound, an arm (U2/L2, or a compound pair) carries on
@@ -136,6 +136,7 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
       if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
       if (this.flags.showModuleGuides) layers.push(renderFholeAngleGuides(p, s, this.pal));
       if (this.flags.showFholeBounds) layers.push(renderFholeBounds(p.fHoles!, this.pal));
+      if (p.fHoles!.notches) layers.push(renderFholeNotches(p.fHoles!, this.pal));
       layers.push(
         renderFholeContours(p, s, this.pal, this.flags, true, highlighted),
         renderSolveFailures(s.failures, this.pal.alert, true),
@@ -314,9 +315,22 @@ function placeShoulder(
   return null;
 }
 
+// a notch cut into the straight run from `from` to `to`, as the points the run passes through in
+// its own direction. The run is the stem's edge, so the mouth lies on it; a notch wider than the
+// run has left for it shrinks about its mouth to fit, and one whose centre is off the run isn't cut
+function notchOnRun(n: FholeNotch, from: Pt, to: Pt): Pt[] {
+  const lo = Math.min(from.y, to.y), hi = Math.max(from.y, to.y);
+  if (n.apex.y < lo || n.apex.y > hi) return [];
+  const k = Math.min(1, (hi - n.apex.y) / (n.top.y - n.apex.y), (n.apex.y - lo) / (n.apex.y - n.bottom.y));
+  const m = new Pt((n.top.x + n.bottom.x) / 2, (n.top.y + n.bottom.y) / 2);
+  const v = [n.top, n.apex, n.bottom].map(pt => new Pt(m.x + (pt.x - m.x) * k, m.y + (pt.y - m.y) * k));
+  return from.y > to.y ? v : v.reverse();
+}
+
 // one f-hole's solved arcs stitched into a single closed outline, the way the render draws them
 // but as one path; `flip` mirrors it to the bass side. The eye arcs aren't on the solve: they are
-// cheap to re-derive from what is. Null while any arc of the outline is missing
+// cheap to re-derive from what is. The notches are cut into the stem's runs while the placement
+// has them on. Null while any arc of the outline is missing
 export function fholePath(p: ViolinFamilyParams, s: FholeContoursSolve, flip: boolean, renderEyes = true): string | null {
   const f = p.fHoles!;
   const k = p.fHoleContours!;
@@ -339,6 +353,8 @@ export function fholePath(p: ViolinFamilyParams, s: FholeContoursSolve, flip: bo
   const outerStemBottom = pointOnCircle(s.S4!, s.S4!.start);
   const innerStemTop = pointOnCircle(s.S1!, s.S1!.start);
   const innerStemBottom = pointOnCircle(s.S3!, s.S3!.end);
+  const notches = f.notches ? fholeNotches(f) : null;
+  const run = (from: Pt, to: Pt, notch: FholeNotch | null) => pathFromPolyline([from, ...(notch ? notchOnRun(notch, from, to) : []), to].map(pxf));
 
   const paths = [
     renderEyes ? pathFromArcLongWay(xf(upperEyeArc)) : pathFromArc(xf(upperEyeArc)),
@@ -346,7 +362,7 @@ export function fholePath(p: ViolinFamilyParams, s: FholeContoursSolve, flip: bo
     pathFromArc(xf(s.U2!)),
     ...(k.U21DoubleArc ? [pathFromArc(xf(s.U21!))] : []),
     pathFromArc(xf(s.S2!)),
-    pathFromLine(pxf(outerStemTop), pxf(outerStemBottom)),
+    run(outerStemTop, outerStemBottom, notches && notches.outer),
     pathFromArc(xf(s.S4!)),
     pathFromArc(xf(s.L3!)),
     pathFromLine(pxf(s.LTip), pxf(lowerCutPt)),
@@ -355,7 +371,7 @@ export function fholePath(p: ViolinFamilyParams, s: FholeContoursSolve, flip: bo
     pathFromArc(xf(s.L2!)),
     ...(k.L21DoubleArc ? [pathFromArc(xf(s.L21!))] : []),
     pathFromArc(xf(s.S3!)),
-    pathFromLine(pxf(innerStemBottom), pxf(innerStemTop)),
+    run(innerStemBottom, innerStemTop, notches && notches.inner),
     pathFromArc(xf(s.S1!)),
     pathFromArc(xf(s.U3!)),
     pathFromLine(pxf(s.UTip), pxf(upperCutPt)),
@@ -379,9 +395,9 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
 
   let stemAngle = f.stem.angle * deg;
   let stemSlope = Math.tan(stemAngle);
-  let outerStemPt = new Pt(f.stem.center.x + f.stem.width / 2, f.stem.center.y);
+  // the edges stand half the width either side of the centre, square across the stem
+  let { inner: innerStemPt, outer: outerStemPt } = stemEdgePoints(f.stem);
   let outerStemLine = lineFromPointAndSlope(outerStemPt, stemSlope);
-  let innerStemPt = new Pt(f.stem.center.x - f.stem.width / 2, f.stem.center.y);
   let innerStemLine = lineFromPointAndSlope(innerStemPt, stemSlope);
 
   let stemR = (key: 'S1' | 'S2' | 'S3' | 'S4') => k.stemArcsIndependent ? k[`${key}R`] : k.stemArcR;

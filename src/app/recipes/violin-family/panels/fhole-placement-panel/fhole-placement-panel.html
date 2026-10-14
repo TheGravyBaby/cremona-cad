@@ -62,6 +62,12 @@
             <input type="number" class="basic-input" step="0.1" [min]="stemAngleRange[0]" [max]="stemAngleRange[1]"
                 [(ngModel)]="f.stem.angle" (input)="edited()" />
         </label>
+         
+        <label class="field-cell">
+            <span class="field-title">Stem Gap <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Distance between the inner edges of the left and right stems">{{ stemGap }}</div>
+        </label>
+       
     </div>
     <div class="input-group basic-row field-row" role="group">
         <div class="field-cell field-cell--xy">
@@ -77,9 +83,15 @@
                     [(ngModel)]="f.stem.center.y" (input)="edited()" />
             </div>
         </div>
+         <label class="field-cell">
+            <span class="field-title">Notch Stop <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Top edge down to the notch line at the stem centre"
+                title="The notches are cut on the stem's centre line. On most instruments this is the stop the bridge stands at; the bridge itself is placed on the String Setup panel.">{{ notchStop }}</div>
+        </label>
         <label class="field-cell">
-            <span class="field-title">Stem Gap <span class="unit-label">mm</span></span>
-            <div class="basic-display" aria-label="Distance between the inner edges of the left and right stems">{{ stemGap }}</div>
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="f.notches" (change)="edited()" /><span>Notches</span>
+            </div>
         </label>
     </div>
 </section>
@@ -107,10 +119,6 @@
                     [(ngModel)]="f.LEye.y" (input)="edited()" />
             </div>
         </div>
-        <label class="field-cell">
-            <span class="field-title">Eye Distance</span>
-            <div class="basic-display" aria-label="Distance between the eyes">{{ eyeDistance }}</div>
-        </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">

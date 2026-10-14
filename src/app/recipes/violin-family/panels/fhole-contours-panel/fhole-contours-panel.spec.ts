@@ -4,7 +4,7 @@ import { dist, normalizeRadians, pointOnCircle, signedArcSweep, travelAtArcEnd, 
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { Arc, Pt } from '../../../../models/types';
 import { FHoleContoursPanel, fholePath, solveFholeContours, solveFholeContoursRatios } from './fhole-contours-panel';
-import { FHolePlacementPanel } from '../fhole-placement-panel/fhole-placement-panel';
+import { FHolePlacementPanel, fholeNotches } from '../fhole-placement-panel/fhole-placement-panel';
 import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
@@ -184,6 +184,20 @@ describe('f-hole contour properties', () => {
       const m = points(mirrored);
       expect(Math.max(...q.map(pt => pt.x))).toBeCloseTo(-Math.min(...m.map(pt => pt.x)), 9);
       expect(Math.min(...q.map(pt => pt.y))).toBeCloseTo(Math.min(...m.map(pt => pt.y)), 9);
+    });
+
+    it(`cuts both notches into the stem's runs, and closes without them when they are off, ${label}`, () => {
+      const { inner, outer } = fholeNotches(f);
+      // the outline is sampled a tenth of a millimetre apart, so a vertex is reached to within that
+      const nearest = (d: string, pt: Pt) => Math.min(...points(d).map(q => dist(q, pt)));
+      const depth = Math.abs(outer.apex.x - (outer.top.x + outer.bottom.x) / 2);
+      for (const n of [inner, outer]) {
+        expect(nearest(s.path!, n.apex)).toBeLessThan(0.1);
+        expect(nearest(fholePath(p, s, true)!, new Pt(-n.apex.x, n.apex.y))).toBeLessThan(0.1);
+      }
+      const plain = fholePath({ ...p, fHoles: { ...f, notches: false } }, s, false)!;
+      expect(closed(plain)).toBe(true);
+      for (const n of [inner, outer]) expect(nearest(plain, n.apex)).toBeGreaterThan(depth / 2);
     });
 
     it(`runs every joint tangent-continuous, ${label}`, () => {

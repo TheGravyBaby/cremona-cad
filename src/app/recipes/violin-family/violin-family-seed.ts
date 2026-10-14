@@ -120,7 +120,7 @@ export const FHOLE_SEED_RATIOS: FholeRatios & {
   URisetoUEye: 5 / 3,
   LRisetoLEye: 11 / 8,
   StemXtoFrame: 5 / 12,
-  StemYtoFrame: 1 / 2,
+  StemYtoFrame: 1 / 2, // this may conflic with standard stop lengths but come on ain't that beautiful?
   StemWtoUEye: 2,
   UCuttoUEye: 2,
   LCuttoLEye: 8 / 5,
