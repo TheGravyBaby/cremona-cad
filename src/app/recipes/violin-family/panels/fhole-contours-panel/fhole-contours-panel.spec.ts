@@ -34,37 +34,51 @@ const seeded = (): ViolinFamilyParams => {
 
 type Shape = 'plain' | 'extended' | 'short' | 'compound';
 
-const shaped = (shape: Shape): ViolinFamilyParams => {
-  const p = seeded();
+// each shape is a user's move away from the seed, scaled by t in (0, 1]. The seed changes often,
+// and a move that cleared the stem on one seed crosses it on the next, so the move is backed off
+// to the largest t the seed can take rather than pinned to numbers tuned against one seed
+const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
+
+const move = (p: ViolinFamilyParams, shape: Shape, t: number): void => {
   const k = p.fHoleContours!;
   const deg = TURN.degree;
 
   if (shape === 'extended') {
-    // a user extending both shoulders further past their apex, then dialling the stem's one shared
-    // arc radius off its seed; much further and the upper one reaches its own cut
-    k.U1Sweep += 0.1 / deg;
-    k.L1Sweep += 0.25 / deg;
-    k.stemArcR += 8;
+    // extending both shoulders further past their apex, then dialling the stem's one shared arc
+    // radius off its seed; much further and the upper one reaches its own cut
+    k.U1Sweep += 0.1 * t / deg;
+    k.L1Sweep += 0.25 * t / deg;
+    k.stemArcR += 8 * t;
   }
 
   if (shape === 'short') {
     // the late del Gesu move: stop each shoulder before its apex and let a tighter arm take the
-    // top of the hole
-    k.U1Sweep -= 0.7 / deg;
-    k.U2R = k.U1R / 2;
-    k.L1Sweep -= 0.3 / deg;
-    k.L2R = k.L1R * 0.75;
+    // top of the hole. Where the apex falls on the seed's shoulder is read off the plain solve, so
+    // the shoulder always stops short of it whatever the seed sweeps
+    const plain = solveFholeContours(seeded())!;
+    const past = (shoulder: Arc, side: 1 | -1) => Math.max(0, side * Math.PI / 2 - shoulder.end);
+    k.U1Sweep -= (past(plain.U1!, 1) + 0.4 * t) / deg;
+    k.U2R = lerp(k.U2R, k.U1R / 2, t);
+    k.L1Sweep -= (past(plain.L1!, -1) + 0.3 * t) / deg;
+    k.L2R = lerp(k.L2R, k.L1R * 0.75, t);
   }
 
   if (shape === 'compound') {
     // split each arm in two, one tightening and one opening, so the stem arc lands on the second half
     k.U21DoubleArc = true;
     k.L21DoubleArc = true;
-    k.U21R = k.U2R * 0.6;
-    k.L21R = k.L2R * 1.4;
+    k.U21R = lerp(k.U2R, k.U2R * 0.6, t);
+    k.L21R = lerp(k.L2R, k.L2R * 1.4, t);
   }
+};
 
-  return p;
+const shaped = (shape: Shape): ViolinFamilyParams => {
+  for (const t of [1, 0.8, 0.6, 0.4, 0.2]) {
+    const p = seeded();
+    move(p, shape, t);
+    if (solveFholeContours(p)!.failures.length === 0) return p;
+  }
+  throw new Error(`no ${shape} f-hole the seed can take: the scenario needs rethinking for this seed`);
 };
 
 // the two edges as they are drawn, in the order the contour runs

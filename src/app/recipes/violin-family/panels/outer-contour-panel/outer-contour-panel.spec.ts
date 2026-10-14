@@ -222,12 +222,20 @@ describe('the purfling', () => {
 
   // a corner arc that sits outside C0 (the tip out past C0's circle) shrinks as the purfling moves
   // in, and is gone once the offset reaches its radius; one that sits inside C0 grows instead, and
-  // the seed's corners both do, so no offset can lose them
+  // the seed's corners both do, so no offset can lose them. C0 is tightened until the lower corner
+  // sits outside it, by however much this seed needs
   it('fails, leaving the plates drawn, once the offset has eaten a corner arc', () => {
     const q = seeded();
-    q.bouts!.C0R = 30;
-    expect(solveOuterContour(q)!.failures).toEqual([]);
-    expect(cornerTurn(solveCenterBout(q)!.C2, solveCenterBout(q)!.C0)).toBe(1);
+    const outside = (p: ViolinFamilyParams) => {
+      const cb = solveCenterBout(p)!;
+      return !!cb.C2 && !!cb.C0 && cornerTurn(cb.C2, cb.C0) === 1 && solveOuterContour(p)!.failures.length === 0;
+    };
+    const seedC0R = q.bouts!.C0R;
+    for (const fraction of [0.5, 0.4, 0.3, 0.25, 0.2, 0.15]) {
+      q.bouts!.C0R = Math.round(seedC0R * fraction);
+      if (outside(q)) break;
+    }
+    expect(outside(q), 'no C0 this seed takes puts the lower corner outside it').toBe(true);
     q.outerContour!.purflingOffset = q.corners!.C2R + q.body.overhang + q.body.rib + 1;
     const far = solveOuterContour(q)!;
     expect(far.failures.map(f => f.unsolved)).toEqual([['purfling']]);

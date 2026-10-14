@@ -40,6 +40,20 @@ const offTheLine = (q: Pt[], line: Pt[]): number[] => {
 };
 const edges = (c: ChannelSolve) => [c.outer, c.center, c.inner];
 
+// the seed's viol neck is a tenth of the upper bout wide, and what that does to the channel moves
+// with the seed: too narrow and the plate edge itself fails, wide enough and the channel closes.
+// A scenario names the neck it wants by predicate and takes the narrowest that satisfies it
+const violNecked = (wanted: (p: ViolinFamilyParams) => boolean): ViolinFamilyParams => {
+  for (const fraction of [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6]) {
+    const p = seeded();
+    p.bouts!.useViolNeck = true;
+    MainBoutsPanel.seed(p);
+    p.bouts!.viol!.width = Math.round(p.bouts!.UBW * fraction);
+    if (wanted(p)) return p;
+  }
+  throw new Error('no viol neck width gives this seed the scenario');
+};
+
 describe('the fluting solve', () => {
   it('never writes to the params', () => {
     const p = seeded();
@@ -175,11 +189,8 @@ describe('the channel', () => {
     viol.corners!.useViolCornerLC = true;
     const compound = seeded();
     for (const key of ['U31DoubleArc', 'L31DoubleArc', 'C21DoubleArc', 'C11DoubleArc'] as const) compound.corners![key] = true;
-    // a neck wide enough to carry the channel: the seed's narrow one is the failure below
-    const neck = seeded();
-    neck.bouts!.useViolNeck = true;
-    MainBoutsPanel.seed(neck);
-    neck.bouts!.viol!.width = 40;
+    // a neck wide enough to carry the channel; the seed's narrow one is the failure below
+    const neck = violNecked(width => solveFluting(width)!.failures.length === 0);
     for (const [label, q] of [['viol corners', viol], ['compound corners', compound], ['viol neck', neck]] as const) {
       const t = solveFluting(q)!;
       expect(t.failures, label).toEqual([]);
@@ -202,12 +213,10 @@ describe('what cannot be cut', () => {
     expect(s.back).not.toBeNull();
   });
 
-  // the seed's viol neck is a tenth of the upper bout wide, and pulls the upper bout in until no S
-  // can take the channel round the upper corner from the C bout
+  // a narrow viol neck pulls the upper bout in until no S can take the channel round the upper
+  // corner from the C bout
   it('fails both plates when the C bout can\'t be joined round a corner', () => {
-    const p = seeded();
-    p.bouts!.useViolNeck = true;
-    MainBoutsPanel.seed(p);
+    const p = violNecked(q => solveFluting(q)!.failures.some(f => f.message.includes('joined')));
     const s = solveFluting(p)!;
     expect(s.failures.map(f => f.unsolved)).toEqual([['top'], ['back']]);
     expect(s.failures[0].message).toContain('joined');
