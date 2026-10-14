@@ -123,12 +123,7 @@
         "slope": -141,
         "length": 9.3
       },
-      "stemArcR": 32,
-      "stemArcsIndependent": false,
-      "S1R": 32,
-      "S2R": 32,
-      "S3R": 32,
-      "S4R": 32
+      "stemArcR": 32
     }
   },
   "ratios": {

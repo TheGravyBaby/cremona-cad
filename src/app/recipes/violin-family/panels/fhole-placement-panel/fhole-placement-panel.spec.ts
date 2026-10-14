@@ -91,7 +91,7 @@ describe('the f-hole placement', () => {
     expect(stemEdgeAt(stem, outer, stem.center.y).x - stemEdgeAt(stem, inner, stem.center.y).x).toBeGreaterThan(stem.width);
   });
 
-  it('cuts a notch into each stem edge off the perpendicular through the stem centre, the inner below it and the outer above, sized by the upper eye', () => {
+  it('cuts a notch into each stem edge off the perpendicular through the stem centre, the inner below it and the outer above, sized by the stem width', () => {
     const p = placed();
     const f = p.fHoles!;
     f.stem.angle = 94;
@@ -121,7 +121,7 @@ describe('the f-hole placement', () => {
 
     const depth = depthOf(outer);
     f.UEye.r *= 2;
-    expect(depthOf(fholeNotches(f).outer)).toBeCloseTo(2 * depth, 9);
+    expect(depthOf(fholeNotches(f).outer)).toBeCloseTo(depth, 9);
     f.stem.width *= 2;
     expect(depthOf(fholeNotches(f).outer)).toBeCloseTo(2 * depth, 9);
   });

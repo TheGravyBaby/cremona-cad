@@ -265,10 +265,9 @@ export const renderFholeStem = (f: FholePlacementParams, pal: PanelPalette) => (
 // the perpendicular through the stem's centre meets the edge: the inner notch drops from it along
 // the edge toward the lower eye, the outer rises toward the upper, the apex midway along the mouth
 // and a third of it deep, square to the edge (measured on a Stradivari cello, 2026-10, then
-// opened a tenth). Sized from the upper eye, which tracks the instrument's size
-// where the stem's width doesn't, and never a field: the notch is a mark, not a shape the plate
-// depends on
-const NOTCH_TO_UEYE = { depth: 0.19, mouth: 0.59 };
+// opened a tenth). Sized from the stem's width, so the nick reads against the edge it is cut in,
+// and never a field: the notch is a mark, not a shape the plate depends on
+const NOTCH_TO_STEM = { depth: 0.13, mouth: 0.4 };
 
 export interface FholeNotch {
   // mouth on the stem's edge, top then bottom, with the apex between them out in the wood
@@ -282,8 +281,8 @@ export const fholeNotches = (f: FholePlacementParams): { inner: FholeNotch; oute
   const angle = f.stem.angle * TURN.degree;
   const along = { x: Math.cos(angle), y: Math.sin(angle) };
   const across = { x: Math.sin(angle), y: -Math.cos(angle) };
-  const depth = f.UEye.r * NOTCH_TO_UEYE.depth;
-  const mouth = f.UEye.r * NOTCH_TO_UEYE.mouth;
+  const depth = f.stem.width * NOTCH_TO_STEM.depth;
+  const mouth = f.stem.width * NOTCH_TO_STEM.mouth;
   const edges = stemEdgePoints(f.stem);
   const notch = (edge: Pt, side: -1 | 1): FholeNotch => {
     const at = (t: number) => new Pt(edge.x + t * along.x, edge.y + t * along.y);

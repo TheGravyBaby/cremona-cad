@@ -454,7 +454,7 @@ export interface FholeStemParams {
 // what bends between the eyes and the stem: each end's shoulder (U1/L1, with how far it sweeps
 // from its eye), arm (U2/L2, or a compound pair, with how far the first sweeps before the second
 // takes over), wing (U3/L3) and the cut that sets the wing's tip, and the four arcs that land the
-// outline on the stem, one radius for all four unless set free. Radii in mm, angles in degrees as
+// outline on the stem, one radius for all four. Radii in mm, angles in degrees as
 // the fields show them
 export interface FholeContourParams {
   U1R: number;
@@ -477,11 +477,6 @@ export interface FholeContourParams {
   L3Angle: number;
   LCut: FholeCutParams;
   stemArcR: number;
-  stemArcsIndependent: boolean;
-  S1R: number;
-  S2R: number;
-  S3R: number;
-  S4R: number;
 }
 
 // the notch cut from the eye to the wing's tip: where on the eye it starts (degrees round the eye),

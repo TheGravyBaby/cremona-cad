@@ -85,54 +85,18 @@
 
 <section class="ui-group">
     <div class="ui-group-title">Stem</div>
-    @if (k.stemArcsIndependent) {
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">S1 Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.S1R" (input)="edited()"
-                [style.borderColor]="pal.ink(2)" (focus)="highlight('S1', pal.ink(2))" (blur)="highlight(null)" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">S2 Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.S2R" (input)="edited()"
-                [style.borderColor]="pal.ink(2)" (focus)="highlight('S2', pal.ink(2))" (blur)="highlight(null)" />
-        </label>
-        <label class="field-cell">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="k.stemArcsIndependent" (change)="edited()" /><span>Unique radii</span>
-            </div>
-        </label>
-    </div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">S3 Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.S3R" (input)="edited()"
-                [style.borderColor]="pal.ink(2)" (focus)="highlight('S3', pal.ink(2))" (blur)="highlight(null)" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">S4 Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.S4R" (input)="edited()"
-                [style.borderColor]="pal.ink(2)" (focus)="highlight('S4', pal.ink(2))" (blur)="highlight(null)" />
-        </label>
-    </div>
-    } @else {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Arc Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.stemArcR" (input)="edited()"
                 [style.borderColor]="pal.ink(2)" />
         </label>
-        <label class="field-cell">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="k.stemArcsIndependent" (change)="edited()" /><span>Unique radii</span>
-            </div>
-        </label>
+        <label class="field-cell"></label>
         <label class="field-cell">
             <span class="field-title">to Eye Span</span>
             <div class="basic-display" aria-label="S to EyeSpan ratio value">{{ ratio('StoEyeSpan') }}</div>
         </label>
     </div>
-    }
 </section>
 
 <section class="ui-group">

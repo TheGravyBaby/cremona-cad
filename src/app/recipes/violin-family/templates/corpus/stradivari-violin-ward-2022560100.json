@@ -139,12 +139,7 @@
         "slope": -129,
         "length": 6.75
       },
-      "stemArcR": 30,
-      "stemArcsIndependent": false,
-      "S1R": 30,
-      "S2R": 30,
-      "S3R": 30,
-      "S4R": 30
+      "stemArcR": 30
     },
     "arching": {
       "ribHeightLower": 30.25,
