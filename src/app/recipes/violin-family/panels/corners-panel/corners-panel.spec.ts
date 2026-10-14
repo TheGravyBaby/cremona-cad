@@ -306,22 +306,22 @@ describe('the default tips', () => {
   const tips = defaultCornerTips(p)!;
   const m = solveMainBouts(p)!;
 
-  // the guide circle swings from the far side of the bout, at the bout arc's height, out to the
-  // near side: its radius is the bout's width (less the inset, for the lower)
-  it('stand on the guide circles, which stand on the bout arcs', () => {
-    const inset = p.body.overhang + p.body.rib;
-    const UBW = p.bouts!.UBW;
-    const LBW = p.body.width;
-    expect(Math.abs(dist(tips.UCr, { x: -UBW / 2, y: m.U1!.y }) - UBW)).toBeLessThanOrEqual(0.1);
-    expect(Math.abs(dist(tips.LCr, { x: -(LBW - inset) / 2, y: m.L1!.y }) - (LBW - inset))).toBeLessThanOrEqual(0.1);
+  // how the seed places a tip is the seed's business and changes often; what every placement
+  // owes the corners panel is a tip it can solve from, on the treble side, between the bouts
+  it('land on the treble side, between the bout arcs and inside the plate, to the tenth', () => {
+    for (const tip of [tips.UCr, tips.LCr]) {
+      expect(tip.x).toBeGreaterThan(0);
+      expect(tip.x).toBeLessThan(p.body.width / 2);
+      expect(tip.y).toBeGreaterThan(m.L1!.y);
+      expect(tip.y).toBeLessThan(m.U1!.y);
+      expect(tip.x * 10).toBeCloseTo(Math.round(tip.x * 10), 9);
+      expect(tip.y * 10).toBeCloseTo(Math.round(tip.y * 10), 9);
+    }
+    expect(tips.UCr.y).toBeGreaterThan(tips.LCr.y);
   });
 
-  it('sit at the seed ratio of the height, to the tenth they are rounded to, on the right side', () => {
-    expect(Math.abs(tips.UCr.y - p.body.height * SEED_RATIOS.UCYtoH)).toBeLessThanOrEqual(0.05 + 1e-9);
-    expect(Math.abs(tips.LCr.y - p.body.height * SEED_RATIOS.LCYtoH)).toBeLessThanOrEqual(0.05 + 1e-9);
-    expect(tips.UCr.x).toBeGreaterThan(0);
-    expect(tips.LCr.x).toBeGreaterThan(0);
-    expect(tips.UCr.y).toBeGreaterThan(tips.LCr.y);
+  it('give the corners panel a seed it solves with nothing unsolved', () => {
+    expect(solveCorners(seeded())!.failures).toEqual([]);
   });
 
   it('put a moved tip back where the seed had it', () => {

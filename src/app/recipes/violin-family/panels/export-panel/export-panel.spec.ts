@@ -135,7 +135,8 @@ describe('the export panel on opening', () => {
     }
     await captured(() => panel.downloadBundle('full'));
     expect(JSON.stringify(p)).toBe(snapshot);
-  });
+    // every export rendered twice and bundled: about five seconds under the full suite's load
+  }, 20000);
 
   it('previews the top plate once the plates are drafted, and the inner contour on a bare outline', () => {
     const panel = makePanel(plated());
