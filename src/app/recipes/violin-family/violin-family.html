@@ -1,8 +1,6 @@
 <!-- The file header, the nav strip and the render toggles are siblings of .panel, not children, so
      only the panel scrolls — see recipe-toolbar.css. -->
 <app-recipe-toolbar
-            [recipeName]="d.recipeName"
-            [version]="d.version"
             [fileName]="d.fileName"
             (fileNameChange)="onFileNameChange($event)"
             (newFile)="onNewClick()"

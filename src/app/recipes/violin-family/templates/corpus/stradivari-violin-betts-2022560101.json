@@ -4,7 +4,7 @@
   "fileName": "Violin - Antonio Stradivari - Betts",
   "description": "Cremona, 1704. LoC catalogue dimensions; no arching published.",
   "source": "https://www.loc.gov/item/2022560101/",
-  "version": "1",
+  "version": "0.9.0",
   "params": {
     "body": {
       "height": 357.5,

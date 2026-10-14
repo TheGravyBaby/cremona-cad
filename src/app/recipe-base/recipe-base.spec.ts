@@ -15,6 +15,7 @@ import { clearWorkingState, readWorkingState, RECIPE_KEY } from '../helpers/work
     </div>`,
 })
 class PointHost extends RecipeComponentBase {
+  d = { recipeName: 'point-host', fileName: '', version: '', params: {} };
   protected canOpenPanel(): boolean { return true; }
 }
 

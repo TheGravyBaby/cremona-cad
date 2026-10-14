@@ -4,7 +4,7 @@
   "fileName": "Cello - Antonio Stradivari - Castelbarco",
   "description": "Cremona, 1697. LoC catalogue dimensions; no arching published.",
   "source": "https://www.loc.gov/item/2022560102/",
-  "version": "1",
+  "version": "0.9.0",
   "params": {
     "body": {
       "height": 747,

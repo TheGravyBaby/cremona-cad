@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { CORPUS_TEMPLATES, isLocSourced, thumbnailHref } from './corpus';
-import { VIOLIN_FAMILY_PANEL_IDS, VIOLIN_FAMILY_RECIPE_NAME, VIOLIN_FAMILY_SCHEMA_VERSION } from '../violin-family-types';
+import { VIOLIN_FAMILY_PANEL_IDS, VIOLIN_FAMILY_RECIPE_NAME } from '../violin-family-types';
+import { APP_VERSION, compareVersions } from '../../../models/types';
 import { solveMainBouts } from '../panels/main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../panels/corners-panel/corners-panel';
 import { solveCenterBout } from '../panels/center-bout-panel/center-bout-panel';
@@ -22,7 +23,7 @@ describe('CORPUS_TEMPLATES', () => {
     expect(CORPUS_TEMPLATES.length).toBeGreaterThan(0);
     for (const t of CORPUS_TEMPLATES) {
       expect(t.recipeName, t.key).toBe(VIOLIN_FAMILY_RECIPE_NAME);
-      expect(t.version, t.key).toBe(VIOLIN_FAMILY_SCHEMA_VERSION);
+      expect(compareVersions(t.version, APP_VERSION), `${t.key} is from a later release`).toBeLessThanOrEqual(0);
     }
     const keys = CORPUS_TEMPLATES.map(t => t.key);
     expect(new Set(keys).size).toBe(keys.length);
