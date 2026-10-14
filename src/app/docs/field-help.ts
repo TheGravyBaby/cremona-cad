@@ -178,6 +178,11 @@ export const FIELD_HELP = {
     text:
       "Left on as a default. Typically, a fluting channel is gouged out around the corners, and later the corners are carved to smoothly meet the fluting channel. This option toggles that secondary carving, which can be useful for STL exports if you wish to do this step by hand.",
   },
+  notches: {
+    title: "Notch Toggle",
+    text: 
+    "Some notches are big, some notches are small; some are wide, some are tall. \n\nIf these notches do not suite thee, toggle them off, to cut them yourself you are free."
+  },
   crossArchCurveType: {
     title: "Crown Curve",
     text:
