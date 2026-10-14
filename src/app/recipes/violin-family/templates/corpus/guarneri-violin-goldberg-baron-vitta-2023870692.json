@@ -103,7 +103,7 @@
       "U21R": 12,
       "U21Start": 0,
       "U3R": 12,
-      "U3End": 58,
+      "U3Angle": 72,
       "UCut": {
         "angleOnEye": 94.966007073,
         "slope": 40,
@@ -116,7 +116,7 @@
       "L21R": 13,
       "L21Start": 0,
       "L3R": 13,
-      "L3End": -114,
+      "L3Angle": 117,
       "LCut": {
         "angleOnEye": 267.966007073,
         "slope": -141,

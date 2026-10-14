@@ -456,7 +456,8 @@ export interface FholeContourParams {
   U21R: number;
   U21Start: number;
   U3R: number;
-  U3End: number;
+  // the angle the wing meets its cut at, read at the tip
+  U3Angle: number;
   UCut: FholeCutParams;
   L1R: number;
   L1End: number;
@@ -465,7 +466,7 @@ export interface FholeContourParams {
   L21R: number;
   L21Start: number;
   L3R: number;
-  L3End: number;
+  L3Angle: number;
   LCut: FholeCutParams;
   stemArcR: number;
   stemArcsIndependent: boolean;
@@ -833,11 +834,11 @@ export const SEED_RATIOS: ViolinFamilyRatios & { height: number; overhang: numbe
 // the width. One drawing rather than a corpus mean: a Stradivari-pattern hole drawn by hand on the
 // seed outline (2026-10), with the Betts and the Ward as the check. The angles ride with the
 // fractions because a radius says nothing without where its arc takes off and hands over: the
-// shoulders' ends, the wings' ends, where each cut leaves its eye and the slope it leaves on,
-// and the stem's lean, all in degrees
+// shoulders' ends, the angle each wing meets its cut at, where each cut leaves its eye and the
+// slope it leaves on, and the stem's lean, all in degrees
 export const FHOLE_SEED_RATIOS: FholeRatios & {
-  U1End: number; U3End: number; UCutAt: number; UCutSlope: number;
-  L1End: number; L3End: number; LCutAt: number; LCutSlope: number;
+  U1End: number; U3Angle: number; UCutAt: number; UCutSlope: number;
+  L1End: number; L3Angle: number; LCutAt: number; LCutSlope: number;
   stemAngle: number;
 } = {
   LEyetoW: 3 / 128,
@@ -861,11 +862,11 @@ export const FHOLE_SEED_RATIOS: FholeRatios & {
   L2toS: 3 / 8,
   L3toS: 1 / 2,
   U1End: 60,
-  U3End: 50,
+  U3Angle: 85,
   UCutAt: 70,
   UCutSlope: 45,
   L1End: -90,
-  L3End: -120,
+  L3Angle: 100,
   LCutAt: 255,
   LCutSlope: -130,
   stemAngle: 92,

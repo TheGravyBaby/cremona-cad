@@ -6,6 +6,7 @@ import {
   angleSweep, dimensionGeometry, imageCenter, imageCorners, imageSourceBox, isCropped,
 } from './toolbox-shape';
 import { pointOnCircle } from '../../helpers/math/simpleGeometry';
+import { renderAngle } from '../../helpers/renderFuncs';
 import { arcPathData, pathFromPolyline } from '../../helpers/math/pathMath';
 import { pointAtPolylineLength, polylineCumulativeLengths } from '../../helpers/math/vibeMath';
 import { GrabberKind } from './shape-grabbers';
@@ -546,62 +547,14 @@ export function drawAngle(
   gRoot: RootGroup, gUI: RootGroup, shape: Pick<AngleShape, 'vertex' | 'start' | 'end' | 'radius' | 'strokeWidth'>,
   color: string, pxPerMm: number, preview = false,
 ): void {
-  const { vertex, start, end, radius } = shape;
-  const k = weightScale(shape.strokeWidth);
-
-  const stroke = <E extends d3.BaseType>(sel: d3.Selection<E, unknown, null, undefined>) => {
-    sel.attr('fill', 'none').attr('stroke', color).attr('stroke-width', k).attr('vector-effect', 'non-scaling-stroke');
-    if (preview) sel.attr('stroke-dasharray', DASH_PATTERN).style('pointer-events', 'none');
-    return sel;
-  };
-  const segment = (a: Pt, b: Pt) => stroke(gRoot.append('line')
-    .attr('x1', a.x).attr('y1', a.y).attr('x2', b.x).attr('y2', b.y));
-
-  const { startAngle, endAngle, sweep } = angleSweep(vertex, start, end);
-  const reach = radius + DIM_EXT_OVERSHOOT_PX / pxPerMm;
-  for (const [arm, angle] of [[start, startAngle], [end, endAngle]] as const) {
-    segment(vertex, arm);
-    if (Math.hypot(arm.x - vertex.x, arm.y - vertex.y) < reach) {
-      segment(arm, pointOnCircle({ ...vertex, r: reach }, angle)).attr('data-no-snap', '');
-    }
-  }
-  if (sweep < 1e-6) return;
-
-  stroke(gRoot.append('path').attr('d', arcPathData(vertex, radius, startAngle, endAngle)));
-
-  // skipped on an arc too short to hold both heads without them overlapping
-  const arrowLen = DIM_ARROW_LEN_PX / pxPerMm;
-  const arrowHalfWidth = DIM_ARROW_HALF_WIDTH_PX / pxPerMm;
-  if (radius * sweep > arrowLen * 2.5) {
-    const arrow = (angle: number, turn: 1 | -1) => {
-      const tip = pointOnCircle({ ...vertex, r: radius }, angle);
-      const d = { x: -Math.sin(angle) * turn, y: Math.cos(angle) * turn };
-      const base = { x: tip.x - d.x * arrowLen, y: tip.y - d.y * arrowLen };
-      const wing = { x: -d.y * arrowHalfWidth, y: d.x * arrowHalfWidth };
-      const poly = gRoot.append('polygon')
-        .attr('points', `${tip.x},${tip.y} ${base.x + wing.x},${base.y + wing.y} ${base.x - wing.x},${base.y - wing.y}`)
-        .attr('fill', color)
-        .attr('data-no-snap', '');
-      if (preview) poly.style('pointer-events', 'none');
-    };
-    arrow(startAngle, -1);
-    arrow(endAngle, 1);
-  }
-
-  // level rather than turned along the arc, anchored on the side facing away from the vertex so
-  // the number grows outward instead of back across the arc
-  const bisector = startAngle + sweep / 2;
-  const at = pointOnCircle({ ...vertex, r: radius + DIM_TEXT_GAP_PX / pxPerMm }, bisector);
-  const cos = Math.cos(bisector);
-  const text = gUI.append('text')
-    .attr('x', at.x).attr('y', -at.y)
-    .attr('text-anchor', cos > 0.3 ? 'start' : cos < -0.3 ? 'end' : 'middle')
-    .attr('dominant-baseline', 'central')
-    .attr('fill', color)
-    .attr('font-size', 12 / pxPerMm)
-    .style('user-select', 'none')
-    .text(`${(sweep * 180 / Math.PI).toFixed(1)}°`);
-  if (preview) text.style('pointer-events', 'none');
+  renderAngle(shape.vertex, shape.start, shape.end, shape.radius, color, {
+    strokeWidth: weightScale(shape.strokeWidth),
+    arrowLen: DIM_ARROW_LEN_PX / pxPerMm,
+    arrowHalfWidth: DIM_ARROW_HALF_WIDTH_PX / pxPerMm,
+    overshoot: DIM_EXT_OVERSHOOT_PX / pxPerMm,
+    textGap: DIM_TEXT_GAP_PX / pxPerMm,
+    fontSize: 12 / pxPerMm,
+  }, preview)(gRoot, gUI);
 }
 
 // where along a stretch each division falls, with the unit normal there — read off a short chord
