@@ -23,6 +23,7 @@ import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import { purflingPath, ribArcs, RibArcs, solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
 import { renderFlutingInnerEdge, solveFluting } from '../fluting-panel/fluting-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
+import { showFieldHelp } from '../../../../docs/field-help';
 
 // Where the two f-holes sit on the top plate: the eyes first, everything else hung off them. The
 // stage is all typed values, so there is nothing to solve here beyond the box the eyes and rises
@@ -37,6 +38,7 @@ import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFholeBounds', 'showFholePlacementGuides', 'showFlutingEdge', 'showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('orchid');
+  protected readonly help = showFieldHelp;
 
   // eyes, rises and stem placed from the corners and the waist alone, once the plate has solved,
   // by the fractions in FHOLE_SEED_RATIOS: the lower eye in from the lower corner, the upper eye
