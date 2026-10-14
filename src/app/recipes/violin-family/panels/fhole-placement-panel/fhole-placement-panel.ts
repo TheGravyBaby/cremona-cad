@@ -82,6 +82,7 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
   boundsHtoW = '–';
   eyeDistance = 0;
   eyeAngle = 0;
+  stemGap = 0;
   ratios: Partial<FholeRatios> = {};
 
   ngOnInit(): void {
@@ -113,6 +114,8 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
       this.boundsHtoW = bounds.width ? nearestFraction(bounds.height! / bounds.width) : '–';
       this.eyeDistance = Math.round(dist(f.UEye, f.LEye) * 100) / 100;
       this.eyeAngle = Math.round(angleFromCenter(f.LEye, f.UEye) / TURN.degree * 10) / 10;
+      // across the two stems' inner edges at the stem's height, where the pair is mirrored about x = 0
+      this.stemGap = Math.round(2 * (f.stem.center.x - f.stem.width / 2) * 100) / 100;
       this.ratios = solveFholePlacementRatios(p);
       let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
       let layers: RenderLayer[] = [renderFholePlate(p, this.pal, rib, false)];
