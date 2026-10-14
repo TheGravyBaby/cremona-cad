@@ -684,7 +684,7 @@ function scrollOutline(p: ViolinFamilyParams, s: ScrollSolve, crossing: { index:
 // the back down from where the nape meets it over the heel, closed along the back's face
 function neckOutline(p: ViolinFamilyParams, n: NeckSolve, backTop: Pt): string[] {
   let floor = new Pt(0, mortiseFloorY(p));
-  let segments = [pathFromLine(floor, n.glue!), pathFromLine(n.glue!, n.root!), pathFromLine(n.root!, n.neckTop!)];
+  let segments = [pathFromLine(floor, n.bottomFront!), pathFromLine(n.bottomFront!, n.root!), pathFromLine(n.root!, n.neckTop!)];
   let end: Pt;
   if (n.heel) {
     segments.push(pathFromLine(backTop, pointOnCircle(n.heel, n.heel.start)), pathFromArc(n.heel));
