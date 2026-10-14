@@ -42,6 +42,10 @@
             <span class="field-title">H to W</span>
             <div class="basic-display" aria-label="F-hole bounding box height to width ratio value">{{ boundsHtoW }}</div>
         </label>
+        <label class="field-cell">
+            <span class="field-title">Eye Angle <span class="unit-label">°</span></span>
+            <div class="basic-display" aria-label="Angle from the lower eye to the upper eye">{{ eyeAngle }}</div>
+        </label>
     </div>
 </section>
 
@@ -83,11 +87,6 @@
             <span class="field-title">Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.LEye.r" (input)="edited()"
                 [style.borderColor]="pal.ink(0)" />
-        </label>
-        <label class="field-cell"></label>
-        <label class="field-cell">
-            <span class="field-title">Lr to W</span>
-            <div class="basic-display" aria-label="Lower eye radius to body width ratio value">{{ ratio('LEyetoW') }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
