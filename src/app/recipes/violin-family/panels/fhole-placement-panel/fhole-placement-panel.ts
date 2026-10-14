@@ -269,7 +269,7 @@ export const renderFholeStem = (f: FholePlacementParams, pal: PanelPalette) => (
 // and a third of it deep, square to the edge (measured on a Stradivari cello, 2026-10, then
 // opened a tenth). Sized from the stem's width, so the nick reads against the edge it is cut in,
 // and never a field: the notch is a mark, not a shape the plate depends on
-const NOTCH_TO_STEM = { depth: 0.13, mouth: 0.4 };
+const NOTCH_TO_STEM = { depth: 0.15, mouth: 0.4 };
 
 export interface FholeNotch {
   // mouth on the stem's edge, top then bottom, with the apex between them out in the wood
