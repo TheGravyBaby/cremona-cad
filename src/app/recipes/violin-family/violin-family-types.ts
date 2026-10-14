@@ -332,15 +332,6 @@ export interface ScrollWidths {
   eye: number;
 }
 
-export const DEFAULT_VIOLIN_FAMILY_PARAMS: ViolinFamilyParams = {
-  body: {
-    height: 356,
-    width: 203,
-    overhang: 3,
-    rib: 1,
-  },
-};
-
 export type BodyKey = 'height' | 'width' | 'overhang' | 'rib';
 export type BodyFailure = SolveFailure<BodyKey>;
 
@@ -749,8 +740,9 @@ export interface MouldSolve {
   failures: MouldFailure[];
 }
 
-// named <thing>to<datum>. The radius ratios are taken against the bout's inner width (the width
-// less the inset both sides), as the Ceruti recipe always measured them, so the two compare
+// what a drafted outline reads as, named <thing>to<datum>. The radius ratios are taken against the
+// bout's inner width (the width less the inset both sides), as the Ceruti recipe always measured
+// them, so the two compare. Stamped on the file for study; nothing reads them back
 export interface ViolinFamilyRatios {
   HtoW: number;
   UBtoLB: number;
@@ -774,12 +766,44 @@ export interface ViolinFamilyRatios {
   C21toLBW: number;
   C1toLBW: number;
   C11toLBW: number;
-  FLtoW: number;
-  FUtoL: number;
 }
 
-// what a stage is first drafted at
-export const SEED_RATIOS: ViolinFamilyRatios = {
+// the f-holes' proportions, named the same way. The lower eye is drawn from the body's width and
+// everything after it from an eye: the placement guides (the lower eye in from the lower corner;
+// the upper eye where a circle about the lower eye, through the waist, meets one about the waist),
+// the rises, the stem's seat in the frame the eyes and rises carve out, then each contour arc
+// against the eye it springs from and each cut's length. The stem arcs read as one radius, or
+// their mean once set free
+export interface FholeRatios {
+  LEyetoW: number;
+  UEyetoLEye: number;
+  LEyeXtoLCX: number;
+  LEyeYtoLCY: number;
+  UEyeGuidetoWaist: number;
+  EyeSpantoWaist: number;
+  URisetoUEye: number;
+  LRisetoLEye: number;
+  StemXtoFrame: number;
+  StemYtoFrame: number;
+  StemWtoUEye: number;
+  U1toUEye: number;
+  U2toUEye: number;
+  U3toUEye: number;
+  UCuttoUEye: number;
+  L1toLEye: number;
+  L2toLEye: number;
+  L3toLEye: number;
+  LCuttoLEye: number;
+  StoLEye: number;
+}
+
+// the one instrument the app drafts from nothing: a height, and the ratios every outline value is
+// drawn from it by. The overhang and rib are trade standards rather than proportions, kept here
+// until a family table holds them. The base stage has no absolute number anywhere else
+export const SEED_RATIOS: ViolinFamilyRatios & { height: number; overhang: number; rib: number } = {
+  height: 356,
+  overhang: 3,
+  rib: 1,
   HtoW: 7 / 4,
   UBtoLB: 4 / 5,
   U0toUBW: 8 / 9,
@@ -802,8 +826,57 @@ export const SEED_RATIOS: ViolinFamilyRatios = {
   C21toLBW: 1 / 16,
   C1toLBW: 1 / 8,
   C11toLBW: 1 / 16,
-  FLtoW: 1 / 50,
-  FUtoL: 3 / 4,
+};
+
+// the f-holes drafted from nothing but the outline: keyed off the lower eye, itself a fraction of
+// the width. One drawing rather than a corpus mean: a Stradivari-pattern hole drawn by hand on the
+// seed outline (2026-10), with the Betts and the Ward as the check. The angles ride with the
+// fractions because a radius says nothing without where its arc takes off and hands over: the
+// shoulders' ends, the wings' ends, where each cut leaves its eye and the slope it leaves on,
+// and the stem's lean, all in degrees
+export const FHOLE_SEED_RATIOS: FholeRatios & {
+  U1End: number; U3End: number; UCutAt: number; UCutSlope: number;
+  L1End: number; L3End: number; LCutAt: number; LCutSlope: number;
+  stemAngle: number;
+} = {
+  LEyetoW: 3 / 128,
+  UEyetoLEye: 5 / 8,
+  LEyeXtoLCX: 2 / 3,
+  LEyeYtoLCY: 29 / 30,
+  UEyeGuidetoWaist: 6 / 11,
+  EyeSpantoWaist: 1,
+  URisetoUEye: 5 / 3,
+  LRisetoLEye: 11 / 8,
+  StemXtoFrame: 5 / 12,
+  StemYtoFrame: 1 / 2,
+  StemWtoUEye: 2,
+  U1toUEye: 8 / 3,
+  U2toUEye: 4,
+  U3toUEye: 16 / 3,
+  UCuttoUEye: 2,
+  L1toLEye: 2,
+  L2toLEye: 3,
+  L3toLEye: 17 / 4,
+  LCuttoLEye: 8 / 5,
+  StoLEye: 8,
+  U1End: 60,
+  U3End: 50,
+  UCutAt: 70,
+  UCutSlope: 45,
+  L1End: -90,
+  L3End: -120,
+  LCutAt: 255,
+  LCutSlope: -130,
+  stemAngle: 92,
+};
+
+export const DEFAULT_VIOLIN_FAMILY_PARAMS: ViolinFamilyParams = {
+  body: {
+    height: SEED_RATIOS.height,
+    width: Math.round(SEED_RATIOS.height / SEED_RATIOS.HtoW),
+    overhang: SEED_RATIOS.overhang,
+    rib: SEED_RATIOS.rib,
+  },
 };
 
 export interface ViolinFamilyViewFlags {
@@ -871,7 +944,7 @@ export interface ViolinFamilyRecipe extends RecipeInterface {
   description?: string;
   source?: string;
   params: ViolinFamilyParams;
-  ratios?: Partial<ViolinFamilyRatios>;
+  ratios?: Partial<ViolinFamilyRatios & FholeRatios>;
 }
 
 // a recipe served as a starting point; the key tells it from the others

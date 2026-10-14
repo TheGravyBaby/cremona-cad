@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { dist, normalizeRadians, pointOnCircle, travelAtArcEnd, travelAtArcStart, TURN } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { Arc, Pt } from '../../../../models/types';
-import { FHoleContoursPanel, fholePath, solveFholeContours } from './fhole-contours-panel';
+import { FHoleContoursPanel, fholePath, solveFholeContours, solveFholeContoursRatios } from './fhole-contours-panel';
 import { FHolePlacementPanel } from '../fhole-placement-panel/fhole-placement-panel';
 import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, FholeContoursSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS, FHOLE_SEED_RATIOS, FholeContoursSolve, ViolinFamilyParams } from '../../violin-family-types';
 
 // The property tests say what the drawing is: every joint is tangent-continuous, the shoulder
 // touches its own eye and its bound, and the tip is where the cut says it is. Those hold for any
@@ -39,10 +39,10 @@ const shaped = (shape: Shape): ViolinFamilyParams => {
   const deg = TURN.degree;
 
   if (shape === 'extended') {
-    // a user extending both shoulders past their apex, then dialling the stem's one shared arc
-    // radius off its seed. turn is -1 both sides by construction here, so subtracting from the end
-    // continues the shoulder's own turn
-    k.U1End -= 0.3 / deg;
+    // a user extending both shoulders further past their apex, then dialling the stem's one shared
+    // arc radius off its seed. turn is -1 both sides by construction here, so subtracting from the
+    // end continues the shoulder's own turn; much further and the upper one reaches its own cut
+    k.U1End -= 0.1 / deg;
     k.L1End -= 0.25 / deg;
     k.stemArcR += 8;
   }
@@ -110,7 +110,7 @@ describe('the f-hole contours solve', () => {
     expect(JSON.stringify(p)).toBe(edited);
   });
 
-  it('seeds every radius a whole millimetre, the stem arcs to one radius, and each cut one eye long', () => {
+  it('seeds every radius a whole millimetre, the stem arcs to one radius, and each cut a fraction of its eye', () => {
     const p = seeded();
     const k = p.fHoleContours!;
     const f = p.fHoles!;
@@ -119,9 +119,24 @@ describe('the f-hole contours solve', () => {
       expect(Math.round(r)).toBe(r);
     }
     for (const r of [k.S1R, k.S2R, k.S3R, k.S4R]) expect(r).toBe(k.stemArcR);
-    expect(k.UCut.length).toBe(f.UEye.r);
-    expect(k.LCut.length).toBe(f.LEye.r);
+    expect(k.UCut.length).toBeCloseTo(f.UEye.r * FHOLE_SEED_RATIOS.UCuttoUEye, 0);
+    expect(k.LCut.length).toBeCloseTo(f.LEye.r * FHOLE_SEED_RATIOS.LCuttoLEye, 0);
     expect(solveFholeContours(p)!.failures).toEqual([]);
+  });
+});
+
+describe('the contour ratios', () => {
+  it('read nothing before the contours are seeded', () => {
+    expect(solveFholeContoursRatios(placed())).toEqual({});
+  });
+
+  // every radius is seeded a whole millimetre, so it reads back within half a millimetre of its eye
+  it('read a fresh draft back at its seed fractions', () => {
+    const p = seeded();
+    const r = solveFholeContoursRatios(p);
+    const { UEye, LEye } = p.fHoles!;
+    for (const [key, eye] of [['U1toUEye', UEye], ['U2toUEye', UEye], ['U3toUEye', UEye], ['L1toLEye', LEye], ['L2toLEye', LEye], ['L3toLEye', LEye], ['StoLEye', LEye], ['UCuttoUEye', UEye], ['LCuttoLEye', LEye]] as const)
+      expect(Math.abs(r[key]! - FHOLE_SEED_RATIOS[key]), key).toBeLessThanOrEqual(0.5 / eye.r);
   });
 });
 
@@ -277,7 +292,7 @@ describe('f-hole contour failures', () => {
 
   it('says the arm crosses the stem edge when it is too wide to turn onto it', () => {
     const p = seeded();
-    p.fHoleContours!.U2R *= 3;
+    p.fHoleContours!.U2R *= 2;
     const s = solveFholeContours(p)!;
     expect(s.failures).toHaveLength(1);
     expect(s.failures[0].message).toContain('U2 crosses the outer stem edge');
@@ -287,10 +302,11 @@ describe('f-hole contour failures', () => {
 
   it('says the stem arc cannot bridge when it is too small', () => {
     const p = seeded();
-    p.fHoleContours!.stemArcR = 12;
+    // the lower wing is the flattest arc, so it is the first to need a bigger stem arc than it has
+    p.fHoleContours!.stemArcR = 18;
     const s = solveFholeContours(p)!;
-    expect(s.failures.map(f => f.unsolved)).toEqual([['L2', 'S3'], ['L3', 'S4']]);
-    expect(s.failures[0].message).toContain("S3 can't bridge from L2");
+    expect(s.failures.map(f => f.unsolved)).toEqual([['L3', 'S4']]);
+    expect(s.failures[0].message).toContain("S4 can't bridge from L3");
   });
 
   it('fails only the section whose field is cleared, and draws no NaN', () => {

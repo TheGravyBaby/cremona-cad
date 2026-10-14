@@ -19,7 +19,7 @@ import { CenterBoutPanel, solveCenterBout, solveCenterBoutRatios } from './panel
 import { OuterContourPanel, solveOuterContour } from './panels/outer-contour-panel/outer-contour-panel';
 import { FlutingPanel, solveFluting } from './panels/fluting-panel/fluting-panel';
 import { FHolePlacementPanel, solveFholePlacementRatios } from './panels/fhole-placement-panel/fhole-placement-panel';
-import { FHoleContoursPanel } from './panels/fhole-contours-panel/fhole-contours-panel';
+import { FHoleContoursPanel, solveFholeContoursRatios } from './panels/fhole-contours-panel/fhole-contours-panel';
 import { LongArchingPanel, solveLongArching } from './panels/long-arching-panel/long-arching-panel';
 import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
 import { NeckPanel } from './panels/neck-panel/neck-panel';
@@ -237,6 +237,7 @@ export class ViolinFamily extends RecipeComponentBase {
       ...solveCornersRatios(p),
       ...solveCenterBoutRatios(p),
       ...solveFholePlacementRatios(p),
+      ...solveFholeContoursRatios(p),
     };
   }
 

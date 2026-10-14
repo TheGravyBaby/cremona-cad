@@ -15,7 +15,7 @@ import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
-  FholePlacementParams, FholeStemParams, RenderLayer, SEED_RATIOS, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyRatios,
+  FHOLE_SEED_RATIOS, FholePlacementParams, FholeRatios, FholeStemParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams,
   ViolinFamilyToggleKey, ViolinFamilyViewFlags,
 } from '../../violin-family-types';
 import { renderBoutBounds, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -39,48 +39,38 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFholeBounds', 'showFholePlacementGuides', 'showFlutingEdge', 'showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('orchid');
 
-  // eyes, rises and stem placed from the corners and the waist alone, once the plate has solved:
-  // both eye positions from a 10-instrument survey against traced templates (2026-09)
+  // eyes, rises and stem placed from the corners and the waist alone, once the plate has solved,
+  // by the fractions in FHOLE_SEED_RATIOS: the lower eye in from the lower corner, the upper eye
+  // where two guide circles meet, and the stem seated in the frame the eyes and rises carve out
   static seed(p: ViolinFamilyParams): void {
     if (p.fHoles || !p.corners || !p.outerContour) return;
-    let cb = solveCenterBout(p);
-    if (!cb?.C0 || !solveOuterContour(p)?.top) return;
-    let C0 = cb.C0;
+    let waist = fholeWaist(p);
+    if (!waist || !solveOuterContour(p)?.top) return;
+    let r = FHOLE_SEED_RATIOS;
     let lowerCorner = p.corners.LCr;
-    let lowerEyeR = Math.round(p.body.width * SEED_RATIOS.FLtoW);
-    let lowerEye = new Circle(lowerCorner.x * 2 / 3, lowerCorner.y * 24 / 25, lowerEyeR);
+    // eyes to the quarter millimetre, as they are measured
+    let quarter = (v: number) => Math.round(v * 4) / 4;
+    let lowerEyeR = quarter(p.body.width * r.LEyetoW);
+    let lowerEye = new Circle(lowerCorner.x * r.LEyeXtoLCX, lowerCorner.y * r.LEyeYtoLCY, lowerEyeR);
 
-    // new pet theory
-    // draw guide circles from the lower eye to the midpoint, then the midpoint 2/7 the waist dist
-    // intersection point is the upper eye
-    let waistMidpoint = new Pt(C0.x - C0.r, C0.y);
-    let distFromLowerEyeToWaist = dist(lowerEye, waistMidpoint);
-    let upperEyeGuideOne = new Circle(lowerEye.x, lowerEye.y, distFromLowerEyeToWaist);
-    let upperEyeGuideTwo = new Circle(waistMidpoint.x, waistMidpoint.y, 4 / 7 * waistMidpoint.x);
-    let upperEyeIntersectionPt = circleCircleIntersections(upperEyeGuideOne, upperEyeGuideTwo)[0];
-    if (!upperEyeIntersectionPt) return;
-    let upperEye = new Circle(upperEyeIntersectionPt.x, upperEyeIntersectionPt.y, lowerEyeR * SEED_RATIOS.FUtoL);
+    let eyeSpan = new Circle(lowerEye.x, lowerEye.y, dist(lowerEye, waist) * r.EyeSpantoWaist);
+    let waistGuide = new Circle(waist.x, waist.y, waist.x * r.UEyeGuidetoWaist);
+    let upperEyeCenter = circleCircleIntersections(eyeSpan, waistGuide)[0];
+    if (!upperEyeCenter) return;
+    let upperEye = new Circle(upperEyeCenter.x, upperEyeCenter.y, quarter(lowerEyeR * r.UEyetoLEye));
 
-    let upperHeight = upperEye.r * 5 / 6;
-    let lowerHeight = lowerEye.r * 5 / 6;
-
-    let topLeftPt = new Pt(upperEye.x - upperEye.r, upperEye.y + upperEye.r + upperHeight);
-    let lowerRightPt = new Pt(lowerEye.x + lowerEye.r, lowerEye.y - lowerEye.r - lowerHeight);
-
-    let stemOuter = lowerRightPt.x - (lowerRightPt.x - topLeftPt.x) / 2;
-    let stemInner = upperEye.x + (lowerRightPt.x - upperEye.x) / 3;
-    let stemY = (topLeftPt.y + upperHeight - (lowerRightPt.y - lowerHeight)) / 2 + lowerRightPt.y - lowerHeight;
-    let stemX = stemInner + (stemOuter - stemInner) / 2;
-
-    // to a hundredth, as the fields show them; the ratios the survey gave aren't finer than that
+    // to a hundredth, as the fields show them
     let tidy = (v: number) => Math.round(v * 100) / 100;
-    p.fHoles = {
-      UEye: new Circle(tidy(upperEye.x), tidy(upperEye.y), tidy(upperEye.r)),
+    let f: FholePlacementParams = {
+      UEye: new Circle(tidy(upperEye.x), tidy(upperEye.y), upperEye.r),
       LEye: new Circle(tidy(lowerEye.x), tidy(lowerEye.y), lowerEyeR),
-      URise: tidy(upperEye.r * FRisetoEye),
-      LRise: tidy(lowerEye.r * FRisetoEye),
-      stem: { center: new Pt(tidy(stemX), tidy(stemY)), width: tidy(stemOuter - stemInner), angle: STEM_ANGLE_DEFAULT },
+      URise: tidy(upperEye.r * r.URisetoUEye),
+      LRise: tidy(lowerEye.r * r.LRisetoLEye),
+      stem: { center: new Pt(0, 0), width: tidy(upperEye.r * r.StemWtoUEye), angle: r.stemAngle },
     };
+    let frame = fholeBounds(f);
+    f.stem.center = new Pt(tidy(frame.Pt1.x + frame.width! * r.StemXtoFrame), tidy(frame.Pt2.y + frame.height! * r.StemYtoFrame));
+    p.fHoles = f;
   }
 
   @Input({ required: true }) params!: ViolinFamilyParams;
@@ -93,7 +83,7 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
   // what the last draw read off the placement; the template's readouts read these
   boundsHtoW = '–';
   eyeDistance = 0;
-  ratios: Partial<ViolinFamilyRatios> = {};
+  ratios: Partial<FholeRatios> = {};
 
   ngOnInit(): void {
     this.draw();
@@ -107,10 +97,10 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
   }
 
   // the lower eye against the width is a small fraction (1/50), where the usual search collapses to 0
-  ratio(key: keyof ViolinFamilyRatios): string {
+  ratio(key: keyof FholeRatios): string {
     let value = this.ratios[key];
     if (!Number.isFinite(value)) return '–';
-    return key === 'FLtoW' ? nearestSmallFraction(value!) : nearestFraction(value!);
+    return key === 'LEyetoW' ? nearestSmallFraction(value!) : nearestFraction(value!);
   }
 
   // nothing solves here, so nothing to report; the contours panel reports what the placement broke
@@ -139,12 +129,7 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
 // how far past upright the stem leans, in degrees: mean 91.8°, sd 0.7° across a 6-instrument
 // survey (2026-09), the tightest constant found in that pass. Positive leans the top of the stem
 // toward the hole's upper eye
-const STEM_ANGLE_DEFAULT = 92;
 const STEM_ANGLE_RANGE = [90, 102];
-
-// the rise a hole starts at, against its own eye's radius. the traced Amati reads 1.38 up top and
-// 1.20 down below; one ratio for both ends until the eyes are better placed
-const FRisetoEye = 6 / 5;
 
 // the stem's lean as a run per unit of rise, the form every line through the stem is drawn in
 export const stemRun = (stem: FholeStemParams): number => {
@@ -309,12 +294,36 @@ export const renderFholeEyePlacementGuides = (p: ViolinFamilyParams, rib: RibArc
   renderArcFromArcFancy(upperEyeGuideTwo, pal.neutral.faint(3))(g, ui);
 };
 
-// the eyes against the body: the lower eye to the width, the upper eye to the lower
-export function solveFholePlacementRatios(p: ViolinFamilyParams): Partial<ViolinFamilyRatios> {
+// where the waist meets the centre bout's own arc: the point the upper eye's guides are struck from
+export function fholeWaist(p: ViolinFamilyParams): Pt | null {
+  let C0 = solveCenterBout(p)?.C0;
+  return C0 ? new Pt(C0.x - C0.r, C0.y) : null;
+}
+
+// the placement read back as the fractions it was seeded by; the guide ratios only once the
+// corners and the waist are there to measure against
+export function solveFholePlacementRatios(p: ViolinFamilyParams): Partial<FholeRatios> {
   let f = p.fHoles;
   if (!f) return {};
-  return {
-    FLtoW: f.LEye.r / p.body.width,
-    FUtoL: f.UEye.r / f.LEye.r,
+  let frame = fholeBounds(f);
+  let r: Partial<FholeRatios> = {
+    LEyetoW: f.LEye.r / p.body.width,
+    UEyetoLEye: f.UEye.r / f.LEye.r,
+    URisetoUEye: f.URise / f.UEye.r,
+    LRisetoLEye: f.LRise / f.LEye.r,
+    StemXtoFrame: (f.stem.center.x - frame.Pt1.x) / frame.width!,
+    StemYtoFrame: (f.stem.center.y - frame.Pt2.y) / frame.height!,
+    StemWtoUEye: f.stem.width / f.UEye.r,
   };
+  let LCr = p.corners?.LCr;
+  if (LCr) {
+    r.LEyeXtoLCX = f.LEye.x / LCr.x;
+    r.LEyeYtoLCY = f.LEye.y / LCr.y;
+  }
+  let waist = fholeWaist(p);
+  if (waist) {
+    r.UEyeGuidetoWaist = dist(f.UEye, waist) / waist.x;
+    r.EyeSpantoWaist = dist(f.UEye, f.LEye) / dist(f.LEye, waist);
+  }
+  return r;
 }
