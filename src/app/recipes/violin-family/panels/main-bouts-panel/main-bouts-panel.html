@@ -113,13 +113,13 @@
                     (focus)="highlight('V0', pal.ink(1))" (blur)="highlight(null)" />
             </label>
             <label class="field-cell">
-                <span class="field-title">V0 Start <span class="unit-label">°</span></span>
-                <input type="number" class="basic-input" step="1" [(ngModel)]="viol.V0Start" (input)="edited()"
+                <span class="field-title">Join Turn <span class="unit-label">°</span></span>
+                <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="viol.joinTurn" (input)="edited()"
                     (focus)="highlight('V0', pal.ink(1))" (blur)="highlight(null)" />
             </label>
             <label class="field-cell">
-                <span class="field-title">V0 End <span class="unit-label">°</span></span>
-                <input type="number" class="basic-input" step="1" [(ngModel)]="viol.V0End" (input)="edited()"
+                <span class="field-title">V0 Sweep <span class="unit-label">°</span></span>
+                <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="viol.V0Sweep" (input)="edited()"
                     (focus)="highlight('V0', pal.ink(1))" (blur)="highlight(null)" />
             </label>
         </div>

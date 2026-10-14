@@ -140,7 +140,8 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
         if (!surface) this.sampled[plate] = null;
       }
       let dx = -p.body.width * PLATE_LAYOUT_GAP;
-      let stationLine = renderDashedLine(new Pt(dx - p.body.width / 2 - 10, y), new Pt(p.body.width / 2 + 10, y), this.pal.neutral, DASH.guide, STROKE_WEIGHT.guide, 0.7);
+      let sideReach = sideX + Math.max(a.ribs!.zLower, a.ribs!.zUpper) + p.arching!.top.thickness + p.arching!.top.arch.height + STATION_LINE_OVERRUN_MM;
+      let stationLine = renderDashedLine(new Pt(dx - p.body.width / 2 - STATION_LINE_OVERRUN_MM, y), new Pt(sideReach, y), this.pal.neutral, DASH.guide, STROKE_WEIGHT.section, 0.7);
       let side = renderBodySideProfile(p, a, o, this.pal, false, { ground: true, fluting: true });
 
 
@@ -474,6 +475,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
 // two stations closer than this are the same station; stations are held this far inside the ends
 export const STATION_MERGE_EPS_MM = 0.5;
 export const STATION_MARGIN_MM = 1;
+const STATION_LINE_OVERRUN_MM = 10;
 
 // past 1 the window runs beyond the cusp, so the ends curl under the takeoff; 1.5 dips a full rise
 export const CYCLOID_MAX_PCT = 1.5;

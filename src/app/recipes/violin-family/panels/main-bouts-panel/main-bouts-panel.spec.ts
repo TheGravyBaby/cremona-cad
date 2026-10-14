@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { dist, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
+import { dist, normalizeRadians, pointOnCircle, signedArcSweep, travelAtArcStart, TURN } from '../../../../helpers/math/simpleGeometry';
 import { MainBoutsPanel, solveMainBoutsRatios, solveMainBouts, violNeckJoinLimit } from './main-bouts-panel';
 import { solveBodyRatios } from '../base-measurements-panel/base-measurements-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
@@ -140,7 +140,7 @@ describe('seeding', () => {
     p.bouts!.useViolNeck = true;
     MainBoutsPanel.seed(p);
     const viol = p.bouts!.viol!;
-    expect(viol.V0Start).toBeCloseTo(189, 9);
+    expect(viol.V0Sweep).toBeGreaterThan(0);
     p.bouts!.useViolNeck = false;
     MainBoutsPanel.seed(p);
     expect(p.bouts!.viol).toBe(viol);
@@ -156,6 +156,16 @@ describe('the viol neck', () => {
     const handover = pointOnCircle(m.V0!, m.V0!.end);
     expect(dist(handover, pointOnCircle(m.U0!, m.U0!.start))).toBeCloseTo(0, 6);
     expect(m.U0!.start).toBeCloseTo(m.V0!.end - TURN.half, 9);
+  });
+
+  it('turns down from the level top face through the join turn, then sweeps V0 on through its own', () => {
+    const v = p.bouts!.viol!;
+    expect(normalizeRadians(-travelAtArcStart(m.V0!)) / TURN.degree).toBeCloseTo(v.joinTurn, 9);
+    expect(signedArcSweep(m.V0!) / TURN.degree).toBeCloseTo(v.V0Sweep, 9);
+    const q = withViol();
+    q.bouts!.viol!.neckRadius = 4;
+    const fillet = solveMainBouts(q)!.violCap!.fillet!;
+    expect(normalizeRadians(fillet.end - fillet.start) / TURN.degree).toBeCloseTo(v.joinTurn, 9);
   });
 
   it('closes the neck under the rib box\'s head, with or without a join radius', () => {

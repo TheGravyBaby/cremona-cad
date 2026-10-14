@@ -74,8 +74,8 @@
                         (focus)="highlight('U31', pal.ink(4))" (blur)="highlight(null)" />
                 </label>
                 <label class="field-cell">
-                    <span class="field-title">Split Angle <span class="unit-label">°</span></span>
-                    <input type="number" class="basic-input" step="1" [(ngModel)]="k.U31Start" (input)="edited()"
+                    <span class="field-title">U31 Sweep <span class="unit-label">°</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="k.U31Sweep" (input)="edited()"
                         (focus)="highlight('U31', pal.ink(4))" (blur)="highlight(null)" />
                 </label>
                 <label class="field-cell">
@@ -153,8 +153,8 @@
                         (focus)="highlight('L31', pal.ink(2))" (blur)="highlight(null)" />
                 </label>
                 <label class="field-cell">
-                    <span class="field-title">Split Angle <span class="unit-label">°</span></span>
-                    <input type="number" class="basic-input" step="1" [(ngModel)]="k.L31Start" (input)="edited()"
+                    <span class="field-title">L31 Sweep <span class="unit-label">°</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="k.L31Sweep" (input)="edited()"
                         (focus)="highlight('L31', pal.ink(2))" (blur)="highlight(null)" />
                 </label>
                 <label class="field-cell">

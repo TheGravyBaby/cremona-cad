@@ -83,7 +83,7 @@ export const FIELD_HELP = {
     title: "Compound Arc",
     text:
       "A compound arc splits one corner arc into two, joined end-to-end. This allows more pronounced corner than a single arc permits.\n\n" +
-      "Radius 2 is the secondary arc, typically smaller than the primary. The split angle sets the transition point between them.",
+      "Radius 2 is the secondary arc, typically smaller than the primary. The sweep is how far the second arc turns, in degrees, from where it takes over to the corner.",
   },
   purfling: {
     title: "Purfling",

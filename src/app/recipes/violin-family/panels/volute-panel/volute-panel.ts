@@ -56,16 +56,16 @@ export class VolutePanel implements ViolinFamilyPanel, OnInit {
       pitch: Math.round(1.9 * eyeRadius * 10) / 10,
       seedLength: eyeRadius,
       arcRadii: kellyArcs(eyeRadius, eyeRadius).reverse().map(a => Math.round(a.r * 100) / 100),
-      S0R: mm(21), S0End: 80,
-      S1R: mm(28), S1End: 165,
-      S2R: mm(35), S2End: 215,
+      S0R: mm(21), S0Sweep: 80,
+      S1R: mm(28), S1Sweep: 85,
+      S2R: mm(35), S2Sweep: 50,
       backStraight: mm(25),
       S3R: mm(35),
       hang: 0,
       napeR: mm(10),
       napeCircle: false,
       flat: 0,
-      F0R: mm(60), F0End: 45,
+      F0R: mm(60), F0Sweep: 45,
       frontStraight: mm(18),
       F1R: mm(9),
       // placeholders about a Stradivari head, to be set from the scroll being copied: hips a little
@@ -492,20 +492,20 @@ export function solveVolute(p: ViolinFamilyParams): ScrollSolve | null {
   });
   if (!s.spiral) return s;
 
-  // S0 and S1 run on tangent from the spiral's front, each to its own end angle
+  // S0 and S1 run on tangent from the spiral's front, each through its own sweep
   solveSection(s.failures, 'Back', BACK_KEYS, () => {
     let outer = s.spiral![0];
     let joint = pointOnCircle(outer, outer.end);
-    let S0End = v.S0End * TURN.degree;
+    let S0End = v.S0Sweep * TURN.degree;
     if (!(v.S0R > 0) || !(S0End > 0) || S0End > TURN.full) return badArc('Back', 'S0', v.S0R, BACK_KEYS);
     let S0 = placeCircleOnPointAtAngle(v.S0R, joint, 0);
     s.S0 = new Arc(S0.x, S0.y, S0.r, 0, S0End);
     joint = pointOnCircle(s.S0, S0End);
 
-    let S1End = v.S1End * TURN.degree;
-    if (!(v.S1R > 0) || !(S1End > S0End) || S1End - S0End > TURN.full) return badArc('Back', 'S1', v.S1R, BACK_KEYS.slice(1));
+    let S1Sweep = v.S1Sweep * TURN.degree;
+    if (!(v.S1R > 0) || !(S1Sweep > 0) || S1Sweep > TURN.full) return badArc('Back', 'S1', v.S1R, BACK_KEYS.slice(1));
     let S1 = placeCircleOnPointAtAngle(v.S1R, joint, S0End);
-    s.S1 = new Arc(S1.x, S1.y, S1.r, S0End, S1End);
+    s.S1 = new Arc(S1.x, S1.y, S1.r, S0End, S0End + S1Sweep);
     return null;
   });
   return s;

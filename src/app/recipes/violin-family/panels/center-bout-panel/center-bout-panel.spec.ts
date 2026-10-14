@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { OuterContourPanel, solveOuterContourRatios } from '../outer-contour-panel/outer-contour-panel';
 import { FHolePlacementPanel, solveFholePlacementRatios } from '../fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel, solveFholeContoursRatios } from '../fhole-contours-panel/fhole-contours-panel';
-import { dist, pointOnCircle } from '../../../../helpers/math/simpleGeometry';
+import { dist, pointOnCircle, signedArcSweep, TURN } from '../../../../helpers/math/simpleGeometry';
 import { Arc } from '../../../../models/types';
 import { solveCenterBout, solveCenterBoutRatios } from './center-bout-panel';
 import { CornersPanel, solveCorners, solveCornersRatios } from '../corners-panel/corners-panel';
@@ -60,8 +60,10 @@ describe('the center bout solve', () => {
     expect(b.useKellyC0).toBe(false);
     const k = seeded().corners!;
     for (const key of ['C2R', 'C21R', 'C1R', 'C11R'] as const) expect(k[key]).toBeGreaterThan(0);
-    expect(k.C21Start).toBeLessThan(180);
-    expect(k.C11Start).toBeGreaterThan(180);
+    for (const sweep of [k.C21Sweep, k.C11Sweep]) {
+      expect(sweep).toBeGreaterThan(0);
+      expect(sweep).toBeLessThan(90);
+    }
   });
 
   it('leaves the corners\' own arcs as the corners solved them', () => {
@@ -183,10 +185,17 @@ describe('a compound C bout corner', () => {
     expect(dist(end(cb.C0!), start(cb.C1!))).toBeCloseTo(0, MEETS);
   });
 
-  it('moves the handover when the split is retyped', () => {
+  it('turns each second arc through the typed sweep onto its tip: C21 clockwise, C11 counterclockwise', () => {
+    expect(Math.abs(signedArcSweep(cb.C21!)) / TURN.degree).toBeCloseTo(k.C21Sweep, MEETS);
+    expect(Math.abs(signedArcSweep(cb.C11!)) / TURN.degree).toBeCloseTo(k.C11Sweep, MEETS);
+    expect(signedArcSweep(cb.C21!)).toBeLessThan(0);
+    expect(signedArcSweep(cb.C11!)).toBeGreaterThan(0);
+  });
+
+  it('moves the handover when the sweep is retyped', () => {
     const q = seeded();
     q.corners!.C11DoubleArc = true;
-    q.corners!.C11Start += 10;
+    q.corners!.C11Sweep += 10;
     const moved = solveCenterBout(q)!;
     expect(moved.failures).toEqual([]);
     expect(dist(start(moved.C11!), start(cb.C11!))).toBeGreaterThan(0.1);
@@ -303,6 +312,6 @@ describe('ratios', () => {
     FHoleContoursPanel.seed(p);
     const keys = Object.keys({ ...solveFholePlacementRatios(p), ...solveFholeContoursRatios(p) }).sort();
     // the angles ride on the seed as well; they are params already, so nothing reads them back
-    expect(keys).toEqual(Object.keys(FHOLE_SEED_RATIOS).filter(k => !/End$|Angle$|Cut(At|Slope)$/.test(k)).sort());
+    expect(keys).toEqual(Object.keys(FHOLE_SEED_RATIOS).filter(k => !/Sweep$|Angle$|Cut(At|Slope)$/.test(k)).sort());
   });
 });

@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompound } from '../../../../helpers/math/draftMath';
+import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompoundBySweep } from '../../../../helpers/math/draftMath';
 import { dist, flipArcAboutY, offsetArcRadius, TURN } from '../../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCrosshair, renderDashedLine, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
@@ -285,13 +285,13 @@ export function solveCenterBout(p: ViolinFamilyParams): CenterBoutSolve | null {
   solveSection(s.failures, 'Upper corner', ['C0', 'C2', 'C21'], () => {
     let C0 = placed;
     if (!C0) return null;
-    let missing = blank('Upper corner', ['C0', 'C2', 'C21'], [k.UCr.x, k.UCr.y, k.C2R, ...(k.C21DoubleArc ? [k.C21R, k.C21Start] : [])]);
+    let missing = blank('Upper corner', ['C0', 'C2', 'C21'], [k.UCr.x, k.UCr.y, k.C2R, ...(k.C21DoubleArc ? [k.C21R, k.C21Sweep] : [])]);
     if (missing) return missing;
     if (k.C21DoubleArc) {
-      let C2r = k.C2R
-      let C21r = k.C21R
-      let theta = k.C21Start * TURN.degree
-      let compoundCircles = interceptCirclesAndPointCompound(C0, k.UCr, C2r, C21r, theta).sort((a, b) => a.C1.y - b.C1.y)[0];
+      // drawn from C0 out to its tip, the upper corner turns clockwise and the lower
+      // counterclockwise; the second arc turns through the typed sweep onto the tip
+      let sweep = -k.C21Sweep * TURN.degree;
+      let compoundCircles = interceptCirclesAndPointCompoundBySweep(C0, k.UCr, k.C2R, k.C21R, sweep).sort((a, b) => a.C1.y - b.C1.y)[0];
       if (!compoundCircles)
         return cornerMiss('Upper corner', 'C0', C0, 'C2', k.UCr, true, ['C0', 'C2', 'C21'])
       CUIntercept = circleCircleIntersections(compoundCircles.C1, C0)[1]
@@ -313,13 +313,11 @@ export function solveCenterBout(p: ViolinFamilyParams): CenterBoutSolve | null {
   solveSection(s.failures, 'Lower corner', ['C0', 'C1', 'C11'], () => {
     let C0 = placed;
     if (!C0) return null;
-    let missing = blank('Lower corner', ['C0', 'C1', 'C11'], [k.LCr.x, k.LCr.y, k.C1R, ...(k.C11DoubleArc ? [k.C11R, k.C11Start] : [])]);
+    let missing = blank('Lower corner', ['C0', 'C1', 'C11'], [k.LCr.x, k.LCr.y, k.C1R, ...(k.C11DoubleArc ? [k.C11R, k.C11Sweep] : [])]);
     if (missing) return missing;
     if (k.C11DoubleArc) {
-      let C1r = k.C1R
-      let C11r = k.C11R
-      let theta = k.C11Start * TURN.degree
-      let compoundCircles = interceptCirclesAndPointCompound(C0, k.LCr, C1r, C11r, theta).sort((a, b) => a.C1.y - b.C1.y)[1];
+      let sweep = k.C11Sweep * TURN.degree;
+      let compoundCircles = interceptCirclesAndPointCompoundBySweep(C0, k.LCr, k.C1R, k.C11R, sweep).sort((a, b) => a.C1.y - b.C1.y)[1];
       if (!compoundCircles)
         return cornerMiss('Lower corner', 'C0', C0, 'C1', k.LCr, true, ['C0', 'C1', 'C11'])
       CLIntercept = circleCircleIntersections(compoundCircles.C1, C0)[1]

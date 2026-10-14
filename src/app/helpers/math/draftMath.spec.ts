@@ -1,6 +1,6 @@
 // @vitest-environment node
-import { arcBetweenTravels, arcContinuingFrom, fitArcFromEndsAndCenter, fitArcThroughPoints, interceptCirclesAndPoint } from './draftMath';
-import { angleFromCenter, angleWithinSweep, normalizeRadians, pointOnCircle, travelAtArcEnd } from './simpleGeometry';
+import { arcBetweenTravels, arcContinuingFrom, fitArcFromEndsAndCenter, fitArcThroughPoints, interceptCirclesAndPoint, interceptCirclesAndPointCompound, interceptCirclesAndPointCompoundBySweep } from './draftMath';
+import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, pointOnCircle, signedRadianDelta, travelAtArcEnd } from './simpleGeometry';
 import { Circle } from '../../models/types';
 
 describe('arcBetweenTravels', () => {
@@ -66,6 +66,32 @@ describe('interceptCirclesAndPoint', () => {
 function span(fit: { startAngle: number; endAngle: number }): number {
   return normalizeRadians(fit.endAngle - fit.startAngle);
 }
+
+describe('interceptCirclesAndPointCompoundBySweep', () => {
+  const deg = (d: number) => d * Math.PI / 180;
+  const L = new Circle(0, 0, 60);
+  const P = { x: 64, y: 48 };
+
+  it('turns the second circle through the sweep from its handover to the point, and lands where its twin would', () => {
+    for (const sweep of [deg(20), deg(-20), deg(60), deg(-90)]) {
+      const pairs = interceptCirclesAndPointCompoundBySweep(L, P, 35, 12, sweep);
+      expect(pairs.length).toBeGreaterThan(0);
+      for (const { C1, C2 } of pairs) {
+        expect(dist(L, C1)).toBeCloseTo(L.r + C1.r, 9);
+        expect(dist(C1, C2)).toBeCloseTo(C1.r - C2.r, 9);
+        expect(dist(C2, P)).toBeCloseTo(C2.r, 9);
+        const handover = angleFromCenter(C1, C2);
+        expect(signedRadianDelta(angleFromCenter(C2, P) - handover)).toBeCloseTo(sweep, 9);
+        const twin = interceptCirclesAndPointCompound(L, P, 35, 12, handover);
+        expect(twin.some(t => dist(t.C1, C1) < 1e-6 && dist(t.C2, C2) < 1e-6)).toBe(true);
+      }
+    }
+  });
+
+  it('returns no solutions when the point is out of reach, rather than NaN centres', () => {
+    expect(interceptCirclesAndPointCompoundBySweep(L, { x: 400, y: 0 }, 35, 12, deg(30))).toEqual([]);
+  });
+});
 
 describe('fitArcThroughPoints', () => {
   it('returns the circle through all three points, swept so it contains the through point', () => {

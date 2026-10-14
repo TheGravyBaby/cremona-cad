@@ -217,6 +217,26 @@ export function interceptCirclesAndPointCompound(L: Circle, P: Pt, Cr1: number, 
   });
 }
 
+// the compound pair placed by how far C2 turns rather than where it takes over: `sweep` is the
+// signed turn round C2, counterclockwise positive, from its tangency with C1 to P. From C1's
+// centre, C2's centre and then P are two fixed legs that turn together, so C1 sits a fixed
+// distance from P as well as from L: closed form, no search. Equal radii make one circle, with
+// no handover to find
+export function interceptCirclesAndPointCompoundBySweep(L: Circle, P: Pt, Cr1: number, Cr2: number, sweep: number): { C1: Circle; C2: Circle }[] {
+  if (Math.abs(Cr1 - Cr2) < 1e-9) return [];
+  const pInsideL = dist(L, P) < L.r;
+  const R1 = pInsideL ? L.r - Cr1 : L.r + Cr1;
+  const k = Cr1 - Cr2;
+  const w: Pt = { x: k + Cr2 * Math.cos(sweep), y: Cr2 * Math.sin(sweep) };
+  const rho = Math.hypot(w.x, w.y);
+  const psi = Math.atan2(w.y, w.x);
+
+  return circleCircleIntersections(new Circle(L.x, L.y, R1), new Circle(P.x, P.y, rho)).map(c1 => {
+    const theta = angleFromCenter(c1, P) - psi;
+    return { C1: { ...c1, r: Cr1 }, C2: { ...pointOnCircle({ ...c1, r: k }, theta), r: Cr2 } };
+  });
+}
+
 // good math provided here
 // https://www.reddit.com/r/Geometry/comments/1k6slsb/how_do_i_create_this_orange_arc_so_that_it_is/
 export function findJoiningCircleFromCircleAndPoint(U: Circle, P: Pt): Circle {
