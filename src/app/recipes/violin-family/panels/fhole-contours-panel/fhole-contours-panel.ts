@@ -16,7 +16,7 @@ import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
-  FholeArcKey, FholeContoursSolve, FholeFailure, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey,
+  FHOLE_SEED_RATIOS, FholeArcKey, FholeContoursSolve, FholeFailure, FholeRatios, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey,
   ViolinFamilyViewFlags,
 } from '../../violin-family-types';
 import { renderBoutBounds } from '../main-bouts-panel/main-bouts-panel';
@@ -48,26 +48,29 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
   static seed(p: ViolinFamilyParams): void {
     if (p.fHoleContours || !p.fHoles) return;
     let f = p.fHoles;
-    let stemArcR = Math.round(f.LEye.r * FStemArctoLEye);
+    let r = FHOLE_SEED_RATIOS;
+    // the cuts to the quarter millimetre, as the field steps them
+    let quarter = (v: number) => Math.round(v * 4) / 4;
+    let stemArcR = Math.round(f.LEye.r * r.StoLEye);
     p.fHoleContours = {
-      U1R: Math.round(f.UEye.r * FShtoEye),
-      U1End: 90,
-      U2R: Math.round(f.UEye.r * FArmtoEye),
+      U1R: Math.round(f.UEye.r * r.U1toUEye),
+      U1End: r.U1End,
+      U2R: Math.round(f.UEye.r * r.U2toUEye),
       U21DoubleArc: false,
-      U21R: Math.round(f.UEye.r * FArmtoEye),
+      U21R: Math.round(f.UEye.r * r.U2toUEye),
       U21Start: 0,
-      U3R: Math.round(f.UEye.r * FArmtoEye),
-      U3End: FUWingEnd,
-      UCut: { angleOnEye: FUCutAt, slope: FUCutSlope, length: f.UEye.r },
-      L1R: Math.round(f.LEye.r * FShtoEye),
-      L1End: -90,
-      L2R: Math.round(f.LEye.r * FArmtoEye),
+      U3R: Math.round(f.UEye.r * r.U3toUEye),
+      U3End: r.U3End,
+      UCut: { angleOnEye: r.UCutAt, slope: r.UCutSlope, length: quarter(f.UEye.r * r.UCuttoUEye) },
+      L1R: Math.round(f.LEye.r * r.L1toLEye),
+      L1End: r.L1End,
+      L2R: Math.round(f.LEye.r * r.L2toLEye),
       L21DoubleArc: false,
-      L21R: Math.round(f.LEye.r * FArmtoEye),
+      L21R: Math.round(f.LEye.r * r.L2toLEye),
       L21Start: 0,
-      L3R: Math.round(f.LEye.r * FArmtoEye),
-      L3End: FLWingEnd,
-      LCut: { angleOnEye: FLCutAt, slope: FLCutSlope, length: f.LEye.r },
+      L3R: Math.round(f.LEye.r * r.L3toLEye),
+      L3End: r.L3End,
+      LCut: { angleOnEye: r.LCutAt, slope: r.LCutSlope, length: quarter(f.LEye.r * r.LCuttoLEye) },
       stemArcR,
       stemArcsIndependent: false,
       S1R: stemArcR,
@@ -133,17 +136,6 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
     });
   }
 }
-
-// off a traced Amati, nice historical defaults
-const FShtoEye = 5 / 2;
-const FArmtoEye = 3;
-const FStemArctoLEye = 8;
-const FUWingEnd = 180 * 4 / 9;
-const FLWingEnd = 180 * -19 / 36;
-const FUCutAt = 60;
-const FLCutAt = 240;
-const FUCutSlope = 60;
-const FLCutSlope = -120;
 
 // the hole's arcs in their own inks on this panel, each eye drawn as the arc that is left of it
 // between its shoulder and its cut, the two straight runs along the stem between the stem arcs,
@@ -534,4 +526,24 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
   // a half-solved hole won't close
   if (!s.failures.length) s.path = fholePath(p, s, false);
   return s;
+}
+
+// each arc read back against the eye it springs from, as the seed drew it; the stem arcs read as
+// one radius, or their mean once set free
+export function solveFholeContoursRatios(p: ViolinFamilyParams): Partial<FholeRatios> {
+  let f = p.fHoles;
+  let k = p.fHoleContours;
+  if (!f || !k) return {};
+  let stem = k.stemArcsIndependent ? (k.S1R + k.S2R + k.S3R + k.S4R) / 4 : k.stemArcR;
+  return {
+    U1toUEye: k.U1R / f.UEye.r,
+    U2toUEye: k.U2R / f.UEye.r,
+    U3toUEye: k.U3R / f.UEye.r,
+    UCuttoUEye: k.UCut.length / f.UEye.r,
+    L1toLEye: k.L1R / f.LEye.r,
+    L2toLEye: k.L2R / f.LEye.r,
+    L3toLEye: k.L3R / f.LEye.r,
+    LCuttoLEye: k.LCut.length / f.LEye.r,
+    StoLEye: stem / f.LEye.r,
+  };
 }

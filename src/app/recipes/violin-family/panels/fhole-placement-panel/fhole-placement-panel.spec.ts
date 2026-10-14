@@ -5,7 +5,7 @@ import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS, ViolinFamilyParams } from '../../violin-family-types';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS, FHOLE_SEED_RATIOS, ViolinFamilyParams } from '../../violin-family-types';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
 
@@ -79,8 +79,17 @@ describe('the f-hole placement', () => {
   it('reads the eyes against the body and each other', () => {
     const p = placed();
     const r = solveFholePlacementRatios(p);
-    expect(r.FLtoW).toBeCloseTo(p.fHoles!.LEye.r / p.body.width, 12);
-    expect(r.FUtoL).toBeCloseTo(p.fHoles!.UEye.r / p.fHoles!.LEye.r, 12);
+    expect(r.LEyetoW).toBeCloseTo(p.fHoles!.LEye.r / p.body.width, 12);
+    expect(r.UEyetoLEye).toBeCloseTo(p.fHoles!.UEye.r / p.fHoles!.LEye.r, 12);
     expect(solveFholePlacementRatios(blank())).toEqual({});
+  });
+
+  // the seed rounds each value to a hundredth, so a fresh draft reads back its seed fractions to
+  // within that rounding and no further
+  it('reads a fresh draft back at its seed fractions', () => {
+    const r = solveFholePlacementRatios(placed());
+    for (const key of ['UEyetoLEye', 'URisetoUEye', 'LRisetoLEye', 'StemXtoFrame', 'StemYtoFrame', 'StemWtoUEye', 'LEyeXtoLCX', 'LEyeYtoLCY', 'EyeSpantoWaist'] as const)
+      expect(r[key], key).toBeCloseTo(FHOLE_SEED_RATIOS[key], 1);
+    expect(r.UEyeGuidetoWaist!).toBeCloseTo(FHOLE_SEED_RATIOS.UEyeGuidetoWaist, 1);
   });
 });
