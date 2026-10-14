@@ -771,9 +771,10 @@ export interface ViolinFamilyRatios {
 // the f-holes' proportions, named the same way. The lower eye is drawn from the body's width and
 // everything after it from an eye: the placement guides (the lower eye in from the lower corner;
 // the upper eye where a circle about the lower eye, through the waist, meets one about the waist),
-// the rises, the stem's seat in the frame the eyes and rises carve out, then each contour arc
-// against the eye it springs from and each cut's length. The stem arcs read as one radius, or
-// their mean once set free
+// the rises, the stem's seat in the frame the eyes and rises carve out, and each cut's length
+// against its eye. The contours describe how smooth the curve is: the stem arc is the largest,
+// set against the eye span (the hole's own length), and every shoulder, arm and wing is a
+// fraction of it. The stem arcs read as one radius, or their mean once set free
 export interface FholeRatios {
   LEyetoW: number;
   UEyetoLEye: number;
@@ -786,15 +787,15 @@ export interface FholeRatios {
   StemXtoFrame: number;
   StemYtoFrame: number;
   StemWtoUEye: number;
-  U1toUEye: number;
-  U2toUEye: number;
-  U3toUEye: number;
   UCuttoUEye: number;
-  L1toLEye: number;
-  L2toLEye: number;
-  L3toLEye: number;
   LCuttoLEye: number;
-  StoLEye: number;
+  StoEyeSpan: number;
+  U1toS: number;
+  U2toS: number;
+  U3toS: number;
+  L1toS: number;
+  L2toS: number;
+  L3toS: number;
 }
 
 // the one instrument the app drafts from nothing: a height, and the ratios every outline value is
@@ -850,15 +851,15 @@ export const FHOLE_SEED_RATIOS: FholeRatios & {
   StemXtoFrame: 5 / 12,
   StemYtoFrame: 1 / 2,
   StemWtoUEye: 2,
-  U1toUEye: 8 / 3,
-  U2toUEye: 4,
-  U3toUEye: 16 / 3,
   UCuttoUEye: 2,
-  L1toLEye: 2,
-  L2toLEye: 3,
-  L3toLEye: 17 / 4,
   LCuttoLEye: 8 / 5,
-  StoLEye: 8,
+  StoEyeSpan: 5 / 8,
+  U1toS: 1 / 5,
+  U2toS: 3 / 10,
+  U3toS: 2 / 5,
+  L1toS: 1 / 4,
+  L2toS: 3 / 8,
+  L3toS: 1 / 2,
   U1End: 60,
   U3End: 50,
   UCutAt: 70,
