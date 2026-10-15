@@ -50,8 +50,12 @@ export class MainBoutsPanel implements ViolinFamilyPanel, OnInit {
 
       let CBW = Math.round(LBW * SEED_RATIOS.CBWtoLBW);
       let C0R = Math.round(LBWI * SEED_RATIOS.C0toLBW);
-      let C0Y = Math.round(p.body.height * SEED_RATIOS.C0YtoH);
-
+      
+      // we want the midpoint between the upper and lower bout box
+      let upperBoutLow = p.body.height - UBW
+      let lowerBoutHigh = p.body.width
+      let C0Y = lowerBoutHigh + (upperBoutLow - lowerBoutHigh) / 2 
+      
       p.bouts = { UBW, U0R, U1R, L0R, L1R, useViolNeck: false, viol: null, CBW, C0R, C0Y, useKellyC0: false };
     }
 

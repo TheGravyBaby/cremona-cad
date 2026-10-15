@@ -237,7 +237,7 @@ export function defaultCornerTips(p: ViolinFamilyParams): { UCr: Pt; LCr: Pt } |
   let lgH = p.body.height * SEED_RATIOS.LCYtoH
   let LCr = lineCircleIntersection(lineFromPointAndSlope({ x: 0, y: lgH }, 0), lgC).sort((a, b) => a.x - b.x)[1]
 
-  let ugPt = new Pt(-UBW / 2, m.U1.y);
+  let ugPt = new Pt(-UBW / 2 + inset, m.U1.y);
   let ugC = new Circle(ugPt.x, ugPt.y, UBW) // scaler to make it a bit wider
   let ugH = p.body.height * SEED_RATIOS.UCYtoH
   let UCr = lineCircleIntersection(lineFromPointAndSlope({ x: 0, y: ugH }, 0), ugC).sort((a, b) => a.x - b.x)[1]

@@ -24,7 +24,6 @@ export interface ViolinFamilyRatios {
   LCYtoH: number;
   CBWtoLBW: number;
   C0toLBW: number;
-  C0YtoH: number;
   C2toLBW: number;
   C21toLBW: number;
   C1toLBW: number;
@@ -39,7 +38,7 @@ export interface ViolinFamilyRatios {
 // the rises, the stem's seat in the frame the eyes and rises carve out, and each cut's length
 // against its eye. The contours describe how smooth the curve is: the stem arc is the largest,
 // set against the eye span (the hole's own length), and every shoulder, arm and wing is a
-// fraction of it. The four stem arcs share one radius
+// fraction of it. The stem arcs read as one radius, or their mean once set free
 export interface FholeRatios {
   LEyetoW: number;
   UEyetoLEye: number;
@@ -81,10 +80,9 @@ export const SEED_RATIOS: ViolinFamilyRatios & { height: number } = {
   L3toLBW: 1 / 8,
   L31toLBW: 1 / 16,
   UCYtoH: 23 / 36,
-  LCYtoH: 6 / 15,
-  CBWtoLBW: 1 / 2,
+  LCYtoH: 5 / 12,
+  CBWtoLBW: 8 / 15,
   C0toLBW: 1 / 2,
-  C0YtoH: 9 / 16,
   C2toLBW: 1 / 12,
   C21toLBW: 1 / 16,
   C1toLBW: 1 / 8,
@@ -108,15 +106,15 @@ export const FHOLE_SEED_RATIOS: FholeRatios & {
   UEyetoLEye: 5 / 8,
 
   LEyeXtoLCX: 2 / 3, // these numbers do not really capture accurately how eyes were placed
-  LEyeYtoLCY: 14 / 15, // they do work cosmetically though
-  UEyeGuidetoWaist: 4 / 7,
+  LEyeYtoLCY: 14.2 / 15, // they do work cosmetically though
+  UEyeGuidetoWaist: 4.2 / 7,
 
   // a very simple scaler that sets the eye gap
   // what we really need is a better theory on eye placement
   // rather than a BS number I pulled out of a hat
   // but for now this produces good looking results
   // fake it till u make it baybee
-  EyeSpantoWaist: .95, 
+  EyeSpantoWaist: 1, 
   URisetoUEye: 5 / 3,
   LRisetoLEye: 11 / 8,
   StemXtoFrame: 5 / 12,

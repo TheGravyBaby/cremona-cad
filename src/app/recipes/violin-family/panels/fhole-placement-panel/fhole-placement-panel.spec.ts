@@ -91,39 +91,46 @@ describe('the f-hole placement', () => {
     expect(stemEdgeAt(stem, outer, stem.center.y).x - stemEdgeAt(stem, inner, stem.center.y).x).toBeGreaterThan(stem.width);
   });
 
-  it('cuts a notch into each stem edge off the perpendicular through the stem centre, the inner below it and the outer above, sized by the stem width', () => {
+  it('centres the inner notch on the stop line and strikes the outer from the lower wing tip through it, sized by the stem width', () => {
     const p = placed();
     const f = p.fHoles!;
     f.stem.angle = 94;
+    const c = f.stem.center;
     const angle = f.stem.angle * TURN.degree;
     const along = (a: Pt, b: Pt) => (b.x - a.x) * Math.cos(angle) + (b.y - a.y) * Math.sin(angle);
     const across = (a: Pt, b: Pt) => (b.x - a.x) * Math.sin(angle) - (b.y - a.y) * Math.cos(angle);
     const mid = (n: { top: Pt; bottom: Pt }) => new Pt((n.top.x + n.bottom.x) / 2, (n.top.y + n.bottom.y) / 2);
     const depthOf = (n: { top: Pt; apex: Pt; bottom: Pt }) => across(mid(n), n.apex);
-    const { inner, outer } = fholeNotches(f);
-    // one corner of each mouth is where the perpendicular through the centre meets its edge
     const edges = stemEdgePoints(f.stem);
-    expect(dist(inner.top, edges.inner)).toBeLessThan(1e-9);
-    expect(dist(outer.bottom, edges.outer)).toBeLessThan(1e-9);
-    // the inner notch hangs below the perpendicular, the outer stands above it
-    expect(along(inner.top, inner.bottom)).toBeLessThan(0);
-    expect(along(outer.bottom, outer.top)).toBeGreaterThan(0);
-    expect(dist(outer.top, outer.bottom)).toBeCloseTo(dist(inner.top, inner.bottom), 9);
-    for (const [n, side] of [[inner, -1], [outer, 1]] as const) {
+    // the lower wing's tip sits below the stem, just outside its outer edge
+    const tip = new Pt(stemEdgeAt(f.stem, edges.outer, c.y - 20).x + 3, c.y - 20);
+    const { inner, outer } = fholeNotches(f, tip);
+    expect(outer).not.toBeNull();
+    // the inner notch is centred where the stop line crosses the inner edge
+    expect(mid(inner).y).toBeCloseTo(c.y, 9);
+    expect(dist(mid(inner), stemEdgeAt(f.stem, edges.inner, c.y))).toBeLessThan(1e-9);
+    // the outer is centred on the outer edge, as far from the tip as the inner mark is, and higher
+    expect(across(edges.outer, mid(outer!))).toBeCloseTo(0, 9);
+    expect(dist(tip, mid(outer!))).toBeCloseTo(dist(tip, mid(inner)), 9);
+    expect(mid(outer!).y).toBeGreaterThan(mid(inner).y);
+    for (const [n, side] of [[inner, -1], [outer!, 1]] as const) {
       // the mouth runs along the edge, the apex midway along it and square out into the wood
       expect(across(n.top, n.bottom)).toBeCloseTo(0, 9);
+      expect(along(n.bottom, n.top)).toBeGreaterThan(0);
       expect(along(mid(n), n.apex)).toBeCloseTo(0, 9);
       expect(side * depthOf(n)).toBeGreaterThan(0);
       // shallow: well under half as deep as the mouth is long
       expect(Math.abs(depthOf(n))).toBeLessThan(dist(n.top, n.bottom) / 2);
     }
-    expect(depthOf(outer)).toBeCloseTo(-depthOf(inner), 9);
+    expect(dist(outer!.top, outer!.bottom)).toBeCloseTo(dist(inner.top, inner.bottom), 9);
+    // no tip, no outer notch
+    expect(fholeNotches(f, null).outer).toBeNull();
 
-    const depth = depthOf(outer);
+    const depth = depthOf(inner);
     f.UEye.r *= 2;
-    expect(depthOf(fholeNotches(f).outer)).toBeCloseTo(depth, 9);
+    expect(depthOf(fholeNotches(f, tip).inner)).toBeCloseTo(depth, 9);
     f.stem.width *= 2;
-    expect(depthOf(fholeNotches(f).outer)).toBeCloseTo(2 * depth, 9);
+    expect(depthOf(fholeNotches(f, tip).inner)).toBeCloseTo(2 * depth, 9);
   });
 
   it('reads the eyes against the body and each other', () => {
