@@ -167,23 +167,19 @@ export const renderNeck = (
       hidden(pointOnCircle(heel, heel.start), backHeel);
       hidden(backHeel, pointOnCircle(heel, heel.end));
     }
-    if (opts.guides) {
-      seg(n.neckTop, n.backNut, pal.ink(2).faint(3));
-      seg(frontHeel, backHeel, pal.ink(2).faint(-3));
-    }
   }
   seg(n.bottomFront, n.root, ink(pal.ink(2)));
   seg(n.root, n.neckTop, ink(pal.ink(2)));
 
-  if (!opts.guides || !n.plateEdge) return;
+  if (!opts.guides) return;
   let rootPlaneY = h - p.body.overhang;
   // offsets scale with the neck's own thickness, so the dimensions clear a cello neck as a violin's
-  renderGuideMeasure(n.plateEdge, n.root, pal.neutral, -nk.upperThickness)(g, ui);
+  if (n.plateEdge) renderGuideMeasure(n.plateEdge, n.root, pal.neutral, -nk.upperThickness)(g, ui);
   renderGuideBaseline(new Pt(0, rootPlaneY), new Pt(n.bottomFront.x, rootPlaneY), pal.neutral)(g, ui);
   renderGuideMeasure(new Pt(n.bottomFront.x, rootPlaneY), n.bottomFront, pal.neutral, 2 * nk.upperThickness)(g, ui);
   renderGuideMeasure(n.bottomFront, n.neckTop, pal.neutral, -2 * nk.upperThickness)(g, ui);
-  renderGuideMeasure(n.neckTop, n.backNut, pal.neutral, nk.upperThickness / 2)(g, ui);
-  renderGuideMeasure(frontHeel, backHeel, pal.neutral, -nk.upperThickness / 2)(g, ui);
+  renderGuideMeasure(n.neckTop, n.backNut, pal.neutral)(g, ui);
+  renderGuideMeasure(frontHeel, backHeel, pal.neutral)(g, ui);
 };
 
 // the halo behind whatever the focused field measures, in the view that shows it: the widths in
@@ -195,7 +191,7 @@ const renderNeckHighlight = (
   view: 'side' | 'front',
   backDx: number | null = null,
 ) => (g: any, ui: any): void => {
-  if (!highlighted || !n.root || !n.neckTop || !n.backNut || !n.bottomFront || !n.lowerThickness || !n.tip || !n.plateEdge) return;
+  if (!highlighted || !n.root || !n.neckTop || !n.backNut || !n.bottomFront || !n.lowerThickness || !n.tip) return;
   let { key, color } = highlighted;
   if ((key === 'topWidth' || key === 'rootWidth') !== (view === 'front')) return;
   let nk = p.neck!;
@@ -214,7 +210,7 @@ const renderNeckHighlight = (
     case 'heel': if (n.heel) renderArcHalo(n.heel, color)(g, ui); break;
     case 'buttonHeight': line(new Pt(0, p.body.height), n.tip); break;
     case 'mortise': line(new Pt(0, p.body.height - p.body.overhang), new Pt(0, floorY)); break;
-    case 'overstand': line(n.plateEdge, n.root); break;
+    case 'overstand': if (n.plateEdge) line(n.plateEdge, n.root); break;
     case 'angle': line(n.root, n.neckTop); break;
   }
 };
@@ -370,6 +366,7 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
     let direction = vectorFromSlope(angle + TURN.quarter);
     let normal = vectorFromSlope(angle);
     let floorY = mortiseFloorY(p);
+    s.plateEdge = placeOnTopPlate(placement, new Pt(outerZ, h));
     s.plateAtMortise = new Pt(ribHeightAt(p, floorY, a.ribs) + p.arching!.top.thickness, floorY); // note the plates are likely tapered, so we take the rib height at that Y then add the plate thickness
     let root = s.root = placeOnTopPlate(placement, new Pt(outerZ + nk.overstand, h));
     let fingerboardPlane = lineFromTwoPoints(root, moveInVectorSpace(root, [{ ...direction, mag: 1 }]));

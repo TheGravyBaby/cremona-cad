@@ -107,10 +107,6 @@ export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
   }
 }
 
-// the bridge's blank, drawn as a wedge: how much narrower the feet are than its height, and the top
-// than the feet
-const BRIDGE_FOOT_HALF_WIDTH_RATIO = 0.07;
-const BRIDGE_TOP_TO_FOOT_WIDTH_RATIO = 1 / 3;
 const FINGERBOARD_CROWN_SAMPLES = 24;
 const FINGERBOARD_CROWN_OPACITY = 0.45;
 // how many semitones up the string to mark, and how far each tick reaches either side of it. Plain
@@ -134,8 +130,7 @@ export const renderStringSetup = (
   let up = vectorFromSlope(p.neck!.angle * TURN.degree + TURN.quarter);
   let normal = vectorFromSlope(p.neck!.angle * TURN.degree);
 
-  let wedge = bridgeWedge(s);
-  if (wedge) renderPolygon(wedge, pal.ink(1), STROKE_WEIGHT.section)(g, ui);
+  if (s.bridge) renderPolygon(s.bridge, pal.ink(1), STROKE_WEIGHT.section)(g, ui);
 
   if (opts.fingerboard && s.fingerboardEnd) {
     // the board's edges solid, the crown above them faded so the two read apart
@@ -224,15 +219,12 @@ const renderStringSetupFrontView = (
   let plate = cut(o.top);
   let lines = [o.purfling, o.outerPurfling, ...fHoles].map(cut);
 
+  // from above, the feet
   let bridge: Pt[] | null = null;
-  let wedge = bridgeWedge(s);
-  if (wedge) {
-    let halfDepth = dist(wedge[0], wedge[1]) / 2;
-    let y = (wedge[0].y + wedge[1].y) / 2;
-    // the bridge spans the upper eyes' inner edges; a square stands in until the f-holes are placed
-    let eye = p.fHoles?.UEye;
-    let halfWidth = eye ? Math.abs(eye.x) - eye.r : halfDepth;
-    bridge = [new Pt(-halfWidth, y - halfDepth), new Pt(halfWidth, y - halfDepth), new Pt(halfWidth, y + halfDepth), new Pt(-halfWidth, y + halfDepth)];
+  if (s.bridge) {
+    let [neckFoot, tailFoot] = s.bridge;
+    let half = familyStandards(p.body.height).bridge.footWidth / 2;
+    bridge = [new Pt(-half, tailFoot.y), new Pt(half, tailFoot.y), new Pt(half, neckFoot.y), new Pt(-half, neckFoot.y)];
   }
 
   // the scroll's frame seen from the front: across stays across, up the neck foreshortens by the angle
@@ -252,23 +244,6 @@ const renderStringSetupFrontView = (
     }
   };
 };
-
-// the bridge's blank: foot-left, foot-right, top-right, top-left
-function bridgeWedge(s: StringSetupSolve): [Pt, Pt, Pt, Pt] | null {
-  let foot = s.bridgeFoot;
-  let top = s.bridgeTop;
-  if (!foot || !top) return null;
-  let span = dist(foot, top);
-  let across: Vect2D = { a: -(top.y - foot.y) / span, b: (top.x - foot.x) / span, mag: 1 };
-  let footHalfWidth = BRIDGE_FOOT_HALF_WIDTH_RATIO * span;
-  let topHalfWidth = footHalfWidth * BRIDGE_TOP_TO_FOOT_WIDTH_RATIO;
-  return [
-    moveInVectorSpace(foot, [{ ...across, mag: -footHalfWidth }]),
-    moveInVectorSpace(foot, [{ ...across, mag: footHalfWidth }]),
-    moveInVectorSpace(top, [{ ...across, mag: topHalfWidth }]),
-    moveInVectorSpace(top, [{ ...across, mag: -topHalfWidth }]),
-  ];
-}
 
 // how far the board's cylindrical crown stands above its edges, over its width at y
 export function fingerboardCrown(p: ViolinFamilyParams, s: StringSetupSolve, y: number): number {
@@ -323,14 +298,14 @@ function renderFretTicks(nut: Pt, bridge: Pt, boardLength: number, pal: PanelPal
 }
 
 // a later panel reads the string setup by calling this; it returns and never writes to the params.
-// The bridge stands on the top's arch along the channel's centreline, the body stop down from the
-// neck end, square to the plate as the rib taper tilts it; the nut and the board square to the
-// fingerboard plane
+// The bridge's feet sit on the top's arch along the channel's centreline, centred the body stop down
+// from the neck end. It stands plumb over them, whatever the arch and the rib taper do under it, and
+// carries the string over the middle of its top. The nut and the board square to the fingerboard plane
 export function solveStringSetup(p: ViolinFamilyParams): StringSetupSolve | null {
   if (!p.stringSetup || !p.neck) return null;
   let ss = p.stringSetup;
   let neck = solveNeck(p)!;
-  let s: StringSetupSolve = { neck, bridgeFoot: null, bridgeTop: null, nutTop: null, fingerboardEnd: null, failures: [] };
+  let s: StringSetupSolve = { neck, bridgeFoot: null, bridge: null, bridgeTop: null, nutTop: null, fingerboardEnd: null, failures: [] };
   let fail = (message: string, unsolved: StringSetupFailure['unsolved'], points: Pt[] = []): StringSetupFailure =>
     ({ message, unsolved, circles: [], segments: [], points });
   let { neckTop, root } = neck;
@@ -348,9 +323,12 @@ export function solveStringSetup(p: ViolinFamilyParams): StringSetupSolve | null
     let placement = topPlatePlacement(p, a.ribs!);
     let outerZ = a.ribs!.zLower + p.arching!.top.thickness;
     let y = p.body.height - ss.bodyStop;
-    let archZ = channelCenterlineZAt(p, p.fluting!.top, a.top, y);
-    s.bridgeFoot = placeOnTopPlate(placement, new Pt(outerZ + archZ, y));
-    s.bridgeTop = placeOnTopPlate(placement, new Pt(outerZ + archZ + ss.bridgeHeight, y));
+    let onArch = (at: number) => placeOnTopPlate(placement, new Pt(outerZ + channelCenterlineZAt(p, p.fluting!.top, a.top, at), at));
+    let blank = familyStandards(p.body.height).bridge;
+    let neckFoot = onArch(y + blank.footThickness / 2), tailFoot = onArch(y - blank.footThickness / 2);
+    let foot = s.bridgeFoot = onArch(y);
+    let top = s.bridgeTop = new Pt(foot.x + ss.bridgeHeight, foot.y);
+    s.bridge = [neckFoot, tailFoot, new Pt(top.x, top.y - blank.topThickness / 2), new Pt(top.x, top.y + blank.topThickness / 2)];
     return null;
   });
 

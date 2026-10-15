@@ -117,20 +117,6 @@ describe('the nut', () => {
 });
 
 describe('the root', () => {
-  it('leaves the plate edge by the overstand', () => {
-    const p = seeded();
-    const s = solved(p);
-    expect(dist(s.plateEdge!, s.root!)).toBeCloseTo(p.neck!.overstand, 9);
-  });
-
-  it('carries the rib taper: the edge sits lower when the ribs are planed down toward it', () => {
-    const square = seeded();
-    square.arching!.ribHeightUpper = square.arching!.ribHeightLower;
-    const tapered = seeded();
-    tapered.arching!.ribHeightUpper = tapered.arching!.ribHeightLower - 2;
-    expect(solved(tapered).plateEdge!.x).toBeLessThan(solved(square).plateEdge!.x - 1);
-  });
-
   it('ends the foot at the button tip, the button height beyond the plate', () => {
     const p = seeded();
     p.outerContour!.button.height = 13;

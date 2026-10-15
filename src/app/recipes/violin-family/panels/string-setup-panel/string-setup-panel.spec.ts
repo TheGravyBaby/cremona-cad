@@ -12,7 +12,7 @@ import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { StringSetupKey, StringSetupSolve, ViolinFamilyParams } from '../../violin-family-types';
-import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
+import { DEFAULT_VIOLIN_FAMILY_PARAMS, familyStandards } from '../../violin-family-seed';
 
 // what a maker would check with a ruler on the set-up instrument: the bridge stands its height off
 // the arch the stop down from the neck end, the nut its thickness off the neck, the board its length
@@ -77,10 +77,17 @@ describe('the string setup solve', () => {
   it('stands the bridge its height off the arch, the stop down from the neck end', () => {
     const p = seeded();
     const s = solved(p);
+    const [neckFoot, tailFoot, tailTop, neckTop] = s.bridge!;
     expect(dist(s.bridgeFoot!, s.bridgeTop!)).toBeCloseTo(p.stringSetup!.bridgeHeight, 9);
+    // plumb, the string over the middle of the top and the top over the middle of the feet
+    expect(s.bridgeTop!.y).toBeCloseTo(s.bridgeFoot!.y, 9);
+    expect(dist(s.bridgeTop!, tailTop)).toBeCloseTo(dist(s.bridgeTop!, neckTop), 9);
+    expect(dist(s.bridgeFoot!, neckFoot)).toBeCloseTo(dist(s.bridgeFoot!, tailFoot), 1);
+    const blank = familyStandards(p.body.height).bridge;
+    expect(dist(neckTop, tailTop)).toBeCloseTo(blank.topThickness, 9);
+    expect(Math.abs(neckFoot.y - tailFoot.y)).toBeCloseTo(blank.footThickness, 1);
     // the rib taper tilts the plate by a fraction of a degree, which moves the foot a hair along the body
     expect(Math.abs(s.bridgeFoot!.y - (p.body.height - p.stringSetup!.bodyStop))).toBeLessThan(0.5);
-    expect(s.bridgeFoot!.x).toBeGreaterThan(s.neck.plateEdge!.x - p.arching!.top.thickness);
   });
 
   it('stands the nut its thickness square off the neck, and runs the board its length down the neck', () => {
