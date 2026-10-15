@@ -354,12 +354,10 @@ export function solveCenterBoutRatios(p: ViolinFamilyParams): Partial<ViolinFami
   let LBWI = LBW - 2 * inset;
   let fitted = b.useKellyC0 ? solveCenterBout(p)! : null;
   let CBW = fitted?.CBW ?? b.CBW;
-  let C0Y = fitted?.C0?.y ?? b.C0Y;
 
   return {
     CBWtoLBW: CBW / LBW,
     C0toLBW: b.C0R / LBWI,
-    C0YtoH: C0Y / p.body.height,
     C2toLBW: k.C2R / LBWI,
     C21toLBW: k.C21R / LBWI,
     C1toLBW: k.C1R / LBWI,

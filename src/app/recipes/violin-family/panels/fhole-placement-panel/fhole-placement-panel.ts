@@ -22,7 +22,7 @@ import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import { purflingPath, ribArcs, RibArcs, solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
 import { renderFlutingInnerEdge, solveFluting } from '../fluting-panel/fluting-panel';
-import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
+import { renderFholes, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { showFieldHelp } from '../../../../docs/field-help';
 
 // Where the two f-holes sit on the top plate: the eyes first, everything else hung off them. The
@@ -131,7 +131,9 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
       if (this.flags.showFholePlacementGuides && rib) layers.push(renderFholeEyePlacementGuides(p, rib, this.pal));
       if (this.flags.showFholeBounds) layers.push(renderFholeBounds(f, this.pal));
       layers.push(renderFholeRise(f, this.pal), renderFholeStem(f, this.pal), renderFholeEyes(f, this.pal));
-      if (f.notches) layers.push(renderFholeNotches(f, this.pal));
+      // the outer notch is struck from the lower wing's tip, so it waits on the contours
+      let contours = p.fHoleContours ? solveFholeContours(p) : null;
+      if (f.notches) layers.push(renderFholeNotches(f, contours?.LTip ?? null, this.pal));
       this.drawn.emit(layers);
     });
   }
@@ -250,9 +252,6 @@ export const renderFholeStem = (f: FholePlacementParams, pal: PanelPalette) => (
   // a twelfth of the height the hole occupies, either way off the centre
   const reach = Math.abs((f.UEye.y + f.UEye.r + f.URise) - (f.LEye.y - f.LEye.r - f.LRise)) / 12;
 
-  // the width as measured, square across the stem
-  renderSegment(edges.inner, edges.outer, pal.ink(2), STROKE_WEIGHT.guide)(g, ui);
-  renderSegment(flipPointAboutY(edges.inner), flipPointAboutY(edges.outer), pal.ink(2), STROKE_WEIGHT.guide)(g, ui);
   for (const edge of [edges.inner, edges.outer]) {
     const edgeTop = stemEdgeAt(stem, edge, c.y - reach);
     const edgeBottom = stemEdgeAt(stem, edge, c.y + reach);
@@ -263,13 +262,13 @@ export const renderFholeStem = (f: FholePlacementParams, pal: PanelPalette) => (
   renderSmallCrosshair(flipPointAboutY(c), pal.ink(2).faint(5))(g, ui);
 };
 
-// the nicks cut into both edges of the stem, each a shallow V with one corner of its mouth where
-// the perpendicular through the stem's centre meets the edge: the inner notch drops from it along
-// the edge toward the lower eye, the outer rises toward the upper, the apex midway along the mouth
-// and a third of it deep, square to the edge (measured on a Stradivari cello, 2026-10, then
-// opened a tenth). Sized from the stem's width, so the nick reads against the edge it is cut in,
-// and never a field: the notch is a mark, not a shape the plate depends on
-const NOTCH_TO_STEM = { depth: 0.15, mouth: 0.4 };
+// the nicks cut into both edges of the stem, each a shallow V centred on its mark and cut square
+// to the edge, well under half as deep as its mouth is long (measured on a Stradivari cello,
+// 2026-10). The inner notch is centred where the stop line crosses the inner edge; the outer where
+// an arc struck from the lower wing's tip through the inner mark crosses the outer edge, so it
+// sits a little higher. Sized from the stem's width, so the nick reads against the edge it is cut
+// in, and never a field: the notch is a mark, not a shape the plate depends on
+const NOTCH_TO_STEM = { depth: 0.14, mouth: 0.4 };
 
 export interface FholeNotch {
   // mouth on the stem's edge, top then bottom, with the apex between them out in the wood
@@ -278,27 +277,36 @@ export interface FholeNotch {
   bottom: Pt;
 }
 
-// the treble hole's two notches, the inner edge's apex toward the centreline and the outer's away
-export const fholeNotches = (f: FholePlacementParams): { inner: FholeNotch; outer: FholeNotch } => {
-  const angle = f.stem.angle * TURN.degree;
+// the treble hole's two notches, the inner edge's apex toward the centreline and the outer's away.
+// The outer waits on the lower wing's tip: null without one, or when the arc from it can't reach
+// the outer edge
+export const fholeNotches = (f: FholePlacementParams, lowerTip: Pt | null): { inner: FholeNotch; outer: FholeNotch | null } => {
+  const stem = f.stem;
+  const angle = stem.angle * TURN.degree;
   const along = { x: Math.cos(angle), y: Math.sin(angle) };
   const across = { x: Math.sin(angle), y: -Math.cos(angle) };
-  const depth = f.stem.width * NOTCH_TO_STEM.depth;
-  const mouth = f.stem.width * NOTCH_TO_STEM.mouth;
-  const edges = stemEdgePoints(f.stem);
-  const notch = (edge: Pt, side: -1 | 1): FholeNotch => {
-    const at = (t: number) => new Pt(edge.x + t * along.x, edge.y + t * along.y);
-    // the inner notch hangs under the perpendicular, the outer stands on it
-    const topT = side < 0 ? 0 : mouth;
-    const mid = at(topT - mouth / 2);
-    return { top: at(topT), apex: new Pt(mid.x + side * depth * across.x, mid.y + side * depth * across.y), bottom: at(topT - mouth) };
-  };
-  return { inner: notch(edges.inner, -1), outer: notch(edges.outer, 1) };
+  const depth = stem.width * NOTCH_TO_STEM.depth;
+  const mouth = stem.width * NOTCH_TO_STEM.mouth;
+  const notch = (mark: Pt, side: -1 | 1): FholeNotch => ({
+    top: new Pt(mark.x + mouth / 2 * along.x, mark.y + mouth / 2 * along.y),
+    apex: new Pt(mark.x + side * depth * across.x, mark.y + side * depth * across.y),
+    bottom: new Pt(mark.x - mouth / 2 * along.x, mark.y - mouth / 2 * along.y),
+  });
+  const edges = stemEdgePoints(stem);
+  const innerMark = stemEdgeAt(stem, edges.inner, stem.center.y);
+  let outerMark: Pt | null = null;
+  if (lowerTip) {
+    const reach = new Circle(lowerTip.x, lowerTip.y, dist(lowerTip, innerMark));
+    // the arc crosses the outer edge twice; the notch is the upper crossing
+    outerMark = lineCircleIntersection(lineFromPointAndSlope(edges.outer, Math.tan(angle)), reach).sort((a, b) => b.y - a.y)[0] ?? null;
+  }
+  return { inner: notch(innerMark, -1), outer: outerMark && notch(outerMark, 1) };
 };
 
-export const renderFholeNotches = (f: FholePlacementParams, pal: PanelPalette) => (g: any, ui: any): void => {
-  const { inner, outer } = fholeNotches(f);
+export const renderFholeNotches = (f: FholePlacementParams, lowerTip: Pt | null, pal: PanelPalette) => (g: any, ui: any): void => {
+  const { inner, outer } = fholeNotches(f, lowerTip);
   for (const n of [inner, outer]) {
+    if (!n) continue;
     const v = [n.top, n.apex, n.bottom];
     renderPath(pathFromPolyline(v), pal.ink(2), STROKE_WEIGHT.section)(g, ui);
     renderPath(pathFromPolyline(v.map(flipPointAboutY)), pal.ink(2), STROKE_WEIGHT.section)(g, ui);

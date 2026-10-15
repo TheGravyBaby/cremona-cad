@@ -131,7 +131,7 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
       if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
       if (this.flags.showModuleGuides) layers.push(renderFholeAngleGuides(p, s, this.pal));
       if (this.flags.showFholeBounds) layers.push(renderFholeBounds(p.fHoles!, this.pal));
-      if (p.fHoles!.notches) layers.push(renderFholeNotches(p.fHoles!, this.pal));
+      if (p.fHoles!.notches) layers.push(renderFholeNotches(p.fHoles!, s.LTip, this.pal));
       layers.push(
         renderFholeContours(p, s, this.pal, this.flags, true, highlighted),
         renderSolveFailures(s.failures, this.pal.alert, true),
@@ -348,7 +348,7 @@ export function fholePath(p: ViolinFamilyParams, s: FholeContoursSolve, flip: bo
   const outerStemBottom = pointOnCircle(s.S4!, s.S4!.start);
   const innerStemTop = pointOnCircle(s.S1!, s.S1!.start);
   const innerStemBottom = pointOnCircle(s.S3!, s.S3!.end);
-  const notches = f.notches ? fholeNotches(f) : null;
+  const notches = f.notches ? fholeNotches(f, s.LTip) : null;
   const run = (from: Pt, to: Pt, notch: FholeNotch | null) => pathFromPolyline([from, ...(notch ? notchOnRun(notch, from, to) : []), to].map(pxf));
 
   const paths = [
