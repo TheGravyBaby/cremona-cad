@@ -14,6 +14,7 @@
     "test:draft-canvas": "ng test --watch=false --include \"src/app/draft-canvas/**/*.spec.ts\"",
     "test:helpers": "ng test --watch=false --include \"src/app/helpers/**/*.spec.ts\"",
     "test:violin-family": "ng test --watch=false --include \"src/app/recipes/violin-family/**/*.spec.ts\"",
+    "test:stress": "ng test --watch=false -c stress --include \"src/app/recipes/violin-family/violin-family-stress.spec.ts\"",
     "test:shell": "ng test --watch=false --include \"src/app/app.spec.ts\" --include \"src/app/theme/**/*.spec.ts\" --include \"src/app/docs/**/*.spec.ts\" --include \"src/app/shared/**/*.spec.ts\" --include \"src/app/top-bar/**/*.spec.ts\" --include \"src/app/settings/**/*.spec.ts\" --include \"src/app/recipes/hello-world/**/*.spec.ts\" --include \"src/app/recipe-base/**/*.spec.ts\" --include \"src/app/recipe-toolbar/**/*.spec.ts\""
   },
   "prettier": {

@@ -19,7 +19,8 @@ While iterating, run only the area you touched (see `package.json` for the globs
 `test:outline` (2D panels, neck and scroll, templates), `test:arching` (fluting, long and cross
 arching), `test:export`, `test:violin-family` (the whole recipe), `test:draft-canvas`,
 `test:helpers`, `test:shell`, `test:fast` (all but arching and export). A new spec file outside
-these globs only runs under the full `ng test`.
+these globs only runs under the full `ng test`. `violin-family-stress.spec.ts` is work in progress,
+excluded in `angular.json`; only `test:stress` runs it.
 
 ## Layout
 

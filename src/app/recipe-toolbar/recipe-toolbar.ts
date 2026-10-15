@@ -30,6 +30,7 @@ export class RecipeToolbarComponent {
   @Output() debugDump = new EventEmitter<void>();
 
   protected readonly debugDumpEnabled = isLocalHost();
+  protected readonly modKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? '⌘' : 'Ctrl+';
 
   private readonly host = inject(ElementRef<HTMLElement>);
 
@@ -52,6 +53,19 @@ export class RecipeToolbarComponent {
   @HostListener('document:keydown.escape')
   protected onEscape(): void {
     this.menuOpen = false;
+  }
+
+  // on the document, not the host: the canvas usually has focus when a save is wanted
+  @HostListener('document:keydown', ['$event'])
+  protected onFileHotkey(e: KeyboardEvent): void {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+    const key = e.key.toLowerCase();
+    if (key !== 's' && key !== 'o') return;
+    e.preventDefault();
+    if (e.repeat) return;
+    this.menuOpen = false;
+    if (key === 's') this.saveFile.emit();
+    else this.triggerFilePick();
   }
 
   triggerFilePick(): void {

@@ -500,10 +500,43 @@ export abstract class RecipeComponentBase<R extends RecipeInterface = RecipeInte
     copyToClipboard('recipe', this.stringifyRecipe(true));
   }
 
-  saveToDisk() {
-    const safeName = (this.d.fileName?.trim() || 'untitled') + (this.d.fileName?.endsWith('.json') ? '' : '.json');
+  // always asks for the name; whatever is chosen becomes the design's name, so the file and the
+  // title can't drift apart
+  async saveToDisk(): Promise<void> {
+    const suggested = (this.d.fileName?.trim() || 'untitled').replace(/\.json$/i, '') + '.json';
+    const win = window as { showSaveFilePicker?: (o: object) => Promise<FileSystemFileHandle> };
+    let handle: FileSystemFileHandle | null = null;
+    if (win.showSaveFilePicker) {
+      try {
+        handle = await win.showSaveFilePicker({
+          suggestedName: suggested,
+          types: [{ description: 'Recipe', accept: { 'application/json': ['.json'] } }],
+        });
+      } catch (e) {
+        if ((e as DOMException).name === 'AbortError') return;
+        console.error('Save dialog unavailable, falling back to a download:', e);
+      }
+    }
+    // firefox and safari have no save dialog to open, so the name is asked for here instead
+    const name = handle?.name ?? prompt('Save recipe as', suggested)?.trim();
+    if (!name) return;
+    this.d.fileName = name.replace(/\.json$/i, '');
+    this.refreshBoundInputs();
     const json = this.serializeRecipe();
 
+    if (handle) {
+      try {
+        const writable = await handle.createWritable();
+        await writable.write(json);
+        await writable.close();
+      } catch (e) {
+        console.error('Failed to write recipe file:', e);
+        error(`Couldn't write ${handle.name}.`, 'Save Recipe');
+      }
+      return;
+    }
+
+    const safeName = this.d.fileName + '.json';
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
 

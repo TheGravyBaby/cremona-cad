@@ -1,17 +1,8 @@
 <div class="toolbar">
-  <div class="toolbar-name-wrap">
-    <input type="text" class="toolbar-name" [ngModel]="fileName" (ngModelChange)="fileNameChange.emit($event)"
-      placeholder="Untitled" [title]="fileName || 'Design name'" aria-label="Design name"
-      (keydown.enter)="nameInput.blur()" #nameInput />
-
-    <!-- Every file verb is a row of this one menu, so the strip stays the name and a chevron. -->
-    <button type="button" class="toolbar-btn toolbar-menu-btn" title="File" aria-label="File menu"
-      aria-haspopup="menu" [attr.aria-expanded]="menuOpen" (click)="menuOpen = !menuOpen">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
-        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
-    </button>
+  <!-- labelled and at the far left, so it can't be mistaken for the panel picker's chevron below -->
+  <div class="toolbar-file">
+    <button type="button" class="toolbar-btn toolbar-btn--text toolbar-file-btn" aria-label="File menu"
+      aria-haspopup="menu" [attr.aria-expanded]="menuOpen" (click)="menuOpen = !menuOpen">File</button>
 
     @if (menuOpen) {
     <div class="toolbar-menu" role="menu">
@@ -25,10 +16,10 @@
       }
       <div class="toolbar-menu-sep" role="separator"></div>
       <button type="button" class="toolbar-menu-item" role="menuitem" (click)="menuOpen = false; triggerFilePick()">
-        Load Recipe
+        Load Recipe…<kbd class="toolbar-menu-key">{{ modKey }}O</kbd>
       </button>
       <button type="button" class="toolbar-menu-item" role="menuitem" (click)="menuOpen = false; saveFile.emit()">
-        Save Recipe
+        Save Recipe…<kbd class="toolbar-menu-key">{{ modKey }}S</kbd>
       </button>
       <!-- Debug, localhost only (see isLocalHost in helpers/debugDump.ts): the saved recipe JSON, to the clipboard. -->
       @if (debugDumpEnabled) {
@@ -41,6 +32,10 @@
     </div>
     }
   </div>
+
+  <input type="text" class="toolbar-name" [ngModel]="fileName" (ngModelChange)="fileNameChange.emit($event)"
+    placeholder="Untitled" [title]="fileName || 'Design name'" aria-label="Design name"
+    (keydown.enter)="nameInput.blur()" #nameInput />
 
   @if (showExport) {
   <button type="button" class="toolbar-btn toolbar-btn--text" docTip="toolbar.export"

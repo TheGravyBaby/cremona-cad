@@ -75,7 +75,15 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "exclude": ["src/app/recipes/violin-family/violin-family-stress.spec.ts"]
+          },
+          "configurations": {
+            "stress": {
+              "exclude": []
+            }
+          }
         }
       }
     }
