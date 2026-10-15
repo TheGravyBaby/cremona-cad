@@ -53,7 +53,8 @@
 <div class="panel">
     <div class="panel-content">
         @if (openPanel === 'base') {
-        @if (galleryOpen && templateCards.length) {
+        @let galleryShown = galleryOpen && templateCards.length > 0;
+        @if (galleryShown) {
         <section class="ui-group template-gallery">
             <div class="ui-group-title">
                 Start from a historical instrument
@@ -92,7 +93,9 @@
             </div>
         </section>
         }
+        <!-- hidden rather than unmounted, so the canvas keeps drawing the instrument behind the gallery -->
         <app-vf-base-measurements-panel #panelRef
+            [style.display]="galleryShown ? 'none' : null"
             [recipe]="d"
             (drawn)="draftChange.emit($event)"
             (edit)="onPanelEdit()">

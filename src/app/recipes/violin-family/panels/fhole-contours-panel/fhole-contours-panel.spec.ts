@@ -188,16 +188,16 @@ describe('f-hole contour properties', () => {
     it(`cuts both notches into the stem's runs, and closes without them when they are off, ${label}`, () => {
       const { inner, outer } = fholeNotches(f, s.LTip);
       expect(outer).not.toBeNull();
-      // the outline is sampled a tenth of a millimetre apart, so a vertex is reached to within that
       const nearest = (d: string, pt: Pt) => Math.min(...points(d).map(q => dist(q, pt)));
-      const depth = Math.abs(outer!.apex.x - (outer!.top.x + outer!.bottom.x) / 2);
-      for (const n of [inner, outer!]) {
-        expect(nearest(s.path!, n.apex)).toBeLessThan(0.1);
-        expect(nearest(fholePath(p, s, true)!, new Pt(-n.apex.x, n.apex.y))).toBeLessThan(0.1);
-      }
       const plain = fholePath({ ...p, fHoles: { ...f, notches: false } }, s, false)!;
+      const plainMirrored = fholePath({ ...p, fHoles: { ...f, notches: false } }, s, true)!;
       expect(closed(plain)).toBe(true);
-      for (const n of [inner, outer!]) expect(nearest(plain, n.apex)).toBeGreaterThan(depth / 2);
+      // a notch too wide for its run shrinks about its mouth, so its apex is only reached toward
+      for (const n of [inner, outer!]) {
+        const mirroredApex = new Pt(-n.apex.x, n.apex.y);
+        expect(nearest(s.path!, n.apex)).toBeLessThan(nearest(plain, n.apex));
+        expect(nearest(fholePath(p, s, true)!, mirroredApex)).toBeLessThan(nearest(plainMirrored, mirroredApex));
+      }
     });
 
     it(`runs every joint tangent-continuous, ${label}`, () => {

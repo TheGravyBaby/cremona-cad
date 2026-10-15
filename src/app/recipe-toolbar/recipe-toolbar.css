@@ -1,4 +1,4 @@
-/* The sidebar's header strip: recipe name, its file menu, Export. A flex item of the sidebar column rather
+/* The sidebar's header strip: the file menu, the recipe name, Export. A flex item of the sidebar column rather
    than a fixed bar pinned to the top right — pinned, it was a position: fixed descendant of the
    panel's overflow: auto, which iOS Safari clips to the scroller instead of letting it escape, so
    the strip never drew on a phone at all. */
@@ -95,24 +95,27 @@
   display: none;
 }
 
-/* The name is the design's identity, so it gets whatever width the controls don't need. The
-   menu button is joined to its right end: one control that is the file, with its verbs behind
-   the chevron. */
-.toolbar-name-wrap {
+/* stacks over Back in the nav strip below, as Export does over Next */
+.toolbar-file {
   position: relative;
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
+  flex: 0 0 auto;
   margin-left: 9px;
 }
 
+.toolbar-file-btn[aria-expanded="true"] {
+  border-color: var(--ui-focus-border);
+  background: var(--ui-focus-border);
+  color: #fff;
+}
+
+/* the name is the design's identity, so it gets whatever width the controls don't need */
 .toolbar-name {
   flex: 1 1 auto;
   min-width: 0;
   height: 28px;
   box-sizing: border-box;
   border: 1px solid var(--ui-topbar-control-border);
-  border-radius: 4px 0 0 4px;
+  border-radius: 4px;
   background: var(--ui-bg-panel);
   color: var(--ui-text-primary);
   font-size: 13px;
@@ -120,27 +123,14 @@
   text-overflow: ellipsis;
 }
 
-.toolbar-menu-btn {
-  width: 24px;
-  margin-left: -1px;
-  border-radius: 0 4px 4px 0;
-}
-
-.toolbar-menu-btn[aria-expanded="true"] {
-  border-color: var(--ui-focus-border);
-  background: var(--ui-focus-border);
-  color: #fff;
-}
-
 /* the bar is too narrow for a long name beside the controls, and nobody reaches for them
    mid-rename, so editing the name clears them away and takes the whole strip */
-.toolbar:has(.toolbar-name:focus) > :not(.toolbar-name-wrap),
-.toolbar-name-wrap:has(.toolbar-name:focus) .toolbar-menu-btn {
+.toolbar:has(.toolbar-name:focus) > :not(.toolbar-name) {
   display: none;
 }
 
-.toolbar-name:focus {
-  border-radius: 4px;
+.toolbar:has(.toolbar-name:focus) > .toolbar-name {
+  margin-left: 9px;
 }
 
 .toolbar-name::placeholder {
@@ -156,7 +146,7 @@
 .toolbar-menu {
   position: absolute;
   top: calc(100% + 6px);
-  right: 0;
+  left: 0;
   z-index: 20;
   min-width: 210px;
   max-height: 60vh;
@@ -170,7 +160,9 @@
 }
 
 .toolbar-menu-item {
-  display: block;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
   width: 100%;
   padding: 6px 10px;
   border: 0;
@@ -185,6 +177,12 @@
 
 .toolbar-menu-item:hover {
   background: var(--ui-control-bg-hover);
+}
+
+.toolbar-menu-key {
+  color: var(--ui-text-secondary);
+  font-family: inherit;
+  font-size: 12px;
 }
 
 .toolbar-menu-sep {
