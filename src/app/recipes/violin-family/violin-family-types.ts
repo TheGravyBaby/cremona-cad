@@ -693,10 +693,12 @@ export type StringSetupKey = 'bridge' | 'nut' | 'fingerboard';
 export type StringSetupFailure = SolveFailure<StringSetupKey>;
 
 // the string setup in the side elevation, over the neck it was solved on: the bridge's foot on the
-// arch and its top, the string's point on the nut, and the board's end on the fingerboard plane
+// arch, its blank (neck-side foot, tail-side foot, tail-side top, neck-side top) and the string's
+// point on its top, the string's point on the nut, and the board's end on the fingerboard plane
 export interface StringSetupSolve {
   neck: NeckSolve;
   bridgeFoot: Pt | null;
+  bridge: [Pt, Pt, Pt, Pt] | null;
   bridgeTop: Pt | null;
   nutTop: Pt | null;
   fingerboardEnd: Pt | null;

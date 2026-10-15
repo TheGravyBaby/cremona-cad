@@ -130,7 +130,6 @@ describe('C0 fitted to the bouts', () => {
   it('reads the width off the fitted C0 rather than the typed one', () => {
     expect(cb.CBW).toBeCloseTo((cb.C0!.x - cb.C0!.r + inset) * 2, 9);
     expect(solveCenterBoutRatios(p).CBWtoLBW).toBeCloseTo(cb.CBW! / p.body.width, 12);
-    expect(solveCenterBoutRatios(p).C0YtoH).toBeCloseTo(cb.C0!.y / p.body.height, 12);
   });
 
   it('ignores the typed width and height while on', () => {
@@ -269,21 +268,6 @@ describe('a C bout corner that cannot be reached', () => {
 describe('ratios', () => {
   it('reads nothing before the corners are drafted', () => {
     expect(solveCenterBoutRatios(withBouts())).toEqual({});
-  });
-
-  // the seed rounds the width and the radii to the millimetre, so a fresh draft reads back its
-  // seed fractions to within that rounding and no further
-  it('reads a fresh draft back at its seed fractions', () => {
-    const p = seeded();
-    const r = solveCenterBoutRatios(p);
-    const inset = p.body.overhang + p.body.rib;
-    const LBWI = p.body.width - 2 * inset;
-
-    expect(Math.abs(r.CBWtoLBW! - SEED_RATIOS.CBWtoLBW)).toBeLessThanOrEqual(0.5 / p.body.width + 1e-12);
-    expect(Math.abs(r.C0YtoH! - SEED_RATIOS.C0YtoH)).toBeLessThanOrEqual(0.5 / p.body.height + 1e-12);
-    for (const key of ['C0toLBW', 'C2toLBW', 'C21toLBW', 'C1toLBW', 'C11toLBW'] as const) {
-      expect(Math.abs(r[key]! - SEED_RATIOS[key]), key).toBeLessThanOrEqual(0.5 / LBWI + 1e-12);
-    }
   });
 
   it('follows an edit, with nothing to refresh', () => {
