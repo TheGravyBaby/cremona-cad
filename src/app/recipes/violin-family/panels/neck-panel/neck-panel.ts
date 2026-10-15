@@ -19,7 +19,7 @@ import { familyStandards } from '../../violin-family-seed';
 import { PLATE_LAYOUT_GAP, solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
 import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
-  channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, sideViewOffsetX, solveLongArching, topPlatePlacement,
+  channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, ribHeightAt, sideViewOffsetX, solveLongArching, topPlatePlacement,
 } from '../long-arching-panel/long-arching-panel';
 import { defineSideScrollPath } from '../scroll-panel/scroll-panel';
 import { ScrollView, scrollBackViewStrokes, scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
@@ -369,7 +369,8 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
     let outerZ = a.ribs.zLower + p.arching!.top.thickness;
     let direction = vectorFromSlope(angle + TURN.quarter);
     let normal = vectorFromSlope(angle);
-    s.plateEdge = placeOnTopPlate(placement, new Pt(outerZ, h));
+    let floorY = mortiseFloorY(p);
+    s.plateAtMortise = new Pt(ribHeightAt(p, floorY, a.ribs) + p.arching!.top.thickness, floorY); // note the plates are likely tapered, so we take the rib height at that Y then add the plate thickness
     let root = s.root = placeOnTopPlate(placement, new Pt(outerZ + nk.overstand, h));
     let fingerboardPlane = lineFromTwoPoints(root, moveInVectorSpace(root, [{ ...direction, mag: 1 }]));
     let rootPlaneY = h - p.body.overhang;
@@ -378,7 +379,6 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
     // the length runs along the fingerboard plane from the mortise floor to the nut's foot; the back
     // sits the upper thickness under the nut and runs straight through the lower under the heel
     let tip = s.tip = new Pt(0, h + buttonHeight);
-    let floorY = mortiseFloorY(p);
     let bottomFront = s.bottomFront = intersectLines(fingerboardPlane, lineFromTwoPoints(new Pt(0, floorY), new Pt(1, floorY)))!;
     let neckTop = s.neckTop = moveInVectorSpace(bottomFront, [{ ...direction, mag: nk.length }]);
     let backNut = s.backNut = moveInVectorSpace(neckTop, [{ ...normal, mag: -nk.upperThickness }]);
@@ -389,12 +389,6 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
     let backHeel = moveInVectorSpace(front, [{ ...normal, mag: -nk.lowerThickness }]);
     s.lowerThickness = [front, backHeel];
     s.backRoot = intersectLines(lineFromTwoPoints(backNut, backHeel), lineFromTwoPoints(neckAtRootPlane, moveInVectorSpace(neckAtRootPlane, [normal])))!;
-
-    // where the mortise floor comes out through the plate's surface; below it the foot is hidden in
-    // the block. The floor is level with the body, so the point stays on it: the taper's tilt moves
-    // the placed point's y by a fraction of a mm, across which the surface barely rises
-    let surface = placeOnTopPlate(placement, new Pt(outerZ + channelCenterlineZAt(p, p.fluting!.top, a.top, floorY), floorY));
-    s.plateAtMortise = new Pt(surface.x, floorY);
 
     // the heel: a cove, so a back past the tip or a cleared radius leaves the back straight down to
     // the root, and says so
