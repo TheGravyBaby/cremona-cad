@@ -17,7 +17,8 @@ import { VolutePanel } from '../volute-panel/volute-panel';
 import { MouldPanel } from '../mould-panel/mould-panel';
 import { solveScroll } from '../scroll-panel/scroll-panel';
 import { scrollBackStrip, scrollCompassWalk } from '../scroll-widths-panel/scroll-widths-panel';
-import { ExportPanel, ExportType, exportReady, exportSheet } from './export-panel';
+import { solveCrossArching } from '../cross-arching-panel/cross-arching-panel';
+import { ExportPanel, ExportType, exportReady, exportSheet, plateStl } from './export-panel';
 
 // The last panel, and the one whose output leaves the app: a wrong path on a sheet is cut into wood.
 // What matters here is that a sheet is offered only once the stages it is drawn from exist, that a
@@ -156,7 +157,7 @@ describe('the export panel on opening', () => {
 
   it('offers every sheet once every stage is reached', () => {
     const ready = exportReady(finished());
-    for (const type of [...PLAIN_EXPORTS, ...ARCHING_EXPORTS, 'fholeTemplate', 'fholeTemplateNoEyes', 'neckTemplate', ...SCROLL_EXPORTS, 'stlTop', 'stlBack'] as const) {
+    for (const type of [...PLAIN_EXPORTS, ...ARCHING_EXPORTS, 'fholeTemplate', 'fholeTemplateNoEyes', 'fholeTemplateArched', 'neckTemplate', ...SCROLL_EXPORTS, 'stlTop', 'stlBack'] as const) {
       expect(ready.has(type), type).toBe(true);
     }
   });
@@ -168,6 +169,20 @@ describe('previewing a sheet', () => {
     expect(drawn.paths.length).toBeGreaterThan(0);
     // an unlabelled sheet of templates is unusable: the blanks are only told apart by where they were cut
     expect(drawn.countByTag['text'] ?? 0).toBeGreaterThan(0);
+  });
+
+  it('develops the arched f-hole template over the top arch: the flat hole stretched, never shrunk, by less than the arch rises', () => {
+    expect(exportSheet(holed(), 'fholeTemplateArched')).toBeNull();
+    const hole = (p: ViolinFamilyParams, type: ExportType) => pathsBounds(exportSheet(p, type)!.paths.filter(path => path.laser === 'cut1').map(path => path.d));
+    const flat = hole(arched(), 'fholeTemplate');
+    const developed = hole(arched(), 'fholeTemplateArched');
+    expect(developed.width).toBeGreaterThan(flat.width);
+    expect(developed.height).toBeGreaterThan(flat.height);
+    expect(developed.width - flat.width).toBeLessThan(5);
+    expect(developed.height - flat.height).toBeLessThan(5);
+    // on its own sheet like the flat one: centred, up from the blank's bottom margin
+    expect(developed.minX + developed.maxX).toBeCloseTo(0, 6);
+    expect(developed.minY).toBeGreaterThan(0);
   });
 
   it('falls back to the first sheet it can draw when asked for one whose stage was never reached', () => {
@@ -189,7 +204,7 @@ describe('previewing a sheet', () => {
 describe('a sheet whose stage was never reached', () => {
   it('writes nothing, in any format', async () => {
     const panel = makePanel(outlined());
-    for (const type of ['topPlate', 'backPlate', 'fholeTemplate', 'mould', 'blocks', 'crossArchTemplates', 'neckTemplate', ...SCROLL_EXPORTS] as const) {
+    for (const type of ['topPlate', 'backPlate', 'fholeTemplate', 'fholeTemplateArched', 'mould', 'blocks', 'crossArchTemplates', 'neckTemplate', ...SCROLL_EXPORTS] as const) {
       for (const format of ['svg', 'pdf', 'dxf'] as const) expect(await captured(() => panel.download(type, format)), `${type} ${format}`).toBeNull();
     }
     expect(await captured(() => panel.downloadStl('top'))).toBeNull();
@@ -442,5 +457,49 @@ describe('the bundled SVGs', () => {
     expect(full!.name).toBe('test-violin-full.svg');
     expect(parseSheet(full!.text).querySelector('parsererror')).toBeNull();
     expect(groups(full!.text)).toBeGreaterThan(groups(templates!.text));
+  });
+});
+
+// the triangles of a binary STL as flat vertex arrays, with the normal each was written with
+function stlTriangles(buf: ArrayBuffer): { n: number[]; v: number[][] }[] {
+  const dv = new DataView(buf);
+  const count = dv.getUint32(80, true);
+  const tris = [];
+  for (let t = 0; t < count; t++) {
+    const off = 84 + t * 50;
+    const f = (k: number) => dv.getFloat32(off + k * 4, true);
+    tris.push({ n: [f(0), f(1), f(2)], v: [[f(3), f(4), f(5)], [f(6), f(7), f(8)], [f(9), f(10), f(11)]] });
+  }
+  return tris;
+}
+
+describe('the plate solids', () => {
+  it('carry the back\'s button as a flat top at the edge thickness, not a hollow ring', () => {
+    const p = arched();
+    const surface = solveCrossArching(p).back!;
+    const button = p.outerContour!.button;
+    const tris = stlTriangles(plateStl(p, surface, 'back', 2));
+    // a top face lying wholly past the body's end is the button's
+    const buttonTops = tris.filter(t => t.n[2] > 0.5 && t.v.every(v => v[1] > p.body.height + 1));
+    expect(buttonTops.length).toBeGreaterThan(0);
+    for (const t of buttonTops) for (const v of t.v) expect(v[2]).toBeCloseTo(p.arching!.back.thickness, 6);
+    const reach = Math.max(...buttonTops.flatMap(t => t.v.map(v => v[1])));
+    expect(reach).toBeGreaterThan(p.body.height + button.height - 4);
+  });
+
+  it('close at the outline: the top covers the plate to its edge, not a grid staircase short of it', () => {
+    const p = arched();
+    const surface = solveCrossArching(p).back!;
+    const gridMm = 2;
+    const tris = stlTriangles(plateStl(p, surface, 'back', gridMm));
+    const footprint = (v: number[][]) => Math.abs((v[1][0] - v[0][0]) * (v[2][1] - v[0][1]) - (v[2][0] - v[0][0]) * (v[1][1] - v[0][1])) / 2;
+    const topArea = tris.filter(t => t.n[2] > 0).reduce((sum, t) => sum + footprint(t.v), 0);
+    const baseArea = tris.filter(t => t.n[2] < 0).reduce((sum, t) => sum + footprint(t.v), 0);
+    const o = surface.outline;
+    const outlineArea = Math.abs(o.reduce((sum, a, k) => { const b = o[(k + 1) % o.length]; return sum + a.x * b.y - b.x * a.y; }, 0)) / 2;
+    // a staircase eroded by up to a cell falls short by about half a cell round the whole edge
+    const perimeter = o.reduce((sum, a, k) => { const b = o[(k + 1) % o.length]; return sum + Math.hypot(b.x - a.x, b.y - a.y); }, 0);
+    expect(Math.abs(topArea - outlineArea)).toBeLessThan(perimeter * gridMm / 20);
+    expect(baseArea).toBeCloseTo(topArea, 6);
   });
 });

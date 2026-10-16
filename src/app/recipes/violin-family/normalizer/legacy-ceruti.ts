@@ -238,17 +238,13 @@ function legacyPlacement(f: any): FholePlacementParams | undefined {
   };
 }
 
-// a shoulder leaves its eye where the two touch and turns clockwise to its arm; the arm's sweep is
+// a shoulder keeps the bearing it ends on; the arm's sweep is
 // to where a second arm takes over, or half its run when it has none, as the panel seeds it. A
 // wing's angle is read at its tip, against the cut's own direction
 function legacyContours(c: any): FholeContourParams | undefined {
   let f = c.fHoles;
   let o = c.options;
   if (![f.U1, f.U2, f.U3, f.L1, f.L2, f.L3, f.S1, f.S2, f.S3, f.S4].every(isArc) || !f.UCut || !f.LCut || !Number.isFinite(f.stem.arcR)) return undefined;
-  let shoulder = (eye: any, arc: LegacyArc) => {
-    let start = arc.r >= eye.r ? Math.atan2(eye.y - arc.y, eye.x - arc.x) : Math.atan2(arc.y - eye.y, arc.x - eye.x);
-    return deg(normalizeRadians(start - arc.end));
-  };
   let arm = (shoulderArc: LegacyArc, first: LegacyArc, second: LegacyArc | null, on: boolean) =>
     on && isArc(second) ? deg(normalizeRadians(shoulderArc.end - second.start)) : round(turn(first) / 2 / TURN.degree);
   let wing = (arc: LegacyArc, cut: any, up: 1 | -1) => round(90 - up * signedRadianDelta(arc.end - cut.slope) / TURN.degree);
@@ -256,10 +252,10 @@ function legacyContours(c: any): FholeContourParams | undefined {
   let U21 = !!o.U21DoubleArc && isArc(f.U21);
   let L21 = !!o.L21DoubleArc && isArc(f.L21);
   return {
-    U1R: f.U1.r, U1Sweep: shoulder(f.UEye, f.U1),
+    U1R: f.U1.r, U1End: deg(normalizeRadians(f.U1.end)),
     U2R: f.U2.r, U21DoubleArc: U21, U21R: U21 ? f.U21.r : f.U2.r, U2Sweep: arm(f.U1, f.U2, f.U21, U21),
     U3R: f.U3.r, U3Angle: wing(f.U3, f.UCut, 1), UCut: cut(f.UCut),
-    L1R: f.L1.r, L1Sweep: shoulder(f.LEye, f.L1),
+    L1R: f.L1.r, L1End: deg(normalizeRadians(f.L1.end)),
     L2R: f.L2.r, L21DoubleArc: L21, L21R: L21 ? f.L21.r : f.L2.r, L2Sweep: arm(f.L1, f.L2, f.L21, L21),
     L3R: f.L3.r, L3Angle: wing(f.L3, f.LCut, -1), LCut: cut(f.LCut),
     stemArcR: f.stem.arcR,

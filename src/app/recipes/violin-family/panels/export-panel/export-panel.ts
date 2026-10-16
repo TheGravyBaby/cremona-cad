@@ -6,6 +6,7 @@ import {
   pathsBounds, rotatePath180, samplePathToPolyline, transformPath, translatePath,
 } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
+import { developOverSurface } from '../../../../helpers/math/vibeMath';
 import {
   buildMirroredSvg, buildPackedSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, paginatePieces, paperFor, PdfPage, PieceGroup,
   SvgPathExport, SvgTextExport,
@@ -17,7 +18,7 @@ import { safeRun } from '../../../../helpers/validators';
 import { Arc, Circle, Pt, Rectangle } from '../../../../models/types';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { NeckSolve, Plate, PlateSurface, RenderLayer, ScrollSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
+import { NeckSolve, Plate, PlateSurface, RenderLayer, ScrollSolve, SurfaceRow, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
@@ -37,7 +38,7 @@ import { blockLayout, MOULD_EXPORT_STEP, solveMould } from '../mould-panel/mould
 // plate solid.
 
 type ScrollExportType = 'neckTemplate' | 'scrollSide' | 'scrollFrontView' | 'scrollBackView' | 'scrollBack' | 'scrollCompass';
-export type ExportType = 'innerContour' | 'topPlate' | 'backPlate' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate' | 'fholeTemplateNoEyes' | ScrollExportType;
+export type ExportType = 'innerContour' | 'topPlate' | 'backPlate' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate' | 'fholeTemplateNoEyes' | 'fholeTemplateArched' | ScrollExportType;
 export type ExportReady = ExportType | 'stlTop' | 'stlBack';
 
 // the sheet's title on a PDF page, one at a time or in the full plan
@@ -49,6 +50,7 @@ const SHEET_LABELS: Record<ExportType, string> = {
   blocks: 'Blocks',
   fholeTemplate: 'F-Hole Template',
   fholeTemplateNoEyes: 'F-Hole Template (No Eyes)',
+  fholeTemplateArched: 'F-Hole Template (Arched)',
   crossArchTemplates: 'Cross Arch Templates',
   longArchTemplates: 'Long Arch Templates',
   neckTemplate: 'Neck Template',
@@ -59,24 +61,28 @@ const SHEET_LABELS: Record<ExportType, string> = {
   scrollCompass: 'Compass Walk',
 };
 const SCROLL_EXPORTS: readonly ScrollExportType[] = ['neckTemplate', 'scrollSide', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass'];
-const EXPORT_TYPES: readonly ExportType[] = ['topPlate', 'backPlate', 'innerContour', 'longArchTemplates', 'crossArchTemplates', 'fholeTemplate', 'fholeTemplateNoEyes', ...SCROLL_EXPORTS, 'mould', 'blocks'];
+const EXPORT_TYPES: readonly ExportType[] = ['topPlate', 'backPlate', 'innerContour', 'longArchTemplates', 'crossArchTemplates', 'fholeTemplate', 'fholeTemplateNoEyes', 'fholeTemplateArched', ...SCROLL_EXPORTS, 'mould', 'blocks'];
 // drawn on the plan's own sheet, the body's width by its height, rather than sized to themselves
 const PLAN_SHEETS: readonly ExportType[] = ['innerContour', 'topPlate', 'backPlate', 'mould', 'blocks'];
 // the full plan's pages past the plan sheets, in order: a group shares a page with the one before it
 // when the two fit together
 const PDF_GROUPS: ReadonlyArray<{ label: string; types: readonly ExportType[] }> = [
   { label: 'Blocks', types: ['blocks'] },
-  { label: 'F-Hole Templates', types: ['fholeTemplate', 'fholeTemplateNoEyes'] },
+  { label: 'F-Hole Templates', types: ['fholeTemplate', 'fholeTemplateNoEyes', 'fholeTemplateArched'] },
   { label: 'Arch Templates', types: ['longArchTemplates', 'crossArchTemplates'] },
   { label: 'Neck & Scroll', types: SCROLL_EXPORTS },
 ];
 // what the templates SVG gathers: the pieces a maker cuts from card or ply and works to
-const TEMPLATE_BUNDLE: readonly ExportType[] = ['neckTemplate', 'scrollBack', 'scrollCompass', 'longArchTemplates', 'crossArchTemplates', 'fholeTemplate', 'blocks'];
+const TEMPLATE_BUNDLE: readonly ExportType[] = ['neckTemplate', 'scrollBack', 'scrollCompass', 'longArchTemplates', 'crossArchTemplates', 'fholeTemplate', 'fholeTemplateArched', 'blocks'];
 // the rows the panel offers, in the bench's order
 export const EXPORT_GROUPS: ReadonlyArray<{ label: string; rows: ReadonlyArray<{ type: ExportType; name: string }> }> = [
   { label: 'Contours', rows: [{ type: 'topPlate', name: 'Top Plate' }, { type: 'backPlate', name: 'Back Plate' }, { type: 'innerContour', name: 'Inner Contour' }] },
   { label: 'Arch Templates', rows: [{ type: 'longArchTemplates', name: 'Long Arch Templates' }, { type: 'crossArchTemplates', name: 'Cross Arch Templates' }] },
-  { label: 'F-Hole Templates', rows: [{ type: 'fholeTemplate', name: 'F-Hole Template' }, { type: 'fholeTemplateNoEyes', name: 'F-Hole (No Eyes)' }] },
+  { label: 'F-Hole Templates', rows: [
+    { type: 'fholeTemplate', name: 'F-Hole Template' }, 
+    // { type: 'fholeTemplateNoEyes', name: 'F-Hole (No Eyes)' }, // clutter, might remove
+    { type: 'fholeTemplateArched', name: 'F-Hole (Arched)' }] 
+  },
   { label: 'Neck & Scroll', rows: SCROLL_EXPORTS.map(type => ({ type, name: SHEET_LABELS[type] })) },
   { label: 'Mould', rows: [{ type: 'mould', name: 'Mould' }, { type: 'blocks', name: 'Block Templates' }] },
 ];
@@ -236,6 +242,7 @@ export function exportReady(p: ViolinFamilyParams): Set<ExportReady> {
     if (c?.top || c?.back) ready.add('crossArchTemplates');
     if (c?.top) ready.add('stlTop');
     if (c?.back) ready.add('stlBack');
+    if (c?.top && ready.has('fholeTemplate')) ready.add('fholeTemplateArched');
   }
   if (p.mould) {
     ready.add('mould');
@@ -278,8 +285,9 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
       return sheet([black(combinePathStrings(blocks.map(b => b.path)))], blocks.map(b => ({ text: b.label, x: b.x, y: b.y, fontSize: TEMPLATE_LABEL_SIZE })));
     }
     case 'fholeTemplate':
-    case 'fholeTemplateNoEyes': {
-      let t = fholeTemplate(p, type === 'fholeTemplate');
+    case 'fholeTemplateNoEyes':
+    case 'fholeTemplateArched': {
+      let t = fholeTemplate(p, type !== 'fholeTemplateNoEyes', type === 'fholeTemplateArched');
       return t && sheet([black(t.blank), cutFirst(t.hole)]);
     }
     case 'crossArchTemplates':
@@ -349,11 +357,20 @@ function fholes(p: ViolinFamilyParams): string[] {
 // the single-hole cutting template, moved off the plate's real coordinates onto its own sheet: the
 // hole sits wherever it is on the plate, and every sheet frame here is centred on x = 0 from y = 0
 // up. A whole-mm blank round the hole: the maker traces the hole from inside it, so cutting the pair
-// leaves a rectangle with the hole's negative in it
-function fholeTemplate(p: ViolinFamilyParams, renderEyes: boolean): { blank: string; hole: string } | null {
+// leaves a rectangle with the hole's negative in it. The drawing shows the hole from above, flat,
+// but the card is bent over the arch to use: arched, the hole is developed over the top's surface
+// along a spine up the hole's middle, so a card bent across the plate there traces the hole drawn
+function fholeTemplate(p: ViolinFamilyParams, renderEyes: boolean, arched = false): { blank: string; hole: string } | null {
   let s = p.fHoleContours ? solveFholeContours(p) : null;
   let raw = s?.path ? fholePath(p, s, false, renderEyes) : null;
   if (!raw) return null;
+  if (arched) {
+    let surface = p.arching ? solveCrossArching(p)?.top : null;
+    if (!surface) return null;
+    let flat = pathsBounds([raw]);
+    let spine = new Pt((flat.minX + flat.maxX) / 2, (flat.minY + flat.maxY) / 2);
+    raw = pathFromPolygon(developOverSurface(plateZAt(surface), samplePathToPolyline(raw, 0.25), spine));
+  }
   let b = pathsBounds([raw]);
   let width = Math.ceil(b.width + 2 * FHOLE_TEMPLATE_MARGIN);
   let height = Math.ceil(b.height + 2 * FHOLE_TEMPLATE_MARGIN);
@@ -794,23 +811,28 @@ export function neckTemplatePath(t: NeckTemplate): string {
   return combinePathStrings([t.outline, ...t.slots, ...t.dots, t.eye]);
 }
 
+// a plate's height as one function of x and y, a station's row kept while the y holds: its readers
+// walk a row at a time
+function plateZAt(surface: PlateSurface): (x: number, y: number) => number | null {
+  let rowY: number | null = null;
+  let row: SurfaceRow | null = null;
+  return (x, y) => {
+    if (!row || y !== rowY) { rowY = y; row = rowAt(surface, y); }
+    return surfaceZAt(surface, x, y, row);
+  };
+}
+
 // a plate as a solid for the CNC: the carved surface over a flat base the plate's thickness down,
-// walled at the plate's own outline rather than the grid's staircase
+// walled at the plate's own outline rather than the grid's staircase. The grid reaches the
+// outline's own bounds, so the back's button, past the body's end, is solid: flat land there, so
+// the edge thickness
 export function plateStl(p: ViolinFamilyParams, surface: PlateSurface, plate: Plate, gridMm = 0.5): ArrayBuffer {
   let thickness = p.arching![plate].thickness;
   let xMax = p.body.width / 2 + p.body.overhang + p.body.rib + 2;
-
-  // the exporter scans row-major, so one station's row serves a whole row
-  let rowY: number | null = null;
-  let row = rowAt(surface, 0);
-  let zAt = (x: number, y: number): number | null => {
-    if (y !== rowY) { rowY = y; row = rowAt(surface, y); }
-    let z = surfaceZAt(surface, x, y, row);
-    return z === null ? null : thickness + z;
-  };
-
-  return buildHeightFieldStl(zAt, {
-    xMin: -xMax, xMax, yMin: -1, yMax: p.body.height + 1, gridMm, baseZ: 0,
+  let yMax = Math.max(p.body.height, ...surface.outline.map(pt => pt.y)) + 1;
+  let zAt = plateZAt(surface);
+  return buildHeightFieldStl((x, y) => { let z = zAt(x, y); return z === null ? null : thickness + z; }, {
+    xMin: -xMax, xMax, yMin: -1, yMax, gridMm, baseZ: 0,
     outline: surface.outline.map(pt => [pt.x, pt.y] as [number, number]),
     outlineTopZ: thickness,
   });

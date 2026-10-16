@@ -6,6 +6,9 @@ import { DocsService } from '../reader/docs.service';
 import { IndexGroup, IndexedPagesComponent } from '../reader/indexed-pages';
 
 // The release pages, newest first and grouped by month; one without a date is still unreleased.
+// The license sits above them all in a group of its own.
+const PINNED = 'license';
+
 @Component({
   selector: 'app-history',
   standalone: true,
@@ -17,11 +20,13 @@ export class HistoryComponent {
   private readonly docs = inject(DocsService);
 
   private readonly releases: Article[] = this.docs.registry.byKind('release')
-    .sort((a, b) => (b.date ?? '9999').localeCompare(a.date ?? '9999'));
+    .sort((a, b) => (b.date ?? '9999').localeCompare(a.date ?? '9999'))
+    .sort((a, b) => Number(b.id === PINNED) - Number(a.id === PINNED));
 
   readonly current = signal(this.startAt());
 
   readonly groups: IndexGroup[] = this.releases.reduce<IndexGroup[]>((groups, r) => {
+    if (r.id === PINNED) return [...groups, { entries: [{ id: r.id, title: r.title }] }];
     const label = r.date ? this.format(r.date, { month: 'short', year: 'numeric' }) : 'Unreleased';
     const entry = { id: r.id, title: r.title, note: r.date ? this.format(r.date, { month: 'short', day: 'numeric' }) : undefined };
     const last = groups[groups.length - 1];
@@ -39,7 +44,7 @@ export class HistoryComponent {
 
   private startAt(): string {
     const asked = this.docs.requested();
-    return this.releases.find(r => r.id === asked)?.id ?? this.releases[0]?.id ?? '';
+    return this.releases.find(r => r.id === asked)?.id ?? this.releases.find(r => r.id !== PINNED)?.id ?? '';
   }
 
   date(id: string): string {

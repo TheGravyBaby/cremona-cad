@@ -451,14 +451,14 @@ export interface FholeStemParams {
   angle: number;
 }
 
-// what bends between the eyes and the stem: each end's shoulder (U1/L1, with how far it sweeps
-// from its eye), arm (U2/L2, or a compound pair, with how far the first sweeps before the second
+// what bends between the eyes and the stem: each end's shoulder (U1/L1, with the bearing it ends
+// on, so a new radius still hands over in the same place), arm (U2/L2, or a compound pair, with how far the first sweeps before the second
 // takes over), wing (U3/L3) and the cut that sets the wing's tip, and the four arcs that land the
 // outline on the stem, one radius for all four. Radii in mm, angles in degrees as
 // the fields show them
 export interface FholeContourParams {
   U1R: number;
-  U1Sweep: number;
+  U1End: number;
   U2R: number;
   U21DoubleArc: boolean;
   U21R: number;
@@ -468,7 +468,7 @@ export interface FholeContourParams {
   U3Angle: number;
   UCut: FholeCutParams;
   L1R: number;
-  L1Sweep: number;
+  L1End: number;
   L2R: number;
   L21DoubleArc: boolean;
   L21R: number;
@@ -651,8 +651,11 @@ export interface PlateSurface {
   longArch: LongArchSolve | null;
 }
 
-// what one station row of the surface shares between every sample on it
+// what one station row of the surface shares between every sample on it: the outline's crossings
+// decide what is wood, the half chord the run the centreline sits in, which a hooked corner's tip
+// lies outside
 export interface SurfaceRow {
+  outerCrossings: number[];
   outerHalf: number | null;
   landCrossings: number[];
   section: CrossArchSection | null;

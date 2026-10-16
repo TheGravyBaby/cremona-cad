@@ -94,12 +94,12 @@ export const SEED_RATIOS: ViolinFamilyRatios & { height: number } = {
 // the f-holes drafted from nothing but the outline: keyed off the lower eye, itself a fraction of
 // the width. One drawing rather than a corpus mean: a Stradivari-pattern hole drawn by hand on the
 // seed outline (2026-10), with the Betts and the Ward as the check. The angles ride with the
-// fractions because a radius says nothing without where its arc takes off and hands over: how far
-// the shoulders sweep from their eyes, the angle each wing meets its cut at, where each cut leaves its eye and the
+// fractions because a radius says nothing without where its arc takes off and hands over: the
+// bearing each shoulder ends on, the angle each wing meets its cut at, where each cut leaves its eye and the
 // slope it leaves on, and the stem's lean, all in degrees
 export const FHOLE_SEED_RATIOS: FholeRatios & {
-  U1Sweep: number; U3Angle: number; UCutAt: number; UCutSlope: number;
-  L1Sweep: number; L3Angle: number; LCutAt: number; LCutSlope: number;
+  U1End: number; U3Angle: number; UCutAt: number; UCutSlope: number;
+  L1End: number; L3Angle: number; LCutAt: number; LCutSlope: number;
   stemAngle: number;
 } = {
   LEyetoW: 3 / 128,
@@ -129,11 +129,11 @@ export const FHOLE_SEED_RATIOS: FholeRatios & {
   L1toS: 1 / 4,
   L2toS: 3 / 8,
   L3toS: 1 / 2,
-  U1Sweep: 120,
+  U1End: 90,
   U3Angle: 85,
   UCutAt: 70,
   UCutSlope: 45,
-  L1Sweep: 105,
+  L1End: 270,
   L3Angle: 100,
   LCutAt: 255,
   LCutSlope: -130,
@@ -178,7 +178,7 @@ export const FAMILY_STANDARDS: readonly FamilyStandards[] = [
     neck: { angle: 7.5, upperThickness: 13, lowerThickness: 15, topWidth: 24, rootWidth: 33, heelRadius: 10, mortiseDepth: 6.5, overstand: 6.5, nutHeight: 6, nutWidth: 24 },
     strings: { bodyStop: 195, bridgeHeight: 33, nutThickness: 7.5, fingerboardLength: 270, fingerboardThickness: 5, fingerboardRadius: 42 },
     bridge: { footWidth: 43, footThickness: 5, topThickness: 2.3 },
-    blocks: { pad: 3, height: 20, width: 12, end: 20 },
+    blocks: { pad: 2.5, height: 20, width: 16, end: 20 },
   },
   {
     family: 'viola', below: 500, overhang: 3, rib: 1.2, ribHeightLower: 40, ribHeightUpper: 38, edgeThickness: 4,
@@ -186,7 +186,7 @@ export const FAMILY_STANDARDS: readonly FamilyStandards[] = [
     neck: { angle: 7.5, upperThickness: 14, lowerThickness: 15, topWidth: 25, rootWidth: 36, heelRadius: 11, mortiseDepth: 7, overstand: 9, nutHeight: 6.5, nutWidth: 25 },
     strings: { bodyStop: 225, bridgeHeight: 38, nutThickness: 8, fingerboardLength: 305, fingerboardThickness: 5.5, fingerboardRadius: 38 },
     bridge: { footWidth: 50, footThickness: 5 * 50 / 43, topThickness: 2.3 * 50 / 43 },
-    blocks: { pad: 4, height: 30, width: 18, end: 25 },
+    blocks: { pad: 4, height: 30, width: 24, end: 25 },
   },
   {
     family: 'cello', below: 800, overhang: 4, rib: 1.5, ribHeightLower: 120, ribHeightUpper: 116, edgeThickness: 6,
@@ -194,7 +194,7 @@ export const FAMILY_STANDARDS: readonly FamilyStandards[] = [
     neck: { angle: 7.5, upperThickness: 17, lowerThickness: 19, topWidth: 31, rootWidth: 46, heelRadius: 20, mortiseDepth: 10, overstand: 19, nutHeight: 9, nutWidth: 31 },
     strings: { bodyStop: 400, bridgeHeight: 90, nutThickness: 11, fingerboardLength: 580, fingerboardThickness: 7.5, fingerboardRadius: 62 },
     bridge: { footWidth: 90, footThickness: 11, topThickness: 2.6 },
-    blocks: { pad: 5, height: 40, width: 24, end: 45 },
+    blocks: { pad: 5, height: 40, width: 32, end: 45 },
   },
   {
     family: 'bass', below: Infinity, overhang: 6, rib: 2.5, ribHeightLower: 185, ribHeightUpper: 179, edgeThickness: 9,
@@ -202,7 +202,7 @@ export const FAMILY_STANDARDS: readonly FamilyStandards[] = [
     neck: { angle: 7.5, upperThickness: 22, lowerThickness: 30, topWidth: 42, rootWidth: 60, heelRadius: 30, mortiseDepth: 15, overstand: 25, nutHeight: 10, nutWidth: 42 },
     strings: { bodyStop: 610, bridgeHeight: 165, nutThickness: 15, fingerboardLength: 850, fingerboardThickness: 10, fingerboardRadius: 95 },
     bridge: { footWidth: 150, footThickness: 21, topThickness: 4.5 },
-    blocks: { pad: 8, height: 50, width: 30, end: 70 },
+    blocks: { pad: 8, height: 50, width: 40, end: 70 },
   },
 ];
 

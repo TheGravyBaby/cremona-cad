@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { dist, normalizeRadians, pointOnCircle, signedArcSweep, travelAtArcEnd, travelAtArcStart, TURN } from '../../../../helpers/math/simpleGeometry';
+import { dist, normalizeRadians, pointOnCircle, signedArcSweep, signedRadianDelta, travelAtArcEnd, travelAtArcStart, TURN } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { Arc, Pt } from '../../../../models/types';
 import { FHoleContoursPanel, fholePath, solveFholeContours, solveFholeContoursRatios } from './fhole-contours-panel';
@@ -46,20 +46,20 @@ const move = (p: ViolinFamilyParams, shape: Shape, t: number): void => {
   if (shape === 'extended') {
     // extending both shoulders further past their apex, then dialling the stem's one shared arc
     // radius off its seed; much further and the upper one reaches its own cut
-    k.U1Sweep += 0.1 * t / deg;
-    k.L1Sweep += 0.25 * t / deg;
+    k.U1End -= 0.1 * t / deg;
+    k.L1End -= 0.25 * t / deg;
     k.stemArcR += 8 * t;
   }
 
   if (shape === 'short') {
     // the late del Gesu move: stop each shoulder before its apex and let a tighter arm take the
     // top of the hole. Where the apex falls on the seed's shoulder is read off the plain solve, so
-    // the shoulder always stops short of it whatever the seed sweeps
+    // the shoulder always stops short of it wherever the seed ends it
     const plain = solveFholeContours(seeded())!;
     const past = (shoulder: Arc, side: 1 | -1) => Math.max(0, side * Math.PI / 2 - shoulder.end);
-    k.U1Sweep -= (past(plain.U1!, 1) + 0.4 * t) / deg;
+    k.U1End += (past(plain.U1!, 1) + 0.4 * t) / deg;
     k.U2R = lerp(k.U2R, k.U1R / 2, t);
-    k.L1Sweep -= (past(plain.L1!, -1) + 0.3 * t) / deg;
+    k.L1End += (past(plain.L1!, -1) + 0.3 * t) / deg;
     k.L2R = lerp(k.L2R, k.L1R * 0.75, t);
   }
 
@@ -246,9 +246,11 @@ describe('f-hole contour properties', () => {
       }
     });
 
-    it(`turns each shoulder clockwise from its eye through its typed sweep, and a split arm through its, ${label}`, () => {
-      expect(signedArcSweep(s.U1!) / TURN.degree).toBeCloseTo(-k.U1Sweep, 6);
-      expect(signedArcSweep(s.L1!) / TURN.degree).toBeCloseTo(-k.L1Sweep, 6);
+    it(`ends each shoulder on its typed bearing, turning clockwise from its eye, and turns a split arm through its sweep, ${label}`, () => {
+      expect(signedRadianDelta(s.U1!.end - k.U1End * TURN.degree)).toBeCloseTo(0, 6);
+      expect(signedRadianDelta(s.L1!.end - k.L1End * TURN.degree)).toBeCloseTo(0, 6);
+      expect(signedArcSweep(s.U1!)).toBeLessThan(0);
+      expect(signedArcSweep(s.L1!)).toBeLessThan(0);
       if (k.U21DoubleArc) expect(signedArcSweep(s.U2!) / TURN.degree).toBeCloseTo(-k.U2Sweep, 6);
       if (k.L21DoubleArc) expect(signedArcSweep(s.L2!) / TURN.degree).toBeCloseTo(-k.L2Sweep, 6);
     });

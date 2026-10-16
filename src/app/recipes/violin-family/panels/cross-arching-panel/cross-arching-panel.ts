@@ -876,7 +876,10 @@ export function sectionAt(surface: PlateSurface, y: number): CrossArchSection | 
 // either side of x = 0: where the outline turns a corner it runs nearly flat and a station line
 // clips it more than once, leaving a sliver out at the tip that isn't wood across the gap
 export function plateHalfChordAtY(poly: Pt[], y: number): number | null {
-  let xs = polylineCrossingsAtY(poly, y);
+  return halfChordOf(polylineCrossingsAtY(poly, y));
+}
+
+function halfChordOf(xs: number[]): number | null {
   if (!xs.length) return null;
   let right = xs.find(x => x >= 0);
   let left = xs.filter(x => x <= 0).pop();
@@ -899,11 +902,20 @@ function insideCrossings(x: number, xs: number[]): boolean {
   return count % 2 === 1;
 }
 
+// wood at x on a station: inside the outline's crossings, the edge itself included, so a corner
+// whose tip hooks back past its flank still counts its tip
+function onPlate(x: number, xs: number[]): boolean {
+  for (let c of xs) if (Math.abs(c - x) <= 1e-9) return true;
+  return insideCrossings(x, xs);
+}
+
 // what one station row shares between every sample on it: the chords, and the section, which
 // runs a root-find per side
 export function rowAt(surface: PlateSurface, y: number): SurfaceRow {
+  let outerCrossings = polylineCrossingsAtY(surface.outline, y);
   return {
-    outerHalf: plateHalfChordAtY(surface.outline, y),
+    outerCrossings,
+    outerHalf: halfChordOf(outerCrossings),
     landCrossings: polylineCrossingsAtY(surface.flutingEdge, y),
     section: sectionAt(surface, y),
     centerCrossings: polylineCrossingsAtY(surface.centerPoly, y),
@@ -937,7 +949,7 @@ function withCornerPass(surface: PlateSurface, row: SurfaceRow, x: number, y: nu
 // near the caps the handover happens at the joint where the chord reads all the way in; the crown
 // is centred wherever this leans on distance, so the sign of x picking a flank is harmless there
 export function surfaceZAt(surface: PlateSurface, x: number, y: number, row = rowAt(surface, y)): number | null {
-  if (row.outerHalf === null || Math.abs(x) > row.outerHalf) return null;
+  if (!onPlate(x, row.outerCrossings)) return null;
   let s = channelS(surface, row, x, y);
   let section = row.section;
   if (section) {

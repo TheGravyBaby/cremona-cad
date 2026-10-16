@@ -296,6 +296,6 @@ describe('ratios', () => {
     FHoleContoursPanel.seed(p);
     const keys = Object.keys({ ...solveFholePlacementRatios(p), ...solveFholeContoursRatios(p) }).sort();
     // the angles ride on the seed as well; they are params already, so nothing reads them back
-    expect(keys).toEqual(Object.keys(FHOLE_SEED_RATIOS).filter(k => !/Sweep$|Angle$|Cut(At|Slope)$/.test(k)).sort());
+    expect(keys).toEqual(Object.keys(FHOLE_SEED_RATIOS).filter(k => !/End$|Angle$|Cut(At|Slope)$/.test(k)).sort());
   });
 });
