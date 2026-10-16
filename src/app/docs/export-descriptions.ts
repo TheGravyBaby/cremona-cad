@@ -7,6 +7,7 @@ export const EXPORT_DESCRIPTIONS: Record<string, string> = {
   crossArchTemplates: '5 cross-section strips per plate, evenly spaced',
   fholeTemplate: 'Single unmirrored f-hole, for cutting or tracing',
   fholeTemplateNoEyes: 'Single unmirrored f-hole, eyes closed with a short arc for hand-cut eyes',
+  fholeTemplateArched: 'Single unmirrored f-hole corrected for the arching: bent over the top plate, it traces the hole as drawn',
   neckTemplate: 'Side profile, neck foot to scroll, with the volute as a slotted stencil and the eye pricked',
   scrollSide: "The head from the side, the volute and the pegbox's back and front, as the scroll panels draw it",
   scrollFrontView: 'The head from in front, the pegbox and the turns as seen, with the nut',

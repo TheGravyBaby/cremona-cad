@@ -197,6 +197,31 @@ describe('the surface', () => {
     expect(checked).toBeGreaterThan(8);
   });
 
+  it('answers everywhere inside the outline, a hooked corner\'s tip included, and nowhere outside it', () => {
+    const s = topSurface(seeded());
+    const poly = s.outline;
+    let hooked = 0;
+    for (let y = 0.25; y < DEFAULT_VIOLIN_FAMILY_PARAMS.body.height; y += 0.5) {
+      const xs: number[] = [];
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i], b = poly[(i + 1) % poly.length];
+        if ((a.y <= y) !== (b.y <= y)) xs.push(a.x + ((y - a.y) / (b.y - a.y)) * (b.x - a.x));
+      }
+      xs.sort((m, n) => m - n);
+      if (xs.length > 2) hooked++;
+      const row = rowAt(s, y);
+      // the midpoint of every span between crossings: wood on the odd spans, air on the even
+      for (let k = 0; k + 1 < xs.length; k++) {
+        const z = surfaceZAt(s, (xs[k] + xs[k + 1]) / 2, y, row);
+        if (k % 2 === 0) expect(z, `y=${y}`).not.toBeNull();
+        else expect(z, `y=${y}`).toBeNull();
+      }
+      expect(surfaceZAt(s, xs[xs.length - 1] + 0.5, y, row)).toBeNull();
+    }
+    // the seeded corners run on past the rib corner, so a station through a tip clips the outline more than twice
+    expect(hooked).toBeGreaterThan(0);
+  });
+
   it('crowns on the centreline at the long arch\'s height and runs every station between the caps', () => {
     const la = surface.longArch!;
     let peak = -Infinity;

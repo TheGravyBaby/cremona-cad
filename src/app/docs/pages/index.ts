@@ -3,6 +3,7 @@
 import boothAboutMe from './booth/about-me.md';
 import boothAcknowledgements from './booth/acknowledgements.md';
 import boothCremonaCad from './booth/cremona-cad.md';
+import historyLicense from './history/license.md';
 import historyV070 from './history/v0.7.0.md';
 import historyV071 from './history/v0.7.1.md';
 import historyV0721 from './history/v0.7.2.1.md';
@@ -25,6 +26,7 @@ export const PAGE_SOURCES: Record<string, string> = {
   'booth/about-me.md': boothAboutMe,
   'booth/acknowledgements.md': boothAcknowledgements,
   'booth/cremona-cad.md': boothCremonaCad,
+  'history/license.md': historyLicense,
   'history/v0.7.0.md': historyV070,
   'history/v0.7.1.md': historyV071,
   'history/v0.7.2.1.md': historyV0721,

@@ -54,7 +54,7 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
     let stemArcR = Math.round(dist(f.UEye, f.LEye) * r.StoEyeSpan);
     p.fHoleContours = {
       U1R: Math.round(stemArcR * r.U1toS),
-      U1Sweep: r.U1Sweep,
+      U1End: r.U1End,
       U2R: Math.round(stemArcR * r.U2toS),
       U21DoubleArc: false,
       U21R: Math.round(stemArcR * r.U2toS),
@@ -63,7 +63,7 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
       U3Angle: r.U3Angle,
       UCut: { angleOnEye: r.UCutAt, slope: r.UCutSlope, length: quarter(f.UEye.r * r.UCuttoUEye) },
       L1R: Math.round(stemArcR * r.L1toS),
-      L1Sweep: r.L1Sweep,
+      L1End: r.L1End,
       L2R: Math.round(stemArcR * r.L2toS),
       L21DoubleArc: false,
       L21R: Math.round(stemArcR * r.L2toS),
@@ -269,16 +269,16 @@ export const renderFholes = (p: ViolinFamilyParams, pal: PanelPalette) => (g: an
 };
 
 // where a shoulder sits: tangent inside its eye, so its centre rides a circle about the eye, and
-// turning clockwise through its sweep to hand over to the arm. Whichever arc passes the apex, the
-// shoulder, the arm, or the second arm once the first is split off before it, has to touch the
-// bound there. The shoulder's height, its end and so each arm's centre are all sinusoids of the
-// one angle round the eye, so each case is a sine sum to solve, checked after against which arc
-// its answer puts at the apex. `up` is where the bound lies, `side` which side of the eye the
-// centre sits
+// turning clockwise from there to the bearing it ends on, where the arm takes over. Whichever arc
+// passes the apex, the shoulder, the arm, or the second arm once the first is split off before it,
+// has to touch the bound there. The end is fixed, so each arm's centre sits a fixed offset from the
+// shoulder's and only the shoulder's height moves with the angle round the eye: each case is a sine
+// to solve, checked after against which arc its answer puts at the apex. `up` is where the bound
+// lies, `side` which side of the eye the centre sits
 function placeShoulder(
   eye: Circle,
   r: number,
-  sweep: number,
+  end: number,
   armR: number,
   split: { r: number; after: number } | null,
   bound: number,
@@ -289,18 +289,21 @@ function placeShoulder(
   // the shoulder leaves its eye looking back through it when it is the larger circle
   let out = r >= eye.r ? TURN.half : 0;
   let apex = up * TURN.quarter;
-  let endPhase = out - sweep;
+  end = signedRadianDelta(end);
+  let armLift = (r - armR) * Math.sin(end);
   let cases = [
-    { top: r, terms: [{ a: rho, c: 0 }] },
-    { top: armR, terms: [{ a: rho, c: 0 }, { a: r - armR, c: endPhase }] },
-    ...(split ? [{ top: split.r, terms: [{ a: rho, c: 0 }, { a: r - armR, c: endPhase }, { a: armR - split.r, c: endPhase - split.after }] }] : []),
+    { top: r, lift: 0 },
+    { top: armR, lift: armLift },
+    ...(split ? [{ top: split.r, lift: armLift + (armR - split.r) * Math.sin(end - split.after) }] : []),
   ];
-  for (let [owner, { top, terms }] of cases.entries()) {
-    for (let phi of solveSineSum(terms, bound - eye.y - up * top)) {
+  for (let [owner, { top, lift }] of cases.entries()) {
+    for (let phi of solveSineSum([{ a: rho, c: 0 }], bound - eye.y - up * top - lift)) {
       if (side * Math.cos(phi) < 0) continue;
       let C = pointOnCircle({ ...eye, r: rho }, phi);
       let start = out ? angleFromCenter(C, eye) : angleFromCenter(eye, C);
-      let end = signedRadianDelta(start - sweep);
+      let sweep = normalizeRadians(start - end);
+      // the outline draws the shoulder the short way round
+      if (sweep > TURN.half) continue;
       let shoulderOwns = normalizeRadians(start - apex) <= sweep + 1e-9;
       let armOwns = !shoulderOwns && (!split || normalizeRadians(end - apex) <= split.after + 1e-9);
       if ((shoulderOwns ? 0 : armOwns ? 1 : 2) !== owner) continue;
@@ -455,12 +458,12 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
 
   // first the upper curve that connects to the eye
   solveSection(s.failures, 'Upper arm', ['U1', 'U2', 'U21', 'S2'], () => {
-    let missing = blank('Upper arm', ['U1', 'U2', 'U21', 'S2'], [k.U1R, k.U1Sweep, k.U2R, k.stemArcR, f.URise, ...(k.U21DoubleArc ? [k.U21R, k.U2Sweep] : [])]);
+    let missing = blank('Upper arm', ['U1', 'U2', 'U21', 'S2'], [k.U1R, k.U1End, k.U2R, k.stemArcR, f.URise, ...(k.U21DoubleArc ? [k.U21R, k.U2Sweep] : [])]);
     if (missing) return missing;
     let upperSplit = k.U21DoubleArc ? { r: k.U21R, after: k.U2Sweep * deg } : null;
 
     let upperBound = f.UEye.y + f.UEye.r + f.URise;
-    let upperShoulder = placeShoulder(f.UEye, k.U1R, k.U1Sweep * deg, k.U2R, upperSplit, upperBound, 1, 1);
+    let upperShoulder = placeShoulder(f.UEye, k.U1R, k.U1End * deg, k.U2R, upperSplit, upperBound, 1, 1);
     if (!upperShoulder)
       return shoulderMiss('Upper arm', 'U1', k.U1R, f.UEye, upperBound - k.U1R, upperBound, 1, ['U1', 'U2', 'U21', 'S2']);
     s.U1 = upperShoulder;
@@ -520,12 +523,12 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
 
   // now the lower arm, upside down: bound drops below the eye, and the arm meets the inner stem
   solveSection(s.failures, 'Lower arm', ['L1', 'L2', 'L21', 'S3'], () => {
-    let missing = blank('Lower arm', ['L1', 'L2', 'L21', 'S3'], [k.L1R, k.L1Sweep, k.L2R, k.stemArcR, f.LRise, ...(k.L21DoubleArc ? [k.L21R, k.L2Sweep] : [])]);
+    let missing = blank('Lower arm', ['L1', 'L2', 'L21', 'S3'], [k.L1R, k.L1End, k.L2R, k.stemArcR, f.LRise, ...(k.L21DoubleArc ? [k.L21R, k.L2Sweep] : [])]);
     if (missing) return missing;
     let lowerSplit = k.L21DoubleArc ? { r: k.L21R, after: k.L2Sweep * deg } : null;
 
     let lowerBound = f.LEye.y - f.LEye.r - f.LRise;
-    let lowerShoulder = placeShoulder(f.LEye, k.L1R, k.L1Sweep * deg, k.L2R, lowerSplit, lowerBound, -1, -1);
+    let lowerShoulder = placeShoulder(f.LEye, k.L1R, k.L1End * deg, k.L2R, lowerSplit, lowerBound, -1, -1);
     if (!lowerShoulder)
       return shoulderMiss('Lower arm', 'L1', k.L1R, f.LEye, lowerBound + k.L1R, lowerBound, -1, ['L1', 'L2', 'L21', 'S3']);
     s.L1 = lowerShoulder;

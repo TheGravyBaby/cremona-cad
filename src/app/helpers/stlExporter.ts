@@ -1,8 +1,8 @@
-// Binary STL export of a height-field solid: a top surface z(x, y) sampled on
-// a regular grid, a flat base plane, and vertical skirt walls where the field
-// ends. Cells are solid only when all four corners have a height, so the
-// outline is a grid staircase eroded by at most one cell — fine for CNC
-// roughing and 3D preview; finishing detail comes from the 2D exports.
+// Binary STL export of a height-field solid: a top surface z(x, y) sampled on a regular grid, a
+// flat base plane, and vertical walls where the field ends. With no outline, a cell is solid only
+// when all four corners have a height, so the edge is a grid staircase eroded by at most one cell
+// and the walls follow it. With an outline, the cells it crosses are clipped to it, so the top and
+// the base meet the walls on the outline itself and the solid closes.
 
 export interface HeightFieldStlOptions {
   xMin: number;
@@ -14,8 +14,8 @@ export interface HeightFieldStlOptions {
   baseZ: number;
   /**
    * When provided, side walls follow this closed polygon (x/y in the same mm
-   * coordinate space as the height field) instead of the grid staircase.
-   * Eliminates jagged staircase edges on curved outlines.
+   * coordinate space as the height field) instead of the grid staircase, and
+   * the top and base are clipped to it.
    */
   outline?: [number, number][];
   /** Z height of the top edge of each outline wall segment (typically the plate thickness). */
@@ -42,10 +42,10 @@ export function buildHeightFieldStl(zAt: (x: number, y: number) => number | null
   const X = (i: number) => xMin + i * gridMm;
   const Y = (j: number) => yMin + j * gridMm;
   const zOf = (i: number, j: number) => z[j * nx + i];
+  const inside = (i: number, j: number) => i >= 0 && j >= 0 && i < nx && j < ny && !Number.isNaN(zOf(i, j));
   const solidCell = (i: number, j: number) =>
     i >= 0 && j >= 0 && i < nx - 1 && j < ny - 1 &&
-    !Number.isNaN(zOf(i, j)) && !Number.isNaN(zOf(i + 1, j)) &&
-    !Number.isNaN(zOf(i, j + 1)) && !Number.isNaN(zOf(i + 1, j + 1));
+    inside(i, j) && inside(i + 1, j) && inside(i, j + 1) && inside(i + 1, j + 1);
 
   // 9 numbers per triangle; winding chosen so computed normals face outward.
   const tris: number[] = [];
@@ -77,12 +77,78 @@ export function buildHeightFieldStl(zAt: (x: number, y: number) => number | null
     }
   }
 
-  // True outline walls: walk the boundary polygon and emit vertical wall quads.
-  // These replace the staircase skirts and follow the exact instrument shape.
   if (opts.outline) {
     const poly = opts.outline;
     const topZ = opts.outlineTopZ ?? baseZ + 1;
     const n = poly.length;
+
+    // the outline's segments bucketed by the grid cells their boxes cover, so a cell edge only
+    // asks the segments near it where the outline crosses
+    const buckets = new Map<number, number[]>();
+    for (let k = 0; k < n; k++) {
+      const [ax, ay] = poly[k], [bx, by] = poly[(k + 1) % n];
+      const i0 = Math.floor((Math.min(ax, bx) - xMin) / gridMm), i1 = Math.floor((Math.max(ax, bx) - xMin) / gridMm);
+      const j0 = Math.floor((Math.min(ay, by) - yMin) / gridMm), j1 = Math.floor((Math.max(ay, by) - yMin) / gridMm);
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const key = j * nx + i;
+        const list = buckets.get(key);
+        if (list) list.push(k); else buckets.set(key, [k]);
+      }
+    }
+
+    // where the outline crosses the cell edge from the inside corner `a` to the outside corner
+    // `b`, the nearest crossing to `a`; the edge's midpoint when the samples and the outline
+    // disagree about which side of it the plate ends on
+    const crossing = (i: number, j: number, a: [number, number], b: [number, number]): [number, number] => {
+      let best: [number, number] | null = null, bestT = Infinity;
+      const horizontal = a[1] === b[1];
+      for (const k of buckets.get(j * nx + i) ?? []) {
+        const [px, py] = poly[k], [qx, qy] = poly[(k + 1) % n];
+        let pt: [number, number] | null = null;
+        if (horizontal) {
+          if ((py <= a[1]) === (qy <= a[1])) continue;
+          pt = [px + ((a[1] - py) / (qy - py)) * (qx - px), a[1]];
+        } else {
+          if ((px <= a[0]) === (qx <= a[0])) continue;
+          pt = [a[0], py + ((a[0] - px) / (qx - px)) * (qy - py)];
+        }
+        const t = horizontal ? (pt[0] - a[0]) / (b[0] - a[0]) : (pt[1] - a[1]) / (b[1] - a[1]);
+        if (t >= 0 && t <= 1 && t < bestT) { bestT = t; best = pt; }
+      }
+      return best ?? [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    };
+
+    // a cell the outline crosses: the corners on the plate and the crossings between them, walked
+    // round the cell, make the plate's piece of it, fanned from its first corner. A crossing's
+    // height is read a hair inside the outline, where the field still answers
+    for (let j = 0; j < ny - 1; j++) {
+      for (let i = 0; i < nx - 1; i++) {
+        if (solidCell(i, j)) continue;
+        const corners: [number, number][] = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]];
+        const on = corners.map(([ci, cj]) => inside(ci, cj));
+        if (!on.some(Boolean)) continue;
+        const ring: number[][] = [];
+        for (let c = 0; c < 4; c++) {
+          const [ci, cj] = corners[c], [di, dj] = corners[(c + 1) % 4];
+          const here: [number, number] = [X(ci), Y(cj)], next: [number, number] = [X(di), Y(dj)];
+          if (on[c]) ring.push([here[0], here[1], zOf(ci, cj)]);
+          if (on[c] !== on[(c + 1) % 4]) {
+            const pt = on[c] ? crossing(i, j, here, next) : crossing(i, j, next, here);
+            const from = on[c] ? here : next;
+            const zc = zAt(pt[0] + (from[0] - pt[0]) * 1e-3, pt[1] + (from[1] - pt[1]) * 1e-3) ?? topZ;
+            ring.push([pt[0], pt[1], zc]);
+          }
+        }
+        const [a, ...rest] = ring;
+        for (let k = 0; k + 1 < rest.length; k++) {
+          const b = rest[k], c = rest[k + 1];
+          tri(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
+          tri(a[0], a[1], baseZ, c[0], c[1], baseZ, b[0], b[1], baseZ);
+        }
+      }
+    }
+
+    // True outline walls: walk the boundary polygon and emit vertical wall quads.
     // Determine polygon orientation via signed shoelace area (positive = CCW in standard coords).
     let area = 0;
     for (let k = 0; k < n; k++) {

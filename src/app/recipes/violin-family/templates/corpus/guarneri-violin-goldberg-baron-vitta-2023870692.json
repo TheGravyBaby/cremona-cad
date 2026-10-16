@@ -98,7 +98,7 @@
     },
     "fHoleContours": {
       "U1R": 8,
-      "U1Sweep": 110.887,
+      "U1End": 75,
       "U2R": 12,
       "U21DoubleArc": false,
       "U21R": 12,
@@ -111,7 +111,7 @@
         "length": 8.5
       },
       "L1R": 10.6,
-      "L1Sweep": 93.76,
+      "L1End": 270,
       "L2R": 13,
       "L21DoubleArc": false,
       "L21R": 13,

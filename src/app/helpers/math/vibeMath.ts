@@ -390,6 +390,55 @@ export function polylinePointAtY(pts: Pt3D[], y: number): Pt3D | null {
   return null;
 }
 
+// ===== Surface development =====
+// A flat template laid over a curved surface, as a card is: its spine runs along y and the card
+// bends across it, so a point's template coordinates are its surface length along the spine and
+// then across the section at its own height. Exact on a cylinder; on a dome the two routes to a
+// point disagree by second order in the patch's size over the surface's radii, a few tenths of a
+// millimetre across an f-hole. zAt returning null is off the surface, read as level with the last
+// height found.
+
+// surface length of the plan segment a→b, the heights read off zAt every stepMm
+export function liftedLength(zAt: (x: number, y: number) => number | null, a: Pt, b: Pt, stepMm = 0.25): number {
+  const plan = Math.hypot(b.x - a.x, b.y - a.y);
+  const n = Math.max(1, Math.ceil(plan / stepMm));
+  let len = 0, prevZ = zAt(a.x, a.y) ?? 0;
+  for (let i = 1; i <= n; i++) {
+    const z = zAt(a.x + (b.x - a.x) * i / n, a.y + (b.y - a.y) * i / n) ?? prevZ;
+    len += Math.hypot(plan / n, z - prevZ);
+    prevZ = z;
+  }
+  return len;
+}
+
+// plan points carried onto a card bent over the surface along the spine x = spine.x: `spine` maps
+// to itself, and every other point sits its surface distances along and across from it, signed as
+// in plan. The spine is walked once over the points' reach and each point reads its height off it
+export function developOverSurface(zAt: (x: number, y: number) => number | null, points: Pt[], spine: Pt, stepMm = 0.25): Pt[] {
+  if (!points.length) return [];
+  let y0 = spine.y, y1 = spine.y;
+  for (const pt of points) { if (pt.y < y0) y0 = pt.y; if (pt.y > y1) y1 = pt.y; }
+  const n = Math.max(1, Math.ceil((y1 - y0) / stepMm));
+  const cum = [0];
+  let prevZ = zAt(spine.x, y0) ?? 0;
+  for (let i = 1; i <= n; i++) {
+    const z = zAt(spine.x, y0 + (y1 - y0) * i / n) ?? prevZ;
+    cum.push(cum[i - 1] + Math.hypot((y1 - y0) / n, z - prevZ));
+    prevZ = z;
+  }
+  const along = (y: number): number => {
+    const f = y1 > y0 ? (y - y0) / (y1 - y0) * n : 0;
+    const i = clamp(Math.floor(f), 0, n - 1);
+    return cum[i] + (cum[i + 1] - cum[i]) * (f - i);
+  };
+  const v0 = along(spine.y);
+  return points.map(pt => {
+    const foot = new Pt(spine.x, pt.y);
+    const u = Math.sign(pt.x - spine.x) * liftedLength(zAt, foot, pt, stepMm);
+    return new Pt(spine.x + u, spine.y + along(pt.y) - v0);
+  });
+}
+
 // ===== Curve math =====
 
 /**

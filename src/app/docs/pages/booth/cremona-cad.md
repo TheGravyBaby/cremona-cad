@@ -8,12 +8,12 @@ kind: booth
 ![A CremonaCad drawing using the similar arc segments.](CC_Drawing.png)
 </carousel>
 
-CremonaCad is a **free and open source** application for designing violin family instruments!
+CremonaCad is a **free and open source** application for designing violin family instruments.
 
-CremonaCad defines instruments using a simple system of **intersecting arcs**. These patterns are historically informed by a drafting document found in the workshop of **Enrico Ceruti**, as well as the research of American luthier **David Beard**.
+The user designs instruments by reconstructing their individual components using simple geometric relationships. CremonaCad takes a "bench first" model of construction, where each shape you design corresponds to actual concept used in real world violin making. Shapes are primarily composed by smoothly joining various arc segments, informed by historical research of 17th century Italian instrument making. 
 
-Upload a historical instrument and use it as a reference, or go off the rails and create something totally unique! :D
+The application allows for the uploading and scaling of reference images, and features a wide array of drafting tools. The geometry systems are quite robust, supporting many different permutations, and tracking very well to real instruments. CremonaCad comes with several high quality copies of historical cremonese instruments, using publically available images and data from the Library of Congress. You can start with one of these recipes or build your own. 
 
-Once your design is complete, CremonaCad can create moulds and templates for your specific instrument. These patterns can be exported either as PDFs for traditional hand-making, or as SVGs for computer assisted fabrication.
+Once your design is complete, you can export scaled PDFs, SVGs, or DXF files for many critical violin making components. 
 
-Released under the **GNU General Public License v3.0** · [GitHub](https://github.com/TheGravyBaby/cremona-cad)
+If you would like to support the development and maintainence of CremonaCad, consider [donating here.](https://paypal.me/andrewargraves1)
