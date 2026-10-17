@@ -157,9 +157,10 @@ describe('the export panel on opening', () => {
 
   it('offers every sheet once every stage is reached', () => {
     const ready = exportReady(finished());
-    for (const type of [...PLAIN_EXPORTS, ...ARCHING_EXPORTS, 'fholeTemplate', 'fholeTemplateNoEyes', 'fholeTemplateArched', 'neckTemplate', ...SCROLL_EXPORTS, 'stlTop', 'stlBack'] as const) {
+    for (const type of [...PLAIN_EXPORTS, ...ARCHING_EXPORTS, 'fholeTemplate', 'fholeTemplateArched', 'neckTemplate', ...SCROLL_EXPORTS, 'stlTop', 'stlBack'] as const) {
       expect(ready.has(type), type).toBe(true);
     }
+    expect(ready.has('fholeTemplateNoEyes')).toBe(false);
   });
 });
 
@@ -259,6 +260,19 @@ describe('the f-hole cutting template', () => {
       expect(y).toBeGreaterThanOrEqual(vy - tolerance);
       expect(y).toBeLessThanOrEqual(vy + vh + tolerance);
     }
+  });
+
+  it('labels only the arched f-hole template, in its blank\'s bottom right corner clear of the hole', () => {
+    expect(exportSheet(finished(), 'fholeTemplate')!.texts).toEqual([]);
+    const sheet = exportSheet(finished(), 'fholeTemplateArched')!;
+    expect(sheet.texts.map(t => t.text)).toEqual(['Arched']);
+    const blank = pathsBounds([sheet.paths[0].d]);
+    const hole = pathsBounds([sheet.paths[1].d]);
+    const { x, y } = sheet.texts[0];
+    expect(x).toBeGreaterThan((blank.minX + blank.maxX) / 2);
+    expect(x).toBeLessThan(blank.maxX);
+    expect(y).toBeGreaterThan(blank.minY);
+    expect(y).toBeLessThan(hole.minY);
   });
 
   it('closes both eyes with the short arc instead of drawing their long rim when asked for no eyes', () => {
