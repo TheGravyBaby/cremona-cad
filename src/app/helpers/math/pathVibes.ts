@@ -904,8 +904,9 @@ function pathPieces(d: string): { pieces: PathPiece[]; closed: boolean }[] | nul
   const subpaths: { pieces: PathPiece[]; closed: boolean }[] = [];
   let pieces: PathPiece[] = [];
   let cur: Pt = { x: 0, y: 0 }, start = cur;
+  // a run drawn back to where it began is a loop, Z or no Z
   const finish = (closed: boolean) => {
-    if (pieces.length) subpaths.push({ pieces, closed });
+    if (pieces.length) subpaths.push({ pieces, closed: closed || dist(cur, start) < 1e-6 });
     pieces = [];
   };
   const add = (p: PathPiece, end: Pt) => {
@@ -1143,8 +1144,9 @@ function offsetSubpath(pieces: PathPiece[], closed: boolean, left: number): Path
 }
 
 /**
- * A parallel copy of a path `distance` away: positive grows a closed loop and moves an open run to
- * the right of its travel, the same side a positive offset takes an arc drawn counterclockwise.
+ * A parallel copy of a path `distance` away: positive grows a closed loop (one ending with Z, or
+ * drawn back to its start) and moves an open run to the right of its travel, the same side a
+ * positive offset takes an arc drawn counterclockwise.
  * Corners are mitred. Null when the offset would fold over itself — an inward step deeper than
  * a bend or past a corner's neighbours — or when the path holds something it can't offset.
  */

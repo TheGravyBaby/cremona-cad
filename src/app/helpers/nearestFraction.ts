@@ -218,3 +218,24 @@ function greatestCommonDivisor(a: number, b: number): number {
   while (y) [x, y] = [y, x % y];
   return x || 1;
 }
+
+// inches as a shop tape reads them, to the 32nd: 0.748 → "≈ 3/4", 11.811 → "≈ 11 13/16"
+export function inchFraction(inches: number): string {
+  if (!Number.isFinite(inches)) return '';
+  const sign = inches < 0 ? '-' : '';
+  const magnitude = Math.abs(inches);
+  let whole = Math.floor(magnitude);
+  let numerator = Math.round((magnitude - whole) * 32);
+  let denominator = 32;
+  if (numerator === 32) {
+    whole += 1;
+    numerator = 0;
+  }
+  const error = Math.abs(magnitude - (whole + numerator / 32));
+  const divisor = greatestCommonDivisor(numerator || 1, denominator);
+  numerator /= divisor;
+  denominator /= divisor;
+  const parts = [whole ? `${whole}` : '', numerator ? `${numerator}/${denominator}` : ''].filter(Boolean);
+  const text = parts.join(' ') || '0';
+  return `${error < 0.001 ? '' : '≈ '}${sign}${text}`;
+}

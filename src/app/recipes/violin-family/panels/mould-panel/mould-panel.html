@@ -96,11 +96,8 @@
 
 <section class="ui-group">
     <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Bit Diameter <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0"
-                [(ngModel)]="mo.bitDiameter" (input)="edited()" />
-        </label>
+        <app-mm-inch label="Bit Diameter" [step]="0.05" [min]="0" [value]="mo.bitDiameter"
+            (valueChange)="mo.bitDiameter = $event; edited()"></app-mm-inch>
         <button type="button" class="info-icon" (click)="help('bitDiameter')" title="More information"
             aria-label="Information">ⓘ</button>
     </div>

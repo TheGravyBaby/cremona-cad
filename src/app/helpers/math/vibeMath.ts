@@ -285,6 +285,16 @@ export function projectOntoPolyline(p: Pt, poly: Pt[], cum: number[]): { s: numb
   return best;
 }
 
+/** The run of an open polyline from `a` to `b` along it, both clamped: the point at `a`, the vertices between, the point at `b`. */
+export function polylineSlice(poly: Pt[], cum: number[], a: number, b: number): Pt[] {
+  const total = cum[cum.length - 1];
+  const lo = clamp(a, 0, total), hi = clamp(b, 0, total);
+  const out = [pointAtPolylineLength(poly, cum, lo)];
+  for (let i = 0; i < poly.length; i++) if (cum[i] > lo && cum[i] < hi) out.push(poly[i]);
+  out.push(pointAtPolylineLength(poly, cum, hi));
+  return out;
+}
+
 /** The point `s` along an open polyline, clamped to its ends. */
 export function pointAtPolylineLength(poly: Pt[], cum: number[], s: number): Pt {
   const total = cum[cum.length - 1];

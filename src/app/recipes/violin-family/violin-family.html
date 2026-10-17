@@ -246,6 +246,15 @@
             (saveRecipe)="saveToDisk()">
         </app-vf-export-panel>
         }
+
+        @if (openPanel === 'devExport') {
+        <app-vf-dev-export-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            [fileName]="d.fileName"
+            (drawn)="draftChange.emit($event)">
+        </app-vf-dev-export-panel>
+        }
     </div>
 </div>
 

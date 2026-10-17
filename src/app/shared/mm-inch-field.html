@@ -1,0 +1,14 @@
+<div class="field-cell field-cell--xy">
+    <div class="xy-titles">
+        <span class="field-title">{{ label }} <span class="unit-label">mm</span></span>
+        <span class="field-title"><span class="unit-label">in</span> {{ fraction }}</span>
+    </div>
+    <div class="xy-field" role="group" [attr.aria-label]="label" [style.borderColor]="borderColor ?? null">
+        <input type="number" class="basic-input" data-xy="x" [attr.aria-label]="label + ' in millimetres'"
+            [step]="step" [attr.min]="min ?? null" [disabled]="disabled"
+            [ngModel]="mm" (ngModelChange)="onMm($event)" />
+        <input type="number" class="basic-input" data-xy="y" [attr.aria-label]="label + ' in inches'"
+            step="0.0625" [attr.min]="min ?? null" [disabled]="disabled"
+            [ngModel]="inches" (ngModelChange)="onInches($event)" />
+    </div>
+</div>

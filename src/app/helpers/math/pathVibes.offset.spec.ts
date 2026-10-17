@@ -14,6 +14,16 @@ function expectParallel(original: string, offset: string, distance: number, digi
 }
 
 describe('offsetPath', () => {
+  // a loop drawn back to its start without Z shrinks inward on a negative distance whichever way it runs
+  it('treats a run back to its start as a loop', () => {
+    const ccw = 'M 0 0 L 10 0 L 10 10 L 0 10 L 0 0';
+    const cw = 'M 0 0 L 0 10 L 10 10 L 10 0 L 0 0';
+    for (const d of [ccw, cw]) {
+      const b = pathsBounds([offsetPath(d, -1)!]);
+      expect([b.minX, b.minY, b.maxX, b.maxY].map(v => Math.round(v * 1000) / 1000)).toEqual([1, 1, 9, 9]);
+    }
+  });
+
   // bows to +y, so its hollow faces the chord, on the right of travel
   const catenary = catenaryBetween({ x: 0, y: 0 }, { x: 100, y: 0 }, 30);
 
