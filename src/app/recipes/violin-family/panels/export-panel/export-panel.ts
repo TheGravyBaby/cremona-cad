@@ -61,14 +61,14 @@ const SHEET_LABELS: Record<ExportType, string> = {
   scrollCompass: 'Compass Walk',
 };
 const SCROLL_EXPORTS: readonly ScrollExportType[] = ['neckTemplate', 'scrollSide', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass'];
-const EXPORT_TYPES: readonly ExportType[] = ['topPlate', 'backPlate', 'innerContour', 'longArchTemplates', 'crossArchTemplates', 'fholeTemplate', 'fholeTemplateNoEyes', 'fholeTemplateArched', ...SCROLL_EXPORTS, 'mould', 'blocks'];
+const EXPORT_TYPES: readonly ExportType[] = ['topPlate', 'backPlate', 'innerContour', 'longArchTemplates', 'crossArchTemplates', 'fholeTemplate', 'fholeTemplateArched', ...SCROLL_EXPORTS, 'mould', 'blocks'];
 // drawn on the plan's own sheet, the body's width by its height, rather than sized to themselves
 const PLAN_SHEETS: readonly ExportType[] = ['innerContour', 'topPlate', 'backPlate', 'mould', 'blocks'];
 // the full plan's pages past the plan sheets, in order: a group shares a page with the one before it
 // when the two fit together
 const PDF_GROUPS: ReadonlyArray<{ label: string; types: readonly ExportType[] }> = [
   { label: 'Blocks', types: ['blocks'] },
-  { label: 'F-Hole Templates', types: ['fholeTemplate', 'fholeTemplateNoEyes', 'fholeTemplateArched'] },
+  { label: 'F-Hole Templates', types: ['fholeTemplate', 'fholeTemplateArched'] },
   { label: 'Arch Templates', types: ['longArchTemplates', 'crossArchTemplates'] },
   { label: 'Neck & Scroll', types: SCROLL_EXPORTS },
 ];
@@ -80,7 +80,7 @@ export const EXPORT_GROUPS: ReadonlyArray<{ label: string; rows: ReadonlyArray<{
   { label: 'Arch Templates', rows: [{ type: 'longArchTemplates', name: 'Long Arch Templates' }, { type: 'crossArchTemplates', name: 'Cross Arch Templates' }] },
   { label: 'F-Hole Templates', rows: [
     { type: 'fholeTemplate', name: 'F-Hole Template' }, 
-    // { type: 'fholeTemplateNoEyes', name: 'F-Hole (No Eyes)' }, // clutter, might remove
+    // fholeTemplateNoEyes is built but not offered, see exportReady
     { type: 'fholeTemplateArched', name: 'F-Hole (Arched)' }] 
   },
   { label: 'Neck & Scroll', rows: SCROLL_EXPORTS.map(type => ({ type, name: SHEET_LABELS[type] })) },
@@ -88,6 +88,8 @@ export const EXPORT_GROUPS: ReadonlyArray<{ label: string; rows: ReadonlyArray<{
 ];
 
 const FHOLE_TEMPLATE_MARGIN = 10;
+// from the blank's right edge to the centre of the 'Arched' label, about half its width and a gap
+const FHOLE_LABEL_INSET = 11;
 // a sheet in its own frame is sized from its geometry, with this much round it
 const TEMPLATE_SHEET_PAD = 5;
 // label text size (mm), the same on the canvas preview, SVG/PDF and DXF
@@ -233,7 +235,8 @@ export function exportReady(p: ViolinFamilyParams): Set<ExportReady> {
   if (o?.back) ready.add('backPlate');
   if (p.fHoleContours && solveFholeContours(p)?.path) {
     ready.add('fholeTemplate');
-    ready.add('fholeTemplateNoEyes');
+    // fholeTemplateNoEyes still builds through exportSheet but isn't offered, so it is in no
+    // preview or bulk export; add it here to bring it back
   }
   if (p.arching) {
     let a = solveLongArching(p);
@@ -288,7 +291,7 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
     case 'fholeTemplateNoEyes':
     case 'fholeTemplateArched': {
       let t = fholeTemplate(p, type !== 'fholeTemplateNoEyes', type === 'fholeTemplateArched');
-      return t && sheet([black(t.blank), cutFirst(t.hole)]);
+      return t && sheet([black(t.blank), cutFirst(t.hole)], type === 'fholeTemplateArched' ? [{ text: 'Arched', x: t.labelPos.x, y: t.labelPos.y, fontSize: TEMPLATE_LABEL_SIZE }] : []);
     }
     case 'crossArchTemplates':
     case 'longArchTemplates': {
@@ -359,8 +362,12 @@ function fholes(p: ViolinFamilyParams): string[] {
 // up. A whole-mm blank round the hole: the maker traces the hole from inside it, so cutting the pair
 // leaves a rectangle with the hole's negative in it. The drawing shows the hole from above, flat,
 // but the card is bent over the arch to use: arched, the hole is developed over the top's surface
-// along a spine up the hole's middle, so a card bent across the plate there traces the hole drawn
-function fholeTemplate(p: ViolinFamilyParams, renderEyes: boolean, arched = false): { blank: string; hole: string } | null {
+// along a spine up the hole's middle, so a card bent across the plate there traces the hole drawn.
+// The arched one is labelled in the blank's bottom right corner, so it can be told from the flat
+// one once cut out.
+// With renderEyes off the eyes close with a short arc, for hand-cut eyes: not offered at present
+// (see exportReady), kept for if the template comes back
+function fholeTemplate(p: ViolinFamilyParams, renderEyes: boolean, arched = false): { blank: string; hole: string; labelPos: Pt } | null {
   let s = p.fHoleContours ? solveFholeContours(p) : null;
   let raw = s?.path ? fholePath(p, s, false, renderEyes) : null;
   if (!raw) return null;
@@ -377,6 +384,7 @@ function fholeTemplate(p: ViolinFamilyParams, renderEyes: boolean, arched = fals
   return {
     blank: pathFromRect(new Rectangle(new Pt(-width / 2, 0), new Pt(width / 2, height))),
     hole: translatePath(raw, -(b.minX + b.maxX) / 2, (height - b.height) / 2 - b.minY),
+    labelPos: new Pt(width / 2 - FHOLE_LABEL_INSET, (height - b.height) / 4),
   };
 }
 
