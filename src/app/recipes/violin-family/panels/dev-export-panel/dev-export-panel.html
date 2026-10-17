@@ -1,0 +1,88 @@
+<section class="ui-group">
+    <div class="ui-group-title">Stock</div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Thickness" [step]="0.1" [min]="0" [value]="g.stock.thickness"
+            (valueChange)="g.stock.thickness = $event; edited()"></app-mm-inch>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Width" [step]="1" [min]="0" [value]="g.stock.width"
+            (valueChange)="g.stock.width = $event; edited()"></app-mm-inch>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Length" [step]="1" [min]="0" [value]="g.stock.length"
+            (valueChange)="g.stock.length = $event; edited()"></app-mm-inch>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Wood</span>
+            <select [(ngModel)]="g.wood" (change)="edited()">
+                <option value="soft">Soft (ply, spruce, poplar)</option>
+                <option value="hard">Hard (maple, beech)</option>
+            </select>
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Bit</div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Diameter" [value]="bitDiameter" [disabled]="true"></app-mm-inch>
+    </div>
+    @if (tool) {
+    <p class="hint">Carbide #{{ tool.number }}, {{ tool.name }}. Change it on the Mould panel.</p>
+    } @else {
+    <p class="hint">
+        No feeds for this bit. Set the Mould panel's bit to one of:
+        @for (t of tools; track t.number) { #{{ t.number }} ({{ t.diameter }} mm){{ $last ? '.' : ',' }} }
+    </p>
+    }
+</section>
+
+@let plan = cutPlan;
+<section class="ui-group">
+    <div class="ui-group-title">Plan</div>
+    @if (feeds && plan) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Cut <span class="unit-label">mm/min</span></span>
+            <input type="number" class="basic-input" disabled [ngModel]="feeds.cutFeed" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Plunge <span class="unit-label">mm/min</span></span>
+            <input type="number" class="basic-input" disabled [ngModel]="feeds.plungeFeed" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Step Down <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" disabled [ngModel]="feeds.stepDown" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Stock Top <span class="unit-label">Z</span></span>
+            <input type="number" class="basic-input" disabled [ngModel]="plan.stockTopZ" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Floor <span class="unit-label">Z</span></span>
+            <input type="number" class="basic-input" disabled [ngModel]="plan.floorZ" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Passes</span>
+            <input type="number" class="basic-input" disabled [ngModel]="plan.passes" />
+        </label>
+    </div>
+    } @else if (tool) {
+    <p class="hint">No proven feeds for {{ g.wood }} wood with this bit yet. Read them off Carbide Create's tool library and cut scrap before adding them.</p>
+    }
+    <p class="hint">
+        Windows first, then the outline. {{ machine.outlineTabs }} tabs on the outline and {{ machine.windowTabs }} per window,
+        {{ machine.tabHeight }} mm high. Safe Z {{ machine.safeZ }} mm above the stock. {{ machine.overcut }} mm into the spoilboard.
+    </p>
+    @for (problem of toolpaths?.failures ?? []; track problem) {
+    <p class="hint">{{ problem }}</p>
+    }
+    <div class="export-primary">
+        <button type="button" class="recipe-btn" (click)="reset()">Reset</button>
+        <button type="button" class="recipe-btn recipe-btn--primary" [disabled]="!canDownload" (click)="download()">Download G-code</button>
+    </div>
+    <p class="hint">Check the file in a G-code viewer and air-cut it before touching stock.</p>
+</section>

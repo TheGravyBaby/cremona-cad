@@ -28,6 +28,7 @@ import { ScrollWidthsPanel } from './panels/scroll-widths-panel/scroll-widths-pa
 import { StringSetupPanel } from './panels/string-setup-panel/string-setup-panel';
 import { MouldPanel } from './panels/mould-panel/mould-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
+import { DevExportPanel } from './panels/dev-export-panel/dev-export-panel';
 import { CORPUS_TEMPLATES, isLocSourced, thumbnailHref } from './templates/corpus';
 
 // The Violin Family recipe: the Ceruti model rebuilt on a split between what the user sets
@@ -40,7 +41,7 @@ import { CORPUS_TEMPLATES, isLocSourced, thumbnailHref } from './templates/corpu
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, ScrollPanel, ScrollWidthsPanel, StringSetupPanel, MouldPanel, ExportPanel],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, ScrollPanel, ScrollWidthsPanel, StringSetupPanel, MouldPanel, ExportPanel, DevExportPanel],
   templateUrl: './violin-family.html',
   styleUrls: ['../../sidebar.css', './violin-family.css'],
 })
@@ -67,6 +68,8 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
     { id: 'stringSetup', label: 'String Setup', toggles: StringSetupPanel.renderToggles, seed: StringSetupPanel.seed },
     { id: 'mould', label: 'Mould', toggles: MouldPanel.renderToggles, seed: MouldPanel.seed },
     { id: 'export', label: 'Export', toggles: ExportPanel.renderToggles },
+    // drives the maker's own CNC, so it is never offered off localhost
+    ...(isLocalHost() ? [{ id: 'devExport', label: 'Dev Export', toggles: DevExportPanel.renderToggles } as const] : []),
   ];
 
   private readonly themeService = inject(ThemeService);
@@ -188,6 +191,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
         return !!s && !s.failures.length;
       }
       case 'stringSetup': return !!p.neck;
+      case 'devExport': return isLocalHost() && !!p.mould;
       default: return false;
     }
   }

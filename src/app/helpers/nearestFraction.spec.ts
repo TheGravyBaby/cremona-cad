@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { nearestSmallFraction } from './nearestFraction';
+import { inchFraction, nearestSmallFraction } from './nearestFraction';
 
 describe('nearestSmallFraction', () => {
   it('names ratios the standard limits collapse to 0/1', () => {
@@ -30,5 +30,24 @@ describe('nearestSmallFraction', () => {
   it('does not hang a named constant off a large denominator', () => {
     // φ/117 sits within half a percent of this but reads as nothing
     expect(nearestSmallFraction(0.0138)).not.toContain('φ');
+  });
+});
+
+describe('inchFraction', () => {
+  it('reads common stock sizes as a tape does', () => {
+    expect(inchFraction(0.75)).toBe('3/4');
+    expect(inchFraction(19 / 25.4)).toBe('≈ 3/4');
+    expect(inchFraction(6.35 / 25.4)).toBe('1/4');
+  });
+
+  it('carries whole inches and reduces the fraction', () => {
+    expect(inchFraction(300 / 25.4)).toBe('≈ 11 13/16');
+    expect(inchFraction(12)).toBe('12');
+    expect(inchFraction(0.999)).toBe('≈ 1');
+  });
+
+  it('keeps the sign and survives junk', () => {
+    expect(inchFraction(-0.5)).toBe('-1/2');
+    expect(inchFraction(NaN)).toBe('');
   });
 });

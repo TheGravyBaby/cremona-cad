@@ -10,6 +10,7 @@ import { differenceFromManyPaths, intersectionFromTwoPaths, mirroredLoop } from 
 import { renderPath, renderRect, renderSolveFailures } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { Arc, Circle, Line, Pt, Rectangle } from '../../../../models/types';
+import { MmInchField } from '../../../../shared/mm-inch-field';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
@@ -25,7 +26,7 @@ import { purflingPath, ribArcs } from '../outer-contour-panel/outer-contour-pane
 
 @Component({
   selector: 'app-vf-mould-panel',
-  imports: [FormsModule, NumberStepperDirective],
+  imports: [FormsModule, MmInchField, NumberStepperDirective],
   templateUrl: './mould-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
@@ -49,7 +50,8 @@ export class MouldPanel implements ViolinFamilyPanel, OnInit {
       upperCornerBlock: { width: size.width, height: size.height, pad: { x: size.pad, y: -size.pad } },
       lowerCornerBlock: { width: size.width, height: size.height, pad: { x: size.pad, y: size.pad } },
       endBlock: { width: 3 * size.end, height: size.end },
-      bitDiameter: 3.175,
+      // Carbide's 1/4", the bit the moulds are cut with
+      bitDiameter: 6.35,
       clampBox: true,
     };
   }
@@ -114,7 +116,7 @@ export const renderMould = (s: MouldSolve, pal: PanelPalette, flags: ViolinFamil
 // is how finely the outline is sampled where the blocks cut it
 export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
   if (!p.mould || !p.corners || !p.bouts) return null;
-  let s: MouldSolve = { blocks: null, ribOutline: null, outline: null, clampBox: [], failures: [] };
+  let s: MouldSolve = { blocks: null, ribOutline: null, outline: null, notchOutline: null, reliefs: [], clampBox: [], failures: [] };
   let fail = (message: string, unsolved: MouldKey[]): MouldFailure => ({ message, unsolved, circles: [], segments: [] });
   let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
   if (!rib) {
@@ -154,24 +156,22 @@ export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
     const tolerance = 0.5;
     const bitRadius = mo.bitDiameter / 2 + tolerance;
     const bitOffset = (bitRadius * Math.SQRT1_2) - tolerance;
+    // each notch's two inner corners, with the way into the notch along the corner's diagonal; a
+    // circle set a little in from each keeps the bit from having to make an internal right angle
+    let corners: [Pt, number, number][] = [
+      [new Pt(blocks[0].Pt1.x, blocks[0].Pt1.y), 1, 1], [new Pt(blocks[0].Pt2.x, blocks[0].Pt1.y), -1, 1],
+      [new Pt(blocks[1].Pt2.x, blocks[1].Pt2.y), 1, -1], [new Pt(blocks[2].Pt2.x, blocks[2].Pt2.y), -1, -1],
+      [new Pt(blocks[3].Pt2.x, blocks[3].Pt2.y), 1, 1], [new Pt(blocks[4].Pt2.x, blocks[4].Pt2.y), -1, 1],
+      [new Pt(blocks[5].Pt1.x, blocks[5].Pt2.y), 1, -1], [new Pt(blocks[5].Pt2.x, blocks[5].Pt2.y), -1, -1],
+    ];
     let circleCutouts: string[] = [];
     if (mo.bitDiameter > 0) {
-      // these will keep the bit from making internal right angles
-      circleCutouts = [
-        pathFromCircle({ x: blocks[0].Pt1.x + bitOffset, y: blocks[0].Pt1.y + bitOffset, r: bitRadius }),
-        pathFromCircle({ x: blocks[0].Pt2.x - bitOffset, y: blocks[0].Pt1.y + bitOffset, r: bitRadius }),
-
-        pathFromCircle({ x: blocks[1].Pt2.x + bitOffset, y: blocks[1].Pt2.y - bitOffset, r: bitRadius }),
-        pathFromCircle({ x: blocks[2].Pt2.x - bitOffset, y: blocks[2].Pt2.y - bitOffset, r: bitRadius }),
-
-        pathFromCircle({ x: blocks[3].Pt2.x + bitOffset, y: blocks[3].Pt2.y + bitOffset, r: bitRadius }),
-        pathFromCircle({ x: blocks[4].Pt2.x - bitOffset, y: blocks[4].Pt2.y + bitOffset, r: bitRadius }),
-
-        pathFromCircle({ x: blocks[5].Pt1.x + bitOffset, y: blocks[5].Pt2.y - bitOffset, r: bitRadius }),
-        pathFromCircle({ x: blocks[5].Pt2.x - bitOffset, y: blocks[5].Pt2.y - bitOffset, r: bitRadius }),
-      ];
+      s.reliefs = corners.map(([corner, sx, sy]) => ({ corner, inward: new Pt(sx * Math.SQRT1_2, sy * Math.SQRT1_2), reach: bitRadius - bitOffset * Math.SQRT2 }));
+      circleCutouts = corners.map(([corner, sx, sy]) => pathFromCircle({ x: corner.x + sx * bitOffset, y: corner.y + sy * bitOffset, r: bitRadius }));
     }
-    s.outline = differenceFromManyPaths(ribOutline, [...blocks.map(block => pathFromRect(block)), ...circleCutouts], step);
+    let notches = blocks.map(block => pathFromRect(block));
+    s.notchOutline = differenceFromManyPaths(ribOutline, notches, step);
+    s.outline = circleCutouts.length ? differenceFromManyPaths(ribOutline, [...notches, ...circleCutouts], step) : s.notchOutline;
     return null;
   });
 

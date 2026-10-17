@@ -745,8 +745,19 @@ export interface MouldSolve {
   blocks: Record<'neck' | 'upperCorner' | 'lowerCorner' | 'end', Rectangle> | null;
   ribOutline: string | null;
   outline: string | null;
+  // the outline with the notches alone, before the bit's relief is cut into their corners
+  notchOutline: string | null;
+  reliefs: MouldRelief[];
   clampBox: string[];
   failures: MouldFailure[];
+}
+
+// a notch's inner corner relieved for the bit: the way into the notch along the corner's diagonal,
+// and how far past the corner the relief reaches
+export interface MouldRelief {
+  corner: Pt;
+  inward: Pt;
+  reach: number;
 }
 
 
@@ -805,7 +816,7 @@ export const VIOLIN_FAMILY_RECIPE_NAME = 'violin-family-recipe';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'scroll', 'scrollWidths', 'stringSetup', 'mould', 'export'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'scroll', 'scrollWidths', 'stringSetup', 'mould', 'export', 'devExport'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface<ViolinFamilyParams> {
