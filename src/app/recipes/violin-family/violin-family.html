@@ -252,7 +252,8 @@
             [params]="d.params"
             [flags]="viewFlags"
             [fileName]="d.fileName"
-            (drawn)="draftChange.emit($event)">
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
         </app-vf-dev-export-panel>
         }
     </div>

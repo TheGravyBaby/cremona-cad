@@ -1,4 +1,18 @@
 <section class="ui-group">
+    <div class="ui-group-title">Export</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Part</span>
+            <select [(ngModel)]="settings.job" (change)="edited()">
+                @for (e of exports; track e.id) {
+                <option [value]="e.id">{{ e.label }}</option>
+                }
+            </select>
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
     <div class="ui-group-title">Stock</div>
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Thickness" [step]="0.1" [min]="0" [value]="g.stock.thickness"
@@ -26,13 +40,14 @@
 <section class="ui-group">
     <div class="ui-group-title">Bit</div>
     <div class="input-group basic-row field-row" role="group">
-        <app-mm-inch label="Diameter" [value]="bitDiameter" [disabled]="true"></app-mm-inch>
+        <app-mm-inch label="Diameter" [step]="0.05" [min]="0" [value]="bitDiameter"
+            (valueChange)="setBit($event)"></app-mm-inch>
     </div>
     @if (tool) {
-    <p class="hint">Carbide #{{ tool.number }}, {{ tool.name }}. Change it on the Mould panel.</p>
+    <p class="hint">Carbide #{{ tool.number }}, {{ tool.name }}. The Mould panel's bit; its reliefs follow it.</p>
     } @else {
     <p class="hint">
-        No feeds for this bit. Set the Mould panel's bit to one of:
+        No feeds for this bit. Use one of:
         @for (t of tools; track t.number) { #{{ t.number }} ({{ t.diameter }} mm){{ $last ? '.' : ',' }} }
     </p>
     }
@@ -40,7 +55,11 @@
 
 @let plan = cutPlan;
 <section class="ui-group">
-    <div class="ui-group-title">Plan</div>
+    <div class="ui-group-title">
+        Plan
+        <button type="button" class="info-icon" (click)="help()" title="Why these defaults"
+            aria-label="Information">ⓘ</button>
+    </div>
     @if (feeds && plan) {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -71,12 +90,14 @@
         </label>
     </div>
     } @else if (tool) {
-    <p class="hint">No proven feeds for {{ g.wood }} wood with this bit yet. Read them off Carbide Create's tool library and cut scrap before adding them.</p>
+    <p class="hint">No feeds for {{ g.wood }} wood with this bit yet. Add a row from the bit maker's chart and cut scrap with it first.</p>
     }
+    @if (settings.job === 'mould') {
     <p class="hint">
-        Windows first, then the outline. {{ machine.outlineTabs }} tabs on the outline and {{ machine.windowTabs }} per window,
+        Windows first, then the outline. {{ mouldTabs.outline }} tabs on the outline and {{ mouldTabs.window }} per window,
         {{ machine.tabHeight }} mm high. Safe Z {{ machine.safeZ }} mm above the stock. {{ machine.overcut }} mm into the spoilboard.
     </p>
+    }
     @for (problem of toolpaths?.failures ?? []; track problem) {
     <p class="hint">{{ problem }}</p>
     }

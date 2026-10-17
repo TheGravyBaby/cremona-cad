@@ -10,7 +10,8 @@ import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MOULD_EXPORT_STEP, MouldPanel, solveMould } from '../mould-panel/mould-panel';
-import { DEFAULT_MOULD_GCODE_SETTINGS, MOULD_MACHINE, mouldGcodeJob, mouldToolpaths, Tab, TOOLS } from './dev-export-panel';
+import { DEFAULT_SETTINGS, EXPORTS, gcodeJob, MACHINE, MOULD_TABS, mouldToolpaths, planExport, Tab, TOOLS } from './dev-export-panel';
+import { ThemeService } from '../../../../theme/theme.service';
 
 // what a maker would check before cutting: the bit's centre runs a bit's radius off the cut line,
 // the climbing way round, the windows before the outline; the tabs are where the machine says, the
@@ -30,7 +31,7 @@ const runLength = (tab: Tab): number => {
   return cum[cum.length - 1];
 };
 
-const settings = () => JSON.parse(JSON.stringify(DEFAULT_MOULD_GCODE_SETTINGS));
+const settings = () => JSON.parse(JSON.stringify(DEFAULT_SETTINGS.mould));
 const tool = TOOLS[0];
 const feeds = tool.feeds.soft!;
 
@@ -92,8 +93,8 @@ describe('the mould toolpaths', () => {
   });
 
   it('number the tabs as the machine holds the mould with', () => {
-    expect(tabs.length).toBe(MOULD_MACHINE.outlineTabs + MOULD_MACHINE.windowTabs * s.clampBox.length);
-    for (const tab of tabs) expect(runLength(tab)).toBeCloseTo(MOULD_MACHINE.tabWidth, 1);
+    expect(tabs.length).toBe(MOULD_TABS.outline + MOULD_TABS.window * s.clampBox.length);
+    for (const tab of tabs) expect(runLength(tab)).toBeCloseTo(MACHINE.tabWidth, 1);
   });
 
   it('start each loop clear of its tabs, so no tab wraps the ends', () => {
@@ -123,7 +124,7 @@ describe('the mould toolpaths', () => {
     });
     for (const tab of tabs) {
       for (const notch of notches) {
-        expect(distPointToPolylineIndexed(tab.centre, buildPolylineIndex(notch)), `tab at ${tab.centre.x}, ${tab.centre.y}`).toBeGreaterThan(MOULD_MACHINE.tabWidth / 2);
+        expect(distPointToPolylineIndexed(tab.centre, buildPolylineIndex(notch)), `tab at ${tab.centre.x}, ${tab.centre.y}`).toBeGreaterThan(MACHINE.tabWidth / 2);
       }
     }
   });
@@ -144,21 +145,50 @@ describe('the mould toolpaths', () => {
   });
 });
 
+describe('the exports on offer', () => {
+  const p = seeded();
+  const pal = ThemeService.getPalette('classicCremona');
+  const flags = {} as any;
+
+  // a row in the dropdown with no planner behind it would offer a download that never comes
+  it('plan every export the dropdown lists, finely for the file as well', () => {
+    for (const { id } of EXPORTS) {
+      const g = JSON.parse(JSON.stringify(DEFAULT_SETTINGS[id]));
+      for (const fine of [false, true]) {
+        const plan = planExport(id, p, p.mould!.bitDiameter, g, pal, flags, fine);
+        expect(plan, `${id} fine=${fine}`).not.toBeNull();
+        expect(plan!.toolpaths.failures, `${id} fine=${fine}`).toEqual([]);
+        expect(plan!.toolpaths.paths.length).toBeGreaterThan(0);
+        expect(plan!.layers.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('name a tool\'s feeds for every row they are filled in, within the machine\'s reach', () => {
+    for (const tool of TOOLS) for (const feeds of Object.values(tool.feeds)) {
+      if (!feeds) continue;
+      expect(feeds.cutFeed).toBeGreaterThan(feeds.plungeFeed);
+      expect(feeds.stepDown).toBeGreaterThan(0);
+      expect(feeds.stepDown).toBeLessThanOrEqual(tool.diameter);
+    }
+  });
+});
+
 describe('the mould G-code job', () => {
   const p = seeded();
   const s = solveMould(p)!;
   const g = settings();
   const tp = mouldToolpaths(s, p.mould!.bitDiameter, g);
-  const job = mouldGcodeJob(tp, g, tool, feeds);
+  const job = gcodeJob(tp, g, tool, feeds);
 
   it('steps down from the stock top to the floor', () => {
     expect(job.passes[0]).toBeCloseTo(g.stock.thickness - feeds.stepDown, 6);
-    expect(job.passes.at(-1)).toBeCloseTo(-MOULD_MACHINE.overcut, 6);
+    expect(job.passes.at(-1)).toBeCloseTo(-MACHINE.overcut, 6);
     for (let i = 1; i < job.passes.length; i++) {
       expect(job.passes[i]).toBeLessThan(job.passes[i - 1]);
       expect(job.passes[i - 1] - job.passes[i]).toBeLessThanOrEqual(feeds.stepDown + 1e-9);
     }
-    expect(job.safeZ).toBeCloseTo(g.stock.thickness + MOULD_MACHINE.safeZ, 6);
+    expect(job.safeZ).toBeCloseTo(g.stock.thickness + MACHINE.safeZ, 6);
   });
 
   it('keeps every cut inside the sheet and names the zero', () => {

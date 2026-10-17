@@ -153,6 +153,9 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
   // every way a panel opens comes through here: a pick, the session, a load, an undo. Its stage is
   // seeded before it mounts, so a panel never sees its own params missing; edits seed again below
   protected override setOpenPanel(panel: string): void {
+    // dev export draws in the machine's coordinates, the mould shifted onto the sheet, so crossing
+    // in or out moves the whole drawing; framed again once the new panel has drawn
+    if ((panel === 'devExport') !== (this.openPanel === 'devExport')) setTimeout(() => this.requestFit.emit());
     super.setOpenPanel(panel);
     this.panelOrder.find(entry => entry.id === panel)?.seed?.(this.d.params);
     // the stage just seeded is what unlocks the next panel
