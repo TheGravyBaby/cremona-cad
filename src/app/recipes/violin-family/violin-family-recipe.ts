@@ -68,8 +68,9 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
     { id: 'stringSetup', label: 'String Setup', toggles: StringSetupPanel.renderToggles, seed: StringSetupPanel.seed },
     { id: 'mould', label: 'Mould', toggles: MouldPanel.renderToggles, seed: MouldPanel.seed },
     { id: 'export', label: 'Export', toggles: ExportPanel.renderToggles },
-    // drives the maker's own CNC, so it is never offered off localhost
-    ...(isLocalHost() ? [{ id: 'devExport', label: 'Dev Export', toggles: DevExportPanel.renderToggles } as const] : []),
+    // drives the maker's own CNC, so it is never offered off localhost; its component is only named
+    // inside @defer, so its planner is a separate chunk that is fetched only when the tab opens
+    ...(isLocalHost() ? [{ id: 'devExport', label: 'Dev Export', toggles: ['showBlocks', 'showRibOutline'] } as const] : []),
   ];
 
   private readonly themeService = inject(ThemeService);
