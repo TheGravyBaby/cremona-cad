@@ -248,6 +248,7 @@
         }
 
         @if (openPanel === 'devExport') {
+        @defer {
         <app-vf-dev-export-panel #panelRef
             [params]="d.params"
             [flags]="viewFlags"
@@ -255,6 +256,7 @@
             (drawn)="draftChange.emit($event)"
             (edit)="onPanelEdit()">
         </app-vf-dev-export-panel>
+        }
         }
     </div>
 </div>

@@ -17,13 +17,14 @@ import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { MouldRelief, MouldSolve, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { MOULD_EXPORT_STEP, renderMould, solveMould } from '../mould-panel/mould-panel';
 
-// G-code for the maker's own machine, offered on localhost only and never in a public build: the
-// files drive a CNC, and nobody else's machine is ours to answer for. Not a CAM program: each
+// G-code for the maker's own machine, offered on localhost only: the files drive a CNC, and nobody
+// else's machine is ours to answer for. The source is open; the recipe names this panel only inside
+// @defer, so a visitor's browser never fetches it. Not a CAM program: each
 // export is one thing the shop cuts from the recipe (the mould today; plate contours, then their
 // surfaces, scrolls and fingerboards to come), planned by code that knows that part, with the user
 // saying only what the stock is and whether the wood is hard. The shop's settings are not the
 // instrument's, so they live in this browser's localStorage, not on the recipe. The ⓘ's text is
-// kept here, not in docs/, because this panel never ships.
+// kept here, not in docs/, because this panel is never fetched off localhost.
 //
 // Adding an export: a row in EXPORTS, its stock settings on DevExportSettings, and a case in
 // planExport that solves the part and returns its toolpaths and layers. Everything after that
