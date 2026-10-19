@@ -19,3 +19,5 @@ CremonaCad comes with several high quality copies of historical Cremonese instru
 Once your design is complete, you can export scaled PDFs, SVGs, or DXF files for many critical violin making components. 
 
 If you would like to support the development and maintenance of CremonaCad, [consider donating.](https://paypal.me/andrewargraves1)
+
+*Thanks, and happy drafting!*

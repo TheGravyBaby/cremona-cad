@@ -1,5 +1,5 @@
 @let a = article();
-<app-indexed-pages label="Wiki contents" empty="Nothing matches." [groups]="nav()" [current]="current()"
+<app-indexed-pages label="Contents" empty="Nothing matches." [groups]="nav()" [current]="current()"
   (picked)="show($event)">
   <input indexHead class="wiki-search" type="search" placeholder="Search" [value]="query()"
     (input)="query.set($any($event.target).value)" />
