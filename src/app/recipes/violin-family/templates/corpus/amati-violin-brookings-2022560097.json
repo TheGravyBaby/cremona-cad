@@ -1,5 +1,4 @@
 {
-  "key": "amati-violin-brookings",
   "recipeName": "violin-family-recipe",
   "fileName": "Violin - Nicolo Amati - Brookings",
   "description": "Cremona, 1654. No dimensions published; height and width are placeholders.",
@@ -22,37 +21,37 @@
       "viol": null,
       "CBW": 108,
       "C0R": 74,
-      "C0Y": 197,
+      "C0Y": 197.5,
       "useKellyC0": false
     },
     "corners": {
       "UCr": {
-        "x": 76,
-        "y": 234.25
+        "x": 76.7,
+        "y": 233.65
       },
       "LCr": {
-        "x": 89.5,
-        "y": 147.25
+        "x": 89.8,
+        "y": 147.65
       },
       "U2R": 86,
-      "U3R": 26,
+      "U3R": 25,
       "U31R": 18,
       "U31Sweep": 32.758,
       "U31DoubleArc": false,
       "useViolCornerUC": false,
       "L2R": 95,
-      "L3R": 500,
+      "L3R": 31,
       "L31R": 28,
-      "L31Sweep": 51.406,
-      "L31DoubleArc": true,
+      "L31Sweep": 60,
+      "L31DoubleArc": false,
       "useViolCornerLC": false,
       "C2R": 20,
       "C21R": 14,
-      "C21Sweep": 21.255,
+      "C21Sweep": 36,
       "C21DoubleArc": true,
-      "C1R": 24,
-      "C11R": 20,
-      "C11Sweep": 28.462,
+      "C1R": 21,
+      "C11R": 19,
+      "C11Sweep": 28,
       "C11DoubleArc": true
     },
     "outerContour": {
@@ -62,13 +61,13 @@
       },
       "purflingOffset": 4.5,
       "purflingChannelDepth": 1,
-      "U3Cutoff": -0.614058823,
+      "U3Cutoff": -5,
       "U31Cutoff": 0,
       "C2Cutoff": 0,
-      "C21Cutoff": 20.745478943,
+      "C21Cutoff": 16,
       "C1Cutoff": 0,
-      "C11Cutoff": 8.538162569,
-      "L3Cutoff": 0,
+      "C11Cutoff": 9,
+      "L3Cutoff": -4,
       "L31Cutoff": -1.405766457,
       "upperRounding": 0.14,
       "lowerRounding": 0.11
@@ -93,38 +92,38 @@
       "UEye": {
         "x": 22.25,
         "y": 190.75,
-        "r": 3
+        "r": 3.4
       },
       "LEye": {
         "x": 58,
         "y": 140,
         "r": 5
       },
-      "URise": 5,
-      "LRise": 6,
+      "URise": 4.8,
+      "LRise": 6.1,
       "stem": {
         "center": {
           "x": 39.1,
-          "y": 163
+          "y": 161.1
         },
         "width": 5.75,
-        "angle": 93
+        "angle": 92
       },
       "notches": true
     },
     "fHoleContours": {
-      "U1R": 8,
+      "U1R": 9,
       "U1End": 90,
-      "U2R": 12,
+      "U2R": 10,
       "U21DoubleArc": false,
       "U21R": 12,
       "U2Sweep": 33.45,
       "U3R": 12,
-      "U3Angle": 65,
+      "U3Angle": 63,
       "UCut": {
         "angleOnEye": 75,
         "slope": 48,
-        "length": 4.8
+        "length": 4.25
       },
       "L1R": 10,
       "L1End": 270,
@@ -133,13 +132,13 @@
       "L21R": 14,
       "L2Sweep": 31.81,
       "L3R": 14,
-      "L3Angle": 102,
+      "L3Angle": 105,
       "LCut": {
-        "angleOnEye": 255.162149034,
-        "slope": -110,
+        "angleOnEye": 259,
+        "slope": -112,
         "length": 4.5
       },
-      "stemArcR": 36
+      "stemArcR": 31
     },
     "arching": {
       "ribHeightLower": 31,
@@ -152,8 +151,8 @@
           "peak": 50,
           "points": [
             {
-              "t": 87.5,
-              "z": 3.4,
+              "t": 90,
+              "z": 3,
               "mirror": false
             },
             {
@@ -168,7 +167,7 @@
             },
             {
               "t": 12.5,
-              "z": 3.8,
+              "z": 4.4,
               "mirror": false
             }
           ]
@@ -190,22 +189,22 @@
           "peak": 50,
           "points": [
             {
-              "t": 87.5,
-              "z": 3.6,
+              "t": 90,
+              "z": 2,
               "mirror": false
             },
             {
               "t": 75,
-              "z": 9.5,
+              "z": 9,
               "mirror": false
             },
             {
-              "t": 25,
-              "z": 10,
+              "t": 26,
+              "z": 9.3,
               "mirror": false
             },
             {
-              "t": 12.5,
+              "t": 12,
               "z": 2.6,
               "mirror": false
             }
@@ -223,27 +222,27 @@
     },
     "neck": {
       "length": 139,
-      "angle": 5.7,
-      "upperThickness": 13,
-      "lowerThickness": 15,
+      "angle": 5.5,
+      "upperThickness": 12.5,
+      "lowerThickness": 13.5,
       "topWidth": 24,
-      "rootWidth": 33,
-      "heelRadius": 10,
+      "rootWidth": 30,
+      "heelRadius": 12,
       "mortiseDepth": 5,
-      "overstand": 5.5,
+      "overstand": 6.5,
       "nutHeight": 6,
-      "nutWidth": 24
+      "nutWidth": 25
     },
     "scroll": {
       "style": "fourPoint",
       "eye": {
-        "x": -15.89,
+        "x": -18.5,
         "y": 89.25,
         "r": 3.75
       },
       "fitToNeck": false,
       "pitch": 6.7,
-      "seedLength": 3.5,
+      "seedLength": 3.75,
       "arcRadii": [
         4.75,
         5.25,
@@ -255,37 +254,37 @@
         17.75
       ],
       "S0R": 22.7,
-      "S0Sweep": 84,
-      "S1R": 28.4,
+      "S0Sweep": 86,
+      "S1R": 29,
       "S1Sweep": 81,
-      "S2R": 42,
-      "S2Sweep": 45,
-      "backStraight": 26,
-      "S3R": 34,
-      "hang": -2,
+      "S2R": 45,
+      "S2Sweep": 47,
+      "backStraight": 19,
+      "S3R": 38,
+      "hang": -2.4,
       "napeR": 9,
       "napeCircle": false,
-      "flat": 15.5,
-      "F0R": 58.9,
-      "F0Sweep": 41,
-      "frontStraight": 23,
+      "flat": 13.4,
+      "F0R": 67,
+      "F0Sweep": 44,
+      "frontStraight": 16,
       "F1R": 8,
       "widths": {
-        "hip": 27,
-        "throat": 20,
+        "hip": 26,
+        "throat": 19,
         "duckTail": 27.5,
         "foot": 27.5,
         "backHip": 25,
-        "poll": 23.5,
-        "crown": 13,
-        "turn1Bottom": 26,
-        "turn2Top": 31,
-        "turn2Bottom": 35,
+        "poll": 18.5,
+        "crown": 10.5,
+        "turn1Bottom": 25,
+        "turn2Top": 25,
+        "turn2Bottom": 34,
         "eye": 42
       },
       "hipHeight": 6.5,
       "backHipHeight": 0,
-      "wall": 4.5
+      "wall": 4
     },
     "stringSetup": {
       "bodyStop": 196.5,
@@ -294,33 +293,80 @@
       "fingerboardLength": 270,
       "fingerboardThickness": 5,
       "fingerboardRadius": 42
+    },
+    "mould": {
+      "neckBlock": {
+        "width": 60,
+        "height": 20
+      },
+      "upperCornerBlock": {
+        "width": 16,
+        "height": 20,
+        "pad": {
+          "x": 2.5,
+          "y": -2.5
+        }
+      },
+      "lowerCornerBlock": {
+        "width": 16,
+        "height": 20,
+        "pad": {
+          "x": 2.5,
+          "y": 2.5
+        }
+      },
+      "endBlock": {
+        "width": 60,
+        "height": 20
+      },
+      "bitDiameter": 6.35,
+      "clampBox": true
     }
   },
   "ratios": {
-    "HtoW": 1.71291866,
-    "UBtoLB": 0.803827751,
+    "HtoW": 1.7129186602870814,
+    "UBtoLB": 0.8038277511961722,
     "U0toUBW": 1.44375,
     "U1toUBW": 0.39375,
-    "LBtoH": 0.583798883,
-    "L0toLBW": 1.298507463,
-    "L1toLBW": 0.333333333,
+    "LBtoH": 0.5837988826815642,
+    "L0toLBW": 1.2985074626865671,
+    "L1toLBW": 0.3333333333333333,
     "U2toUBW": 0.5375,
-    "U3toLBW": 0.129353234,
-    "U31toLBW": 0.089552239,
-    "L2toLBW": 0.472636816,
-    "L3toLBW": 2.487562189,
-    "L31toLBW": 0.139303483,
-    "UCYtoH": 0.654329609,
-    "LCYtoH": 0.411312849,
-    "CBWtoLBW": 0.516746411,
-    "C0toLBW": 0.368159204,
-    "C0YtoH": 0.55027933,
-    "C2toLBW": 0.099502488,
-    "C21toLBW": 0.069651741,
-    "C1toLBW": 0.119402985,
-    "C11toLBW": 0.099502488,
-    "FLtoW": 0.023923445,
-    "FUtoL": 0.6
+    "U3toLBW": 0.12437810945273632,
+    "U31toLBW": 0.08955223880597014,
+    "L2toLBW": 0.472636815920398,
+    "L3toLBW": 0.15422885572139303,
+    "L31toLBW": 0.13930348258706468,
+    "UCYtoH": 0.6526536312849163,
+    "LCYtoH": 0.41243016759776535,
+    "CBWtoLBW": 0.5167464114832536,
+    "C0toLBW": 0.3681592039800995,
+    "C2toLBW": 0.09950248756218906,
+    "C21toLBW": 0.06965174129353234,
+    "C1toLBW": 0.1044776119402985,
+    "C11toLBW": 0.0945273631840796,
+    "BWtoLBW": 0.09569377990430622,
+    "BHtoBW": 0.525,
+    "LEyetoW": 0.023923444976076555,
+    "UEyetoLEye": 0.6799999999999999,
+    "URisetoUEye": 1.411764705882353,
+    "LRisetoLEye": 1.22,
+    "StemXtoFrame": 0.4586636466591167,
+    "StemYtoFrame": 0.45967166309778706,
+    "StemWtoUEye": 1.6911764705882353,
+    "LEyeXtoLCX": 0.645879732739421,
+    "LEyeYtoLCY": 0.9481882831019302,
+    "UEyeGuidetoWaist": 0.5711829829397932,
+    "EyeSpantoWaist": 1.0693100945621286,
+    "UCuttoUEye": 1.25,
+    "LCuttoLEye": 0.9,
+    "StoEyeSpan": 0.4993751975423534,
+    "U1toS": 0.2903225806451613,
+    "U2toS": 0.3225806451612903,
+    "U3toS": 0.3870967741935484,
+    "L1toS": 0.3225806451612903,
+    "L2toS": 0.45161290322580644,
+    "L3toS": 0.45161290322580644
   },
   "referenceImages": [
     {
@@ -334,7 +380,7 @@
       "rotationDeg": 359.1,
       "opacity": 0.4,
       "suppressWhite": true,
-      "locked": true,
+      "locked": false,
       "scope": {
         "except": [
           "crossArching",
@@ -352,7 +398,7 @@
       "id": "amati-violin-brookings-profiles",
       "label": "Profiles, both sides (sp=3)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154831:musihas-200154831.0003/full/pct:100.0/0/default.jpg",
-      "x": -273.8542666683075,
+      "x": 107.34573333169249,
       "y": -2.5499999999999994,
       "width": 120.10853333661512,
       "height": 388.3509033203125,
@@ -382,11 +428,11 @@
       "id": "amati-violin-brookings-scroll",
       "label": "Scroll, side (sp=14)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154831:musihas-200154831.0014/full/pct:100.0/0/default.jpg",
-      "x": -53.42981840965888,
+      "x": -55.02981840965887,
       "y": -10.480830383300777,
       "width": 72.12547028220462,
       "height": 132.6995849609375,
-      "rotationDeg": 0,
+      "rotationDeg": 1.7,
       "opacity": 0.4,
       "suppressWhite": true,
       "locked": true,
@@ -406,6 +452,41 @@
       "credit": {
         "attribution": "Library of Congress, Music Division. Gift of Mrs. Brookings, 1938.",
         "url": "https://www.loc.gov/resource/music.musihas-200154831/?sp=14&st=image"
+      }
+    },
+    {
+      "id": "shape-mvemsq8m-1",
+      "label": "Img 4",
+      "href": "[image data stripped, 131251 chars]",
+      "x": -115.63151882645506,
+      "y": -14.166977646019413,
+      "width": 49.966102568645375,
+      "height": 131.3179479567916,
+      "rotationDeg": 0.9,
+      "opacity": 0.7,
+      "locked": true,
+      "scope": {
+        "only": [
+          "scrollWidths"
+        ]
+      }
+    },
+    {
+      "id": "shape-mvemxgp0-2",
+      "label": "Img 5",
+      "href": "[image data stripped, 186811 chars]",
+      "x": 18.683091442688394,
+      "y": -18.75129013061526,
+      "width": 64.81151904954953,
+      "height": 134.12952804565433,
+      "rotationDeg": 0,
+      "opacity": 0.7,
+      "suppressWhite": true,
+      "locked": true,
+      "scope": {
+        "only": [
+          "scrollWidths"
+        ]
       }
     }
   ]

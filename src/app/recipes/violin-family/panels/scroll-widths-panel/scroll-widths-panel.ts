@@ -185,29 +185,43 @@ export const renderScrollWidths = (
   };
 };
 
-function halfWidthAtHeight(pts: Pt3D[], y: number): number | null {
-  return polylinePointAtY(pts, y)?.x ?? null;
+// the half-width of the widest stretch of the path standing nearer the viewer than z at height y,
+// or null where none does. z is the side view's x, so from behind the lesser stands nearer and from
+// in front the greater
+function coverAt(on: ScrollStretches, y: number, z: number, behind: boolean): number | null {
+  let cover: number | null = null;
+  for (let stretch of [on.back, on.turn1Front, on.turn2Back, on.turn2Front, on.turn3Back, on.turn3Front]) {
+    // a stretch hides nothing at the height it turns over at: a line cut there stops on the turn's face
+    let turnsOver = Math.abs(y - stretch[0].y) < 1e-9 || Math.abs(y - stretch.at(-1)!.y) < 1e-9;
+    let over = turnsOver ? null : polylinePointAtY(stretch, y);
+    if (!over || !(behind ? over.z < z - 1e-6 : over.z > z + 1e-6)) continue;
+    cover = Math.max(cover ?? 0, over.x);
+  }
+  return cover;
 }
 
-// what of a line can be seen: its runs of points that no stretch of the path hides, one nearer
-// the viewer and at least as wide at that height. z is the side view's x, so from behind the
-// lesser stands nearer and from in front the greater
+// what of a line can be seen: its runs that no nearer stretch at least as wide hides, each cut
+// where the widths cross, so a turn's edge runs right up to the one that hides it
 function seenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[][] {
-  let stretches = [on.back, on.turn1Front, on.turn2Back, on.turn2Front, on.turn3Back, on.turn3Front];
-  let hidden = (pt: Pt3D) => stretches.some(stretch => {
-    // a stretch hides nothing at the height it turns over at: a line cut there stops on the turn's face
-    let turnsOver = Math.abs(pt.y - stretch[0].y) < 1e-9 || Math.abs(pt.y - stretch.at(-1)!.y) < 1e-9;
-    let over = turnsOver ? null : polylinePointAtY(stretch, pt.y);
-    if (!over) return false;
-    let nearer = behind ? over.z < pt.z - 1e-6 : over.z > pt.z + 1e-6;
-    return nearer && over.x >= pt.x - 1e-9;
-  });
+  let hidden = (pt: Pt3D) => (coverAt(on, pt.y, pt.z, behind) ?? -Infinity) >= pt.x - 1e-9;
+  let between = (a: Pt3D, b: Pt3D, t: number) => new Pt3D(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
   let runs: Pt3D[][] = [[]];
-  for (let pt of pts) {
-    if (hidden(pt)) runs.push([]);
-    else runs.at(-1)!.push(pt);
-  }
-  return runs;
+  let was: boolean | null = null;
+  pts.forEach((pt, k) => {
+    let is = hidden(pt);
+    if (was !== null && is !== was) {
+      let lo = 0, hi = 1;
+      for (let i = 0; i < 30; i++) {
+        let mid = (lo + hi) / 2;
+        if (hidden(between(pts[k - 1], pt, mid)) === was) lo = mid; else hi = mid;
+      }
+      runs.at(-1)!.push(between(pts[k - 1], pt, was ? hi : lo));
+    }
+    if (!is) runs.at(-1)!.push(pt);
+    else if (!was) runs.push([]);
+    was = is;
+  });
+  return runs.filter(run => run.length > 1);
 }
 
 // the pegbox's front, sawn straight through the blank: from where it meets the spiral down to the
@@ -293,15 +307,13 @@ export function scrollBackViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, pla
     stroke(pathFromLine(place(side * scrollNeckHalfWidth(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidth(p, start.y), start.y)), 'neck', STROKE_WEIGHT.section, overNeck);
   }
 
-  // the head's back stands nearest and shows whole, and the back of each turn stands out past it.
-  // The front of a turn shows over the top of the next turn in, down to that turn's top, and is
-  // hidden behind its back below there. Any of them is hidden too wherever a nearer stretch is as wide
+  // the head's back stands nearest and shows whole. Every other stretch shows wherever it stands out
+  // past all those nearer at its height: a turn wider than the one inside it shows past it, a
+  // narrower one hides behind it
   contour(on.back, 'back');
-  for (let run of seen(clipPolylineAtY(on.turn1Front, turn2Top.y, 'above'))) contour(run, 'turns');
-  for (let run of seen(on.turn2Back)) contour(run, 'turns');
-  for (let run of seen(clipPolylineAtY(on.turn2Front, turn3Top.y, 'above'))) contour(run, 'turns');
-  for (let run of seen(on.turn3Back)) contour(run, 'turns');
-  for (let run of seen(on.turn3Front)) contour(run, 'turns');
+  for (let stretch of [on.turn1Front, on.turn2Back, on.turn2Front, on.turn3Back, on.turn3Front]) {
+    for (let run of seen(stretch)) contour(run, 'turns');
+  }
 
   if (r > 0) parts.back.push({ d: pathFromPolyline(round), weight: STROKE_WEIGHT.trace });
   // the front's bottom shows only where it overhangs the neck; over the neck it's smoothed in
@@ -311,14 +323,10 @@ export function scrollBackViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, pla
     contour(bottom, 'front', [...backFace, neck]);
   }
 
-  // each face runs in to the back of the turn outside it, the head's own back for the first two
+  // each face runs in to the widest stretch standing nearer at its height
   face(crown.y, crown.x, null, 'backLight');
-  face(turn1Bottom.y, turn1Bottom.x, halfWidthAtHeight(on.back, turn1Bottom.y), 'turns');
-  face(turn2Top.y, turn2Top.x, halfWidthAtHeight(on.back, turn2Top.y), 'turns');
-  face(turn2Bottom.y, turn2Bottom.x, halfWidthAtHeight(on.turn2Back, turn2Bottom.y), 'turns');
-  face(turn3Top.y, turn3Top.x, halfWidthAtHeight(on.turn2Back, turn3Top.y), 'turns');
-  face(eyeTop, eyeHalf, halfWidthAtHeight(on.turn3Back, eyeTop), 'turns');
-  face(eyeBottom, eyeHalf, halfWidthAtHeight(on.turn3Back, eyeBottom), 'turns');
+  for (let pt of [turn1Bottom, turn2Top, turn2Bottom, turn3Top]) face(pt.y, pt.x, coverAt(on, pt.y, pt.z, true), 'turns');
+  for (let y of [eyeTop, eyeBottom]) face(y, eyeHalf, coverAt(on, y, eye.x, true), 'turns');
   // the eye stands out as a cylinder to the last width
   for (let side of [1, -1]) line(place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'turns');
 
@@ -376,14 +384,13 @@ export function scrollFrontViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, pl
   // cheeks show wherever they stand out past the volute
   for (let run of seen(clipPolylineAtY(pegboxFront, pegboxTop, 'above'))) contour(run, 'front');
 
-  // the first turn's front stands nearest and shows whole, and the front of each turn inside it
-  // stands out past it. The back of a turn shows under the turn inside it, up to that turn's bottom,
-  // and the last up to the eye's. A nearer stretch as wide hides any of them
+  // the first turn's front stands nearest and shows whole. Every other stretch shows wherever it
+  // stands out past all those nearer at its height, and the last turn's back only up to the eye's
+  // bottom, the eye standing out in front of it to the last width
   contour(on.turn1Front, 'turns');
-  for (let run of seen(clipPolylineAtY(on.turn2Back, turn2Bottom.y, 'below'))) contour(run, 'turns');
-  for (let run of seen(on.turn2Front)) contour(run, 'turns');
-  for (let run of seen(clipPolylineAtY(on.turn3Back, eyeBottom, 'below'))) contour(run, 'turns');
-  for (let run of seen(on.turn3Front)) contour(run, 'turns');
+  for (let stretch of [on.turn2Back, on.turn2Front, clipPolylineAtY(on.turn3Back, eyeBottom, 'below'), on.turn3Front]) {
+    for (let run of seen(stretch)) contour(run, 'turns');
+  }
 
   // the hollow's mouth, each cheek's thickness in from the outside. It ends level where the side
   // view's hollow does, unless the volute hides it first, and then it is left open
@@ -399,15 +406,13 @@ export function scrollFrontViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, pl
     parts.frontLight.push({ d, weight: STROKE_WEIGHT.trace });
   }
 
-  // each face runs in to the front of the turn outside it. The first turn has none outside it, so
-  // its bottom runs right across, over the pegbox running in under it. The eye's top is behind the
-  // last turn's front
+  // each face runs in to the widest stretch standing nearer at its height. The first turn has none
+  // in front of it, so its bottom runs right across, over the pegbox running in under it. The eye's
+  // top is behind the last turn's front
   face(crown.y, crown.x, null, 'crown');
   face(turn1Bottom.y, turn1Bottom.x, null, 'turns');
-  face(turn2Top.y, turn2Top.x, halfWidthAtHeight(on.turn1Front, turn2Top.y), 'turns');
-  face(turn2Bottom.y, turn2Bottom.x, halfWidthAtHeight(on.turn1Front, turn2Bottom.y), 'turns');
-  face(turn3Top.y, turn3Top.x, halfWidthAtHeight(on.turn2Front, turn3Top.y), 'turns');
-  face(eyeBottom, eyeHalf, halfWidthAtHeight(on.turn2Front, eyeBottom), 'turns');
+  for (let pt of [turn2Top, turn2Bottom, turn3Top]) face(pt.y, pt.x, coverAt(on, pt.y, pt.z, false), 'turns');
+  face(eyeBottom, eyeHalf, coverAt(on, eyeBottom, eye.x, false), 'turns');
   // the eye stands out as a cylinder to the last width
   for (let side of [1, -1]) line(place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'turns');
   return parts;
@@ -793,8 +798,9 @@ export function pegboxCavity(p: ViolinFamilyParams, s: ScrollSolve): Pt[] | null
 }
 
 // the scroll's side solved, and the widths checked against it. Where the Ceruti recipe pushed a
-// width up to the one it has to stand out past, or the hips up to the duck tail, this says so: the
-// views rely on each turn standing at least as wide as the one before. Returns and never writes
+// width up to the one it has to stand out past, or the hips up to the duck tail, this says so. The
+// turns may narrow as well as widen, but the eye stands out in front of the last turn's back, so it
+// is at least as wide as the second turn's bottom. Returns and never writes
 export function solveScrollWidths(p: ViolinFamilyParams): ScrollWidthsSolve | null {
   let scroll = solveScroll(p);
   if (!scroll) return null;
@@ -814,9 +820,6 @@ export function solveScrollWidths(p: ViolinFamilyParams): ScrollWidthsSolve | nu
     let order: [keyof ScrollWidths, keyof ScrollWidths, string][] = [
       ['duckTail', 'foot', "the back's foot has to be at least as wide as the duck tail's round"],
       ['crown', 'poll', 'the head has to be no wider over the crown than at the poll'],
-      ['crown', 'turn1Bottom', "the first turn's bottom has to stand at least as wide as the crown"],
-      ['turn1Bottom', 'turn2Top', "the second turn's top has to stand at least as wide as the first turn's bottom"],
-      ['turn2Top', 'turn2Bottom', "the second turn's bottom has to stand at least as wide as its top"],
       ['turn2Bottom', 'eye', 'the eye has to stand at least as wide as the second turn\'s bottom'],
     ];
     for (let [lesser, greater, what] of order) if (w[greater] < w[lesser]) fail(`Scroll widths: ${what}.`, [lesser, greater]);
