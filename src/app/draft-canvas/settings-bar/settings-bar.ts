@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, inject, Input } from '@angular/core';
+import { afterNextRender, Component, ElementRef, HostListener, inject, Injector, Input, ViewChild } from '@angular/core';
 import { DraftTool } from '../tools/draft-tool';
 import { ToolboxStore } from '../tools/toolbox-store';
 import { SelectionStore } from '../tools/selection-store';
@@ -13,7 +13,11 @@ import { clamp, normalizeDegrees, pointAtDistanceToward } from '../../helpers/ma
 import { shapeBounds, unionBounds } from '../tools/shape-hit-test';
 import { translateShape } from '../tools/shape-transform';
 import { TooltipDirective } from '../../docs/tooltips';
+import { ScopeMenuComponent } from '../scope-menu/scope-menu';
+import { PanelScope, scopeDescription } from '../tools/panel-scope';
 import { CANVAS_COLORS } from '../../theme/palettes';
+
+const POPUP_EDGE_GAP_PX = 8;
 
 /**
  * The Inkscape-style contextual settings strip along the bottom bar: color, then whichever
@@ -25,7 +29,7 @@ import { CANVAS_COLORS } from '../../theme/palettes';
 @Component({
   selector: 'app-settings-bar',
   standalone: true,
-  imports: [TooltipDirective],
+  imports: [TooltipDirective, ScopeMenuComponent],
   templateUrl: './settings-bar.html',
   styleUrls: ['./settings-bar.css'],
 })
@@ -756,22 +760,69 @@ export class SettingsBarComponent {
     this.toolbox.updateShape(shape.id, { mirrored: !this.imageMirrored });
   }
 
-  // behind a popup button rather than inline, since it isn't a value nudged while watching the
-  // canvas the way X or Opacity is. Which panels an image shows on is set from its row in the
-  // bottom bar's image list, beside the same control for layers (layer-controls.ts).
+  // crop and panels sit behind popup buttons rather than inline, since neither is a value nudged
+  // while watching the canvas the way X or Opacity is. one popup at a time: they open from
+  // neighbouring buttons and share the spot above the bar.
 
   public cropOpen = false;
+  public scopeOpen = false;
   private elRef = inject(ElementRef<HTMLElement>);
+  private injector = inject(Injector);
+  @ViewChild('popup') private popupRef?: ElementRef<HTMLElement>;
 
-  toggleCropPopup(): void {
+  toggleCropPopup(button: HTMLElement): void {
     this.cropOpen = !this.cropOpen;
+    this.scopeOpen = false;
+    if (this.cropOpen) this.placePopup(button);
+  }
+
+  toggleScopePopup(button: HTMLElement): void {
+    this.scopeOpen = !this.scopeOpen;
+    this.cropOpen = false;
+    if (this.scopeOpen) this.placePopup(button);
+  }
+
+  closePopups(): void {
+    this.cropOpen = false;
+    this.scopeOpen = false;
+  }
+
+  // written to the element rather than bound: the popup's own width is only known once drawn, and
+  // it decides how far back from the window's right edge the popup has to sit. the width is pinned
+  // first, since an absolute box shrinks to the room left of it and moving right would squeeze it.
+  private placePopup(button: HTMLElement): void {
+    afterNextRender(() => {
+      const popup = this.popupRef?.nativeElement;
+      const bar = popup?.offsetParent;
+      if (!popup || !bar) return;
+      popup.style.width = `${popup.offsetWidth}px`;
+      const barLeft = bar.getBoundingClientRect().left;
+      const room = window.innerWidth - POPUP_EDGE_GAP_PX - popup.offsetWidth - barLeft;
+      popup.style.left = `${Math.max(0, Math.min(button.getBoundingClientRect().left - barLeft, room))}px`;
+    }, { injector: this.injector });
   }
 
   // a press anywhere outside the bar — the canvas above all — takes the popup down, as every popup
   // in the app does
   @HostListener('document:pointerdown', ['$event'])
   onDocumentPointerDown(event: PointerEvent): void {
-    if (this.cropOpen && !this.elRef.nativeElement.contains(event.target as Node)) this.cropOpen = false;
+    if (!this.elRef.nativeElement.contains(event.target as Node)) this.closePopups();
+  }
+
+  /** Only offered when the recipe has pushed panels, as in the bottom bar's image list. */
+  public get hasPanels(): boolean { return this.toolbox.availablePanels.length > 0; }
+  public get imageScope(): PanelScope | undefined { return this.selectedImageShape?.scope; }
+  public get imageScopeDescription(): string {
+    return scopeDescription(this.imageScope, id => this.toolbox.availablePanels.find(p => p.id === id)?.label ?? id);
+  }
+
+  // an image taken off this panel leaves the selection with it, so the popup goes too rather than
+  // reopening over the next image selected
+  setImageScope(scope: PanelScope | undefined): void {
+    const shape = this.selectedImageShape;
+    if (!shape) return;
+    this.toolbox.setImageScope(shape.id, scope);
+    if (!this.toolbox.shownHere(scope)) this.scopeOpen = false;
   }
 
   public get imageCropped(): boolean { return isCropped(this.selectedImageShape?.crop); }

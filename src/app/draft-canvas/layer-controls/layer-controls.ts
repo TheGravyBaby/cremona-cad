@@ -5,15 +5,13 @@ import { ToolboxStore } from '../tools/toolbox-store';
 import { DraftShape, ImageShape } from '../tools/toolbox-shape';
 import { DEFAULT_LAYER_ID, Layer } from '../tools/layer';
 import { PanelChoice } from '../tools/toolbox-store';
-import {
-  isScopeNowhere, isScopeOnly, PanelScope, scopeDescription, scopeLabel, scopeOnly, scopeShows, scopeWith,
-  SCOPE_EVERYWHERE, SCOPE_NOWHERE,
-} from '../tools/panel-scope';
+import { PanelScope, scopeDescription, scopeLabel, scopeWith } from '../tools/panel-scope';
 import { SelectionStore } from '../tools/selection-store';
 import { SelectionActions } from '../tools/selection-actions';
 import { shapesToSvg } from '../tools/shape-svg';
 import { downloadSvgFile } from '../../helpers/fileExporter';
 import { TooltipDirective } from '../../docs/tooltips';
+import { ScopeMenuComponent } from '../scope-menu/scope-menu';
 import { svgImportEmpty } from '../../docs/conditions';
 
 /** A row in either list: a layer or an image, told apart only where the store needs to know. */
@@ -41,7 +39,7 @@ type Scoped = { id: string; scope?: PanelScope };
 @Component({
   selector: 'app-layer-controls',
   standalone: true,
-  imports: [TooltipDirective, NgTemplateOutlet],
+  imports: [TooltipDirective, NgTemplateOutlet, ScopeMenuComponent],
   templateUrl: './layer-controls.html',
   styleUrls: ['./layer-controls.css'],
 })
@@ -67,10 +65,8 @@ export class LayerControlsComponent {
   public editingImageId: string | null = null;
   /** Whether the paste-a-link field is showing; closed by default. */
   public linkOpen = false;
-  /** Which row's scope menu is open; one at a time, like renaming. The checklist inside it
-   * starts folded every time, so the presets are what you see first. */
+  /** Which row's scope menu is open; one at a time, like renaming. */
   public scopeMenuFor: string | null = null;
-  public panelListOpen = false;
 
   // a press anywhere outside — the canvas above all — takes an open list down, and with it the
   // link field and any scope menu, so the next open starts clean
@@ -104,10 +100,6 @@ export class LayerControlsComponent {
   public get activePanel(): string | null { return this.toolbox.activePanel; }
 
   public shownHere(scope: PanelScope | undefined): boolean { return this.toolbox.shownHere(scope); }
-  public shownOn(scope: PanelScope | undefined, panelId: string): boolean { return scopeShows(scope, panelId); }
-  public isEverywhere(scope: PanelScope | undefined): boolean { return !scope; }
-  public isHereOnly(scope: PanelScope | undefined): boolean { return isScopeOnly(scope, this.activePanel); }
-  public isNowhere(scope: PanelScope | undefined): boolean { return isScopeNowhere(scope); }
   public scopeLabel(scope: PanelScope | undefined): string { return scopeLabel(scope, this.activePanel); }
   public scopeTitle(scope: PanelScope | undefined): string {
     return scopeDescription(scope, id => this.availablePanels.find(p => p.id === id)?.label ?? id);
@@ -122,18 +114,8 @@ export class LayerControlsComponent {
     this.setScope(kind, item.id, scopeWith(item.scope, this.activePanel, !this.shownHere(item.scope)));
   }
 
-  togglePanel(kind: ScopeKind, item: Scoped, panelId: string): void {
-    this.setScope(kind, item.id, scopeWith(item.scope, panelId, !this.shownOn(item.scope, panelId)));
-  }
-
-  applyPreset(kind: ScopeKind, id: string, preset: 'everywhere' | 'here' | 'nowhere'): void {
-    this.setScope(kind, id,
-      preset === 'everywhere' ? SCOPE_EVERYWHERE : preset === 'here' ? scopeOnly(this.activePanel) : SCOPE_NOWHERE);
-  }
-
   toggleScopeMenu(id: string): void {
     this.scopeMenuFor = this.scopeMenuFor === id ? null : id;
-    this.panelListOpen = false;
   }
 
   // ===== Layers =====

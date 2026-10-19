@@ -61,7 +61,7 @@ describe('the scroll widths', () => {
     const s = whole(p);
     const stations = scrollWidthStations(p, s);
     const w = p.scroll!.widths;
-    for (const st of stations) if (st.key !== 'nut' && st.key !== 'hip') expect(st.width).toBe(w[st.key]);
+    for (const st of stations) if (st.key !== 'neck' && st.key !== 'nut' && st.key !== 'hip') expect(st.width).toBe(w[st.key]);
     const crown = stations.find(st => st.key === 'crown')!;
     const poll = stations.find(st => st.key === 'poll')!;
     expect(crown.at.y).toBeGreaterThan(poll.at.y);

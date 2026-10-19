@@ -8,8 +8,10 @@ import {
 } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { showFieldHelp } from '../../../../docs/field-help';
+import { TooltipDirective } from '../../../../docs/tooltips';
 import { Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
+import { applyRowMove, RowMove, RowReorderDirective, rowsWithMarker } from '../../../../shared/row-reorder';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { ArchTakeoff, ChannelParams, LongArchCurve, LongArchingFailure, LongArchingSolve, LongArchParams, LongArchSolve, OuterContourSolve, Plate, RenderLayer, RibTaper, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
@@ -26,7 +28,7 @@ import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 
 @Component({
   selector: 'app-vf-long-arching-panel',
-  imports: [FormsModule, NumberStepperDirective],
+  imports: [FormsModule, NumberStepperDirective, RowReorderDirective, TooltipDirective],
   templateUrl: './long-arching-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
@@ -36,6 +38,7 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
   protected readonly help = showFieldHelp;
   protected readonly peakSource = SPLINE_PEAK_SOURCE;
   protected readonly plates: readonly Plate[] = ['top', 'back'];
+  protected readonly rows = rowsWithMarker;
 
   // the ribs and the edge off the family's standards, the arch heights the maker's eye by family;
   // every curve type's fields written at once, the spline's points hung off the seeded height, so
@@ -46,7 +49,7 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
     let [topH, backH] = { violin: [15, 14], viola: [20, 18], cello: [27, 25], bass: [55, 50] }[s.family];
     let plate = (height: number) => ({
       thickness: s.edgeThickness,
-      arch: { type: 'catenary' as const, height, peak: 50, points: seedPoints(height) },
+      arch: { type: 'catenary' as const, height, peak: 50, peakRow: 2, points: seedPoints(height) },
       cross: { type: 'cycloid' as const, d: 40, pct: 90, peak: 50, points: [{ x: 83, z: 50, mirror: true }], stations: [] },
     });
     p.arching = { ribHeightLower: s.ribHeightLower, ribHeightUpper: s.ribHeightUpper, top: plate(topH), back: plate(backH) };
@@ -111,8 +114,25 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
     this.edited();
   }
 
+  // the peak keeps its place between the same points
   removePoint(plate: Plate, index: number): void {
-    this.params.arching![plate].arch.points.splice(index, 1);
+    let arch = this.params.arching![plate].arch;
+    if (index < (arch.peakRow ?? 0)) arch.peakRow!--;
+    arch.points.splice(index, 1);
+    this.edited();
+  }
+
+  // the upper end first, as the side view stands
+  sortPoints(plate: Plate): void {
+    let arch = this.params.arching![plate].arch;
+    arch.points.sort((a, b) => b.t - a.t);
+    arch.peakRow = arch.points.filter(pt => pt.t > arch.peak).length;
+    this.edited();
+  }
+
+  moveRow(plate: Plate, move: RowMove): void {
+    let arch = this.params.arching![plate].arch;
+    arch.peakRow = applyRowMove(arch.points, arch.peakRow ?? 0, move);
     this.edited();
   }
 

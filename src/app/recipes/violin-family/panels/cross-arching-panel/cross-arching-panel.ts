@@ -15,8 +15,10 @@ import {
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { readWorkingState, writeWorkingState } from '../../../../helpers/workingStorage';
 import { showFieldHelp } from '../../../../docs/field-help';
+import { TooltipDirective } from '../../../../docs/tooltips';
 import { Circle, Pt, Pt3D, Rectangle } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
+import { applyRowMove, RowMove, RowReorderDirective, rowsWithMarker } from '../../../../shared/row-reorder';
 import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
@@ -74,7 +76,7 @@ interface Sampled {
 
 @Component({
   selector: 'app-vf-cross-arching-panel',
-  imports: [FormsModule, NumberStepperDirective],
+  imports: [FormsModule, NumberStepperDirective, RowReorderDirective, TooltipDirective],
   templateUrl: './cross-arching-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
@@ -83,6 +85,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
   protected readonly pal = ThemeService.getPalette('iceAndFire');
   protected readonly help = showFieldHelp;
   protected readonly plates: readonly Plate[] = ['top', 'back'];
+  protected readonly rows = rowsWithMarker;
 
   @Input({ required: true }) params!: ViolinFamilyParams;
   @Input({ required: true }) flags!: ViolinFamilyViewFlags;
@@ -235,7 +238,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
   setStation(plate: Plate): void {
     let cross = this.params.arching![plate].cross;
     let shape = this.shown(plate);
-    cross.stations.push({ y: this.cursorY, d: shape.d, pct: shape.pct, peak: shape.peak, points: shape.points.map(pt => ({ ...pt })) });
+    cross.stations.push({ y: this.cursorY, d: shape.d, pct: shape.pct, peak: shape.peak, peakRow: shape.peakRow, points: shape.points.map(pt => ({ ...pt })) });
     cross.stations.sort((a, b) => a.y - b.y);
     this.edited();
   }
@@ -256,8 +259,28 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     this.edited();
   }
 
+  // the crown keeps its place between the same points
   removePoint(plate: Plate, index: number): void {
-    this.active(plate)?.points.splice(index, 1);
+    let shape = this.active(plate);
+    if (!shape) return;
+    if (index < (shape.peakRow ?? 0)) shape.peakRow!--;
+    shape.points.splice(index, 1);
+    this.edited();
+  }
+
+  // bass side first
+  sortPoints(plate: Plate): void {
+    let shape = this.active(plate);
+    if (!shape) return;
+    shape.points.sort((a, b) => a.x - b.x);
+    shape.peakRow = shape.points.filter(pt => pt.x < shape.peak).length;
+    this.edited();
+  }
+
+  moveRow(plate: Plate, move: RowMove): void {
+    let shape = this.active(plate);
+    if (!shape) return;
+    shape.peakRow = applyRowMove(shape.points, shape.peakRow ?? 0, move);
     this.edited();
   }
 

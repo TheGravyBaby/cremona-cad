@@ -128,7 +128,7 @@ export const renderNeck = (
   if (!n.root || !n.neckTop || !n.backNut || !n.backRoot || !n.bottomFront || !n.lowerThickness || !n.tip) return;
   let nk = p.neck!;
   let onNeck = opts.scroll ? scrollOnNeck(p, n) : null;
-  let backTop = onNeck ? applyMatrix(onNeck, new Pt(-nk.upperThickness, opts.scroll!.nape!.y)) : n.backNut;
+  let backTop = onNeck ? applyMatrix(onNeck, pointOnCircle(opts.scroll!.nape!, opts.scroll!.nape!.start)) : n.backNut;
   let ink = (c: string) => opts.ground ? pal.neutral : c;
   let seg = (a: Pt, b: Pt, color: string = pal.neutral) => renderSegment(a, b, color, STROKE_WEIGHT.section)(g, ui);
   let hidden = (a: Pt, b: Pt) => opts.guides && renderDashedLine(a, b, pal.neutral, DASH.hidden, STROKE_WEIGHT.section, 1)(g, ui);
@@ -222,6 +222,14 @@ export function scrollOnNeck(p: ViolinFamilyParams, n: NeckSolve): Matrix2D {
   let normal = vectorFromSlope(angle);
   let up = vectorFromSlope(angle + TURN.quarter);
   return [normal.a, normal.b, up.a, up.b, n.neckTop!.x, n.neckTop!.y];
+}
+
+// how much deeper the back sits per mm along the fingerboard plane toward the heel, the back running
+// straight from the upper thickness at the nut to the lower at the heel's corner. In the scroll's
+// frame the back is x = -upperThickness + taper * y. Square, 0, until the neck solves
+export function neckTaper(p: ViolinFamilyParams, n: NeckSolve | null = solveNeck(p)): number {
+  if (!n?.neckTop || !n.lowerThickness) return 0;
+  return (p.neck!.lowerThickness - p.neck!.upperThickness) / dist(n.neckTop, n.lowerThickness[0]);
 }
 
 // the neck in plan, top width at the nut's foot to root width at the mortise floor

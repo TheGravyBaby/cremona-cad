@@ -173,11 +173,14 @@ export interface PlateArchParams {
 
 // the arch along the body: its height at the peak, where the peak sits (% of the length, 50 the
 // middle) and, for a spline, the control points it runs through. Where it starts and ends is solved,
-// not typed: it runs into the fluting channel and stops where it meets it tangentially
+// not typed: it runs into the fluting channel and stops where it meets it tangentially. peakRow is
+// the peak's row among the points in the table (0 first); the solver sorts by position, so the
+// table's order is the maker's, for reading
 export interface LongArchParams {
   type: 'catenary' | 'spline';
   height: number;
   peak: number;
+  peakRow?: number;
   points: LongArchPoint[];
 }
 
@@ -191,11 +194,13 @@ export interface LongArchPoint {
 
 // the crown across the plate at one station: a cycloid of factor d (% from a raised cosine to a
 // full cycloid) over pct of its window, or a spline through points, peaking at peak (% across, 50
-// the joint). Which is read is the plate's type
+// the joint). Which is read is the plate's type. peakRow places the crown among the points in the
+// table, as on the long arch
 export interface CrossShapeParams {
   d: number;
   pct: number;
   peak: number;
+  peakRow?: number;
   points: CrossArchPoint[];
 }
 

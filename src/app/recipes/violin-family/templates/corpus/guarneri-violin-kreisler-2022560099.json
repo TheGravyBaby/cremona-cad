@@ -7,70 +7,70 @@
   "version": "0.9.0",
   "params": {
     "body": {
-      "height": 357,
+      "height": 355,
       "width": 205,
       "overhang": 3,
       "rib": 1
     },
     "bouts": {
-      "UBW": 168,
-      "U0R": 132,
-      "U1R": 63,
-      "L0R": 271,
-      "L1R": 66,
+      "UBW": 167.6,
+      "U0R": 160,
+      "U1R": 66,
+      "L0R": 262.5,
+      "L1R": 65.7,
       "useViolNeck": false,
       "viol": null,
       "CBW": 109,
       "C0R": 92,
-      "C0Y": 196,
+      "C0Y": 195.1,
       "useKellyC0": false
     },
     "corners": {
       "UCr": {
-        "x": 74.75,
-        "y": 236.7
+        "x": 75.35,
+        "y": 234.9
       },
       "LCr": {
-        "x": 86.75,
-        "y": 142.75
+        "x": 87.25,
+        "y": 142.15
       },
-      "U2R": 96,
-      "U3R": 32,
-      "U31R": 9,
-      "U31Sweep": 34.387,
+      "U2R": 72,
+      "U3R": 400,
+      "U31R": 16,
+      "U31Sweep": 53,
       "U31DoubleArc": true,
       "useViolCornerUC": false,
-      "L2R": 115,
-      "L3R": 32,
+      "L2R": 100,
+      "L3R": 400,
       "L31R": 16,
-      "L31Sweep": 44.462,
+      "L31Sweep": 63,
       "L31DoubleArc": true,
       "useViolCornerLC": false,
-      "C2R": 22,
-      "C21R": 16,
-      "C21Sweep": 45.277,
+      "C2R": 20,
+      "C21R": 18,
+      "C21Sweep": 60,
       "C21DoubleArc": true,
-      "C1R": 39,
+      "C1R": 37,
       "C11R": 20,
-      "C11Sweep": 43.463,
+      "C11Sweep": 49,
       "C11DoubleArc": true
     },
     "outerContour": {
       "button": {
         "width": 20,
-        "height": 14.63
+        "height": 13
       },
       "purflingOffset": 5.1,
       "purflingChannelDepth": 0.9,
       "U3Cutoff": 0,
-      "U31Cutoff": 9.780964606,
+      "U31Cutoff": 2,
       "C2Cutoff": 0,
-      "C21Cutoff": 12.723168095,
+      "C21Cutoff": 12,
       "C1Cutoff": 0,
-      "C11Cutoff": 7.53770557,
+      "C11Cutoff": 4,
       "L3Cutoff": 0,
-      "L31Cutoff": -6.461124389,
-      "upperRounding": 0.05,
+      "L31Cutoff": -10,
+      "upperRounding": 0.09,
       "lowerRounding": 0.19
     },
     "fluting": {
@@ -91,13 +91,13 @@
     },
     "fHoles": {
       "UEye": {
-        "x": 24.46,
-        "y": 187.75,
+        "x": 24.36,
+        "y": 186.75,
         "r": 2.75
       },
       "LEye": {
         "x": 60.75,
-        "y": 137.7,
+        "y": 136.7,
         "r": 4.3
       },
       "URise": 5.75,
@@ -105,7 +105,7 @@
       "stem": {
         "center": {
           "x": 41.5,
-          "y": 160.64
+          "y": 158.74
         },
         "width": 6.5,
         "angle": 92
@@ -171,7 +171,8 @@
               "z": 5.5,
               "mirror": false
             }
-          ]
+          ],
+          "peakRow": 2
         },
         "cross": {
           "type": "spline",
@@ -215,7 +216,8 @@
               "z": 4.5,
               "mirror": false
             }
-          ]
+          ],
+          "peakRow": 2
         },
         "cross": {
           "type": "cycloid",
@@ -226,54 +228,139 @@
           "stations": []
         }
       }
+    },
+    "neck": {
+      "length": 139.5,
+      "angle": 7,
+      "upperThickness": 10.5,
+      "lowerThickness": 13,
+      "topWidth": 24,
+      "rootWidth": 33,
+      "heelRadius": 12,
+      "mortiseDepth": 3,
+      "overstand": 4.5,
+      "nutHeight": 4.5,
+      "nutWidth": 24
+    },
+    "scroll": {
+      "style": "salviati",
+      "eye": {
+        "x": -15.79,
+        "y": 72.9,
+        "r": 3.25
+      },
+      "fitToNeck": false,
+      "pitch": 6.7,
+      "seedLength": 3.5,
+      "arcRadii": [
+        3.94,
+        4.81,
+        5.69,
+        7.44,
+        8.31,
+        10.94,
+        11.81,
+        15.31
+      ],
+      "S0R": 19,
+      "S0Sweep": 79,
+      "S1R": 25,
+      "S1Sweep": 85,
+      "S2R": 40,
+      "S2Sweep": 52,
+      "backStraight": 21,
+      "S3R": 34,
+      "hang": 2,
+      "napeR": 12,
+      "napeCircle": false,
+      "flat": 8,
+      "F0R": 59,
+      "F0Sweep": 45,
+      "frontStraight": 18,
+      "F1R": 9,
+      "widths": {
+        "hip": 25,
+        "throat": 20,
+        "duckTail": 26,
+        "foot": 26,
+        "backHip": 26,
+        "poll": 24,
+        "crown": 13,
+        "turn1Bottom": 26,
+        "turn2Top": 30,
+        "turn2Bottom": 34,
+        "eye": 42
+      },
+      "hipHeight": 6.9999999999999964,
+      "backHipHeight": 0,
+      "wall": 5
     }
   },
   "ratios": {
-    "HtoW": 1.741463415,
-    "UBtoLB": 0.819512195,
-    "U0toUBW": 0.825,
-    "U1toUBW": 0.39375,
-    "LBtoH": 0.574229692,
-    "L0toLBW": 1.375634518,
-    "L1toLBW": 0.335025381,
-    "U2toUBW": 0.6,
-    "U3toLBW": 0.162436548,
-    "U31toLBW": 0.045685279,
-    "L2toLBW": 0.583756345,
-    "L3toLBW": 0.162436548,
-    "L31toLBW": 0.081218274,
-    "UCYtoH": 0.66302521,
-    "LCYtoH": 0.399859944,
-    "CBWtoLBW": 0.531707317,
-    "C0toLBW": 0.467005076,
-    "C0YtoH": 0.549019608,
-    "C2toLBW": 0.111675127,
-    "C21toLBW": 0.081218274,
-    "C1toLBW": 0.197969543,
-    "C11toLBW": 0.101522843,
-    "FLtoW": 0.02097561,
-    "FUtoL": 0.639534884
+    "HtoW": 1.7317073170731707,
+    "UBtoLB": 0.817560975609756,
+    "U0toUBW": 1.0025062656641603,
+    "U1toUBW": 0.4135338345864662,
+    "LBtoH": 0.5774647887323944,
+    "L0toLBW": 1.33248730964467,
+    "L1toLBW": 0.333502538071066,
+    "U2toUBW": 0.4511278195488722,
+    "U3toLBW": 2.030456852791878,
+    "U31toLBW": 0.08121827411167512,
+    "L2toLBW": 0.5076142131979695,
+    "L3toLBW": 2.030456852791878,
+    "L31toLBW": 0.08121827411167512,
+    "UCYtoH": 0.6616901408450704,
+    "LCYtoH": 0.40042253521126764,
+    "CBWtoLBW": 0.5317073170731708,
+    "C0toLBW": 0.467005076142132,
+    "C2toLBW": 0.10152284263959391,
+    "C21toLBW": 0.09137055837563451,
+    "C1toLBW": 0.18781725888324874,
+    "C11toLBW": 0.10152284263959391,
+    "BWtoLBW": 0.0975609756097561,
+    "BHtoBW": 0.65,
+    "LEyetoW": 0.02097560975609756,
+    "UEyetoLEye": 0.6395348837209303,
+    "URisetoUEye": 2.090909090909091,
+    "LRisetoLEye": 1.744186046511628,
+    "StemXtoFrame": 0.4578729281767956,
+    "StemYtoFrame": 0.4810234541577828,
+    "StemWtoUEye": 2.3636363636363638,
+    "LEyeXtoLCX": 0.6962750716332379,
+    "LEyeYtoLCY": 0.9616602180794934,
+    "UEyeGuidetoWaist": 0.5433910524644673,
+    "EyeSpantoWaist": 1.0436499810714432,
+    "UCuttoUEye": 3.036363636363636,
+    "LCuttoLEye": 2.2674418604651163,
+    "StoEyeSpan": 0.8726453374826955,
+    "U1toS": 0.1574074074074074,
+    "U2toS": 0.25925925925925924,
+    "U3toS": 0.4444444444444444,
+    "L1toS": 0.18518518518518517,
+    "L2toS": 0.24074074074074073,
+    "L3toS": 0.2962962962962963
   },
   "referenceImages": [
     {
       "id": "guarneri-violin-kreisler-top",
       "label": "Top (sp=2)",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154814:musihas-200154814.0002/full/pct:100.0/0/default.jpg",
+      "x": -117.66489773874095,
+      "y": -2.9018505053542754,
+      "width": 236.16032331315887,
+      "height": 365.4736901944306,
+      "rotationDeg": 0.1,
+      "opacity": 0.65,
+      "suppressWhite": true,
+      "locked": false,
       "scope": {
         "except": [
           "fluting",
-          "longArching",
-          "crossArching"
+          "volute",
+          "scroll"
         ]
       },
-      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154814:musihas-200154814.0002/full/pct:100.0/0/default.jpg",
-      "x": -118,
-      "y": -2.4943104789005592,
-      "width": 237.01,
-      "height": 366.78862095780113,
-      "rotationDeg": 0,
-      "opacity": 0.4,
-      "suppressWhite": true,
-      "locked": true,
       "credit": {
         "attribution": "Library of Congress, Music Division. Gift of Fritz Kreisler, 1952.",
         "url": "https://www.loc.gov/resource/music.musihas-200154814/?sp=2&st=image"
@@ -282,30 +369,76 @@
     {
       "id": "guarneri-violin-kreisler-profiles",
       "label": "Profiles, both sides (sp=3)",
-      "scope": {
-        "only": [
-          "longArching"
-        ]
-      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154814:musihas-200154814.0003/full/pct:100.0/0/default.jpg",
-      "x": -55.72839999999996,
-      "y": -2.875,
-      "width": 131.07949105747767,
+      "x": 115.6089263201744,
+      "y": -2.8132305273203144,
+      "width": 96.99882338253346,
       "height": 390.7015075683594,
       "rotationDeg": 0.3,
-      "opacity": 0.4,
-      "suppressWhite": true,
+      "opacity": 0.7,
+      "suppressWhite": false,
       "locked": true,
+      "scope": {
+        "only": [
+          "longArching",
+          "crossArching",
+          "neck"
+        ]
+      },
       "crop": {
-        "left": 0,
+        "left": 0.11,
         "top": 0,
-        "right": 0.5,
+        "right": 0.52,
         "bottom": 0
       },
       "credit": {
         "attribution": "Library of Congress, Music Division. Gift of Fritz Kreisler, 1952.",
         "url": "https://www.loc.gov/resource/music.musihas-200154814/?sp=3&st=image"
       }
+    },
+    {
+      "id": "shape-mvfgzkkm-1",
+      "label": "Img 3",
+      "href": "[image data stripped, 163615 chars]",
+      "x": -45.05616146044864,
+      "y": -26.082891905097902,
+      "width": 56.6007011153913,
+      "height": 122.80124977409861,
+      "rotationDeg": 359.4,
+      "locked": false
     }
-  ]
+  ],
+  "toolboxState": {
+    "shapes": [],
+    "currentColor": "#1d4ed8",
+    "currentDashed": false,
+    "currentTextSize": 9.3,
+    "currentStrokeWidth": 1.5,
+    "currentOpacity": 1,
+    "currentSectionColor2": "#93c5fd",
+    "currentSectionWeights": [
+      1,
+      1,
+      1
+    ],
+    "currentTickWeights": [
+      1,
+      1,
+      1
+    ],
+    "currentCycloidFactor": 1,
+    "currentCycloidPct": 1,
+    "currentFilletRadius": 5,
+    "layers": [
+      {
+        "id": "layer-default",
+        "name": "Layer 1",
+        "locked": false
+      }
+    ],
+    "activeLayerId": "layer-default",
+    "showImages": true,
+    "showShapes": true,
+    "recipeLocked": false
+  }
 }

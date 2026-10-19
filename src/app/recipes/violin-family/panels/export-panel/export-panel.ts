@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { EXPORT_DESCRIPTIONS } from '../../../../docs/export-descriptions';
 import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
 import {
-  arcPathData, combinePathStrings, Matrix2D, pathFromArc, pathFromCircle, pathFromLine, pathFromPolygon, pathFromPolyline, pathFromRect,
+  applyMatrix, arcPathData, combinePathStrings, Matrix2D, pathFromArc, pathFromCircle, pathFromLine, pathFromPolygon, pathFromPolyline, pathFromRect,
   pathsBounds, rotatePath180, samplePathToPolyline, transformPath, translatePath,
 } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
@@ -727,7 +727,7 @@ export function defineNeckTemplate(p: ViolinFamilyParams, n: NeckSolve, s: Scrol
   let m: Matrix2D = scrollOnNeck(p, n);
   let { interior, whole, crossing } = interiorSpiral(s);
   let edge = scrollOutline(p, s, crossing);
-  let backTop = new Pt(m[0] * -p.neck!.upperThickness + m[2] * s.nape!.y + m[4], m[1] * -p.neck!.upperThickness + m[3] * s.nape!.y + m[5]);
+  let backTop = applyMatrix(m, pointOnCircle(s.nape!, s.nape!.start));
   let outline = unifyConnectedSvgPaths([...edge.map(d => transformPath(d, m)), ...neckOutline(p, n, backTop)]);
 
   // what else a slot could break through to: the next turn of the spiral, or the outline's other

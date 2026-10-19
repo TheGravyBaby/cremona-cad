@@ -1,0 +1,31 @@
+<!-- The three absolute presets, then the eye's own switch so "not here" is findable from the
+     menu too, then the full list for a panel you can't yet stand on. -->
+<button type="button" class="scope-row" [class.checked]="isEverywhere" (click)="applyPreset('everywhere')">
+  <span class="scope-dot"></span><span>Everywhere</span>
+</button>
+<button type="button" class="scope-row" [class.checked]="isHereOnly" (click)="applyPreset('here')">
+  <span class="scope-dot"></span><span>Only this panel</span>
+</button>
+<button type="button" class="scope-row" [class.checked]="isNowhere" (click)="applyPreset('nowhere')">
+  <span class="scope-dot"></span><span>Nowhere</span>
+</button>
+<div class="scope-sep"></div>
+<label class="scope-row">
+  <input type="checkbox" [checked]="shownHere" (change)="toggleHere()" />
+  <span>Shown on this panel</span>
+</label>
+<div class="scope-sep"></div>
+<button type="button" class="scope-row scope-more" [class.open]="panelListOpen"
+  (click)="panelListOpen = !panelListOpen">
+  <span>Choose panels…</span>
+</button>
+@if (panelListOpen) {
+<div class="panel-list">
+  @for (panel of availablePanels; track panel.id) {
+  <label class="panel-row" [class.current]="panel.id === activePanel">
+    <input type="checkbox" [checked]="shownOn(panel.id)" (change)="togglePanel(panel.id)" />
+    <span>{{ panel.label }}</span>
+  </label>
+  }
+</div>
+}

@@ -193,6 +193,20 @@ describe('the long arch', () => {
     expect(la.span).toBeCloseTo(flipped.span, 6);
   });
 
+  it('is the same arch whichever order its table rows run in', () => {
+    const p = seeded();
+    const arch = p.arching!.top.arch;
+    arch.type = 'spline';
+    const before = solveLongArching(p)!.top!;
+    const curve = longArchCurve(arch);
+    arch.points.reverse();
+    arch.peakRow = arch.points.length;
+    const after = solveLongArching(p)!.top!;
+    expect(after.takeoff.contactS).toBeCloseTo(before.takeoff.contactS, 9);
+    expect(after.farTakeoff.contactS).toBeCloseTo(before.farTakeoff.contactS, 9);
+    for (let s = 0; s <= 100; s += 5) expect(archZAt(longArchCurve(arch), 100, s)).toBeCloseTo(archZAt(curve, 100, s), 9);
+  });
+
   it('fails a point above the peak, one deeper than the plate, a position off the body, and a cleared height, each naming its plate', () => {
     const bad = (edit: (p: ViolinFamilyParams) => void): string[] => {
       const p = seeded();

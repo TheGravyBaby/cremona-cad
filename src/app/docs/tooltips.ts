@@ -30,7 +30,7 @@ export const TOOLTIPS = {
 
   // images
   'images.unlock': 'Click to show it here and unlock it for editing; double-click to rename',
-  'images.upload': 'Choose an image file to place on the canvas',
+  'images.upload': 'Choose an image file to place on the canvas. Ctrl+V on the canvas places a copied image too.',
   'images.link': 'Place an image from a web address. Paste the link to the image file itself — the one behind "Copy image address" — not the page it sits on.',
 
   // settings
@@ -57,6 +57,7 @@ export const TOOLTIPS = {
   'settings.imageOpacity': 'Opacity from 0 (invisible) to 1 (fully opaque)',
   'settings.imageMirror': "Mirror the image left-right — for a scan that came out reversed, or to compare against its opposite half. Combine with Rot° to mirror on any axis. The image's position, size and rotation are unaffected.",
   'settings.imageCrop': "Hide part of the picture — trim a side profile down to the half you are tracing. What's left keeps its place and its scale.",
+  'settings.imagePanels': 'Which recipe panels this image shows on — a side profile, say, only while drafting the long arch.',
   'settings.imageLock': "Lock this image in place so it can't be selected or dragged on the canvas. Unlock it again from the Reference Images list in this bar.",
   'settings.sectionCount': 'Number of equal segments (e.g. 16 for sixteenths)',
   'settings.sectionWeights': 'Segment weights, comma-separated (e.g. 1,1,1 or 3,4,3) — Enter to apply',

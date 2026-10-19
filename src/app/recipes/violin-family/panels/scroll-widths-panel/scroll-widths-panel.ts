@@ -27,7 +27,7 @@ import { defineSideScrollPath, scrollExtent, scrollLines, solveScroll } from '..
 // of the path is drawn as far as the next turn nearer the viewer lets it be seen. Panel and render,
 // then the views, then the widths along the path, then the solve.
 
-export type ScrollStationKey = 'nut' | keyof ScrollWidths;
+export type ScrollStationKey = 'nut' | 'neck' | keyof ScrollWidths;
 export type ScrollStation = { key: ScrollStationKey; at: Pt; width: number };
 
 @Component({
@@ -114,7 +114,7 @@ export const renderScrollWidths = (
   let backView = scrollBackViewStrokes(p, s, (x, y) => new Pt(back + x, y), -stub);
   let frontView = scrollFrontViewStrokes(p, s, (x, y) => new Pt(front + x, y), -stub);
   let cavity = pegboxCavity(p, s);
-  let frontStations: ScrollStationKey[] = ['nut', 'hip', 'throat'];
+  let frontStations: ScrollStationKey[] = ['neck', 'nut', 'hip', 'throat'];
 
   return (g: any, ui: any): void => {
     let marked = stations.find(station => station.key === focused?.key);
@@ -169,6 +169,7 @@ export const renderScrollWidths = (
         let center = frontStations.includes(key) ? front : back;
         for (let side of [1, -1]) renderCrosshair(new Pt(center + side * station.width / 2, station.at.y), color)(g, ui);
       };
+      crosshairs('neck', pal.neutral);
       crosshairs('nut', pal.ink(3).faint(-1));
       crosshairs('hip', pal.ink(3).faint(-3));
       crosshairs('throat', pal.ink(3).faint(1));
@@ -731,10 +732,10 @@ export function scrollFrontWidths(p: ViolinFamilyParams, s: ScrollSolve): Pt3D[]
   });
 }
 
-// where each of the panel's fields is marked in the side view, with the width there: the front's up
-// the pegbox's front, the nut, the hips and the throat; the back's from the duck tail itself, then
-// along the path from the top of its round in to the eye's centre. A back with no poll has no
-// station for it
+// where each of the panel's fields is marked in the side view, with the width there: the neck at
+// the nut's foot, then the front's up the pegbox's front, the nut, the hips and the throat; the
+// back's from the duck tail itself, then along the path from the top of its round in to the eye's
+// centre. A back with no poll has no station for it
 export function scrollWidthStations(p: ViolinFamilyParams, s: ScrollSolve): ScrollStation[] {
   let w = p.scroll!.widths;
   let front = scrollFront(p, s);
@@ -742,6 +743,7 @@ export function scrollWidthStations(p: ViolinFamilyParams, s: ScrollSolve): Scro
   let path = scrollPath(p, s);
   let [turn1Bottom, turn2Top, turn2Bottom] = path.turns;
   return [
+    { key: 'neck', at: new Pt(0, 0), width: p.neck!.topWidth },
     { key: 'nut', at: new Pt(0, p.neck!.nutHeight), width: p.neck!.nutWidth },
     { key: 'hip', at: hip, width: pegboxWidth(p, s, hip.y) },
     { key: 'throat', at: pointOnCircle(s.F1!, s.F1!.end), width: w.throat },

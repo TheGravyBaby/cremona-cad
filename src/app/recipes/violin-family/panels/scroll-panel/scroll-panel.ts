@@ -17,13 +17,15 @@ import {
   RenderLayer, ScrollFailure, ScrollKey, ScrollSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
 } from '../../violin-family-types';
 import { badArc, longArc, renderScrollNeck, renderVolute, scrollArc, solveVolute } from '../volute-panel/volute-panel';
+import { neckTaper } from '../neck-panel/neck-panel';
 
 // The scroll's side: the back on from the crown, S2 then a straight, S3 turning back down to hang
 // below the nut, and the nape into the neck's back; the front up from the nut, a flat, F0, a
 // straight, and F1 curving back until it first meets the spiral. Panel and render, then the solve.
 
-// the arcs take an arc halo; the straights and the flat a segment halo on the line their length makes
-export type ScrollHighlightKey = 'S2' | 'S3' | 'nape' | 'F0' | 'F1' | 'backStraight' | 'flat' | 'frontStraight';
+// the arcs take an arc halo; the straights, the flat and the neck's thickness a segment halo on the
+// line their length makes
+export type ScrollHighlightKey = 'S2' | 'S3' | 'nape' | 'F0' | 'F1' | 'backStraight' | 'flat' | 'frontStraight' | 'upperThickness';
 export type ScrollLine = 'square' | 'backStraight' | 'flat' | 'frontStraight';
 
 @Component({
@@ -77,7 +79,9 @@ export class ScrollPanel implements ViolinFamilyPanel, OnInit {
       this.extent = s.S3 ? scrollExtent(s) : null;
       let key = this.highlighted?.key;
       let color = this.highlighted?.color ?? '';
-      let line = (key === 'backStraight' || key === 'flat' || key === 'frontStraight') && !unsolved(s, key) ? scrollLines(p, s)[key] : null;
+      let line = (key === 'backStraight' || key === 'flat' || key === 'frontStraight') && !unsolved(s, key) ? scrollLines(p, s)[key]
+        : key === 'upperThickness' ? [new Pt(0, 0), new Pt(-p.neck!.upperThickness, 0)] as [Pt, Pt]
+        : null;
       let arc = key === 'S2' || key === 'S3' || key === 'nape' || key === 'F0' || key === 'F1' ? s[key] : null;
       // the volute as plain profile, so only what this panel edits is in colour. The profile needs
       // the whole scroll solved, so a miss falls back to the volute's own render
@@ -199,7 +203,10 @@ export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
   let s = solveVolute(p);
   if (!s || !s.spiral) return s;
   let v = p.scroll!;
-  let neckBack = -p.neck!.upperThickness;
+  // the neck's back leans off the fingerboard plane with the taper, thinning on up past the nut
+  let taper = neckTaper(p);
+  let backAt = (y: number) => -p.neck!.upperThickness + taper * y;
+  let lean = Math.atan(taper);
   let nutTop = new Pt(0, p.neck!.nutHeight);
   // a cleared field is null, which passes `>= 0`, so it is asked for first
   let badLength = (section: string, key: ScrollKey, unsolved: ScrollKey[]): ScrollFailure =>
@@ -237,32 +244,37 @@ export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
 
     // one circle through the duck tail, tangent to the neck's back: its centre a radius forward of
     // the back, as far below the duck tail as puts the tail on it. Tighter than the gap it rises off
-    // the duck tail before coming round; wider, it meets the tail at an angle
+    // the duck tail before coming round; wider, it meets the tail at an angle. A centre a radius off
+    // the back lies on x = taper * y + offset
+    let offset = -p.neck!.upperThickness - v.napeR * Math.hypot(1, taper);
     if (v.napeCircle) {
-      let gap = neckBack - duckTail.x;
-      let reach = v.napeR - gap;
-      if (!(gap > 0) || Math.abs(reach) > v.napeR)
+      let gap = backAt(duckTail.y) - duckTail.x;
+      let e = offset - duckTail.x;
+      let [a, b, c] = [1 + taper ** 2, 2 * (taper * e - duckTail.y), e ** 2 + duckTail.y ** 2 - v.napeR ** 2];
+      let disc = b ** 2 - 4 * a * c;
+      if (!(gap > 0) || disc < 0)
         return {
           message: `Back: a nape of ${v.napeR}mm can't reach the neck's back from the duck tail. Enlarge it past half the ${Math.round(gap * 10) / 10}mm between them, or bring the duck tail forward with S3 or the straight.`,
           unsolved: ['nape'],
-          circles: [{ x: neckBack - v.napeR, y: duckTail.y, r: v.napeR }],
+          circles: [{ x: taper * duckTail.y + offset, y: duckTail.y, r: v.napeR }],
           segments: [],
         };
-      let center = new Pt(neckBack - v.napeR, duckTail.y - Math.sqrt(v.napeR ** 2 - reach ** 2));
-      s.nape = new Arc(center.x, center.y, v.napeR, 0, angleFromCenter(center, duckTail));
+      let y = (-b - Math.sqrt(disc)) / (2 * a);
+      let center = new Pt(taper * y + offset, y);
+      s.nape = new Arc(center.x, center.y, v.napeR, -lean, angleFromCenter(center, duckTail));
       return null;
     }
 
     // a line runs square from the duck tail to the neck's back, the nape filleting the corner
-    let napeStart = neckBack - v.napeR;
-    if (duckTail.x > napeStart)
+    let center = new Pt(taper * (duckTail.y - v.napeR) + offset, duckTail.y - v.napeR);
+    if (duckTail.x > center.x)
       return {
         message: `Back: the duck tail sits too far forward for a nape of ${v.napeR}mm to fit before the neck's back. Shrink the nape, or move the duck tail back with S3 or the straight.`,
         unsolved: ['nape'],
-        circles: [{ x: napeStart, y: duckTail.y - v.napeR, r: v.napeR }],
-        segments: [[duckTail, new Pt(neckBack, duckTail.y)]],
+        circles: [{ x: center.x, y: center.y, r: v.napeR }],
+        segments: [[duckTail, new Pt(backAt(duckTail.y), duckTail.y)]],
       };
-    s.nape = new Arc(napeStart, duckTail.y - v.napeR, v.napeR, 0, TURN.quarter);
+    s.nape = new Arc(center.x, center.y, v.napeR, -lean, TURN.quarter);
     return null;
   });
 
