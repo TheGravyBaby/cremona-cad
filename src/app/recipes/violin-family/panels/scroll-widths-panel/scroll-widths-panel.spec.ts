@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { pointOnCircle } from '../../../../helpers/math/simpleGeometry';
-import { Pt } from '../../../../models/types';
+import { polylinePointAtY } from '../../../../helpers/math/vibeMath';
+import { Pt, Pt3D } from '../../../../models/types';
 import {
   pegboxCavity, pegboxHipHeight, pegboxWidth, scrollBackViewStrokes, scrollFrontViewStrokes, scrollPathStretches, scrollWidthStations,
   solveScrollWidths,
@@ -100,9 +101,9 @@ describe('the scroll widths', () => {
     expect(front.nut.length).toBe(1);
   });
 
-  it('report what Ceruti pushed into place: each turn narrower than the one before, a crown past the poll, hips below the duck tail', () => {
+  it('report what Ceruti pushed into place: an eye narrower than the turn outside it, a crown past the poll, hips below the duck tail', () => {
     for (const [edit, keys] of [
-      [(p: ViolinFamilyParams) => { p.scroll!.widths.turn2Top = p.scroll!.widths.turn1Bottom - 1; }, ['turn1Bottom', 'turn2Top']],
+      [(p: ViolinFamilyParams) => { p.scroll!.widths.eye = p.scroll!.widths.turn2Bottom - 1; }, ['turn2Bottom', 'eye']],
       [(p: ViolinFamilyParams) => { p.scroll!.widths.crown = p.scroll!.widths.poll + 1; }, ['crown', 'poll']],
       [(p: ViolinFamilyParams) => { p.scroll!.widths.foot = p.scroll!.widths.duckTail - 1; }, ['duckTail', 'foot']],
       [(p: ViolinFamilyParams) => { p.scroll!.hipHeight = -20; }, ['hipHeight']],
@@ -112,6 +113,26 @@ describe('the scroll widths', () => {
       const w = solveScrollWidths(p)!;
       expect(w.failures.map(f => f.unsolved)).toEqual([keys]);
     }
+  });
+
+  it("take turns that narrow: from behind, the first turn's front shows below the top of a second turn narrower than it", () => {
+    const p = seeded();
+    const w = p.scroll!.widths;
+    w.turn1Bottom = w.turn2Bottom - 2;
+    w.turn2Top = w.crown + 2;
+    const s = whole(p);
+    const on = scrollPathStretches(p, s);
+    const top = on.turn2Back.at(-1)!;
+    const half = (stretch: Pt3D[], y: number) => polylinePointAtY(stretch, y)?.x ?? 0;
+    const back = scrollBackViewStrokes(p, s, (x, y) => new Pt(x, y), -20);
+    const shown = back.turns.flatMap(st => {
+      const n = 'd' in st ? st.d.match(/-?[\d.]+(e-?\d+)?/g)!.map(Number) : [];
+      return n.filter((_, i) => i % 2 === 0).map((x, i) => new Pt(Math.abs(x), n[2 * i + 1]));
+    });
+    const past = shown.filter(pt => pt.y < top.y - 1
+      && Math.abs(pt.x - half(on.turn1Front, pt.y)) < 0.05
+      && pt.x > Math.max(half(on.back, pt.y), half(on.turn2Back, pt.y)) + 0.5);
+    expect(past.length).toBeGreaterThan(0);
   });
 
   it('report a cleared width, and nothing past a side that didn\'t solve', () => {
