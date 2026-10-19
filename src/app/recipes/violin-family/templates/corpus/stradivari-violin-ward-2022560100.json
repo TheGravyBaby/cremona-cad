@@ -58,7 +58,7 @@
     "outerContour": {
       "button": {
         "width": 20,
-        "height": 14.69
+        "height": 12.5
       },
       "purflingOffset": 4.9,
       "purflingChannelDepth": 1,
@@ -101,11 +101,11 @@
         "r": 4.5
       },
       "URise": 5,
-      "LRise": 6.35,
+      "LRise": 6.15,
       "stem": {
         "center": {
-          "x": 38.75,
-          "y": 160.316666667
+          "x": 38.85,
+          "y": 159.016667
         },
         "width": 5.3,
         "angle": 94.3
@@ -120,20 +120,20 @@
       "U21R": 15,
       "U2Sweep": 15.71,
       "U3R": 15,
-      "U3Angle": 85,
+      "U3Angle": 84.8,
       "UCut": {
-        "angleOnEye": 74.78312037,
+        "angleOnEye": 77,
         "slope": 51,
-        "length": 5.75
+        "length": 5.85
       },
-      "L1R": 9.7,
-      "L1End": 240,
-      "L2R": 15,
+      "L1R": 9.5,
+      "L1End": 270,
+      "L2R": 11.6,
       "L21DoubleArc": false,
       "L21R": 15,
-      "L2Sweep": 8.96,
+      "L2Sweep": 50,
       "L3R": 15,
-      "L3Angle": 106,
+      "L3Angle": 105,
       "LCut": {
         "angleOnEye": 262.78312037,
         "slope": -129,
@@ -167,8 +167,8 @@
               "mirror": false
             },
             {
-              "t": 91,
-              "z": 3.05,
+              "t": 95,
+              "z": 0.95,
               "mirror": false
             }
           ]
@@ -210,8 +210,8 @@
               "mirror": false
             },
             {
-              "t": 87.5,
-              "z": 3.05,
+              "t": 95,
+              "z": 0.1,
               "mirror": false
             }
           ]
@@ -225,45 +225,159 @@
           "stations": []
         }
       }
+    },
+    "neck": {
+      "length": 139,
+      "angle": 6.5,
+      "upperThickness": 13,
+      "lowerThickness": 14.5,
+      "topWidth": 24,
+      "rootWidth": 33,
+      "heelRadius": 12,
+      "mortiseDepth": 4,
+      "overstand": 6.1,
+      "nutHeight": 5.5,
+      "nutWidth": 24.3
+    },
+    "scroll": {
+      "style": "salviati",
+      "eye": {
+        "x": -17.64,
+        "y": 82.95,
+        "r": 3.4
+      },
+      "fitToNeck": true,
+      "pitch": 6.7,
+      "seedLength": 3.5,
+      "arcRadii": [
+        3.94,
+        4.81,
+        5.69,
+        7.44,
+        8.31,
+        10.94,
+        11.81,
+        15.31
+      ],
+      "S0R": 21.4,
+      "S0Sweep": 80,
+      "S1R": 27.3,
+      "S1Sweep": 86,
+      "S2R": 35,
+      "S2Sweep": 48,
+      "backStraight": 25,
+      "S3R": 35,
+      "hang": 0,
+      "napeR": 10,
+      "napeCircle": false,
+      "flat": 11,
+      "F0R": 59,
+      "F0Sweep": 43,
+      "frontStraight": 20,
+      "F1R": 7,
+      "widths": {
+        "hip": 24.9,
+        "throat": 18.5,
+        "duckTail": 25.9,
+        "foot": 25.9,
+        "backHip": 26,
+        "poll": 18,
+        "crown": 10.8,
+        "turn1Bottom": 24.7,
+        "turn2Top": 22.7,
+        "turn2Bottom": 35,
+        "eye": 40.1
+      },
+      "hipHeight": 17,
+      "backHipHeight": 0,
+      "wall": 5
+    },
+    "stringSetup": {
+      "bodyStop": 195,
+      "bridgeHeight": 33,
+      "nutThickness": 7.5,
+      "fingerboardLength": 270,
+      "fingerboardThickness": 5,
+      "fingerboardRadius": 42
+    },
+    "mould": {
+      "neckBlock": {
+        "width": 60,
+        "height": 20
+      },
+      "upperCornerBlock": {
+        "width": 16,
+        "height": 20,
+        "pad": {
+          "x": 2.5,
+          "y": -2.5
+        }
+      },
+      "lowerCornerBlock": {
+        "width": 16,
+        "height": 20,
+        "pad": {
+          "x": 2.5,
+          "y": 2.5
+        }
+      },
+      "endBlock": {
+        "width": 60,
+        "height": 20
+      },
+      "bitDiameter": 6.35,
+      "clampBox": true
     }
   },
   "ratios": {
-    "HtoW": 1.718446602,
-    "UBtoLB": 0.800970874,
-    "U0toUBW": 1.003836317,
-    "U1toUBW": 0.377237852,
-    "LBtoH": 0.581920904,
-    "L0toLBW": 1.671732523,
-    "L1toLBW": 0.339412361,
-    "U2toUBW": 0.57544757,
-    "U3toLBW": 1.519756839,
-    "U31toLBW": 0.106382979,
-    "L2toLBW": 0.40526849,
-    "L3toLBW": 1.519756839,
-    "L31toLBW": 0.101317123,
-    "UCYtoH": 0.655367232,
-    "LCYtoH": 0.403954802,
-    "CBWtoLBW": 0.504854369,
-    "C0toLBW": 0.460992908,
-    "C0YtoH": 0.553672316,
-    "C2toLBW": 0.086119554,
-    "C21toLBW": 0.081053698,
-    "C1toLBW": 0.167173252,
-    "C11toLBW": 0.086119554,
-    "FLtoW": 0.02184466,
-    "FUtoL": 0.722222222
+    "HtoW": 1.7184466019417475,
+    "UBtoLB": 0.8009708737864077,
+    "U0toUBW": 1.0038363171355498,
+    "U1toUBW": 0.3772378516624041,
+    "LBtoH": 0.5819209039548022,
+    "L0toLBW": 1.6717325227963524,
+    "L1toLBW": 0.3394123606889564,
+    "U2toUBW": 0.5754475703324808,
+    "U3toLBW": 1.519756838905775,
+    "U31toLBW": 0.10638297872340426,
+    "L2toLBW": 0.40526849037487334,
+    "L3toLBW": 1.519756838905775,
+    "L31toLBW": 0.10131712259371833,
+    "UCYtoH": 0.655367231638418,
+    "LCYtoH": 0.403954802259887,
+    "CBWtoLBW": 0.5048543689320388,
+    "C0toLBW": 0.46099290780141844,
+    "C2toLBW": 0.08611955420466058,
+    "C21toLBW": 0.08105369807497467,
+    "C1toLBW": 0.16717325227963525,
+    "C11toLBW": 0.08611955420466058,
+    "BWtoLBW": 0.0970873786407767,
+    "BHtoBW": 0.625,
+    "LEyetoW": 0.021844660194174758,
+    "UEyetoLEye": 0.7222222222222222,
+    "URisetoUEye": 1.5384615384615385,
+    "LRisetoLEye": 1.3666666666666667,
+    "StemXtoFrame": 0.44418604651162796,
+    "StemYtoFrame": 0.47619048097631034,
+    "StemWtoUEye": 1.6307692307692307,
+    "LEyeXtoLCX": 0.6793002915451894,
+    "LEyeYtoLCY": 0.9545454545454546,
+    "UEyeGuidetoWaist": 0.5493512584844583,
+    "EyeSpantoWaist": 1.0225541054466247,
+    "UCuttoUEye": 1.7999999999999998,
+    "LCuttoLEye": 1.5,
+    "StoEyeSpan": 0.48550776865004425,
+    "U1toS": 0.25,
+    "U2toS": 0.5,
+    "U3toS": 0.5,
+    "L1toS": 0.31666666666666665,
+    "L2toS": 0.38666666666666666,
+    "L3toS": 0.5
   },
   "referenceImages": [
     {
       "id": "ward-top",
       "label": "Top (sp=2)",
-      "scope": {
-        "except": [
-          "fluting",
-          "longArching",
-          "crossArching"
-        ]
-      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0002/full/pct:100.0/0/default.jpg",
       "x": -107.33233320122301,
       "y": -9.33460350036621,
@@ -272,7 +386,16 @@
       "rotationDeg": 0,
       "opacity": 0.4,
       "suppressWhite": true,
-      "locked": true,
+      "locked": false,
+      "scope": {
+        "except": [
+          "fluting",
+          "volute",
+          "scroll",
+          "scrollWidths",
+          "mould"
+        ]
+      },
       "credit": {
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
         "url": "https://www.loc.gov/resource/music.musihas-200154810/?sp=2&st=image"
@@ -281,20 +404,23 @@
     {
       "id": "ward-profiles",
       "label": "Profiles, both sides (sp=3)",
-      "scope": {
-        "only": [
-          "longArching"
-        ]
-      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0003/full/pct:100.0/0/default.jpg",
-      "x": -40.60670187611326,
+      "x": 102.19329812388663,
       "y": -4.4277,
       "width": 121.35340375222657,
       "height": 382.6171592285156,
       "rotationDeg": 0.2,
       "opacity": 0.4,
       "suppressWhite": true,
-      "locked": true,
+      "locked": false,
+      "scope": {
+        "only": [
+          "longArching",
+          "neck",
+          "crossArching",
+          "stringSetup"
+        ]
+      },
       "crop": {
         "left": 0,
         "top": 0,
@@ -304,6 +430,55 @@
       "credit": {
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
         "url": "https://www.loc.gov/resource/music.musihas-200154810/?sp=3&st=image"
+      }
+    },
+    {
+      "id": "shape-mveqvzy7-1",
+      "label": "Img 3",
+      "href": "[image data stripped, 102979 chars]",
+      "x": -96.26892483556463,
+      "y": -4.817085082190374,
+      "width": 114.69115881795034,
+      "height": 122.24336682047162,
+      "rotationDeg": 358.9,
+      "locked": true,
+      "scope": {
+        "only": [
+          "scrollWidths"
+        ]
+      }
+    },
+    {
+      "id": "shape-mves023a-2",
+      "label": "Img 4",
+      "href": "[image data stripped, 98607 chars]",
+      "x": -120.8769156606912,
+      "y": -14.19271469116211,
+      "width": 61.70281203427298,
+      "height": 121.76568222045898,
+      "rotationDeg": 0,
+      "opacity": 0.4,
+      "locked": true,
+      "scope": {
+        "only": [
+          "scrollWidths"
+        ]
+      }
+    },
+    {
+      "id": "shape-mves7pzc-6",
+      "label": "Img 5",
+      "href": "[image data stripped, 109687 chars]",
+      "x": 9.389387610094206,
+      "y": -12.1750097683426,
+      "width": 78.57020549270221,
+      "height": 123.97093109402618,
+      "rotationDeg": 0,
+      "locked": true,
+      "scope": {
+        "only": [
+          "scrollWidths"
+        ]
       }
     }
   ]

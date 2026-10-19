@@ -122,8 +122,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
   loadTemplate(key: string): void {
     let template = CORPUS_TEMPLATES.find(t => t.key === key);
     if (!template || !this.confirmDiscard('Load template? Any unsaved changes will be lost.')) return;
-    let { key: _key, ...recipe } = JSON.parse(JSON.stringify(template)) as ViolinFamilyTemplate;
-    this.loadFile(recipe);
+    this.loadFile(JSON.parse(JSON.stringify(template)) as ViolinFamilyTemplate);
     this.galleryOpen = false;
   }
 
