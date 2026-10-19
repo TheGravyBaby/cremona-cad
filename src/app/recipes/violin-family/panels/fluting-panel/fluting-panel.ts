@@ -206,20 +206,72 @@ function attemptJoin(arc1: Arc, side1: 'start' | 'end', arc2: Arc, side2: 'start
 const JOIN_HEADING_TRIGGER = 15 * TURN.degree;
 const JOIN_HEADING_TARGET = 4 * TURN.degree;
 const MAX_CBOUT_EASE_TO_WAIST = 0.8;
+// then the S itself. Run from one arc into the other, it should turn first with the arc it leaves
+// and then with the one it enters, carrying on from each rather than doubling back along it, and
+// the shorter of its two arcs should turn at least this share of the longer. One that leaves the
+// bout straight, turns nearly all its way at one end, or wiggles the other way round has no room
+// between the two ends: they are drawn back, each on its own up to the given degrees or half its
+// run, the least drawback in all that gives a balanced S still inside the fluting edge, else the
+// best balanced that cuts. None cutting, the ends stay
+const JOIN_BALANCE = 0.5;
+const MAX_JOIN_DRAWBACK_DEG = 25;
 
-function easeCBoutEnd(cBout: Arc, side: 'start' | 'end', bout: Arc, boutSide: 'start' | 'end'): void {
+function easeCBoutEnd(
+  arc1: Arc, side1: 'start' | 'end',
+  arc2: Arc, side2: 'start' | 'end',
+  invert: boolean,
+  cBoutSide: 1 | 2,
+  edge: Pt[] | null,
+): void {
+  const [cBout, side, bout, boutSide] = cBoutSide === 1 ? [arc1, side1, arc2, side2] : [arc2, side2, arc1, side1];
   // tangents are square to their radii, so two headings differ by the angle between the radii, mod pi
   let gap = ((side === 'end' ? cBout.end : cBout.start) - (boutSide === 'end' ? bout.end : bout.start)) % TURN.half;
   if (gap > TURN.quarter) gap -= TURN.half;
   if (gap < -TURN.quarter) gap += TURN.half;
-  if (Math.abs(gap) <= JOIN_HEADING_TRIGGER) return;
-
   const span = signedRadianDelta(cBout.end - cBout.start);
   const inward = side === 'end' ? -Math.sign(span) : Math.sign(span);
   const move = Math.sign(gap) * JOIN_HEADING_TARGET - gap;
-  if (Math.sign(move) !== inward) return;
-  const eased = Math.sign(move) * Math.min(Math.abs(move), Math.abs(span) / 2 * MAX_CBOUT_EASE_TO_WAIST);
-  if (side === 'end') cBout.end += eased; else cBout.start += eased;
+  if (Math.abs(gap) > JOIN_HEADING_TRIGGER && Math.sign(move) === inward) {
+    const eased = Math.sign(move) * Math.min(Math.abs(move), Math.abs(span) / 2 * MAX_CBOUT_EASE_TO_WAIST);
+    if (side === 'end') cBout.end += eased; else cBout.start += eased;
+  }
+
+  // +1 turning counterclockwise as the channel runs arc1 → join → arc2
+  const turn1 = (side1 === 'end' ? 1 : -1) * Math.sign(signedRadianDelta(arc1.end - arc1.start));
+  const turn2 = (side2 === 'end' ? -1 : 1) * Math.sign(signedRadianDelta(arc2.end - arc2.start));
+  const runsOn = (a: number, sa: number, b: number, sb: number) => sa * sb * Math.cos(a - b) > 0;
+  const balance = (join: Arc[] | null) => {
+    if (join?.length !== 2) return -1;
+    const [a, b] = join.map(j => signedRadianDelta(j.end - j.start));
+    if (Math.sign(a) !== turn1 || Math.sign(b) !== turn2) return -1;
+    if (!runsOn(side1 === 'end' ? arc1.end : arc1.start, turn1, join[0].start, turn1)) return -1;
+    if (!runsOn(join[1].end, turn2, side2 === 'end' ? arc2.end : arc2.start, turn2)) return -1;
+    return Math.min(Math.abs(a), Math.abs(b)) / Math.max(Math.abs(a), Math.abs(b));
+  };
+
+  const ends: [Arc, 'start' | 'end', number, number][] = [[arc1, side1, arc1.start, arc1.end], [arc2, side2, arc2.start, arc2.end]];
+  const drawBack = (...degrees: number[]) => ends.forEach(([arc, s, start, end], i) => {
+    const angle = retreatAngle(start, end, s, degrees[i]);
+    if (s === 'end') arc.end = angle; else arc.start = angle;
+  });
+  const [reach1, reach2] = ends.map(([, , start, end]) =>
+    Math.floor(Math.min(MAX_JOIN_DRAWBACK_DEG, Math.abs(signedRadianDelta(end - start)) / 2 / TURN.degree)));
+  let best = [0, 0], bestBalance = -Infinity;
+  for (let total = 0; total <= reach1 + reach2; total++) {
+    const tries: [number, number][] = [];
+    for (let d1 = Math.max(0, total - reach2); d1 <= Math.min(total, reach1); d1++) {
+      drawBack(d1, total - d1);
+      const b = balance(findJoiningArcs(arc1, side1, arc2, side2, invert));
+      if (b >= 0 && b > Math.min(bestBalance, JOIN_BALANCE)) tries.push([b, d1]);
+    }
+    for (const [, d1] of tries.sort((x, y) => y[0] - x[0])) {
+      drawBack(d1, total - d1);
+      const b = balance(attemptJoin(arc1, side1, arc2, side2, invert, edge));
+      if (b >= JOIN_BALANCE) return;
+      if (b >= 0 && b > bestBalance) [best, bestBalance] = [[d1, total - d1], b];
+    }
+  }
+  drawBack(best[0], best[1]);
 }
 
 function retreatAngle(startAngle: number, endAngle: number, side: 'start' | 'end', degrees: number): number {
@@ -282,8 +334,8 @@ function channelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, center
   let U2 = k.useViolCornerUC ? null : arcs[at + 1];
   let back = k.useViolCornerLC && k.useViolCornerUC ? 10 : 12;
 
-  if (L2) easeCBoutEnd(C0, 'end', L2, 'end');
-  if (U2) easeCBoutEnd(C0, 'start', U2, 'end');
+  if (L2) easeCBoutEnd(L2, 'end', C0, 'end', false, 2, edge);
+  if (U2) easeCBoutEnd(C0, 'start', U2, 'end', true, 1, edge);
 
   // a flank shorter than the join-back is cut to nothing: the join still leaves from its start
   // with its heading, but a zero-length arc in the path is one the sampler can't measure
@@ -354,6 +406,13 @@ function solveFlutingUncached(p: ViolinFamilyParams): FlutingSolve {
     return s;
   }
   s.outerEdge = outerEdgePath(p, rib, f.flutingEdge);
+  // the plates are usually cut with the same gouges, and an edge is the same cut on either
+  let cuts = new Map<string, ReturnType<typeof channelPath>>();
+  let cut = (offset: number, centerOffset: number) => {
+    let key = `${offset} ${centerOffset}`;
+    if (!cuts.has(key)) cuts.set(key, channelPath(p, rib, offset, centerOffset));
+    return cuts.get(key)!;
+  };
 
   for (let plate of ['top', 'back'] as const) {
     let label = plate === 'top' ? 'Top plate' : 'Back plate';
@@ -368,7 +427,7 @@ function solveFlutingUncached(p: ViolinFamilyParams): FlutingSolve {
       if (wC <= 0) return fail(`${label}: no gouge cuts the C bout channel this deep. Its width has to be over twice the depth.`);
 
       let edge = f.flutingEdge;
-      let edges = [channelPath(p, rib, edge, edge), channelPath(p, rib, edge + w, edge + wC), channelPath(p, rib, edge + 2 * w, edge + 2 * wC)];
+      let edges = [cut(edge, edge), cut(edge + w, edge + wC), cut(edge + 2 * w, edge + 2 * wC)];
       if (edges.some(e => !e.joined))
         return fail(`${label}: the channel round the C bout can't be joined to the one round the bouts at these corners. Bring the two gouges closer, or open the corners.`);
       if (edges.some(e => !e.path))

@@ -1,6 +1,6 @@
 @if (slide(); as s) {
 <figure>
-  <img [src]="s.src" [alt]="s.alt" />
+  <img [src]="src()" [alt]="s.alt" (error)="missing()" />
   @if (s.caption) { <figcaption [innerHTML]="s.caption"></figcaption> }
   @if (slides().length > 1) {
   <div class="carousel-nav">

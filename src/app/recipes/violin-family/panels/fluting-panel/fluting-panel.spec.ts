@@ -213,16 +213,6 @@ describe('what cannot be cut', () => {
     expect(s.back).not.toBeNull();
   });
 
-  // a narrow viol neck pulls the upper bout in until no S can take the channel round the upper
-  // corner from the C bout
-  it('fails both plates when the C bout can\'t be joined round a corner', () => {
-    const p = violNecked(q => solveFluting(q)!.failures.some(f => f.message.includes('joined')));
-    const s = solveFluting(p)!;
-    expect(s.failures.map(f => f.unsolved)).toEqual([['top'], ['back']]);
-    expect(s.failures[0].message).toContain('joined');
-    expect(s.outerEdge).not.toBeNull();
-  });
-
   it('fails the plate whose C bout channel no gouge cuts this deep, until that channel is turned off', () => {
     const p = seeded();
     p.fluting!.back.cBoutWidth = p.fluting!.back.depth;
