@@ -21,7 +21,7 @@ export class InfoBoothComponent {
 
   readonly tabs = BOOTH_TABS.map(id => ({
     id,
-    label: id === 'wiki' ? 'Wiki' : id === 'history' ? 'History' : this.docs.registry.get(id)?.title ?? id,
+    label: id === 'wiki' ? 'Docs' : id === 'history' ? 'Releases' : this.docs.registry.get(id)?.title ?? id,
   }));
 
   isOpen = false;

@@ -247,7 +247,7 @@
       "bridgeHeight": 33,
       "nutThickness": 6.5,
       "fingerboardLength": 270,
-      "fingerboardThickness": 5,
+      "fingerboardThickness": 4,
       "fingerboardRadius": 42
     },
     "scroll": {
@@ -390,11 +390,10 @@
       "opacity": 0.4,
       "suppressWhite": true,
       "mirrored": false,
-      "locked": false,
+      "locked": true,
       "scope": {
         "except": [
           "fluting",
-          "stringSetup",
           "volute",
           "scroll",
           "scrollWidths",

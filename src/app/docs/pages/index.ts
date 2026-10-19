@@ -1,7 +1,7 @@
 // Every page the info booth shows, one Markdown file each, keyed by its path under this folder.
 // A file on disk missing from here fails docs.spec.ts.
 import boothAboutMe from './booth/about-me.md';
-import boothAcknowledgements from './booth/acknowledgements.md';
+import boothSources from './booth/sources.md';
 import boothCremonaCad from './booth/cremona-cad.md';
 import historyLicense from './history/license.md';
 import historyV070 from './history/v0.7.0.md';
@@ -24,7 +24,7 @@ import wikiStyle from './wiki/style.md';
 
 export const PAGE_SOURCES: Record<string, string> = {
   'booth/about-me.md': boothAboutMe,
-  'booth/acknowledgements.md': boothAcknowledgements,
+  'booth/sources.md': boothSources,
   'booth/cremona-cad.md': boothCremonaCad,
   'history/license.md': historyLicense,
   'history/v0.7.0.md': historyV070,
@@ -47,5 +47,5 @@ export const PAGE_SOURCES: Record<string, string> = {
 };
 
 // the booth's tabs in order: a booth page by id, or the wiki or the history
-export const BOOTH_TABS = ['cremona-cad', 'wiki', 'history', 'acknowledgements', 'about-me'] as const;
+export const BOOTH_TABS = ['cremona-cad', 'wiki', 'history', 'sources', 'about-me'] as const;
 export type BoothTab = typeof BOOTH_TABS[number];
