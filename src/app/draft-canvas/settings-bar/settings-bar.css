@@ -245,8 +245,8 @@
 }
 
 /* Popups for Crop and Panel scoping. Siblings of .settings-grid rather than children, because
-   that grid scrolls sideways and would clip anything absolutely positioned inside it — so these
-   anchor to the bar's own left edge, not to the button that opened them. Upwards, like the
+   that grid scrolls sideways and would clip anything absolutely positioned inside it; the
+   component moves each over its own button once drawn, from this left edge. Upwards, like the
    bottom bar's layer and image popups, and styled to match them: the two sets sit on the same
    row of the screen and reading as one family is worth restating a few rules for. */
 .settings-popup {

@@ -1,80 +1,80 @@
 {
-  "key": "stradivari-violin-ward",
+  "key": "stradavari-violin-betts",
   "recipeName": "violin-family-recipe",
-  "fileName": "Violin - Antonio Stradivari - Ward",
-  "description": "Cremona, 1700",
-  "source": "https://www.loc.gov/item/2022560100/",
+  "fileName": "Violin - Antonio Stradivari - Betts",
+  "description": "Cremona, 1704. LoC catalogue dimensions; no arching published.",
+  "source": "https://www.loc.gov/item/2022560101/",
   "version": "0.9.0",
   "params": {
     "body": {
-      "height": 354,
-      "width": 206,
-      "overhang": 3.3,
+      "height": 357.5,
+      "width": 208,
+      "overhang": 3,
       "rib": 1
     },
     "bouts": {
-      "UBW": 165,
-      "U0R": 157,
-      "U1R": 59,
-      "L0R": 330,
-      "L1R": 67,
+      "UBW": 166,
+      "U0R": 141,
+      "U1R": 61,
+      "L0R": 391,
+      "L1R": 69,
       "useViolNeck": false,
       "viol": null,
-      "CBW": 104,
-      "C0R": 91,
-      "C0Y": 196,
+      "CBW": 105.5,
+      "C0R": 100,
+      "C0Y": 199,
       "useKellyC0": false
     },
     "corners": {
       "UCr": {
-        "x": 71.75,
-        "y": 232
+        "x": 73.95,
+        "y": 233.95
       },
       "LCr": {
-        "x": 85.75,
-        "y": 143
+        "x": 88.5,
+        "y": 145.35
       },
-      "U2R": 90,
-      "U3R": 300,
-      "U31R": 21,
-      "U31Sweep": 47.359,
+      "U2R": 96,
+      "U3R": 400,
+      "U31R": 20,
+      "U31Sweep": 53,
       "U31DoubleArc": true,
       "useViolCornerUC": false,
-      "L2R": 80,
-      "L3R": 300,
+      "L2R": 84,
+      "L3R": 400,
       "L31R": 20,
-      "L31Sweep": 55.688,
+      "L31Sweep": 59,
       "L31DoubleArc": true,
       "useViolCornerLC": false,
-      "C2R": 17,
-      "C21R": 16,
-      "C21Sweep": 30.188,
-      "C21DoubleArc": true,
-      "C1R": 33,
-      "C11R": 17,
-      "C11Sweep": 41.23,
-      "C11DoubleArc": true
+      "C2R": 18,
+      "C21R": 17,
+      "C21Sweep": 46.372,
+      "C21DoubleArc": false,
+      "C1R": 26,
+      "C11R": 23,
+      "C11Sweep": 41.805,
+      "C11DoubleArc": false
     },
     "outerContour": {
       "button": {
-        "width": 20,
-        "height": 12.5
+        "width": 19,
+        "height": 11.5
       },
-      "purflingOffset": 4.9,
+      "purflingOffset": 4.75,
       "purflingChannelDepth": 1,
       "U3Cutoff": 0,
-      "U31Cutoff": 0.639835591,
-      "C2Cutoff": 0,
-      "C21Cutoff": 11.811651801,
-      "C1Cutoff": 0,
-      "C11Cutoff": 13.770847629,
+      "U31Cutoff": -1,
+      "C2Cutoff": 16,
+      "C21Cutoff": 22.178121814,
+      "C1Cutoff": 9,
+      "C11Cutoff": 13.195168116,
       "L3Cutoff": 0,
-      "L31Cutoff": 2.311309412,
-      "upperRounding": 0.21,
-      "lowerRounding": 0.1
+      "L31Cutoff": 0,
+      "upperRounding": 0.14,
+      "lowerRounding": 0.06
     },
     "fluting": {
-      "flutingEdge": 1.65,
+      "flutingEdge": 1.5,
       "cornerGouge": true,
       "top": {
         "width": 11,
@@ -91,87 +91,88 @@
     },
     "fHoles": {
       "UEye": {
-        "x": 23,
-        "y": 187.25,
-        "r": 3.25
+        "x": 23.5,
+        "y": 190.25,
+        "r": 3.1
       },
       "LEye": {
-        "x": 58.25,
-        "y": 136.5,
-        "r": 4.5
+        "x": 59.25,
+        "y": 138.25,
+        "r": 4.75
       },
       "URise": 5,
-      "LRise": 6.15,
+      "LRise": 6.5,
       "stem": {
         "center": {
-          "x": 38.85,
-          "y": 159.016667
+          "x": 38.9,
+          "y": 160.6
         },
-        "width": 5.3,
-        "angle": 94.3
+        "width": 6.15,
+        "angle": 91.5
       },
       "notches": true
     },
     "fHoleContours": {
-      "U1R": 7.5,
-      "U1End": 60,
-      "U2R": 15,
+      "U1R": 8,
+      "U1End": 57,
+      "U2R": 12,
       "U21DoubleArc": false,
-      "U21R": 15,
-      "U2Sweep": 15.71,
-      "U3R": 15,
-      "U3Angle": 84.8,
+      "U21R": 16,
+      "U2Sweep": 11.75,
+      "U3R": 16,
+      "U3Angle": 85,
       "UCut": {
-        "angleOnEye": 77,
-        "slope": 51,
-        "length": 5.85
+        "angleOnEye": 69.508522988,
+        "slope": 45,
+        "length": 6
       },
-      "L1R": 9.5,
+      "L1R": 10.5,
       "L1End": 270,
-      "L2R": 11.6,
+      "L2R": 13.3,
       "L21DoubleArc": false,
-      "L21R": 15,
-      "L2Sweep": 50,
-      "L3R": 15,
+      "L21R": 14,
+      "L2Sweep": 27.23,
+      "L3R": 17,
       "L3Angle": 105,
       "LCut": {
-        "angleOnEye": 262.78312037,
-        "slope": -129,
-        "length": 6.75
+        "angleOnEye": 256,
+        "slope": -132,
+        "length": 7.5
       },
-      "stemArcR": 30
+      "stemArcR": 36
     },
     "arching": {
-      "ribHeightLower": 30.25,
-      "ribHeightUpper": 28.5,
+      "ribHeightLower": 33,
+      "ribHeightUpper": 31,
       "top": {
-        "thickness": 3.75,
+        "thickness": 4.2,
         "arch": {
           "type": "spline",
           "height": 12,
           "peak": 50,
           "points": [
             {
-              "t": 15,
-              "z": 4.5,
+              "t": 87.5,
+              "z": 5,
               "mirror": false
             },
             {
-              "t": 31,
+              "t": 75,
+              "z": 9,
+              "mirror": false
+            },
+            {
+              "t": 25,
               "z": 10,
               "mirror": false
             },
             {
-              "t": 76,
-              "z": 9.75,
-              "mirror": false
-            },
-            {
-              "t": 95,
-              "z": 0.95,
+              "t": 12.5,
+              "z": 5.5,
               "mirror": false
             }
-          ]
+          ],
+          "peakRow": 2
         },
         "cross": {
           "type": "cycloid",
@@ -183,68 +184,78 @@
         }
       },
       "back": {
-        "thickness": 4.5,
+        "thickness": 4.2,
         "arch": {
           "type": "spline",
-          "height": 11.25,
+          "height": 13,
           "peak": 50,
           "points": [
             {
-              "t": 15,
-              "z": 3.4,
-              "mirror": false
-            },
-            {
-              "t": 30,
-              "z": 9.5,
-              "mirror": false
-            },
-            {
-              "t": 62.5,
-              "z": 10.5,
+              "t": 94,
+              "z": 0.5,
               "mirror": false
             },
             {
               "t": 75,
-              "z": 8,
+              "z": 9,
               "mirror": false
             },
             {
-              "t": 95,
-              "z": 0.1,
+              "t": 25,
+              "z": 8.5,
+              "mirror": false
+            },
+            {
+              "t": 10,
+              "z": 2,
               "mirror": false
             }
-          ]
+          ],
+          "peakRow": 2
         },
         "cross": {
-          "type": "cycloid",
+          "type": "spline",
           "d": 40,
           "pct": 90,
           "peak": 50,
-          "points": [],
+          "points": [
+            {
+              "x": 83,
+              "z": 50,
+              "mirror": true
+            }
+          ],
           "stations": []
         }
       }
     },
     "neck": {
-      "length": 139,
-      "angle": 6.5,
-      "upperThickness": 13,
-      "lowerThickness": 14.5,
+      "length": 134,
+      "angle": 6.9,
+      "upperThickness": 12,
+      "lowerThickness": 14.2,
       "topWidth": 24,
-      "rootWidth": 33,
+      "rootWidth": 31,
       "heelRadius": 12,
-      "mortiseDepth": 4,
-      "overstand": 6.1,
-      "nutHeight": 5.5,
-      "nutWidth": 24.3
+      "mortiseDepth": 3.3,
+      "overstand": 5.5,
+      "nutHeight": 6,
+      "nutWidth": 24
+    },
+    "stringSetup": {
+      "bodyStop": 196.5,
+      "bridgeHeight": 33,
+      "nutThickness": 6.5,
+      "fingerboardLength": 270,
+      "fingerboardThickness": 5,
+      "fingerboardRadius": 42
     },
     "scroll": {
       "style": "salviati",
       "eye": {
         "x": -17.64,
-        "y": 82.95,
-        "r": 3.4
+        "y": 81.35,
+        "r": 3.5
       },
       "fitToNeck": true,
       "pitch": 6.7,
@@ -259,46 +270,38 @@
         11.81,
         15.31
       ],
-      "S0R": 21.4,
-      "S0Sweep": 80,
-      "S1R": 27.3,
-      "S1Sweep": 86,
-      "S2R": 35,
-      "S2Sweep": 48,
-      "backStraight": 25,
-      "S3R": 35,
+      "S0R": 21.1,
+      "S0Sweep": 74,
+      "S1R": 27.8,
+      "S1Sweep": 100,
+      "S2R": 38,
+      "S2Sweep": 39,
+      "backStraight": 28,
+      "S3R": 30,
       "hang": 0,
-      "napeR": 10,
+      "napeR": 13,
       "napeCircle": false,
-      "flat": 11,
-      "F0R": 59,
-      "F0Sweep": 43,
-      "frontStraight": 20,
-      "F1R": 7,
+      "flat": 8,
+      "F0R": 57,
+      "F0Sweep": 44,
+      "frontStraight": 22,
+      "F1R": 6,
       "widths": {
-        "hip": 24.9,
-        "throat": 18.5,
-        "duckTail": 25.9,
-        "foot": 25.9,
-        "backHip": 26,
-        "poll": 18,
-        "crown": 10.8,
-        "turn1Bottom": 24.7,
-        "turn2Top": 22.7,
+        "hip": 25,
+        "throat": 18,
+        "duckTail": 25.5,
+        "foot": 25.5,
+        "backHip": 27,
+        "poll": 19,
+        "crown": 11.5,
+        "turn1Bottom": 26,
+        "turn2Top": 23.2,
         "turn2Bottom": 35,
-        "eye": 40.1
+        "eye": 41
       },
-      "hipHeight": 17,
+      "hipHeight": 13,
       "backHipHeight": 0,
       "wall": 5
-    },
-    "stringSetup": {
-      "bodyStop": 195,
-      "bridgeHeight": 33,
-      "nutThickness": 7.5,
-      "fingerboardLength": 270,
-      "fingerboardThickness": 5,
-      "fingerboardRadius": 42
     },
     "mould": {
       "neckBlock": {
@@ -330,134 +333,136 @@
     }
   },
   "ratios": {
-    "HtoW": 1.7184466019417475,
-    "UBtoLB": 0.8009708737864077,
-    "U0toUBW": 1.0038363171355498,
-    "U1toUBW": 0.3772378516624041,
-    "LBtoH": 0.5819209039548022,
-    "L0toLBW": 1.6717325227963524,
-    "L1toLBW": 0.3394123606889564,
-    "U2toUBW": 0.5754475703324808,
-    "U3toLBW": 1.519756838905775,
-    "U31toLBW": 0.10638297872340426,
-    "L2toLBW": 0.40526849037487334,
-    "L3toLBW": 1.519756838905775,
-    "L31toLBW": 0.10131712259371833,
-    "UCYtoH": 0.655367231638418,
-    "LCYtoH": 0.403954802259887,
-    "CBWtoLBW": 0.5048543689320388,
-    "C0toLBW": 0.46099290780141844,
-    "C2toLBW": 0.08611955420466058,
-    "C21toLBW": 0.08105369807497467,
-    "C1toLBW": 0.16717325227963525,
-    "C11toLBW": 0.08611955420466058,
-    "BWtoLBW": 0.0970873786407767,
-    "BHtoBW": 0.625,
-    "LEyetoW": 0.021844660194174758,
-    "UEyetoLEye": 0.7222222222222222,
-    "URisetoUEye": 1.5384615384615385,
-    "LRisetoLEye": 1.3666666666666667,
-    "StemXtoFrame": 0.44418604651162796,
-    "StemYtoFrame": 0.47619048097631034,
-    "StemWtoUEye": 1.6307692307692307,
-    "LEyeXtoLCX": 0.6793002915451894,
-    "LEyeYtoLCY": 0.9545454545454546,
-    "UEyeGuidetoWaist": 0.5493512584844583,
-    "EyeSpantoWaist": 1.0225541054466247,
-    "UCuttoUEye": 1.7999999999999998,
-    "LCuttoLEye": 1.5,
-    "StoEyeSpan": 0.48550776865004425,
-    "U1toS": 0.25,
-    "U2toS": 0.5,
-    "U3toS": 0.5,
-    "L1toS": 0.31666666666666665,
-    "L2toS": 0.38666666666666666,
-    "L3toS": 0.5
+    "HtoW": 1.71875,
+    "UBtoLB": 0.7980769230769231,
+    "U0toUBW": 0.8924050632911392,
+    "U1toUBW": 0.3860759493670886,
+    "LBtoH": 0.5818181818181818,
+    "L0toLBW": 1.955,
+    "L1toLBW": 0.345,
+    "U2toUBW": 0.6075949367088608,
+    "U3toLBW": 2,
+    "U31toLBW": 0.1,
+    "L2toLBW": 0.42,
+    "L3toLBW": 2,
+    "L31toLBW": 0.1,
+    "UCYtoH": 0.6544055944055944,
+    "LCYtoH": 0.40657342657342654,
+    "CBWtoLBW": 0.5072115384615384,
+    "C0toLBW": 0.5,
+    "C2toLBW": 0.09,
+    "C21toLBW": 0.085,
+    "C1toLBW": 0.13,
+    "C11toLBW": 0.115,
+    "BWtoLBW": 0.09134615384615384,
+    "BHtoBW": 0.6052631578947368,
+    "LEyetoW": 0.02283653846153846,
+    "UEyetoLEye": 0.6526315789473685,
+    "URisetoUEye": 1.6129032258064515,
+    "LRisetoLEye": 1.368421052631579,
+    "StemXtoFrame": 0.4243119266055046,
+    "StemYtoFrame": 0.47091800981079185,
+    "StemWtoUEye": 1.9838709677419355,
+    "LEyeXtoLCX": 0.6694915254237288,
+    "LEyeYtoLCY": 0.9511523907808738,
+    "UEyeGuidetoWaist": 0.548166509397449,
+    "EyeSpantoWaist": 1.0235659100178607,
+    "UCuttoUEye": 1.9354838709677418,
+    "LCuttoLEye": 1.5789473684210527,
+    "StoEyeSpan": 0.5704905629072545,
+    "U1toS": 0.2222222222222222,
+    "U2toS": 0.3333333333333333,
+    "U3toS": 0.4444444444444444,
+    "L1toS": 0.2916666666666667,
+    "L2toS": 0.36944444444444446,
+    "L3toS": 0.4722222222222222
   },
   "referenceImages": [
     {
-      "id": "ward-top",
+      "id": "stradivari-violin-betts-top",
       "label": "Top (sp=2)",
-      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0002/full/pct:100.0/0/default.jpg",
-      "x": -107.33233320122301,
-      "y": -9.33460350036621,
-      "width": 217.06466640244588,
-      "height": 372.6486110687256,
-      "rotationDeg": 0,
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0002/full/pct:100.0/0/default.jpg",
+      "x": -157.89043273925785,
+      "y": -17.514347076416,
+      "width": 300.52673797607423,
+      "height": 450.7901069641114,
+      "rotationDeg": 359.7,
       "opacity": 0.4,
       "suppressWhite": true,
       "locked": false,
       "scope": {
         "except": [
           "fluting",
+          "stringSetup",
           "volute",
           "scroll",
-          "scrollWidths",
-          "mould"
+          "scrollWidths"
         ]
       },
       "credit": {
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
-        "url": "https://www.loc.gov/resource/music.musihas-200154810/?sp=2&st=image"
+        "url": "https://www.loc.gov/resource/music.musihas-200154811/?sp=2&st=image"
       }
     },
     {
-      "id": "ward-profiles",
+      "id": "stradivari-violin-betts-profiles",
       "label": "Profiles, both sides (sp=3)",
-      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0003/full/pct:100.0/0/default.jpg",
-      "x": 102.19329812388663,
-      "y": -4.4277,
-      "width": 121.35340375222657,
-      "height": 382.6171592285156,
-      "rotationDeg": 0.2,
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0003/full/pct:100.0/0/default.jpg",
+      "x": 121.1203749302151,
+      "y": 0.07971193217501316,
+      "width": 99.77633542574846,
+      "height": 416.84982519130637,
+      "rotationDeg": 359.2,
       "opacity": 0.4,
-      "suppressWhite": true,
+      "suppressWhite": false,
       "locked": false,
       "scope": {
         "only": [
           "longArching",
           "neck",
-          "crossArching",
-          "stringSetup"
+          "stringSetup",
+          "crossArching"
         ]
       },
       "crop": {
-        "left": 0,
+        "left": 0.13,
         "top": 0,
-        "right": 0.51,
+        "right": 0.5,
         "bottom": 0
       },
       "credit": {
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
-        "url": "https://www.loc.gov/resource/music.musihas-200154810/?sp=3&st=image"
+        "url": "https://www.loc.gov/resource/music.musihas-200154811/?sp=3&st=image"
       }
     },
     {
-      "id": "shape-mveqvzy7-1",
+      "id": "shape-mvfo54tj-3",
       "label": "Img 3",
-      "href": "[image data stripped, 102979 chars]",
-      "x": -96.26892483556463,
-      "y": -4.817085082190374,
-      "width": 114.69115881795034,
-      "height": 122.24336682047162,
-      "rotationDeg": 358.9,
-      "locked": true,
-      "scope": {
-        "only": [
-          "scrollWidths"
-        ]
-      }
-    },
-    {
-      "id": "shape-mves023a-2",
-      "label": "Img 4",
-      "href": "[image data stripped, 98607 chars]",
-      "x": -120.8769156606912,
-      "y": -14.19271469116211,
-      "width": 61.70281203427298,
-      "height": 121.76568222045898,
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0018/34,3117,2375,2870/1024,/0/default.jpg",
+      "x": -108.43112277221385,
+      "y": -15.324226760864258,
+      "width": 121.50127024176436,
+      "height": 146.7744836807251,
       "rotationDeg": 0,
       "opacity": 0.4,
+      "locked": false,
+      "scope": {
+        "only": [
+          "scroll",
+          "scrollWidths",
+          "volute"
+        ]
+      }
+    },
+    {
+      "id": "shape-mvfotjfz-5",
+      "label": "Img 4",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0018/739,558,1702,2527/1024,/0/default.jpg",
+      "x": -8.106748293759239,
+      "y": -48.52893200663952,
+      "width": 107.73441924068855,
+      "height": 159.91827856039708,
+      "rotationDeg": 359.5329333233883,
       "locked": true,
       "scope": {
         "only": [
@@ -466,15 +471,15 @@
       }
     },
     {
-      "id": "shape-mves7pzc-6",
+      "id": "shape-mvfpsqo2-6",
       "label": "Img 5",
-      "href": "[image data stripped, 109687 chars]",
-      "x": 9.389387610094206,
-      "y": -12.1750097683426,
-      "width": 78.57020549270221,
-      "height": 123.97093109402618,
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0018/2885,507,1568,2464/969,/0/default.jpg",
+      "x": -132.5489001716484,
+      "y": -24.327804565429688,
+      "width": 86.53451604153888,
+      "height": 135.9190231323242,
       "rotationDeg": 0,
-      "locked": true,
+      "locked": false,
       "scope": {
         "only": [
           "scrollWidths"

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { planUploadResize } from './image-asset-store';
+import { imageFromClipboard, planUploadResize } from './image-asset-store';
 
 // The canvas half of prepareUploadedImage can't run under jsdom (no getContext), so what's
 // pinned here is the decision: when an upload is left alone, and what it's scaled to when not.
@@ -36,5 +36,25 @@ describe('planUploadResize', () => {
   it('returns null for an image that failed to measure', () => {
     expect(planUploadResize(0, 0, BIG)).toBeNull();
     expect(planUploadResize(NaN, NaN, BIG)).toBeNull();
+  });
+});
+
+describe('imageFromClipboard', () => {
+  const clipboard = (items: Record<string, string>, files: File[] = []) =>
+    ({ getData: (type: string) => items[type] ?? '', files });
+  const png = new File([new Uint8Array(8)], 'image.png', { type: 'image/png' });
+
+  it('takes both the picture and its address from a browser\'s "Copy image"', () => {
+    const got = imageFromClipboard(clipboard({ 'text/html': '<meta charset="utf-8"><img src="https://x.org/a.jpg?w=1&amp;h=2" alt="">' }, [png]));
+    expect(got).toEqual({ url: 'https://x.org/a.jpg?w=1&h=2', file: png });
+  });
+
+  it('takes a pasted address on its own', () => {
+    expect(imageFromClipboard(clipboard({ 'text/plain': '  https://x.org/a.jpg\n' }))).toEqual({ url: 'https://x.org/a.jpg', file: undefined });
+  });
+
+  it('ignores prose and files that are not images', () => {
+    const pdf = new File([new Uint8Array(8)], 'plan.pdf', { type: 'application/pdf' });
+    expect(imageFromClipboard(clipboard({ 'text/plain': 'see https://x.org/a.jpg for the scroll' }, [pdf]))).toBeNull();
   });
 });

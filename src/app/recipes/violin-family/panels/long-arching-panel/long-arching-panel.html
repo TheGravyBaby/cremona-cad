@@ -49,13 +49,30 @@
         </label>
     </div>
     } @else {
-    <div class="spline-points">
+    <div class="spline-points" appRowReorder (rowReorder)="moveRow(plate, $event)">
         <div class="input-group basic-row spline-row spline-row--header">
             <span class="field-cell">Position <span class="unit-label">%</span></span>
             <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
             <span class="field-cell">Height <span class="unit-label">mm</span></span>
         </div>
-        <div class="input-group basic-row field-row spline-row" role="group">
+        @for (row of rows(arch.points, arch.peakRow); track $index) {
+        <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
+            <button type="button" class="row-grip" data-reorder-handle aria-label="Reorder row" docTip="reorderRow">⠿</button>
+            @if (row.item; as pt) {
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="1" min="1" max="99" [(ngModel)]="pt.t" (input)="edited()"
+                    (focus)="focus(plate, row.index)" (blur)="blur()" />
+            </div>
+            <span class="field-separator" aria-hidden="true"></span>
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="0.1" [min]="-pa.thickness" [max]="arch.height" [(ngModel)]="pt.z" (input)="edited()"
+                    (focus)="focus(plate, row.index)" (blur)="blur()" />
+            </div>
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="pt.mirror" (change)="edited()" /><span>Mirror</span>
+            </div>
+            <button type="button" class="info-icon" (click)="removePoint(plate, row.index)" title="Remove point" aria-label="Remove point">×</button>
+            } @else {
             <div class="field-cell">
                 <input type="number" class="basic-input" step="1" min="5" max="95" [(ngModel)]="arch.peak" (input)="edited()"
                     (focus)="focus(plate, peakSource)" (blur)="blur()" />
@@ -66,27 +83,13 @@
                     [style.borderColor]="ink" (focus)="focus(plate, peakSource)" (blur)="blur()" />
             </div>
             <span>Peak</span>
-        </div>
-        @for (pt of arch.points; track $index) {
-        <div class="input-group basic-row field-row spline-row" role="group">
-            <div class="field-cell">
-                <input type="number" class="basic-input" step="1" min="1" max="99" [(ngModel)]="pt.t" (input)="edited()"
-                    (focus)="focus(plate, $index)" (blur)="blur()" />
-            </div>
-            <span class="field-separator" aria-hidden="true"></span>
-            <div class="field-cell">
-                <input type="number" class="basic-input" step="0.1" [min]="-pa.thickness" [max]="arch.height" [(ngModel)]="pt.z" (input)="edited()"
-                    (focus)="focus(plate, $index)" (blur)="blur()" />
-            </div>
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="pt.mirror" (change)="edited()" /><span>Mirror</span>
-            </div>
-            <button type="button" class="info-icon" (click)="removePoint(plate, $index)" title="Remove point" aria-label="Remove point">×</button>
+            }
         </div>
         }
     </div>
     <div class="input-group basic-row field-row" role="group">
         <button type="button" class="panel-nav-btn" (click)="addPoint(plate)">+ Add Point</button>
+        <button type="button" class="panel-nav-btn" (click)="sortPoints(plate)">Sort by Position</button>
     </div>
     }
 

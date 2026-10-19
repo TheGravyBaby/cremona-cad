@@ -17,6 +17,7 @@ import {
 } from '../../violin-family-types';
 import { defineSideScrollPath, solveScroll } from '../scroll-panel/scroll-panel';
 import { duckTailRoundTop } from '../scroll-widths-panel/scroll-widths-panel';
+import { neckTaper } from '../neck-panel/neck-panel';
 
 // The volute: a style's spiral about the eye, two turns out to its front, and the crown (S0, S1)
 // running on from it. The scroll is drawn in its own side view, the nut at the origin on the neck's
@@ -186,9 +187,11 @@ export const renderScrollNeck = (p: ViolinFamilyParams, s: ScrollSolve, pal: Pan
   let t = nutThickness(p);
   renderPolygon([new Pt(0, 0), new Pt(0, nutHeight), new Pt(t, nutHeight), new Pt(t, 0)], pal.ink(0), STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(0, -stub), new Pt(0, 0), pal.neutral.faint(5), STROKE_WEIGHT.section)(g, ui);
-  // the neck's back runs on up to where the nape meets it, or to the nut's level while it's unsolved
-  let backTop = s.nape ? s.nape.y : 0;
-  if (backTop > -stub) renderSegment(new Pt(-thickness, -stub), new Pt(-thickness, backTop), pal.neutral.faint(5), STROKE_WEIGHT.section)(g, ui);
+  // the neck's back, leaning with the taper, runs on up to where the nape meets it, or to the nut's
+  // level while it's unsolved
+  let backTop = s.nape ? pointOnCircle(s.nape, s.nape.start) : new Pt(-thickness, 0);
+  let backFoot = new Pt(-thickness - neckTaper(p) * stub, -stub);
+  if (backTop.y > -stub) renderSegment(backFoot, backTop, pal.neutral.faint(5), STROKE_WEIGHT.section)(g, ui);
 
   if (!showGuides || !s.S0 || !s.S1) return;
   let crownTop = Math.max(...[s.S0, s.S1].flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y));

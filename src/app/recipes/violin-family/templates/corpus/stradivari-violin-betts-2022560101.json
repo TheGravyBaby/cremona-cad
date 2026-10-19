@@ -171,7 +171,8 @@
               "z": 5.5,
               "mirror": false
             }
-          ]
+          ],
+          "peakRow": 2
         },
         "cross": {
           "type": "cycloid",
@@ -186,7 +187,7 @@
         "thickness": 4.2,
         "arch": {
           "type": "spline",
-          "height": 12,
+          "height": 13,
           "peak": 50,
           "points": [
             {
@@ -209,7 +210,8 @@
               "z": 2,
               "mirror": false
             }
-          ]
+          ],
+          "peakRow": 2
         },
         "cross": {
           "type": "spline",
@@ -230,15 +232,15 @@
     "neck": {
       "length": 134,
       "angle": 6.9,
-      "upperThickness": 10.5,
+      "upperThickness": 12,
       "lowerThickness": 14.2,
-      "topWidth": 22,
-      "rootWidth": 33,
+      "topWidth": 25,
+      "rootWidth": 31,
       "heelRadius": 12,
       "mortiseDepth": 3.3,
       "overstand": 5.5,
-      "nutHeight": 6,
-      "nutWidth": 24
+      "nutHeight": 5,
+      "nutWidth": 25
     },
     "stringSetup": {
       "bodyStop": 196.5,
@@ -252,7 +254,7 @@
       "style": "salviati",
       "eye": {
         "x": -17.64,
-        "y": 80.75,
+        "y": 81.35,
         "r": 3.5
       },
       "fitToNeck": true,
@@ -268,24 +270,24 @@
         11.81,
         15.31
       ],
-      "S0R": 21,
-      "S0Sweep": 72,
-      "S1R": 27.4,
-      "S1Sweep": 93,
-      "S2R": 36,
-      "S2Sweep": 49,
-      "backStraight": 26,
-      "S3R": 31,
+      "S0R": 21.1,
+      "S0Sweep": 74,
+      "S1R": 27.8,
+      "S1Sweep": 100,
+      "S2R": 38,
+      "S2Sweep": 39,
+      "backStraight": 28,
+      "S3R": 30,
       "hang": 0,
-      "napeR": 10,
+      "napeR": 13,
       "napeCircle": false,
-      "flat": 9,
-      "F0R": 56,
-      "F0Sweep": 44.2,
-      "frontStraight": 21,
-      "F1R": 5,
+      "flat": 8,
+      "F0R": 57,
+      "F0Sweep": 44,
+      "frontStraight": 22,
+      "F1R": 6,
       "widths": {
-        "hip": 25.5,
+        "hip": 25,
         "throat": 18,
         "duckTail": 25.5,
         "foot": 25.5,
@@ -297,7 +299,7 @@
         "turn2Bottom": 35,
         "eye": 41
       },
-      "hipHeight": 6,
+      "hipHeight": 13,
       "backHipHeight": 0,
       "wall": 5
     },
@@ -387,15 +389,16 @@
       "rotationDeg": 359.7,
       "opacity": 0.4,
       "suppressWhite": true,
-      "locked": true,
+      "mirrored": false,
+      "locked": false,
       "scope": {
         "except": [
           "fluting",
-          "crossArching",
           "stringSetup",
           "volute",
           "scroll",
-          "scrollWidths"
+          "scrollWidths",
+          "devExport"
         ]
       },
       "credit": {
@@ -407,23 +410,24 @@
       "id": "stradivari-violin-betts-profiles",
       "label": "Profiles, both sides (sp=3)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0003/full/pct:100.0/0/default.jpg",
-      "x": 84.86553323147734,
-      "y": 0.3244448707469133,
-      "width": 134.8328857104709,
+      "x": 121.1203749302151,
+      "y": 0.07971193217501316,
+      "width": 99.77633542574846,
       "height": 416.84982519130637,
       "rotationDeg": 359.2,
       "opacity": 0.4,
-      "suppressWhite": true,
-      "locked": true,
+      "suppressWhite": false,
+      "locked": false,
       "scope": {
         "only": [
           "longArching",
           "neck",
-          "stringSetup"
+          "stringSetup",
+          "crossArching"
         ]
       },
       "crop": {
-        "left": 0,
+        "left": 0.13,
         "top": 0,
         "right": 0.5,
         "bottom": 0
@@ -434,30 +438,33 @@
       }
     },
     {
-      "id": "shape-mveopjwc-1",
+      "id": "shape-mvfo54tj-3",
       "label": "Img 3",
-      "href": "[image data stripped, 126227 chars]",
-      "x": -108.76052703857425,
-      "y": -20.059687885642063,
-      "width": 132.00726127624512,
-      "height": 151.60208912193778,
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0018/34,3117,2375,2870/1024,/0/default.jpg",
+      "x": -108.43112277221385,
+      "y": -15.324226760864258,
+      "width": 121.50127024176436,
+      "height": 146.7744836807251,
       "rotationDeg": 0,
-      "locked": true,
+      "opacity": 0.4,
+      "locked": false,
       "scope": {
         "only": [
-          "scrollWidths"
+          "scroll",
+          "scrollWidths",
+          "volute"
         ]
       }
     },
     {
-      "id": "shape-mvep31z1-4",
+      "id": "shape-mvfotjfz-5",
       "label": "Img 4",
-      "href": "[image data stripped, 118815 chars]",
-      "x": -27.667950617657972,
-      "y": -25.59320068359375,
-      "width": 143.96127965328466,
-      "height": 134.82311248779297,
-      "rotationDeg": 0,
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0018/739,558,1702,2527/1024,/0/default.jpg",
+      "x": -8.106748293759239,
+      "y": -48.52893200663952,
+      "width": 107.73441924068855,
+      "height": 159.91827856039708,
+      "rotationDeg": 359.5329333233883,
       "locked": true,
       "scope": {
         "only": [
@@ -466,16 +473,15 @@
       }
     },
     {
-      "id": "shape-mvephnqj-1",
+      "id": "shape-mvfpsqo2-6",
       "label": "Img 5",
-      "href": "[image data stripped, 180127 chars]",
-      "x": -138.9577348597527,
-      "y": -29.60763931274414,
-      "width": 97.1408481374742,
-      "height": 137.83755111694336,
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0018/2885,507,1568,2464/969,/0/default.jpg",
+      "x": -132.5489001716484,
+      "y": -24.327804565429688,
+      "width": 86.53451604153888,
+      "height": 135.9190231323242,
       "rotationDeg": 0,
-      "opacity": 0.35,
-      "locked": true,
+      "locked": false,
       "scope": {
         "only": [
           "scrollWidths"

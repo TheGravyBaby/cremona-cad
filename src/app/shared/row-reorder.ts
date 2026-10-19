@@ -27,6 +27,13 @@ export function applyRowMove<T>(items: T[], marker: number, move: RowMove): numb
   return above ? lifted + 1 : lifted;
 }
 
+// the table as shown: each item with its list index, and the marker (item null) at its row
+export function rowsWithMarker<T>(items: T[], marker = 0): { item: T | null; index: number }[] {
+  const rows: { item: T | null; index: number }[] = items.map((item, index) => ({ item, index }));
+  rows.splice(clamp(Math.round(marker), 0, items.length), 0, { item: null, index: -1 });
+  return rows;
+}
+
 /** Marks a row the directive may move, and the grip inside it a drag starts from. */
 const ROW = '[data-reorder-row]';
 const HANDLE = '[data-reorder-handle]';

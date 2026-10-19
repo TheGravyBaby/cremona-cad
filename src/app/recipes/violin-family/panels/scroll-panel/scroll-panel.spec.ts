@@ -4,7 +4,7 @@ import { angleFromCenter, angleWithinSweep, dist, pointOnCircle } from '../../..
 import { Arc, Pt } from '../../../../models/types';
 import { defineSideScrollPath, scrollExtent, scrollLines, solveScroll } from './scroll-panel';
 import { VolutePanel } from '../volute-panel/volute-panel';
-import { NeckPanel } from '../neck-panel/neck-panel';
+import { NeckPanel, neckTaper } from '../neck-panel/neck-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
@@ -31,6 +31,22 @@ const start = (a: Arc) => pointOnCircle(a, a.start);
 const meets = (a: Pt, b: Pt) => expect(dist(a, b)).toBeLessThan(1e-9);
 // the heading of an arc at an angle, counterclockwise
 const heading = (angle: number) => new Pt(-Math.sin(angle), Math.cos(angle));
+// the nape leaves the neck's back along it: on the back, which leans off the fingerboard plane with
+// the neck's taper, and heading up it
+const tangentToBack = (p: ViolinFamilyParams, nape: Arc) => {
+  const taper = neckTaper(p);
+  const at = start(nape);
+  const h = heading(nape.start);
+  expect(at.x).toBeCloseTo(-p.neck!.upperThickness + taper * at.y, 9);
+  expect(h.x - taper * h.y).toBeCloseTo(0, 9);
+};
+// a neck thickening well toward the heel, so a square back would miss
+const tapered = () => {
+  const q = seeded();
+  q.neck!.lowerThickness = q.neck!.upperThickness + 6;
+  expect(neckTaper(q)).toBeGreaterThan(0.02);
+  return q;
+};
 
 describe('the scroll solve', () => {
   it('never writes to the params', () => {
@@ -80,16 +96,19 @@ describe('the back', () => {
     meets(a, start(s.S3!));
     expect(b.y).toBeCloseTo(a.y, 9);
     meets(b, end(s.nape!));
-    expect(s.nape!.x + s.nape!.r).toBeCloseTo(-p.neck!.upperThickness, 9);
+    const q = tapered();
+    const t = solved(q);
+    expect(end(t.nape!).y).toBeCloseTo(start(t.S3!).y, 9);
+    tangentToBack(q, t.nape!);
   });
 
   it('fits the nape as one circle through the duck tail, tangent to the neck\'s back', () => {
-    const q = seeded();
+    const q = tapered();
     q.scroll!.napeCircle = true;
     q.scroll!.napeR = 20;
     const t = solved(q);
     meets(end(t.nape!), start(t.S3!));
-    expect(t.nape!.x + t.nape!.r).toBeCloseTo(-q.neck!.upperThickness, 9);
+    tangentToBack(q, t.nape!);
   });
 
   it('reports an S3 that never comes down to the hang, and stops the back there', () => {

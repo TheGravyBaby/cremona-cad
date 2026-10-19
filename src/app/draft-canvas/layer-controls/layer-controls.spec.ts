@@ -77,7 +77,7 @@ describe('LayerControlsComponent', () => {
 
     all('.scope-chip')[0].click();
     fixture.detectChanges();
-    const rows = all('.scope-menu .scope-row');
+    const rows = all('app-scope-menu .scope-row');
     expect(rows.length).toBe(5);
     expect(all('.panel-list').length).toBe(0);
     rows[1].click();
@@ -126,10 +126,6 @@ describe('LayerControlsComponent', () => {
     const layer = toolbox.layers[0];
     component.toggleHere('layer', layer);
     expect(toolbox.layers[0].scope).toEqual({ except: ['cross'] });
-    component.applyPreset('layer', layer.id, 'here');
-    expect(toolbox.layers[0].scope).toEqual({ only: ['cross'] });
-    component.applyPreset('layer', layer.id, 'everywhere');
-    expect(toolbox.layers[0].scope).toBeUndefined();
     toolbox.setAvailablePanels([]);
     toolbox.setActivePanel(null);
     toolbox.resetAll();

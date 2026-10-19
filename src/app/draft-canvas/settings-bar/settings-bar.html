@@ -3,7 +3,7 @@
   @if (groupTitle) {
     <div class="settings-title">{{ groupTitle }}</div>
   }
-  <div class="settings-grid">
+  <div class="settings-grid" (scroll)="closePopups()">
   @if (sceneReadout) {
     <span class="scene-readout" docTip="settings.recipePiece">{{ sceneReadout }}</span>
   }
@@ -325,7 +325,7 @@
       </svg>
       <!-- <span>Mirror</span> -->
     </button>
-    <button type="button" class="settings-action" [class.active]="imageCropped" (click)="toggleCropPopup()"
+    <button type="button" class="settings-action" [class.active]="imageCropped" (click)="toggleCropPopup($any($event.currentTarget))"
       docTip="settings.imageCrop">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
@@ -334,6 +334,16 @@
       </svg>
       <!-- <span>Crop</span> -->
     </button>
+    @if (hasPanels) {
+    <button type="button" class="settings-action" (click)="toggleScopePopup($any($event.currentTarget))"
+      docTip="settings.imagePanels">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3l9 5-9 5-9-5 9-5z" />
+        <path d="M3 13l9 5 9-5" />
+      </svg>
+    </button>
+    }
     <button type="button" class="settings-action" (click)="lockImage()"
       docTip="settings.imageLock">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -370,10 +380,18 @@
   </div>
 
   <!-- Outside .settings-grid on purpose: that scrolls sideways, and anything absolutely
-       positioned inside it would be clipped at the strip's edge. Anchored to the bar rather than
-       to its own button for the same reason — the button's column may have scrolled away. -->
+       positioned inside it would be clipped at the strip's edge. Placed over their button once
+       drawn (see placePopup), and closed when the strip scrolls out from under them. -->
+  @if (showImagePanel && scopeOpen) {
+    <div #popup class="settings-popup">
+      <div class="settings-popup-title">Which panels this image shows on</div>
+      <div class="settings-popup-note">{{ imageScopeDescription }}</div>
+      <app-scope-menu [scope]="imageScope" (scopeChange)="setImageScope($event)" />
+    </div>
+  }
+
   @if (showImagePanel && cropOpen) {
-    <div class="settings-popup">
+    <div #popup class="settings-popup">
       <div class="settings-popup-title">Crop — how much of the picture to hide, in % from each edge</div>
       <div class="crop-grid">
         <label class="crop-cell"><span>Left</span>

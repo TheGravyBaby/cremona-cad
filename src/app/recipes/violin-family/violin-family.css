@@ -198,11 +198,75 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+  /* the grip's gutter, reserved by the header too so the columns stay under their titles */
+  --grip-col: 18px;
+}
+
+.spline-row {
+  position: relative;
+  padding-left: var(--grip-col);
 }
 
 .spline-row.spline-row--header {
-  padding: 0 2px;
+  padding: 0 2px 0 calc(var(--grip-col) + 2px);
   margin-bottom: 1px;
+}
+
+/* the reorder handle (shared/row-reorder.ts), full row height so the whole left edge grabs */
+.row-grip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--grip-col) - 4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--ui-text-secondary);
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.5;
+  cursor: grab;
+  /* a drag down the handle reorders; it must not also scroll the sidebar */
+  touch-action: none;
+}
+
+.row-grip:hover:not(:disabled) {
+  opacity: 1;
+  background: var(--ui-control-bg-hover);
+}
+
+.row-grip:focus-visible {
+  opacity: 1;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ui-focus-ring);
+}
+
+.row-grip:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+.spline-row.reorder-dragging {
+  z-index: 2;
+  border-radius: 4px;
+  background: var(--ui-bg-panel);
+  box-shadow: var(--ui-shadow-pop);
+}
+
+.spline-row.reorder-dragging .row-grip {
+  opacity: 1;
+  cursor: grabbing;
+}
+
+@media (pointer: coarse) {
+  .spline-points {
+    --grip-col: 26px;
+  }
 }
 
 /* the station slider, the body's landmarks ticked under it and the stations set marked over it:

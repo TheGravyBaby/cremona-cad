@@ -363,30 +363,25 @@ function reencodeImage(
   }
 }
 
-/** What prepareLinkedImage hands back. */
-export type PreparedLink = {
-  /** What to intern: a `data:` URL when the pixels could be copied, otherwise the link itself. */
-  href: string;
-  width: number;
-  height: number;
-  /** False means the recipe holds only the link, and breaks if it stops resolving. */
-  inlined: boolean;
-};
-
-// tries a CORS load first so the pixels can be copied in; falls back to a plain load (link kept
-// as the href) when the host refuses anonymous requests. sizing follows the upload cap.
-export async function prepareLinkedImage(url: string): Promise<PreparedLink> {
+// the link itself is the href, as the served templates hold theirs, so a copied or saved recipe
+// still says where the picture came from.
+export async function prepareLinkedImage(url: string): Promise<{ href: string; width: number; height: number }> {
   const img = await loadLinkedImage(url);
-  const width = img.naturalWidth || img.width;
-  const height = img.naturalHeight || img.height;
-
-  const plan = planUploadResize(width, height, Number.POSITIVE_INFINITY) ?? { width, height };
-  const encoded = reencodeImage(img, plan, false);
-  if (!encoded) return { href: url, width, height, inlined: false };
-
-  return { href: encoded, width: plan.width, height: plan.height, inlined: true };
+  return { href: url, width: img.naturalWidth || img.width, height: img.naturalHeight || img.height };
 }
 
 function loadLinkedImage(url: string): Promise<HTMLImageElement> {
   return loadImage(url).catch(() => loadImage(url, false));
+}
+
+/** What a paste carried that could be a reference image. A browser's "Copy image" puts the
+ * picture and its address on the clipboard together, so both can be present. */
+export type ClipboardImage = { url?: string; file?: File };
+
+// svg text isn't looked at here: the canvas tries a paste as shapes before it tries it as an image.
+export function imageFromClipboard(data: { getData(type: string): string; files: ArrayLike<File> }): ClipboardImage | null {
+  const file = Array.from(data.files).find(f => f.type.startsWith('image/'));
+  const src = /<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["']/i.exec(data.getData('text/html'))?.[1]?.replace(/&amp;/g, '&');
+  const url = [src, data.getData('text/plain')].map(s => s?.trim()).find(s => s && /^https?:\/\/\S+$/i.test(s));
+  return file || url ? { url, file } : null;
 }

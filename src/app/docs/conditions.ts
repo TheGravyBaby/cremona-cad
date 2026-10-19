@@ -50,6 +50,15 @@ export function imageLinkFailed(): void {
   );
 }
 
+export function imageAlreadyPlaced(label: string, selected: boolean): void {
+  info(
+    `That image is already placed, as ${label}` + (selected
+      ? ', and is now selected.'
+      : '. It is locked or hidden on this panel; the reference image list can unlock it or show it here.'),
+    'Image already placed',
+  );
+}
+
 export function imageResized(from: { width: number; height: number } | null, to: { width: number; height: number }): void {
   info(
     (from

@@ -21,7 +21,7 @@ import { ToolboxStore } from './tools/toolbox-store';
 import { SelectionRef, SelectionStore, sceneRef, toolboxRef } from './tools/selection-store';
 import { SceneStore } from './tools/scene-index';
 import { SelectionActions, writeSvgToSystemClipboard } from './tools/selection-actions';
-import { ImageAssetStore, prepareLinkedImage, prepareUploadedImage } from './tools/image-asset-store';
+import { ClipboardImage, ImageAssetStore, PreparedUpload, imageFromClipboard, prepareLinkedImage, prepareUploadedImage } from './tools/image-asset-store';
 import {
   drawShape, drawImageShape, drawSelectionHalo, drawEndpointGrabber, drawAreaSelectBox,
   drawGroupOutline,
@@ -41,7 +41,7 @@ import { LayerControlsComponent } from './layer-controls/layer-controls';
 import { EditMenuComponent } from './edit-menu/edit-menu';
 import { ToolPaletteComponent } from './tool-palette/tool-palette';
 import { TooltipDirective } from '../docs/tooltips';
-import { imageLinkFailed, imageResized } from '../docs/conditions';
+import { imageAlreadyPlaced, imageLinkFailed, imageResized } from '../docs/conditions';
 
 type SvgGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 /** A world-space group and its unflipped overlay twin, the two selections every renderer draws into. */
@@ -298,7 +298,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private autoFitPending = true;
   @ViewChild('imageFileInput') imageFileInputRef?: ElementRef<HTMLInputElement>;
   /** Resolver for the picker promise — see requestImageFile. */
-  private pendingImageFile: ((file: { dataUrl: string; width: number; height: number } | null) => void) | null = null;
+  private pendingImageFile: ((file: PreparedUpload | null) => void) | null = null;
 
   ngAfterViewInit(): void {
     const el = this.host.nativeElement;
@@ -752,7 +752,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   /** Ctrl+C/X/V. Left alone while typing in a field, so text still copies and pastes there. On
    * copy the selection goes out as SVG text (see shape-svg.ts); on paste, SVG text comes in as
-   * shapes, and anything else on the clipboard leaves the browser's own behaviour untouched. */
+   * shapes, an image or an image's address comes in as a reference image, and anything else on
+   * the clipboard leaves the browser's own behaviour untouched. */
   private onClipboard = (event: ClipboardEvent) => {
     const target = event.target as HTMLElement | null;
     const tag = target?.tagName;
@@ -760,7 +761,22 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const data = event.clipboardData;
     if (!data) return;
     if (event.type === 'paste') {
-      if (this.actions.paste(data.getData('text/plain'))) event.preventDefault();
+      const text = data.getData('text/plain');
+      if (text.trim() && this.actions.paste(text)) {
+        event.preventDefault();
+        this.cdr.markForCheck();
+        return;
+      }
+      const image = imageFromClipboard(data);
+      if (image) {
+        event.preventDefault();
+        void this.placeClipboardImage(image);
+        return;
+      }
+      if (!text.trim() && this.actions.paste()) {
+        event.preventDefault();
+        this.cdr.markForCheck();
+      }
       return;
     }
     const svg = event.type === 'cut' ? this.actions.cut() : this.actions.copy();
@@ -1680,12 +1696,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   /** Picks a file and places it. Silent on a dismissed dialog. */
   async placeImageFromFile(): Promise<void> {
     const file = await this.requestImageFile();
-    if (!file) return;
-    this.placeReferenceImage(file.dataUrl, file.width, file.height);
+    if (file) this.placeUpload(file);
   }
 
-  // copies pixels into the recipe when the host allows it (see prepareLinkedImage); otherwise
-  // still draws, but tells the user the recipe now depends on the link staying live.
   async placeImageFromLink(url: string): Promise<void> {
     const trimmed = url.trim();
     if (!trimmed) return;
@@ -1701,24 +1714,61 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.placeReferenceImage(linked.href, linked.width, linked.height);
   }
 
+  // the address wins when it loads, so the saved recipe says where the picture came from; the
+  // pasted pixels cover an address that won't load on its own (signed, or behind a login).
+  private async placeClipboardImage({ url, file }: ClipboardImage): Promise<void> {
+    const linked = url ? await prepareLinkedImage(url).catch(() => null) : null;
+    if (linked) {
+      this.placeReferenceImage(linked.href, linked.width, linked.height);
+      return;
+    }
+    const upload = file ? await readImageFile(file) : null;
+    if (upload) this.placeUpload(upload);
+    else if (url) imageLinkFailed();
+  }
+
+  private placeUpload(upload: PreparedUpload): void {
+    if (!this.placeReferenceImage(upload.dataUrl, upload.width, upload.height) || !upload.changed) return;
+    const scaled = upload.width !== upload.sourceWidth;
+    imageResized(scaled ? { width: upload.sourceWidth, height: upload.sourceHeight } : null, upload);
+  }
+
   /** Interns the pixels, places a shape sized to the drawing, and selects it — turning the
-   * reference-image master back on so adding one doesn't silently do nothing when hidden. */
-  private placeReferenceImage(href: string, width: number, height: number): void {
+   * reference-image master back on so adding one doesn't silently do nothing when hidden. Returns
+   * false when the image was already placed: the saved file writes out every placement's pixels
+   * in full, so the one already there is selected instead of adding a twin. */
+  private placeReferenceImage(href: string, width: number, height: number): boolean {
+    const imageRef = this.imageAssets.intern(href, width, height);
+    this.toolbox.setShowImages(true);
+    this.toolRegistry.selectTool(null);
+
+    const existing = this.toolbox.getImageShapes().find(s => s.imageRef === imageRef);
+    if (existing) {
+      const reachable = this.toolbox.getEditableShapes().some(s => s.id === existing.id);
+      if (reachable) this.selection.select(toolboxRef(existing.id));
+      imageAlreadyPlaced(existing.label, reachable);
+      this.draw();
+      this.cdr.markForCheck();
+      return false;
+    }
+
     const shape = placedImageShape(
-      this.imageAssets.intern(href, width, height),
+      imageRef,
       width, height,
       this.designBounds(),
       this.toolbox.getImageShapes().length,
     );
-    this.toolbox.setShowImages(true);
     this.toolbox.addShape(shape);
-    this.toolRegistry.selectTool(null);
     this.selection.select(toolboxRef(shape.id));
     this.draw();
+    // arrives after an await or from a document listener, neither of which runs change detection,
+    // so the settings bar wouldn't otherwise show the image just selected
+    this.cdr.markForCheck();
+    return true;
   }
 
   /** Opens the hidden file input and resolves once the user picks a file (or dismisses). */
-  private requestImageFile(): Promise<{ dataUrl: string; width: number; height: number } | null> {
+  private requestImageFile(): Promise<PreparedUpload | null> {
     const input = this.imageFileInputRef?.nativeElement;
     if (!input) return Promise.resolve(null);
 
@@ -1733,26 +1783,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  /** Bound to the hidden input's `change` in the template. Reads the file, scales it down via
-   * prepareUploadedImage if needed, and settles whatever requestImageFile handed out. */
+  /** Bound to the hidden input's `change` in the template. Settles whatever requestImageFile
+   * handed out. */
   async onImageFileSelected(evt: Event): Promise<void> {
     const resolve = this.pendingImageFile;
     this.pendingImageFile = null;
 
     const input = evt.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (!file) { resolve?.(null); return; }
-
     try {
-      const raw = await readFileAsDataUrl(file);
-      const prepared = await prepareUploadedImage(raw, file.size);
-      resolve?.({ dataUrl: prepared.dataUrl, width: prepared.width, height: prepared.height });
-      if (prepared.changed) {
-        const scaled = prepared.width !== prepared.sourceWidth;
-        imageResized(scaled ? { width: prepared.sourceWidth, height: prepared.sourceHeight } : null, prepared);
-      }
-    } catch {
-      resolve?.(null);
+      resolve?.(file ? await readImageFile(file) : null);
     } finally {
       input.value = '';
     }
@@ -1820,6 +1860,15 @@ function nearestShapeId(pt: Pt, shapes: DraftShape[], toleranceMm: number, pxPer
 function extraReachMm(shape: DraftShape, pxPerMm: number): number {
   if (!isStroked(shape)) return 0;
   return Math.max(0, ((shape.strokeWidth ?? DEFAULT_STROKE_WIDTH) - DEFAULT_STROKE_WIDTH) / 2) / pxPerMm;
+}
+
+// scaled down via prepareUploadedImage if needed; null when the file won't decode as an image.
+async function readImageFile(file: File): Promise<PreparedUpload | null> {
+  try {
+    return await prepareUploadedImage(await readFileAsDataUrl(file), file.size);
+  } catch {
+    return null;
+  }
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {

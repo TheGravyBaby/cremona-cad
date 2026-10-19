@@ -75,7 +75,7 @@
           }
         </div>
         @if (scopeMenuFor === layer.id) {
-        <ng-container [ngTemplateOutlet]="scopeMenu" [ngTemplateOutletContext]="{ item: layer, kind: 'layer' }" />
+        <app-scope-menu [scope]="layer.scope" (scopeChange)="setScope('layer', layer.id, $event)" (click)="$event.stopPropagation()" />
         }
         }
         <button type="button" class="layer-tab-add" title="Add layer" (click)="addLayer()">+</button>
@@ -166,7 +166,7 @@
           }
         </div>
         @if (scopeMenuFor === image.id) {
-        <ng-container [ngTemplateOutlet]="scopeMenu" [ngTemplateOutletContext]="{ item: image, kind: 'image' }" />
+        <app-scope-menu [scope]="image.scope" (scopeChange)="setScope('image', image.id, $event)" (click)="$event.stopPropagation()" />
         }
         }
       </div>
@@ -214,45 +214,6 @@
       {{ scopeLabel(item.scope) }}<span class="scope-caret">&#x25BE;</span>
     </button>
     }
-  </ng-template>
-
-  <!-- The three absolute presets, then the eye's own switch so "not here" is findable from the
-       menu too, then the full list for a panel you can't yet stand on. -->
-  <ng-template #scopeMenu let-item="item" let-kind="kind">
-    <div class="scope-menu" (click)="$event.stopPropagation()">
-      <button type="button" class="scope-row" [class.checked]="isEverywhere(item.scope)"
-        (click)="applyPreset(kind, item.id, 'everywhere')">
-        <span class="scope-dot"></span><span>Everywhere</span>
-      </button>
-      <button type="button" class="scope-row" [class.checked]="isHereOnly(item.scope)"
-        (click)="applyPreset(kind, item.id, 'here')">
-        <span class="scope-dot"></span><span>Only this panel</span>
-      </button>
-      <button type="button" class="scope-row" [class.checked]="isNowhere(item.scope)"
-        (click)="applyPreset(kind, item.id, 'nowhere')">
-        <span class="scope-dot"></span><span>Nowhere</span>
-      </button>
-      <div class="scope-sep"></div>
-      <label class="scope-row">
-        <input type="checkbox" [checked]="shownHere(item.scope)" (change)="toggleHere(kind, item)" />
-        <span>Shown on this panel</span>
-      </label>
-      <div class="scope-sep"></div>
-      <button type="button" class="scope-row scope-more" [class.open]="panelListOpen"
-        (click)="panelListOpen = !panelListOpen">
-        <span>Choose panels…</span>
-      </button>
-      @if (panelListOpen) {
-      <div class="panel-list">
-        @for (panel of availablePanels; track panel.id) {
-        <label class="panel-row" [class.current]="panel.id === activePanel">
-          <input type="checkbox" [checked]="shownOn(item.scope, panel.id)" (change)="togglePanel(kind, item, panel.id)" />
-          <span>{{ panel.label }}</span>
-        </label>
-        }
-      </div>
-      }
-    </div>
   </ng-template>
 
   <!-- Shared by every show/hide control here: the two masters and each row in both lists, so

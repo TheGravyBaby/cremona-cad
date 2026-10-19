@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { applyRowMove, RowMove, RowReorderDirective } from './row-reorder';
+import { applyRowMove, RowMove, RowReorderDirective, rowsWithMarker } from './row-reorder';
 
 @Component({
   standalone: true,
@@ -110,9 +110,7 @@ describe('applyRowMove', () => {
   function moved(rows: string, move: RowMove): string {
     const items = rows.split('').filter(c => c !== '*');
     const marker = applyRowMove(items, rows.indexOf('*'), move);
-    const out = [...items];
-    out.splice(marker, 0, '*');
-    return out.join('');
+    return rowsWithMarker(items, marker).map(r => r.item ?? '*').join('');
   }
 
   it('moves the extra row itself, leaving the list alone', () => {

@@ -68,4 +68,18 @@ describe('DraftCanvasComponent', () => {
     press(206, { x: 25, y: 60 });
     expect(((toolbox.getShapes()[0] as PathShape).source as { pins: unknown[] }).pins).toHaveLength(4);
   });
+
+  // the saved file writes each placement's pixels in full, so a second paste of one picture
+  // would double the file for nothing
+  it('selects an image already placed instead of placing it again', () => {
+    fixture.detectChanges();
+    const toolbox = TestBed.inject(ToolboxStore);
+    toolbox.resetAll();
+    const place = () => component['placeReferenceImage']('data:image/png;base64,AAAA', 40, 30);
+    expect(place()).toBe(true);
+    TestBed.inject(SelectionStore).clear();
+    expect(place()).toBe(false);
+    expect(toolbox.getImageShapes()).toHaveLength(1);
+    expect(TestBed.inject(SelectionStore).toolboxShapes.map(s => s.id)).toEqual([toolbox.getImageShapes()[0].id]);
+  });
 });
