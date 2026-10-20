@@ -38,6 +38,8 @@ export const PLUNGE_ANGLE = Math.PI / 6;
 export interface GcodeJob {
   // header comments, one line each
   notes: string[];
+  // what the file assumes of the work, said again at the pause before the spindle starts
+  caution?: string;
   tool: { number: number; name: string };
   spindleRpm: number;
   safeZ: number;
@@ -57,7 +59,7 @@ export function buildGcode(job: GcodeJob): string {
   if (job.safeZ <= Math.max(...job.passes, job.tabTop)) throw new Error('G-code: the safe height has to clear every pass and the tabs.');
   let w = new Writer(job);
   let rpm = Math.round(job.spindleRpm);
-  let prompt = `Change the bit to #${job.tool.number} ${job.tool.name}, then set the router to ${rpm} rpm. Once you resume, the machine will begin cutting.`;
+  let prompt = `${job.caution ? `${job.caution} ` : ''}Change the bit to #${job.tool.number} ${job.tool.name}, then set the router to ${rpm} rpm. Once you resume, the machine will begin cutting.`;
   w.comment('Cremona CAD');
   for (let note of job.notes) w.comment(note);
   w.comment(`Tool #${job.tool.number} ${job.tool.name}`);

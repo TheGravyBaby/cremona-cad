@@ -841,6 +841,12 @@ function strokeSegCrossings(seg: StrokeSeg, q0: Pt, q1: Pt): number[] {
 }
 
 // a closed subpath as a polygon: lines by their own ends, curves cut into chords of at most stepMm
+// a path's subpaths as polylines, every command's endpoint a vertex and its curves flattened to
+// `stepMm`: the corners stay exact, which sampling by length alone cuts
+export function flattenPath(d: string, stepMm: number): Pt[][] {
+  return parseStrokeSubpaths(d).map(sub => flattenSubpath(sub, stepMm));
+}
+
 function flattenSubpath(sub: StrokeSubpath, stepMm: number): Pt[] {
   const poly: Pt[] = [];
   for (const seg of sub.segs) {
@@ -1328,3 +1334,53 @@ export function buildSplinePath(
 // The evaluable counterparts of the path builders above, for querying an arch
 // height at a single station. Out-of-span positions return 0 (the plate-edge
 // reference level).
+
+// the polygon shrunk by `d` on every side: what is left of it further than `d` from its edge,
+// the largest piece when the shrink cuts it in two. Where a parallel offset folds over, at a sharp
+// corner or across a narrow neck, this does not: the band within `d` of the edge is discs set
+// along it, `step` apart, taken away. Null when nothing is left
+export function erodePolygon(ring: Pt[], d: number, step = d / 4): Pt[] | null {
+  if (ring.length < 3 || !(d > 0)) return null;
+  const closed = dist(ring[0], ring[ring.length - 1]) < 1e-9 ? ring : [...ring, ring[0]];
+  const cum: number[] = [0];
+  for (let i = 1; i < closed.length; i++) cum.push(cum[i - 1] + dist(closed[i - 1], closed[i]));
+  const total = cum[cum.length - 1];
+  const n = Math.max(8, Math.ceil(total / step));
+  // each disc grown by the scallop two neighbours leave between them, and drawn round its circle,
+  // so the band is never short of `d`
+  const spacing = total / n;
+  const scallop = d - Math.sqrt(Math.max(0, d * d - (spacing / 2) ** 2));
+  const sides = 24;
+  const rOut = (d + scallop) / Math.cos(Math.PI / sides);
+  type Ring = [number, number][];
+  const discs: Ring[][] = [];
+  const disc = (c: Pt) => discs.push([Array.from({ length: sides }, (_, j) => [c.x + rOut * Math.cos((2 * Math.PI * j) / sides), c.y + rOut * Math.sin((2 * Math.PI * j) / sides)] as [number, number])]);
+  let k = 1;
+  for (let i = 0; i < n; i++) {
+    const s = (total * i) / n;
+    while (cum[k] < s) k++;
+    const f = (s - cum[k - 1]) / (cum[k] - cum[k - 1] || 1);
+    disc({ x: closed[k - 1].x + (closed[k].x - closed[k - 1].x) * f, y: closed[k - 1].y + (closed[k].y - closed[k - 1].y) * f });
+  }
+  // a sharp reflex corner rounds on its own vertex: the discs either side of it leave the round
+  // short. A gentle one, a vertex of a sampled concave curve, is covered by them
+  const open = closed.slice(0, -1);
+  const turn = Math.sign(signedPolygonArea(open));
+  for (let i = 0; i < open.length; i++) {
+    const a = open[(i + open.length - 1) % open.length], b = open[i], c = open[(i + 1) % open.length];
+    const cross = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+    const sin = cross / ((dist(a, b) * dist(b, c)) || 1);
+    if (sin * turn < -0.1) disc(b);
+  }
+  const subject: Ring[] = [closed.map(pt => [pt.x, pt.y] as [number, number])];
+  // polygon-clipping takes polygons as rings and answers a multipolygon: polygons of rings, the outer first
+  const left = (polygonClipper.difference as any)(subject, ...discs) as Ring[][];
+  let best: Ring | null = null;
+  let bestArea = 0;
+  for (const poly of left) {
+    const outer = poly[0];
+    const area = Math.abs(signedPolygonArea(outer.map(([x, y]) => new Pt(x, y))));
+    if (area > bestArea) { bestArea = area; best = outer; }
+  }
+  return best ? best.map(([x, y]) => new Pt(x, y)) : null;
+}

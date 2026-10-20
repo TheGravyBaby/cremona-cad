@@ -10,37 +10,82 @@
             </select>
         </label>
     </div>
-    @if (settings.job === 'arching') {
+    @if (onBlank) {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Plate</span>
-            <select [(ngModel)]="a.plate" (change)="edited()">
+            <select [(ngModel)]="blank.plate" (change)="edited()">
+                <option value="top">Top</option>
+                <option value="back">Back</option>
+            </select>
+        </label>
+        @if (settings.job === 'plate') {
+        <label class="field-cell">
+            <span class="field-title">Stage</span>
+            <select [(ngModel)]="blank.stage" (change)="edited()">
+                <option value="rough">Arching, roughing</option>
+                <option value="finish">Arching, finishing</option>
+            </select>
+        </label>
+        }
+    </div>
+    }
+    @if (settings.job === 'cradle') {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Plate</span>
+            <select [(ngModel)]="cradle.plate" (change)="edited()">
                 <option value="top">Top</option>
                 <option value="back">Back</option>
             </select>
         </label>
         <label class="field-cell">
             <span class="field-title">Stage</span>
-            <select [(ngModel)]="a.stage" (change)="edited()">
-                <option value="rough">Roughing</option>
-                <option value="finish">Finishing</option>
+            <select [(ngModel)]="cradle.stage" (change)="edited()">
+                <option value="pocket">Pocket</option>
+                <option value="hole">Hole</option>
             </select>
         </label>
     </div>
     }
 </section>
 
+@if (onBlank) {
 <section class="ui-group">
-    <div class="ui-group-title">{{ settings.job === 'arching' ? 'Blank' : 'Stock' }}</div>
-    @if (settings.job === 'arching') {
+    <div class="ui-group-title">Harness</div>
     <div class="input-group basic-row field-row" role="group">
-        <app-mm-inch label="At the seam" [step]="0.1" [min]="0" [value]="a.stock.thickness"
-            (valueChange)="a.stock.thickness = $event; edited()"></app-mm-inch>
+        <app-mm-inch label="Fence X" [step]="0.5" [min]="0" [value]="settings.fence.x"
+            (valueChange)="settings.fence.x = $event; edited()"></app-mm-inch>
+        <app-mm-inch label="Fence Y" [step]="0.5" [min]="0" [value]="settings.fence.y"
+            (valueChange)="settings.fence.y = $event; edited()"></app-mm-inch>
+    </div>
+    <p class="hint">Where the fences stand from the harness's zero, the file's XY0: the vertical fence's X, the horizontal fence's Y. The stock is pushed into their corner. The same for every part cut in the harness.</p>
+</section>
+}
+
+<section class="ui-group">
+    <div class="ui-group-title">{{ onBlank ? 'Blank' : settings.job === 'cradle' ? 'Slab' : 'Stock' }}</div>
+    @if (onBlank) {
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="At the seam" [step]="0.1" [min]="0" [value]="blank.stock.thickness"
+            (valueChange)="blank.stock.thickness = $event; edited()"></app-mm-inch>
     </div>
     <div class="input-group basic-row field-row" role="group">
-        <app-mm-inch label="At the edges" [step]="0.1" [min]="0" [value]="a.stock.edge"
-            (valueChange)="a.stock.edge = $event; edited()"></app-mm-inch>
+        <app-mm-inch label="At the edges" [step]="0.1" [min]="0" [value]="blank.stock.edge"
+            (valueChange)="blank.stock.edge = $event; edited()"></app-mm-inch>
     </div>
+    @if (settings.job === 'purfling') {
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Strip height" [step]="0.1" [min]="0" [value]="blank.purflingDepth"
+            (valueChange)="blank.purflingDepth = $event; edited()"></app-mm-inch>
+    </div>
+    <p class="hint">The channel goes this deep under the plate's edge. Its width is the Outer Contour panel's. The blank is the Plate part's.</p>
+    }
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Seam from left" [step]="0.5" [min]="0" [value]="blank.seam"
+            (valueChange)="blank.seam = $event; edited()"></app-mm-inch>
+    </div>
+    <p class="hint">The seam's distance from the blank's left edge, as it sits against the fence. The plate mirrors on the seam and is centred along the blank. The same in every file cut in this blank.</p>
     } @else {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Thickness" [step]="0.1" [min]="0" [value]="g.stock.thickness"
@@ -68,23 +113,15 @@
 
 <section class="ui-group">
     <div class="ui-group-title">Bit</div>
-    @if (settings.job === 'arching') {
+    @if (onBlank || settings.job === 'cradle') {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell field-cell--full">
-            <span class="field-title">{{ a.stage === 'rough' ? 'Flat' : 'Ball' }}</span>
-            @if (a.stage === 'rough') {
-            <select [(ngModel)]="a.roughTool" (change)="edited()">
-                @for (t of toolsFor('flat'); track t.number) {
+            <span class="field-title">{{ stageShape === 'ball' ? 'Ball' : 'Flat' }}</span>
+            <select [(ngModel)]="blank[stageTool]" (change)="edited()">
+                @for (t of toolsFor(stageShape); track t.number) {
                 <option [ngValue]="t.number">#{{ t.number }} {{ t.name }}{{ t.feeds[g.wood] ? '' : ' (no feeds yet)' }}</option>
                 }
             </select>
-            } @else {
-            <select [(ngModel)]="a.finishTool" (change)="edited()">
-                @for (t of toolsFor('ball'); track t.number) {
-                <option [ngValue]="t.number">#{{ t.number }} {{ t.name }}{{ t.feeds[g.wood] ? '' : ' (no feeds yet)' }}</option>
-                }
-            </select>
-            }
         </label>
     </div>
     } @else {
@@ -93,7 +130,7 @@
             (valueChange)="setBit($event)"></app-mm-inch>
     </div>
     @if (tool) {
-    <p class="hint">Carbide #{{ tool.number }}, {{ tool.name }}. The Mould panel's bit; its reliefs follow it.</p>
+    <p class="hint">#{{ tool.number }} {{ tool.name }}. The Mould panel's bit; its reliefs follow it.</p>
     } @else {
     <p class="hint">
         No feeds for this bit. Use one of:
@@ -148,18 +185,47 @@
         {{ machine.tabHeight }} mm high. Safe Z {{ machine.safeZ }} mm above the stock. {{ machine.overcut }} mm into the spoilboard.
     </p>
     } @else if (!toolpaths) {
-    <p class="hint">The {{ a.plate }} plate's arching has to solve first.</p>
+    <p class="hint">The {{ settings.job === 'cradle' ? cradle.plate : blank.plate }} plate's arching{{ settings.job === 'purfling' ? ' and purfling have' : ' has' }} to solve first.</p>
     } @else if (toolpaths.raster; as raster) {
     <p class="hint">
         {{ raster.xs.length }} lines along the length, {{ (raster.xs[1] - raster.xs[0]).toFixed(2) }} mm apart,
         {{ surface.skirt }} mm past the outline.
-        @if (a.stage === 'rough') {
+        @if (raster.levels.length) {
         {{ raster.levels.length }} terraces, leaving {{ surface.leave }} mm.
         } @else {
         One pass, a {{ surface.scallop }} mm scallop.
         }
-        About {{ raster.metres.toFixed(0) }} m of cutting@if (minutes !== null) {, {{ minutes }} min at the cut feed}.
-        Z0 is the bed under the blank's joint face. The floor is the plate's edge thickness.
+        About {{ toolpaths.metres?.toFixed(0) }} m of cutting@if (minutes !== null) {, {{ minutes }} min at the cut feed}.
+        Z0 is the bed under the blank's joint face. The floor is the bottom of the fluting channel.
+    </p>
+    } @else if (settings.job === 'cradle') {
+    <p class="hint">
+        @if (cradle.stage === 'pocket') {
+        {{ toolpaths.paths.length }} loop{{ toolpaths.paths.length === 1 ? '' : 's' }} clearing the ring from the lip's inner edge out to the pocket's side,
+        {{ cradleSpec.clearance }} mm clear of the outline, from the slab's top down to the lip at Z{{ toolpaths.floorZ.toFixed(2) }}. The lip is {{ cradleSpec.lip }} mm wide.
+        } @else {
+        Through the slab along the lip's inner edge, clockwise, {{ toolpaths.paths[0]?.tabs?.length }} tabs {{ machine.tabHeight }} mm high; the piece drops out.
+        Face down the crown hangs {{ (cradle.stock.thickness - cradleSpec.wall - params.arching![cradle.plate].arch.height).toFixed(1) }} mm off the bed.
+        }
+        @if (toolpaths.metres !== undefined) { About {{ toolpaths.metres.toFixed(1) }} m of cutting@if (minutes !== null) {, {{ minutes }} min at the cut feed}. }
+        Pocket first, then the hole. Clamp the slab to the table and set XY0 at its lower-left corner with the probe.
+    </p>
+    } @else if (settings.job === 'purfling') {
+    <p class="hint"><strong>{{ surfacedPlate }}</strong> The channel is cut from the land the finishing pass leaves.</p>
+    <p class="hint">
+        {{ toolpaths.surfaces.length || 'The' }} pass{{ toolpaths.surfaces.length === 1 ? '' : 'es' }} across the channel,
+        {{ toolpaths.passes }} round{{ toolpaths.passes === 1 ? '' : 's' }} down to {{ blank.purflingDepth }} mm under the edge, Z{{ toolpaths.floorZ.toFixed(2) }}.
+        About {{ toolpaths.metres?.toFixed(1) }} m of cutting@if (minutes !== null) {, {{ minutes }} min at the cut feed}.
+        Cut after the finishing pass, in the same setup.
+    </p>
+    } @else if (settings.job === 'contour') {
+    <p class="hint"><strong>{{ surfacedPlate }}</strong> The passes start in the flat land the arching leaves round the outline, not at the blank's top.</p>
+    <p class="hint">
+        A bit radius outside the outline, counterclockwise. {{ toolpaths.paths[0]?.tabs?.length }} tabs, {{ plateTabs.width }} mm long and
+        {{ plateTabs.height }} mm high, at the widest of each bout and the waist of each C.
+        Passes from the land at Z{{ toolpaths.cutTopZ?.toFixed(2) }} to Z{{ toolpaths.floorZ.toFixed(2) }}, {{ machine.overcut }} mm into the bed.
+        @if (toolpaths.metres !== undefined) { About {{ toolpaths.metres.toFixed(1) }} m of cutting@if (minutes !== null) {, {{ minutes }} min at the cut feed}. }
+        Cut last: once through, only the tabs hold the plate.
     </p>
     }
     @for (problem of toolpaths?.failures ?? []; track problem) {

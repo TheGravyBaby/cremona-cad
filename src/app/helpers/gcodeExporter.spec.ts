@@ -144,6 +144,11 @@ describe('a surface run', () => {
     expect(feedTo(10, 20)).toBe(1905);
   });
 
+  it('says its caution at the pause, before anything else', () => {
+    const lines = buildGcode(surfaceJob({ caution: 'EXPECTS A SURFACED PLATE.' })).trim().split('\n');
+    expect(lines[lines.indexOf('M0') - 1]).toMatch(/^\(MSG, EXPECTS A SURFACED PLATE\. Change the bit/);
+  });
+
   it('never goes below the floor and ends retracted', () => {
     expect(() => buildGcode(surfaceJob({ floorZ: 10 }))).toThrow(/floor/);
     expect(text.trim().split('\n').slice(-3)).toEqual(['G0 Z31.700', 'M5', 'M2']);
