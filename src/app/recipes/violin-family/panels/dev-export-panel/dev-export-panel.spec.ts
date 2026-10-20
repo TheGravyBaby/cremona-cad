@@ -13,8 +13,9 @@ import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
+import { solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
 import { MOULD_EXPORT_STEP, MouldPanel, solveMould } from '../mould-panel/mould-panel';
-import { archingToolpaths, ArchingSettings, Bit, DEFAULT_SETTINGS, EXPORTS, ExportId, gcodeJob, MACHINE, MOULD_TABS, mouldToolpaths, planExport, SURFACE, Tab, TOOLS } from './dev-export-panel';
+import { archingToolpaths, Bit, contourToolpaths, CRADLE, CradleSettings, cradleToolpaths, DEFAULT_SETTINGS, EXPORTS, ExportId, gcodeJob, MACHINE, MOULD_TABS, mouldToolpaths, planExport, PLATE_TABS, PlateSettings, purflingToolpaths, STOCK_OF, SURFACE, Tab, TOOLS } from './dev-export-panel';
 import { ThemeService } from '../../../../theme/theme.service';
 
 // what a maker would check before cutting: the bit's centre runs a bit's radius off the cut line,
@@ -36,8 +37,12 @@ const seeded = (): ViolinFamilyParams => {
 };
 
 const flat: Bit = { diameter: TOOLS[0].diameter, shape: 'flat', feeds: TOOLS[0].feeds.soft };
+const purflingBit = (): Bit => {
+  const t = TOOLS.find(t => t.diameter === 1.2)!;
+  return { diameter: t.diameter, shape: t.shape, feeds: t.feeds.soft };
+};
+const bitFor = (id: ExportId, p: ViolinFamilyParams): Bit => id === 'mould' ? { diameter: p.mould!.bitDiameter, shape: 'flat', feeds: null } : id === 'purfling' ? purflingBit() : flat;
 const ball: Bit = { diameter: 6.35, shape: 'ball', feeds: null };
-const bitFor = (id: ExportId, p: ViolinFamilyParams): Bit => id === 'mould' ? { diameter: p.mould!.bitDiameter, shape: 'flat', feeds: null } : flat;
 
 const runLength = (tab: Tab): number => {
   const cum = polylineCumulativeLengths(tab.pts);
@@ -166,7 +171,7 @@ describe('the exports on offer', () => {
   // a row in the dropdown with no planner behind it would offer a download that never comes
   it('plan every export the dropdown lists, finely for the file as well', () => {
     for (const { id } of EXPORTS) {
-      const g = JSON.parse(JSON.stringify(DEFAULT_SETTINGS[id]));
+      const g = JSON.parse(JSON.stringify(DEFAULT_SETTINGS[STOCK_OF[id]]));
       for (const fine of [false, true]) {
         const plan = planExport(id, p, bitFor(id, p), g, pal, flags, fine);
         expect(plan, `${id} fine=${fine}`).not.toBeNull();
@@ -217,7 +222,7 @@ describe('the mould G-code job', () => {
 
   it('writes without tripping the writer', () => {
     const text = buildGcode(job);
-    expect(text).toMatch(/M6 T251/);
+    expect(text).toMatch(new RegExp(`M6 T${tool.number}\\b`));
     expect(text.split('\n').filter(l => l.startsWith('(Cut ')).length).toBe(tp.paths.length);
   });
 });
@@ -227,7 +232,7 @@ describe('the arching toolpaths', () => {
   const surface = solveCrossArching(p)!.top!;
   const thickness = p.arching!.top.thickness;
   const archHeight = p.arching!.top.arch.height;
-  const arch = (over: Partial<ArchingSettings> = {}): ArchingSettings => ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.arching)), ...over });
+  const arch = (over: Partial<PlateSettings> = {}): PlateSettings => ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.plate)), ...over });
   // the test's grid is coarser than the file's, so a footprint sampled on it can miss the true
   // high point by a little: second order for the ball, first order under the flat bit's edge
   const GRID = 1;
@@ -324,27 +329,45 @@ describe('the arching toolpaths', () => {
 
   it('refuses a blank the surface would stand proud of', () => {
     // a roof just clearing the crown falls under the flanks when the blank's edges are nothing
-    const thin = archingToolpaths(p, surface, flat, arch({ stock: { thickness: thickness + archHeight + 0.5, edge: 0.5, width: 210, length: 400 } }), false);
+    const thin = archingToolpaths(p, surface, flat, arch({ stock: { thickness: thickness + archHeight + 0.5, edge: 0.5, width: 230, length: 400 } }), false);
     expect(thin.failures.join(' ')).toMatch(/too thin/);
     const low = archingToolpaths(p, surface, flat, arch({ stock: { thickness: thickness + archHeight - 1, edge: 10, width: 230, length: 400 } }), false);
     expect(low.failures.join(' ')).toMatch(/too thin/);
     expect(archingToolpaths(p, surface, flat, arch(), false).failures).toEqual([]);
   });
 
-  it('centres the plate in the blank with the carved area a skirt past the outline', () => {
-    const tp = archingToolpaths(p, surface, flat, arch(), false);
+  it('mirrors the plate on the seam and centres it along the blank, the carved area a skirt past the outline', () => {
+    const g = arch();
+    const tp = archingToolpaths(p, surface, flat, g, false);
     const xs = surface.outline.map(pt => pt.x), ys = surface.outline.map(pt => pt.y);
     expect(tp.raster!.xs[0]).toBeCloseTo(Math.min(...xs) - SURFACE.skirt, 6);
     expect(tp.raster!.xs.at(-1)).toBeCloseTo(Math.max(...xs) + SURFACE.skirt, 6);
     expect(tp.raster!.yMin).toBeLessThanOrEqual(Math.min(...ys) - SURFACE.skirt);
     expect(tp.raster!.yMax).toBeGreaterThanOrEqual(Math.max(...ys) + SURFACE.skirt);
-    expect(tp.raster!.xs[0] + tp.raster!.xs.at(-1)! + 2 * tp.sheetOffset.x).toBeCloseTo(DEFAULT_SETTINGS.arching.stock.width, 6);
+    expect(tp.sheetOffset.x).toBeCloseTo(g.seam, 6);
+    expect((Math.min(...ys) + Math.max(...ys)) / 2 + tp.sheetOffset.y).toBeCloseTo(g.stock.length / 2, 6);
+    // a wider blank with the seam off its middle: the plate follows the seam
+    const wide = { thickness: 22, edge: 10, width: 260, length: 420 };
+    const moved = archingToolpaths(p, surface, flat, arch({ stock: wide, seam: g.seam + 7 }), false);
+    expect(moved.failures).toEqual([]);
+    expect(moved.sheetOffset.x - tp.sheetOffset.x).toBeCloseTo(7, 6);
+    expect(moved.sheetOffset.y).toBeCloseTo(tp.sheetOffset.y, 6);
+    expect(archingToolpaths(p, surface, flat, arch({ seam: 60 }), false).failures.join(' ')).toMatch(/runs off the blank.*left/);
+    expect(archingToolpaths(p, surface, flat, arch({ stock: { ...wide, length: 360 } }), false).failures.join(' ')).toMatch(/runs off the blank.*bottom.*top/);
+    // the blank in the harness: the file shifts to the fences' corner, the fit does not change
+    const held = archingToolpaths(p, surface, flat, g, false, undefined, { x: 30, y: 12 });
+    expect(held.failures).toEqual([]);
+    expect(held.sheetOffset.x - tp.sheetOffset.x).toBeCloseTo(30, 6);
+    expect(held.sheetOffset.y - tp.sheetOffset.y).toBeCloseTo(12, 6);
+    expect(held.stockOrigin).toEqual({ x: 30, y: 12 });
+    expect(held.notes.join(' ')).toMatch(/HARNESS ZERO, fences at X30 Y12/);
   });
 
   describe('the G-code job', () => {
     const g = arch({ stage: 'finish' });
     const tp = archingToolpaths(p, surface, ball, g, true, 2);
-    const job = gcodeJob(tp, TOOLS[2], feeds);
+    const ballTool = TOOLS.find(t => t.shape === 'ball' && t.diameter === ball.diameter)!;
+    const job = gcodeJob(tp, ballTool, ballTool.feeds.soft!);
 
     it('runs the surface between the bed and the blank top, inside the blank', () => {
       expect(job.passes).toEqual([]);
@@ -366,8 +389,244 @@ describe('the arching toolpaths', () => {
 
     it('writes without tripping the writer', () => {
       const text = buildGcode(job);
-      expect(text).toMatch(/M6 T202/);
+      expect(text).toMatch(new RegExp(`M6 T${ballTool.number}\\b`));
       expect(text.split('\n').filter(l => l.startsWith('(Surface ')).length).toBe(tp.surfaces.length);
     });
+  });
+});
+
+describe('the purfling channel toolpaths', () => {
+  const p = seeded();
+  const surface = solveCrossArching(p)!.top!;
+  const o = solveOuterContour(p)!;
+  const thickness = p.arching!.top.thickness;
+  const width = p.outerContour!.purflingChannelDepth;
+  const purfling = (over: Partial<PlateSettings> = {}): PlateSettings => ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.plate)), ...over });
+  const cutter = (diameter: number): Bit => ({ diameter, shape: 'flat', feeds: { cutFeed: 1016, plungeFeed: 508, stepDown: 0.6 } });
+  const edges = [o.purfling!, o.outerPurfling!].map(d => buildPolylineIndex(samplePathToPolyline(d, 0.25)));
+
+  describe('with a bit the channel\'s width', () => {
+    const g = purfling();
+    const bit = cutter(width);
+    const tp = purflingToolpaths(p, surface, bit, g, true);
+    const run = tp.surfaces[0]?.pts ?? [];
+
+    it('is one pass, as many rounds as steps down to the strip height', () => {
+      expect(tp.failures).toEqual([]);
+      expect(tp.surfaces.length).toBe(1);
+      expect(tp.passes).toBe(Math.ceil(g.purflingDepth / bit.feeds!.stepDown));
+    });
+
+    it('keeps the cutter inside the channel, between the two purfling lines', () => {
+      const r = bit.diameter / 2;
+      for (let i = 0; i < run.length; i += 7) {
+        const pt = run[i];
+        for (const edge of edges) expect(distPointToPolylineIndexed(pt, edge), `at ${pt.x.toFixed(1)}, ${pt.y.toFixed(1)}`).toBeGreaterThanOrEqual(r - 0.06);
+      }
+    });
+
+    it('holds one flat depth under the edge each round, a step at a time to the strip height', () => {
+      const under = run.map(pt => thickness - pt.z);
+      expect(Math.min(...under)).toBeCloseTo(bit.feeds!.stepDown, 6);
+      expect(Math.max(...under)).toBeCloseTo(g.purflingDepth, 6);
+      const depths = [...new Set(under.map(d => +d.toFixed(6)))].sort((a, b) => a - b);
+      expect(depths.length).toBe(tp.passes);
+      for (let i = 1; i < depths.length; i++) expect(depths[i] - depths[i - 1]).toBeLessThanOrEqual(bit.feeds!.stepDown + 1e-9);
+      expect(tp.floorZ).toBeCloseTo(thickness - g.purflingDepth, 6);
+    });
+
+    it('closes every round where it started and dives in place to the next', () => {
+      const dives = run.filter((pt, i) => i > 0 && pt.x === run[i - 1].x && pt.y === run[i - 1].y && pt.z < run[i - 1].z);
+      expect(dives.length).toBe(tp.passes! - 1);
+      expect(run[0].x).toBeCloseTo(run[run.length - 1].x, 6);
+      expect(run[0].y).toBeCloseTo(run[run.length - 1].y, 6);
+    });
+  });
+
+  it('takes a narrower bit across in passes, and refuses a wider one or a ball', () => {
+    const narrow = purflingToolpaths(p, surface, cutter(width * 0.8), purfling(), true);
+    expect(narrow.failures).toEqual([]);
+    expect(narrow.surfaces.length).toBe(2);
+    const r = width * 0.4;
+    for (const s of narrow.surfaces) for (let i = 0; i < s.pts.length; i += 11) {
+      for (const edge of edges) expect(distPointToPolylineIndexed(s.pts[i], edge)).toBeGreaterThanOrEqual(r - 0.06);
+    }
+    expect(purflingToolpaths(p, surface, cutter(width + 0.3), purfling(), false).failures.join(' ')).toMatch(/wider/);
+    expect(purflingToolpaths(p, surface, { ...cutter(width), shape: 'ball' }, purfling(), false).failures.join(' ')).toMatch(/flat/);
+  });
+
+  it('sits in the blank exactly as the arching does', () => {
+    const a = archingToolpaths(p, surface, flat, purfling(), false);
+    const c = purflingToolpaths(p, surface, cutter(width), purfling(), false);
+    expect(c.sheetOffset).toEqual(a.sheetOffset);
+    expect(c.stockTopZ).toBe(a.stockTopZ);
+  });
+
+  it('writes as surface runs inside the blank', () => {
+    const g = purfling();
+    const tp = purflingToolpaths(p, surface, cutter(width), g, true);
+    const tool = TOOLS.find(t => Math.abs(t.diameter - width) < 0.01 && t.shape === 'flat')!;
+    const job = gcodeJob(tp, tool, tool.feeds.soft!);
+    expect(job.passes).toEqual([]);
+    for (const cut of job.cuts) for (const pt of 'pts' in cut ? cut.pts : []) {
+      expect(pt.x).toBeGreaterThan(0);
+      expect(pt.x).toBeLessThan(g.stock.width);
+      expect(pt.y).toBeGreaterThan(0);
+      expect(pt.y).toBeLessThan(g.stock.length);
+    }
+    const text = buildGcode(job);
+    expect(text.split('\n').filter(l => l.startsWith('(Surface Purfling')).length).toBe(tp.surfaces.length);
+    expect(text).toMatch(/\(MSG, EXPECTS A SURFACED PLATE/);
+  });
+});
+
+describe('the contour toolpaths', () => {
+  const p = seeded();
+  const o = solveOuterContour(p)!;
+  const g: PlateSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.plate));
+  const r = flat.diameter / 2;
+
+  for (const plate of ['top', 'back'] as const) {
+    describe(`the ${plate}`, () => {
+      const surface = solveCrossArching(p)![plate]!;
+      const thickness = p.arching![plate].thickness;
+      const tp = contourToolpaths(p, surface, o, flat, { ...g, plate });
+      const path = tp.paths[0];
+      const outline = buildPolylineIndex(samplePathToPolyline(plate === 'top' ? o.top! : o.back!, 0.25));
+
+      // a radius off along the edge; at a corner's point the offset runs a little further out,
+      // which leaves the point fat for the knife rather than cutting into it
+      it('runs a bit radius outside the outline, counterclockwise and closed', () => {
+        expect(tp.failures).toEqual([]);
+        expect(tp.paths.length).toBe(1);
+        expect(path.loop[0]).toEqual(path.loop[path.loop.length - 1]);
+        expect(signedPolygonArea(path.loop.slice(0, -1))).toBeGreaterThan(0);
+        for (const pt of path.loop) {
+          const d = distPointToPolylineIndexed(pt, outline);
+          expect(d, `at ${pt.x.toFixed(2)}, ${pt.y.toFixed(2)}`).toBeGreaterThan(r - 0.05);
+          expect(d, `at ${pt.x.toFixed(2)}, ${pt.y.toFixed(2)}`).toBeLessThan(2 * r);
+          expect(pointInPolygon(pt, samplePathToPolyline(plate === 'top' ? o.top! : o.back!, 0.5))).toBe(false);
+        }
+      });
+
+      it('holds the plate by six tabs, mirrored, on the bouts and the waists, clear of the corners', () => {
+        expect(path.tabs.length).toBe(6);
+        for (const tab of path.tabs) {
+          expect(runLength(tab)).toBeCloseTo(PLATE_TABS.width, 1);
+          const twin = path.tabs.find(t => t !== tab && Math.abs(t.centre.x + tab.centre.x) < 1.5 && Math.abs(t.centre.y - tab.centre.y) < 1.5);
+          expect(twin, `tab at ${tab.centre.x.toFixed(1)}, ${tab.centre.y.toFixed(1)}`).toBeTruthy();
+          for (const corner of [p.corners!.UCr, p.corners!.LCr]) expect(Math.abs(tab.centre.y - corner.y)).toBeGreaterThan(8);
+          expect(tab.from).toBeGreaterThan(0);
+          expect(tab.to).toBeLessThan(polylineCumulativeLengths(path.loop).at(-1)!);
+        }
+      });
+
+      it('cuts from the land through the bed, under a safe height that clears the seam, and says it expects one', () => {
+        const job = gcodeJob(tp, tool, feeds);
+        expect(job.caution).toMatch(/SURFACED PLATE/);
+        expect(buildGcode(job)).toMatch(/\(MSG, EXPECTS A SURFACED PLATE/);
+        expect(job.passes[0]).toBeCloseTo(thickness - feeds.stepDown, 6);
+        expect(job.passes.at(-1)).toBeCloseTo(-MACHINE.overcut, 6);
+        expect(job.tabTop).toBe(PLATE_TABS.height);
+        expect(job.safeZ).toBeCloseTo(g.stock.thickness + MACHINE.safeZ, 6);
+        expect(job.safeZ).toBeGreaterThan(g.stock.thickness);
+        const text = buildGcode(job);
+        expect(text.split('\n').filter(l => l.startsWith('(Cut ')).length).toBe(1);
+      });
+
+      it('sits in the blank exactly as the arching does', () => {
+        const a = archingToolpaths(p, surface, flat, { ...g, plate }, false);
+        expect(tp.sheetOffset).toEqual(a.sheetOffset);
+      });
+    });
+  }
+
+  it('wants a flat bit', () => {
+    const surface = solveCrossArching(p)!.top!;
+    expect(contourToolpaths(p, surface, o, ball, g).failures.join(' ')).toMatch(/flat/);
+  });
+});
+
+describe('the cradle toolpaths', () => {
+  const p = seeded();
+  const o = solveOuterContour(p)!;
+  const cradle = (over: Partial<CradleSettings> = {}): CradleSettings => ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.cradle)), ...over });
+  const top = DEFAULT_SETTINGS.cradle.stock.thickness;
+  const lip = top - CRADLE.wall;
+  const r = flat.diameter / 2;
+
+  for (const plate of ['top', 'back'] as const) {
+    describe(`for the ${plate}`, () => {
+      const surface = solveCrossArching(p)![plate]!;
+      const outlineD = plate === 'top' ? o.top! : o.back!;
+      const outline = buildPolylineIndex(samplePathToPolyline(outlineD, 0.25));
+      const inside = samplePathToPolyline(outlineD, 0.5);
+
+      it('clears the pocket in loops between the lip and the wall, clockwise, down to the lip', () => {
+        const tp = cradleToolpaths(p, surface, o, flat, cradle({ plate }));
+        expect(tp.failures).toEqual([]);
+        expect(tp.paths.length).toBeGreaterThan(1);
+        let outermost = 0;
+        for (const path of tp.paths) {
+          expect(path.tabs).toEqual([]);
+          expect(signedPolygonArea(path.loop.slice(0, -1))).toBeLessThan(0);
+          for (const pt of path.loop) {
+            const d = distPointToPolylineIndexed(pt, outline);
+            expect(pointInPolygon(pt, inside), `${path.name} at ${pt.x.toFixed(1)}, ${pt.y.toFixed(1)}`).toBe(true);
+            // the bit's edge never past the pocket's side, and the loops reach the lip's inner edge
+            expect(d, `${path.name} at ${pt.x.toFixed(1)}, ${pt.y.toFixed(1)}`).toBeGreaterThan(r - CRADLE.clearance - 0.05);
+            outermost = Math.max(outermost, d);
+          }
+        }
+        expect(outermost).toBeGreaterThan(CRADLE.lip - r - 0.5);
+        const job = gcodeJob(tp, tool, feeds);
+        expect(job.passes[0]).toBeCloseTo(top - feeds.stepDown, 6);
+        expect(job.passes.at(-1)).toBeCloseTo(lip, 6);
+      });
+
+      it('cuts the hole through along the lip\'s inner edge, clockwise, held by mirrored tabs', () => {
+        const tp = cradleToolpaths(p, surface, o, flat, cradle({ plate, stage: 'hole' }));
+        expect(tp.failures).toEqual([]);
+        expect(tp.paths.length).toBe(1);
+        const path = tp.paths[0];
+        expect(signedPolygonArea(path.loop.slice(0, -1))).toBeLessThan(0);
+        for (const pt of path.loop) {
+          const d = distPointToPolylineIndexed(pt, outline);
+          // the eroded line scallops a hair at the button's concave base
+          expect(d, `at ${pt.x.toFixed(1)}, ${pt.y.toFixed(1)}`).toBeGreaterThan(CRADLE.lip - r - 0.1);
+          expect(pointInPolygon(pt, inside)).toBe(true);
+        }
+        expect(path.tabs.length).toBe(CRADLE.tabs);
+        for (const tab of path.tabs) {
+          expect(runLength(tab)).toBeCloseTo(MACHINE.tabWidth, 1);
+          const twin = path.tabs.find(t => t !== tab && Math.abs(t.centre.x + tab.centre.x) < 1 && Math.abs(t.centre.y - tab.centre.y) < 1);
+          expect(twin ?? (Math.abs(tab.centre.x) < 1 ? tab : null), `tab at ${tab.centre.x.toFixed(1)}, ${tab.centre.y.toFixed(1)}`).toBeTruthy();
+        }
+        const job = gcodeJob(tp, tool, feeds);
+        expect(job.passes[0]).toBeCloseTo(top - feeds.stepDown, 6);
+        expect(job.passes.at(-1)).toBeCloseTo(-MACHINE.overcut, 6);
+        expect(job.tabTop).toBe(MACHINE.tabHeight);
+        expect(buildGcode(job)).toMatch(/\(Cut Hole\)/);
+      });
+
+      it('centres the plate in the slab, the same for both stages, zeroed at the slab\'s own corner', () => {
+        const pocket = cradleToolpaths(p, surface, o, flat, cradle({ plate }));
+        const hole = cradleToolpaths(p, surface, o, flat, cradle({ plate, stage: 'hole' }));
+        expect(hole.sheetOffset).toEqual(pocket.sheetOffset);
+        const xs = surface.outline.map(pt => pt.x);
+        expect(Math.min(...xs) + Math.max(...xs) + 2 * pocket.sheetOffset.x).toBeCloseTo(DEFAULT_SETTINGS.cradle.stock.width, 6);
+        expect(pocket.stockOrigin).toEqual({ x: 0, y: 0 });
+        expect(pocket.notes.join(' ')).toMatch(/SLAB LOWER LEFT/);
+      });
+    });
+  }
+
+  it('refuses a ball, a slab the crown would touch the bed through, and a lip the arch reaches', () => {
+    const surface = solveCrossArching(p)!.top!;
+    expect(cradleToolpaths(p, surface, o, ball, cradle()).failures.join(' ')).toMatch(/flat/);
+    const thin = cradleToolpaths(p, surface, o, flat, cradle({ stock: { thickness: 16, width: 230, length: 420 } }));
+    expect(thin.failures.join(' ')).toMatch(/too thin/);
+    const wide = cradleToolpaths(p, surface, o, flat, cradle(), { ...CRADLE, lip: 14 });
+    expect(wide.failures.join(' ')).toMatch(/lip (reaches under the arch|is too wide)/);
   });
 });

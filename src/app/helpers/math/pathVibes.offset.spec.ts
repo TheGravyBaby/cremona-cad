@@ -1,5 +1,8 @@
 // @vitest-environment node
-import { catenaryBetween, offsetPath } from './pathVibes';
+import { describe, expect, it } from 'vitest';
+import { Pt } from '../../models/types';
+import { closestPointOnSegment, pointInPolygon, signedPolygonArea } from './simpleGeometry';
+import { erodePolygon, catenaryBetween, offsetPath } from './pathVibes';
 import { pathsBounds, samplePathToPolyline } from './pathMath';
 import { polylineCumulativeLengths, projectOntoPolyline } from './vibeMath';
 
@@ -77,5 +80,33 @@ describe('offsetPath', () => {
   it('declines what it cannot read rather than offsetting it wrongly', () => {
     expect(offsetPath('m 0 0 l 10 0', 1)).toBeNull();
     expect(offsetPath('M 0 0 A 10 5 0 0 1 20 0', 1)).toBeNull();
+  });
+});
+
+describe('erodePolygon', () => {
+  const square = [new Pt(0, 0), new Pt(100, 0), new Pt(100, 100), new Pt(0, 100)];
+
+  it('shrinks a square to the square inside it', () => {
+    const inner = erodePolygon(square, 10)!;
+    expect(inner).not.toBeNull();
+    const xs = inner.map(pt => pt.x), ys = inner.map(pt => pt.y);
+    expect(Math.min(...xs)).toBeCloseTo(10, 0);
+    expect(Math.max(...xs)).toBeCloseTo(90, 0);
+    expect(Math.min(...ys)).toBeCloseTo(10, 0);
+    expect(Math.max(...ys)).toBeCloseTo(90, 0);
+    expect(Math.abs(signedPolygonArea(inner))).toBeGreaterThan(80 * 80 * 0.98);
+  });
+
+  // a sharp notch a parallel offset folds across: the eroded shape stays inside, a distance off
+  // every edge, and is one piece
+  it('does not fold at a sharp corner, and keeps the largest piece of a shape it cuts in two', () => {
+    const notched = [new Pt(0, 0), new Pt(100, 0), new Pt(100, 100), new Pt(52, 100), new Pt(50, 40), new Pt(48, 100), new Pt(0, 100)];
+    const inner = erodePolygon(notched, 6)!;
+    expect(inner).not.toBeNull();
+    for (const pt of inner) {
+      expect(pointInPolygon(pt, notched)).toBe(true);
+      for (let i = 0; i < notched.length; i++) expect(closestPointOnSegment(pt, notched[i], notched[(i + 1) % notched.length]).dist).toBeGreaterThan(6 - 0.1);
+    }
+    expect(erodePolygon(square, 60)).toBeNull();
   });
 });
