@@ -107,16 +107,14 @@
   @if (showFilletPanel) {
     <span class="field"><span class="f-lbl">Radius</span>
       <input type="number" min="0.1" step="0.5" [value]="filletRadius"
-        (change)="setFilletRadius($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-        docTip="settings.roundRadius" />
+        (change)="setFilletRadius($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()" />
     </span>
   }
 
   @if (showCurveDepth) {
     <span class="field"><span class="f-lbl">Depth</span>
       <input type="number" min="0.1" step="1" [value]="curveDepth"
-        (change)="setCurveDepth($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-        docTip="settings.curveSag" />
+        (change)="setCurveDepth($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()" />
     </span>
   }
 
@@ -196,8 +194,7 @@
   @if (showFreehandPanel) {
     <span class="field"><span class="f-lbl">Opacity</span>
       <input type="number" min="0" max="1" step="0.05" [value]="freehandOpacity"
-        (change)="setFreehandOpacity($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-        docTip="settings.opacity" />
+        (change)="setFreehandOpacity($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()" />
     </span>
     <button type="button" class="settings-action" (click)="applyPenPreset()"
       docTip="settings.resetPen">
@@ -272,8 +269,7 @@
   @if (showImagePanel) {
     <span class="field text-field image-name-field"><span class="f-lbl">Name</span>
       <input #imageLabelInput type="text" [value]="imageLabel" (change)="setImageLabel(imageLabelInput.value)"
-        (keydown.enter)="imageLabelInput.blur()" (keydown.escape)="imageLabelInput.value = imageLabel; imageLabelInput.blur()"
-        docTip="settings.imageName" placeholder="Reference" />
+        (keydown.enter)="imageLabelInput.blur()" (keydown.escape)="imageLabelInput.value = imageLabel; imageLabelInput.blur()" placeholder="Reference" />
     </span>
     <span class="point-group">
       <span class="field"><span class="f-lbl">X</span>
@@ -301,8 +297,7 @@
     </span>
     <span class="field"><span class="f-lbl">Opacity</span>
       <input type="number" min="0" max="1" step="0.05" [value]="imageOpacity"
-        (change)="setImageOpacity($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-        docTip="settings.imageOpacity" />
+        (change)="setImageOpacity($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()" />
     </span>
     <button type="button" class="settings-action" [class.active]="imageSuppressWhite"
       [disabled]="imageSuppressionUnavailable"
@@ -364,8 +359,7 @@
     @if (weightsUseCount) {
       <span class="field"><span class="f-lbl">Count</span>
         <input type="number" min="1" step="1" [value]="displayedWeightsCount"
-          (change)="setWeightsCount($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-          docTip="settings.sectionCount" />
+          (change)="setWeightsCount($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()" />
       </span>
     } @else {
       <span class="field weights-field"><span class="f-lbl">Weights</span>
