@@ -94,11 +94,9 @@ export const FIELD_HELP = {
   ribHeight: {
     title: "Rib Height",
     text:
-      "The height of the ribs — the side walls of the instrument body.\n\n" +
-      "Classical ribs taper: they are planed down toward the upper block once the back is glued on, " +
-      "so the back stays square to the body and the top plate glues onto a slight angle. " +
-      "Measure each end across the rib, square to its own top edge.\n\n" +
-      "Typical values, at the lower end:\n" +
+      "These values define the rib height at the upper and lower bounds of the instrument. Cremonose violins featured a slight taper. Once the back was fastened to the ribs, the top edge would be planed down at a slight angle such that the top was thinner than the bottom.\n\n" +
+      "In this model, the back will always be square to the rib line, while the top angles slightly.\n" +
+      "Typical values, at the lower end:\n\n" +
       "- Violin: 29–32 mm\n" +
       "- Viola: 38–44 mm\n" +
       "- Cello: 115–130 mm\n" +
@@ -122,49 +120,27 @@ export const FIELD_HELP = {
       "The thickness of the plate at the outer edge.",
   },
   curveType: {
-    title: "Arch Curve Type",
+    title: "Long Arch Curve",
     text:
-      "Catenary — an inverted hanging chain. Smooth and symmetric; a good starting point.\n\n" +
-      "Spline — a cubic through your control points. It never rises above the heights you set, so two equal points give a flat run between them.",
-  },
-  splinePoint: {
-    title: "Spline Control Point",
-    text:
-      "Position (0–100): along the plate length, 0 = upper edge, 100 = lower edge. Both edges are z = 0.\n\n" +
-      "Height (mm): above the plate outer edge, same unit as Arch Height.\n\n" +
-      "Peak: always at the Arch Height, movable along the plate. Off 50 gives an end-to-end asymmetric arch.\n\n" +
-      "Mirror: repeats the point at the same distance from the other edge. Off by default — the two ends of a plate are rarely the same arch.\n\n" +
-      "Order: drag a row by its grip, or arrow-key it. The peak moves with the rest. Order is for reading — the arch is the same either way.",
+      "A catenary curve can be drawn by tracing a hanging rope or chain. There are many theories which suggest the long arch of a violin is an inverted catenary.\n\n" +
+      "A spline curves simulates the bending of a wooden spline through varios control points. This allows for a more complex curve and was a known curve drawing technique for Cremonese makers.",
   },
   crossSectionStation: {
     title: "Cross-Section Station",
     text:
-      "Selects which cross section of the body you are viewing — the position along the body length (Y), " +
-      "measured in mm from the bottom of the instrument.\n\n" +
-      "This is a view control only — it is not saved with the recipe.\n\n" +
-      "Note there can be some clipping around the corners, as some corners will intersect our cross section line at two points. This has no effect on the exported templates.",
-  },
-  gougeSection: {
-    title: "Channel Section",
-    text:
-      "The fluting channel's section is a circular segment: its width is the chord, from where the gouge enters the plate to where it comes back out, and its depth is the trough below the plate's surface.\n\n" +
-      "Width and depth are set; the sweep of the gouge that cuts them is reported, the circle through the chord's ends and the trough. A narrow, deep channel wants a tight sweep, a broad, shallow one a flat sweep. Violin channels run about 10–12 mm wide at 1–1.5 mm deep.\n\n",
+      "By sliding the station height bar you can adjust which section of the cross arch you view on the canvas.\n\n" +
+      "It is possible that Cremonese makers used different cross arch curves at different heights along the instrument. In order to simulate this, you may use the 'Set Station at' to set unique curves at different heights along the body. CremonaCad will do its best to smoothly join these defined sections.",
   },
   gougeCBout: {
     title: "C-Bout Channel",
     text:
-      "An optional narrower channel for the waist. Same land edge, same depth — only the width changes, so the inner edge pulls back where a tighter gouge takes the C bout's curve.\n\n" +
-      "The junctions either side of the waist are joined by biarcs, so the line stays closed and smooth at the new radius.",
-  },
-  gougeCenterline: {
-    title: "Land Edge",
-    text:
-      "Defines the offset for the flat of the edge. This is where the fluting channel will end, leaving a flat surface around the very edge of the instrument.\n\n" + "Values typically range from 1-3mm.",
+      "Usually the fluting channel narrows along the center bout.",
   },
   cornerGouge: {
     title: "Gouge Corners",
     text:
-      "Left on as a default. Typically, a fluting channel is gouged out around the corners, and later the corners are carved to smoothly meet the fluting channel. This option toggles that secondary carving, which can be useful for STL exports if you wish to do this step by hand.",
+      "Left on as a default. When carving the fluting channel, usually the corners are bypassed on the first pass. The area around the corners is later smoothly joined to the fluting channel.\n\n" + 
+      "CremonaCad supports STL exports of the top and back plates. If this toggle is on, a smooth join (as smooth as possible :P) will be made between the corner edge and the fluting channel. This can be useful for CNC making.",
   },
   notches: {
     title: "Notch Toggle",
@@ -172,49 +148,13 @@ export const FIELD_HELP = {
     "Some notches are big, some notches are small; some are wide, some are tall. \n\nIf these notches do not suite thee, toggle them off, to cut them yourself you are free."
   },
   crossArchCurveType: {
-    title: "Crown Curve",
+    title: "Cross Arching",
     text:
-      "Factor (0–1): 0 is raised-cosine (gentler edge rise), 1 is a classic cycloid (steeper edge, flatter crest). Percent: how much of the  cycloid is stretched across the width.\n\n" +
-      "Spline: control points you place yourself.\n\n" +
-      "Catenary: an inverted hanging chain. No fields — the crown height comes from the long arch and the width from what's available at each station, so it's solved rather than authored, and it carries no stations of its own.\n\n" +
-      "Switching replaces the shape rather than converting it; these have no honest translation between them.",
+      "The cross arch model supports catenaries and splines much like the long arch, but also allows for cycloid curves. A cycloid is a curve drawn by tracking a point within a circle as it rotates along a plane. Cycloid factor indicates how far along the radius the draw point is selected. Percentage will scale a 'window' of the cycloid over the cross sectional distance." ,
   },
-  crossArchCycloidControls: {
-    title: "Cycloid Crown",
-    text:
-      "Factor: 0% is a raised cosine, 100% the standard cycloid. Higher fills the shoulders and tightens the crown.\n\n" +
-      "Percent: how much of the curve is used, trimmed evenly from both ends. Past 100% the ends curl under the takeoff and back up, so the arch can dip below the channel and meet its outer flank.\n\n",
-  },
-  crossArchTemplate: {
-    title: "Cross-Arch Shape",
-    text:
-      "Position defines the position of your control point accross the body width, where 50% is dead center. Height works much the same. The long arch panel defines the peak height for this curve, so height is defined as a percentage of this peak.\n\n" +
-      "Order: drag a row by its grip, or arrow-key it. The peak moves with the rest. Order is for reading — the section is the same either way.",
-  },
-  crossArchPeak: {
-    title: "Crown Position",
-    text:
-      "Where the peak of the curve fits along the body. Real plates rarely peak dead center.\n\n" +
-      "You can move the peak +/- from the center as needed, center is defined as 50%.",
-  },
-  crossArchStation: {
-    title: "Station Pinning",
-    text:
-      "This button fixes your arch shape to the selected station height. Multiple stations can be pinned, and the surface curve will (attempt ^_^) to smoothly join them.\n\n" +
-      "Arching on historical instruments varies about the body, but two or three stations are usually plenty to define a sensible surface.",
-  },
-  transition: {
-    title: "Transition Zone",
-    text:
-      "Where the arch stops being the template and becomes the run into the channel. Solved for, not set — tangency is one equation, and the contact point is its one unknown.\n\n" +
-      "If no solution exists, the arch and channel genuinely cannot meet there. Lower the arch, move the channel outward, or widen the gouge.",
-  },
-  bridgeHeight: {
-    title: "Bridge Height",
-    text:
-      "The bridge's height from its feet to the string notches, on the centerline. " +
-      "The feet stand on the arch at the bridge line, so the strings stand arch plus bridge above the edge.\n\n" +
-      "Violin bridges finish around 33 mm. Raise it and the strings sit higher over the fingerboard's end.",
+  volute: {
+    title: "Volute Style",
+    text: "There are many ways to draw spirals, and many methods that would have been known in Rennaisance Italy. Included are several historical methods for drawing volutes, as well as a custom method that allows for unique arcs per turn. "
   },
   mortiseDepth: {
     title: "Mortise Depth",
@@ -244,57 +184,12 @@ export const FIELD_HELP = {
       "The foot below it is cut square to the neck, not level with the body, so it rises off the button at the neck angle. " +
       "A tight radius meets the foot and a flat carries on to the button's tip; a wide one reaches the tip on its own.",
   },
-  neckLength: {
-    title: "Neck Length",
-    text: "TODO: the neck's own length, mortise floor to the nut along the fingerboard plane. It places the nut; the string length is read off it.",
-  },
-  neckAngle: {
-    title: "Neck Projection",
-    text: "TODO: the tilt of the fingerboard plane off the body's axis, entered in degrees. Makers set it by projection at the bridge line (about 27 mm on a violin); there is no projection readout.",
-  },
-  neckWidths: {
-    title: "Neck Widths",
-    text: "TODO: Top Width at the nut and Root Width at the body, the neck's taper seen from in front.",
-  },
-  fingerboard: {
-    title: "Fingerboard",
-    text: "TODO: Length (stock sizes by instrument, seeded from body height), Thickness at the edges, and Radius of the cylinder the crown is cut from.",
-  },
-  bodyStop: {
-    title: "Body Stop",
-    text: "TODO: top plate's upper edge down to the bridge line, where the f-hole notches are cut. Violin 195 mm.",
-  },
-  stringLength: {
-    title: "String Length",
-    text: "TODO: the readout, nut to bridge, straight-line and approximate. Follows from the neck's length; should land near 325–328 mm on a violin, the classical 2:3 against the body stop.",
-  },
-  voluteSpiral: {
-    title: "Volute",
-    text: "TODO: the spiral about the eye: style, eye radius and position, pitch and seed.",
-  },
-  voluteCrown: {
-    title: "Crown",
-    text: "TODO: S0 and S1, the arcs over the top of the head from the spiral to the back.",
-  },
-  scrollBack: {
-    title: "Scroll Back",
-    text: "TODO: S2, the straight, S3, the hang, the nape and the nape-as-circle toggle; the head's height and width readouts.",
-  },
-  scrollFront: {
-    title: "Scroll Front",
-    text: "TODO: the flat up from the nut, the nut's height, F0, the straight and F1 in under the volute.",
-  },
-  scrollWidthsFront: {
-    title: "Front Widths",
-    text: "TODO: the pegbox sawn through the blank: nut width, hips and hip height, throat, wall.",
-  },
-  scrollWidthsBack: {
-    title: "Back Widths",
-    text: "TODO: the path from the duck tail's round over the crown and in to the eye: duck tail, foot, back hip, poll, crown; the compass step.",
-  },
-  scrollWidthsTurns: {
-    title: "Turn Widths",
-    text: "TODO: the width at the bottom of turn 1, the top and bottom of turn 2, and the eye.",
+  bridgeHeight: {
+    title: "Bridge Height",
+    text:
+      "The bridge's height from its feet to the string notches, on the centerline. " +
+      "The feet stand on the arch at the bridge line, so the strings stand arch plus bridge above the edge.\n\n" +
+      "Violin bridges finish around 33 mm. Raise it and the strings sit higher over the fingerboard's end.",
   },
 } as const satisfies Record<string, { title: string; text: string }>;
 

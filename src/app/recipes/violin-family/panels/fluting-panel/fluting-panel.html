@@ -7,8 +7,6 @@
             <span class="field-title">Fluting Edge <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="fluting.flutingEdge" (input)="edited()" />
         </label>
-        <button type="button" class="info-icon" (click)="help('gougeCenterline')" title="More information"
-            aria-label="Information">ⓘ</button>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
@@ -35,8 +33,6 @@
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
             <div class="basic-display" aria-label="Top plate gouge sweep">{{ f.top?.sweep?.toFixed(1) ?? '–' }}</div>
         </label>
-        <button type="button" class="info-icon" (click)="help('gougeSection')" title="More information"
-            aria-label="Information">ⓘ</button>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -76,8 +72,6 @@
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
             <div class="basic-display" aria-label="Back plate gouge sweep">{{ f.back?.sweep?.toFixed(1) ?? '–' }}</div>
         </label>
-        <button type="button" class="info-icon" (click)="help('gougeSection')" title="More information"
-            aria-label="Information">ⓘ</button>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
