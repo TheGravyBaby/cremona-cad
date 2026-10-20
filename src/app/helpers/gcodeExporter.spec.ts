@@ -1,10 +1,11 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { buildGcode, GcodeJob } from './gcodeExporter';
+import { buildGcode, GcodeJob, PLUNGE_ANGLE } from './gcodeExporter';
 
 // what a maker would check before loading the file: the bit only travels fast up at the safe
 // height, every drop is at plunge feed, nothing goes below the floor, the tabs are left standing
-// on the deep passes, and the job ends retracted with the router off
+// on the deep passes, a surface run dives at plunge feed and cuts at cut feed, and the job ends
+// retracted with the router off
 
 const square = (size: number) => [{ x: 0, y: 0 }, { x: size, y: 0 }, { x: size, y: size }, { x: 0, y: size }, { x: 0, y: 0 }];
 
@@ -49,6 +50,14 @@ describe('buildGcode', () => {
     expect(lines.slice(0, 20)).toEqual(expect.arrayContaining(['G90', 'G21']));
     expect(lines.indexOf('M3 S18000')).toBeLessThan(lines.findIndex(l => /^G1\b/.test(l)));
     expect(lines.slice(-3)).toEqual([`G0 Z31.700`, 'M5', 'M2']);
+  });
+
+  it('pauses for the bit and the router dial before the spindle starts', () => {
+    const lines = text.trim().split('\n');
+    const pause = lines.indexOf('M0');
+    expect(pause).toBeGreaterThan(lines.findIndex(l => l.startsWith('M6')));
+    expect(pause).toBeLessThan(lines.findIndex(l => l.startsWith('M3')));
+    expect(lines[pause - 1]).toMatch(/^\(MSG, .*#251.*18000 rpm/);
   });
 
   it('only moves fast at the safe height', () => {
@@ -105,5 +114,38 @@ describe('buildGcode', () => {
 
   it('refuses a safe height that does not clear the work', () => {
     expect(() => buildGcode(job({ safeZ: 10 }))).toThrow(/safe/);
+  });
+});
+
+describe('a surface run', () => {
+  const steep = 2 * Math.tan(PLUNGE_ANGLE) * 2, gentle = Math.tan(PLUNGE_ANGLE) * 10 / 2;
+  const run = [
+    { x: 10, y: 10, z: 15 }, { x: 10, y: 50, z: 15 },
+    // down 10 over 2: a dive; down the gentle one over 10: a cut
+    { x: 10, y: 52, z: 15 - steep }, { x: 10, y: 62, z: 15 - steep - gentle },
+    { x: 20, y: 62, z: 15 - steep - gentle }, { x: 20, y: 10, z: 16 },
+  ];
+  const surfaceJob = (over: Partial<GcodeJob> = {}) => job({ passes: [], floorZ: 4, cuts: [{ name: 'dome', pts: run }], ...over });
+  const text = buildGcode(surfaceJob());
+  const steps = moves(text).filter(m => m.g === 'G1');
+
+  it('plunges once at the first point, then follows the run in all three axes', () => {
+    expect(steps[0]).toEqual({ g: 'G1', z: 15, f: 381 });
+    expect(moves(text).filter(m => m.g === 'G0' && m.x !== undefined)).toEqual([{ g: 'G0', x: 10, y: 10 }]);
+    for (const m of steps.slice(1)) expect([m.x, m.y, m.z].every(v => v !== undefined)).toBe(true);
+    expect(steps.slice(1).map(m => [m.x, m.y, m.z])).toEqual(run.slice(1).map(pt => [pt.x, pt.y, +pt.z.toFixed(3)]));
+  });
+
+  it('dives at plunge feed and cuts at cut feed', () => {
+    const feedTo = (y: number, x = 10) => trace(text).find(m => m.g === 'G1' && m.x === x && m.y === y)!.f;
+    expect(feedTo(50)).toBe(1905);
+    expect(feedTo(52)).toBe(381);
+    expect(feedTo(62)).toBe(1905);
+    expect(feedTo(10, 20)).toBe(1905);
+  });
+
+  it('never goes below the floor and ends retracted', () => {
+    expect(() => buildGcode(surfaceJob({ floorZ: 10 }))).toThrow(/floor/);
+    expect(text.trim().split('\n').slice(-3)).toEqual(['G0 Z31.700', 'M5', 'M2']);
   });
 });

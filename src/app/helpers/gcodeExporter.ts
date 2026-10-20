@@ -1,12 +1,15 @@
-import { Pt } from '../models/types';
+import { Pt, Pt3D } from '../models/types';
 import { polylineCumulativeLengths } from './math/vibeMath';
 
-// G-code for a GRBL machine (Carbide Motion runs it as is) from 2.5D profile cuts: a closed loop
+// G-code for a GRBL machine (Carbide Motion runs it as is) from 2.5D profile cuts, a closed loop
 // the cutter's centre follows, taken down in depth passes, with tabs the bit lifts over once a
-// pass is below them. The writer holds the rules a bad file breaks: rapids only at the safe
-// height, every Z-only move at plunge feed, nothing below the floor, and the file ends retracted
-// with the spindle off. Z is absolute in the file's own zero; the caller says where the floor is,
-// and the file refuses to be written rather than cross it
+// pass is below them, and from surface cuts, one continuous run of the cutter's tip with Z
+// following the work. The writer holds the rules a bad file breaks: rapids only at the safe
+// height, every Z-only move at plunge feed, a run that dives steeper than PLUNGE_ANGLE at plunge
+// feed too, nothing below the floor, and the file ends retracted with the spindle off. The file
+// pauses (M0) after the tool change for the bit and the router's dial, both set by hand, and only
+// then starts the spindle. Z is absolute in the file's own zero; the caller says where the floor
+// is, and the file refuses to be written rather than cross it
 
 export interface GcodeTab {
   // along the loop, from its first point
@@ -20,6 +23,17 @@ export interface ProfileCut {
   loop: Pt[];
   tabs: GcodeTab[];
 }
+
+export interface SurfaceCut {
+  name: string;
+  // the cutter tip's run, entered by a plunge at its first point and left by a lift at its last
+  pts: Pt3D[];
+}
+
+export type GcodeCut = ProfileCut | SurfaceCut;
+
+// a run dropping steeper than this is a plunge, whatever it does in XY
+export const PLUNGE_ANGLE = Math.PI / 6;
 
 export interface GcodeJob {
   // header comments, one line each
@@ -35,16 +49,19 @@ export interface GcodeJob {
   cutFeed: number;
   plungeFeed: number;
   // in cutting order
-  cuts: ProfileCut[];
+  cuts: GcodeCut[];
 }
 
 export function buildGcode(job: GcodeJob): string {
   if (job.passes.some(z => z < job.floorZ - 1e-9)) throw new Error(`G-code: a pass at Z${fmt(Math.min(...job.passes))} is below the floor Z${fmt(job.floorZ)}.`);
   if (job.safeZ <= Math.max(...job.passes, job.tabTop)) throw new Error('G-code: the safe height has to clear every pass and the tabs.');
   let w = new Writer(job);
+  let rpm = Math.round(job.spindleRpm);
+  let prompt = `Change the bit to #${job.tool.number} ${job.tool.name}, then set the router to ${rpm} rpm. Once you resume, the machine will begin cutting.`;
   w.comment('Cremona CAD');
   for (let note of job.notes) w.comment(note);
   w.comment(`Tool #${job.tool.number} ${job.tool.name}`);
+  w.comment(prompt);
   w.comment(`Passes ${job.passes.map(fmt).join(' ')}`);
   w.line('G90');
   w.line('G21');
@@ -52,8 +69,11 @@ export function buildGcode(job: GcodeJob): string {
   w.rapidZ(job.safeZ);
   w.line('M5');
   w.line(`M6 T${job.tool.number}`);
-  w.line(`M3 S${Math.round(job.spindleRpm)}`);
-  for (let cut of job.cuts) w.cut(cut);
+  // not every sender shows MSG, so the prompt is in the header as well
+  w.comment(`MSG, ${prompt}`);
+  w.line('M0');
+  w.line(`M3 S${rpm}`);
+  for (let cut of job.cuts) 'loop' in cut ? w.cut(cut) : w.surface(cut);
   w.rapidZ(job.safeZ);
   w.line('M5');
   w.line('M2');
@@ -77,6 +97,7 @@ const fmt = (n: number): string => (Math.abs(n) < 5e-4 ? 0 : n).toFixed(3);
 class Writer {
   private lines: string[] = [];
   private z: number | null = null;
+  private xy: Pt | null = null;
   private feed: number | null = null;
 
   constructor(private job: GcodeJob) {}
@@ -103,6 +124,7 @@ class Writer {
   rapidXY(p: Pt): void {
     if (this.z !== this.job.safeZ) throw new Error('G-code: an XY rapid is only made at the safe height.');
     this.lines.push(`G0 X${fmt(p.x)} Y${fmt(p.y)}`);
+    this.xy = p;
   }
 
   feedZ(z: number): void {
@@ -115,6 +137,18 @@ class Writer {
   feedXY(p: Pt): void {
     this.guard(this.z ?? this.job.safeZ);
     this.lines.push(`G1 X${fmt(p.x)} Y${fmt(p.y)}${this.f(this.job.cutFeed)}`);
+    this.xy = p;
+  }
+
+  // the tip to a point of a surface run: at plunge feed when it dives steeper than PLUNGE_ANGLE
+  feedXYZ(p: Pt3D): void {
+    this.guard(p.z);
+    let from = this.xy ?? p, dz = p.z - (this.z ?? this.job.safeZ);
+    let run = Math.hypot(p.x - from.x, p.y - from.y);
+    let dive = dz < 0 && -dz > run * Math.tan(PLUNGE_ANGLE);
+    this.lines.push(`G1 X${fmt(p.x)} Y${fmt(p.y)} Z${fmt(p.z)}${this.f(dive ? this.job.plungeFeed : this.job.cutFeed)}`);
+    this.xy = p;
+    this.z = p.z;
   }
 
   private guard(z: number): void {
@@ -141,6 +175,16 @@ class Writer {
         this.feedXY(s.pt);
       }
     }
+    this.rapidZ(this.job.safeZ);
+  }
+
+  // one plunge at the run's first point, the tip then following it to the end
+  surface(cut: SurfaceCut): void {
+    if (cut.pts.length < 2) throw new Error(`G-code: the surface run ${cut.name} has no length.`);
+    this.comment(`Surface ${cut.name}`);
+    this.rapidXY(cut.pts[0]);
+    this.feedZ(cut.pts[0].z);
+    for (let i = 1; i < cut.pts.length; i++) this.feedXYZ(cut.pts[i]);
     this.rapidZ(this.job.safeZ);
   }
 }

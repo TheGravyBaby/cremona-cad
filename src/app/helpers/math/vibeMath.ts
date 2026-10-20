@@ -989,3 +989,35 @@ export function makeArchSplineZOf(
   const zs = [0, ...knots.map(k => k.z),       endZ];
   return makeMonotoneSpline(ys, zs);
 }
+
+// the polyline with every vertex dropped that lies within `tol` of the chord between the kept
+// vertices either side of it (Douglas-Peucker, run on a stack): the ends always stay
+export function simplifyPolyline3D(pts: Pt3D[], tol: number): Pt3D[] {
+  const n = pts.length;
+  if (n < 3) return pts.slice();
+  const keep = new Uint8Array(n);
+  keep[0] = keep[n - 1] = 1;
+  const stack: [number, number][] = [[0, n - 1]];
+  const tol2 = tol * tol;
+  while (stack.length) {
+    const [a, b] = stack.pop()!;
+    const A = pts[a], B = pts[b];
+    const ux = B.x - A.x, uy = B.y - A.y, uz = B.z - A.z;
+    const len2 = ux * ux + uy * uy + uz * uz;
+    let worst = -1, worstD = tol2;
+    for (let i = a + 1; i < b; i++) {
+      const P = pts[i];
+      const px = P.x - A.x, py = P.y - A.y, pz = P.z - A.z;
+      const t = len2 > 0 ? clamp((px * ux + py * uy + pz * uz) / len2, 0, 1) : 0;
+      const dx = px - t * ux, dy = py - t * uy, dz = pz - t * uz;
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 > worstD) { worstD = d2; worst = i; }
+    }
+    if (worst < 0) continue;
+    keep[worst] = 1;
+    stack.push([a, worst], [worst, b]);
+  }
+  const out: Pt3D[] = [];
+  for (let i = 0; i < n; i++) if (keep[i]) out.push(pts[i]);
+  return out;
+}

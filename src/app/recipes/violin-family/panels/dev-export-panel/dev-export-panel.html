@@ -10,14 +10,43 @@
             </select>
         </label>
     </div>
+    @if (settings.job === 'arching') {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Plate</span>
+            <select [(ngModel)]="a.plate" (change)="edited()">
+                <option value="top">Top</option>
+                <option value="back">Back</option>
+            </select>
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Stage</span>
+            <select [(ngModel)]="a.stage" (change)="edited()">
+                <option value="rough">Roughing</option>
+                <option value="finish">Finishing</option>
+            </select>
+        </label>
+    </div>
+    }
 </section>
 
 <section class="ui-group">
-    <div class="ui-group-title">Stock</div>
+    <div class="ui-group-title">{{ settings.job === 'arching' ? 'Blank' : 'Stock' }}</div>
+    @if (settings.job === 'arching') {
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="At the seam" [step]="0.1" [min]="0" [value]="a.stock.thickness"
+            (valueChange)="a.stock.thickness = $event; edited()"></app-mm-inch>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="At the edges" [step]="0.1" [min]="0" [value]="a.stock.edge"
+            (valueChange)="a.stock.edge = $event; edited()"></app-mm-inch>
+    </div>
+    } @else {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Thickness" [step]="0.1" [min]="0" [value]="g.stock.thickness"
             (valueChange)="g.stock.thickness = $event; edited()"></app-mm-inch>
     </div>
+    }
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Width" [step]="1" [min]="0" [value]="g.stock.width"
             (valueChange)="g.stock.width = $event; edited()"></app-mm-inch>
@@ -39,6 +68,26 @@
 
 <section class="ui-group">
     <div class="ui-group-title">Bit</div>
+    @if (settings.job === 'arching') {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">{{ a.stage === 'rough' ? 'Flat' : 'Ball' }}</span>
+            @if (a.stage === 'rough') {
+            <select [(ngModel)]="a.roughTool" (change)="edited()">
+                @for (t of toolsFor('flat'); track t.number) {
+                <option [ngValue]="t.number">#{{ t.number }} {{ t.name }}{{ t.feeds[g.wood] ? '' : ' (no feeds yet)' }}</option>
+                }
+            </select>
+            } @else {
+            <select [(ngModel)]="a.finishTool" (change)="edited()">
+                @for (t of toolsFor('ball'); track t.number) {
+                <option [ngValue]="t.number">#{{ t.number }} {{ t.name }}{{ t.feeds[g.wood] ? '' : ' (no feeds yet)' }}</option>
+                }
+            </select>
+            }
+        </label>
+    </div>
+    } @else {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Diameter" [step]="0.05" [min]="0" [value]="bitDiameter"
             (valueChange)="setBit($event)"></app-mm-inch>
@@ -48,8 +97,9 @@
     } @else {
     <p class="hint">
         No feeds for this bit. Use one of:
-        @for (t of tools; track t.number) { #{{ t.number }} ({{ t.diameter }} mm){{ $last ? '.' : ',' }} }
+        @for (t of toolsFor('flat'); track t.number) { #{{ t.number }} ({{ t.diameter }} mm){{ $last ? '.' : ',' }} }
     </p>
+    }
     }
 </section>
 
@@ -96,6 +146,20 @@
     <p class="hint">
         Windows first, then the outline. {{ mouldTabs.outline }} tabs on the outline and {{ mouldTabs.window }} per window,
         {{ machine.tabHeight }} mm high. Safe Z {{ machine.safeZ }} mm above the stock. {{ machine.overcut }} mm into the spoilboard.
+    </p>
+    } @else if (!toolpaths) {
+    <p class="hint">The {{ a.plate }} plate's arching has to solve first.</p>
+    } @else if (toolpaths.raster; as raster) {
+    <p class="hint">
+        {{ raster.xs.length }} lines along the length, {{ (raster.xs[1] - raster.xs[0]).toFixed(2) }} mm apart,
+        {{ surface.skirt }} mm past the outline.
+        @if (a.stage === 'rough') {
+        {{ raster.levels.length }} terraces, leaving {{ surface.leave }} mm.
+        } @else {
+        One pass, a {{ surface.scallop }} mm scallop.
+        }
+        About {{ raster.metres.toFixed(0) }} m of cutting@if (minutes !== null) {, {{ minutes }} min at the cut feed}.
+        Z0 is the bed under the blank's joint face. The floor is the plate's edge thickness.
     </p>
     }
     @for (problem of toolpaths?.failures ?? []; track problem) {

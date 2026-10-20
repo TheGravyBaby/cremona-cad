@@ -3,7 +3,7 @@
 // which is what a tooltip shows; the whole body is what the booth renders. `[[slug]]` in the body
 // links another article by id, wherever in the booth it shows.
 
-export const ARTICLE_KINDS = ['concept', 'field', 'panel', 'tool', 'condition', 'howto', 'meta', 'booth', 'release'] as const;
+export const ARTICLE_KINDS = ['concept', 'field', 'panel', 'tool', 'condition', 'howto', 'meta', 'booth', 'release', 'overview'] as const;
 export type ArticleKind = typeof ARTICLE_KINDS[number];
 
 export function inWiki(a: { kind: ArticleKind }): boolean {

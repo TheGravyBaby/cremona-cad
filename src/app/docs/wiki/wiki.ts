@@ -34,6 +34,7 @@ export class WikiComponent {
   readonly measurements = computed(() => this.registry.measurements());
 
   private readonly contents: IndexGroup[] = [
+    { label: 'CremonaCad', entries: this.registry.byKind('overview') },
     { label: 'Panels', entries: this.panelsInOrder() },
     { label: 'Concepts', entries: this.registry.byKind('concept') },
     { label: 'Tools', entries: this.registry.byKind('tool') },
