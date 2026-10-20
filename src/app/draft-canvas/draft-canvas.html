@@ -81,17 +81,17 @@
 
       @if (viewOpen) {
       <div class="view-popup">
-        <label class="view-row" docTip="view.centerX">
+        <label class="view-row">
           <span>Centre X</span>
           <input #viewX type="number" step="1" [value]="viewField('x')" (change)="setViewField('x', viewX)" />
           <span class="view-unit">mm</span>
         </label>
-        <label class="view-row" docTip="view.centerY">
+        <label class="view-row">
           <span>Centre Y</span>
           <input #viewY type="number" step="1" [value]="viewField('y')" (change)="setViewField('y', viewY)" />
           <span class="view-unit">mm</span>
         </label>
-        <label class="view-row" docTip="view.scale">
+        <label class="view-row">
           <span>Zoom</span>
           <input #viewZoom type="number" step="0.1" min="0.05" [value]="viewField('zoom')"
             (change)="setViewField('zoom', viewZoom)" />
