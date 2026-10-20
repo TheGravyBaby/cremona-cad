@@ -2,9 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { VIOLIN_FAMILY_PANEL_IDS } from '../../recipes/violin-family/violin-family-types';
 import { firstParagraph, inWiki, parseArticle } from './article';
-import { BOOTH_TABS, PAGE_SOURCES } from '../pages';
+import { BOOTH_TABS, PAGE_SOURCES, WIKI } from '../pages';
 import { componentProblems, markdownToText, renderMarkdown, renderPage } from './markdown';
-import { DocsRegistry } from './registry';
+import { DocsRegistry, idOfPath } from './registry';
 
 const sample = (extra = '', body = 'The first paragraph.\n\nMore, with a [[other]] link.') =>
   `---\nid: thing\ntitle: Thing\nkind: concept\n${extra}---\n${body}\n`;
@@ -149,6 +149,13 @@ describe('the pages', () => {
 
   it('keep the summary short enough for a tooltip', () => {
     for (const a of articles.filter(inWiki)) expect(a.summary.length, a.id).toBeLessThanOrEqual(240);
+  });
+
+  it('file every wiki page, and only wiki pages, under a wiki category', () => {
+    const filed = WIKI.flatMap(c => [...(c.overview ? [c.overview] : []), ...c.pages]).map(f => idOfPath(f.path));
+    expect(filed.map(id => registry.get(id)).filter(a => !a || !inWiki(a))).toEqual([]);
+    expect(articles.filter(inWiki).map(a => a.id).filter(id => !filed.includes(id))).toEqual([]);
+    expect(WIKI[0].overview, 'the wiki opens on the first category\'s overview').toBeTruthy();
   });
 
   it('give every booth tab but the wiki and the history a booth page', () => {
