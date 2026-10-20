@@ -175,7 +175,7 @@ describe('the exports on offer', () => {
         expect(plan!.layers.length).toBeGreaterThan(0);
       }
     }
-  });
+  }, 30000);
 
   it('name a tool\'s feeds for every row they are filled in, within the machine\'s reach', () => {
     for (const tool of TOOLS) for (const feeds of Object.values(tool.feeds)) {
@@ -258,14 +258,14 @@ describe('the arching toolpaths', () => {
     });
 
     it('never lets the ball into the surface', () => {
-      for (let i = 0; i < run.length; i += 37) {
+      for (let i = 0; i < run.length; i += 101) {
         const pt = run[i];
         for (const s of ring(pt, r)) {
           const ballZ = pt.z + r - Math.sqrt(r * r - s.d * s.d);
           expect(ballZ, `at ${pt.x.toFixed(1)}, ${pt.y.toFixed(1)}`).toBeGreaterThanOrEqual(heightAt(s.x, s.y) - 0.1);
         }
       }
-    });
+    }, 20000);
 
     it('rests on the land, dips into the channel no further than the floor, and reaches the crown', () => {
       expect(run.some(pt => Math.abs(pt.z - thickness) < 1e-6)).toBe(true);

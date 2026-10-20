@@ -8,7 +8,7 @@ export const FIELD_HELP = {
   inset: {
     title: "Mould Inset",
     text:
-      "The mould sits inset from the outer edge of the instrument by rib thickness + overhang:\n\n" +
+      "When drawing your initial path, you are determining the 'inner' contour of the instrument. In real making, the ribs are bent around a mould, and and the top and bottom plates sit over the rib line." + 
       "Final outer edge = mould edge + rib thickness + overhang.\n\n" +
       "Standard rib thicknesses:\n" +
       "- Violin: 1.0 mm\n" +
@@ -16,45 +16,33 @@ export const FIELD_HELP = {
       "- Cello: 1.3–1.6 mm\n" +
       "- Bass: 2.5–3.0 mm\n\n" +
       "Overhang is typically 2–5 mm.\n\n" +
-      "Tracing from a reference image: the purfling's inner edge is a reliable guide for the mould outline — " +
-      "it commonly aligns with the ribs' inner edge.",
+      "If you are tracing from a reference image,  the purfling's inner edge can sometimes be a guide for the mould outline as some makers align it with the ribs.",
   },
   dimension: {
     title: "Body Dimensions",
     text:
-      "The outer dimensions of the finished instrument body — height (overall length) and lower bout width.\n\n" +
-      "For historical instruments these are usually documented online. Many Cremonese instruments relate height and width as simple whole-number ratios.",
+      "The 'outer' dimensions of the finished instrument — height (overall length) and lower bout width.\n\n" +
+      "For historical instruments these are usually documented online.",
   },
   boutWidth: {
     title: "Bout Width",
     text:
-      "These are outer measurements — they include rib thickness and overhang. The arc radii below instead define the inner mould outline.\n\n" +
-      "If the instrument appears too tall relative to your reference image, adjust the height in the previous panel or rescale the image.",
+      "These are outer measurements — they include rib thickness and overhang. Outer measurements are used to conform with most published values. The arc values are used to draw the inner edge of the instrument.",
   },
   violNeck: {
     title: "Viol Neck",
     text:
-      "Replaces the standard upper block geometry with a rounded neck profile common on double basses and gambas.\n\n" +
-      "Still in development — expect rough edges.",
+      "Replaces the standard upper block geometry with a rounded neck profile common on viols, gambas, and double basses.",
   },
   violNeckJoin: {
     title: "Neck Join Radius",
     text:
-      "The join radius applies a rounding between the viol neck and the flat top of the instrument.\n\n" +
-      "Zero leaves it sharp at the rib line. A small radius (1–2 mm) is typical for a bass or gamba.",
+      "Historical instruments have various degrees of rounding at their necks. These controls alter the degree of rounding.",
   },
   violCorner: {
     title: "Viol Corner",
     text:
-      "The gamba (bass) corner draws a single continuous arc from the bout to the corner tip, replacing the two-arc Cremonese corner. Common on viols and double basses.",
-  },
-  button: {
-    title: "Button",
-    text:
-      "The button is the small semicircular tab at the top of the upper bout on the back plate. It reinforces the neck joint, and the heel is finished flush to it.\n\n" +
-      "Width is the cap's diameter. Height is how far the tip stands beyond the plate's end on the centerline — the same number the neck panel shows as the heel foot's reach. " +
-      "A height under half the width has no straight walls: the cap alone breaks the edge, as a segment.\n\n" +
-      "Violin: 20–22 wide, 13–14 high. It appears only on the back — not on the top plate.",
+      "The viol corner draws a single continuous arc from the bout to the corner tip, replacing the two-arc Cremonese corner. Common on viols and double basses.",
   },
   centerBoutWidth: {
     title: "Center Bout Width",
@@ -64,8 +52,8 @@ export const FIELD_HELP = {
   fitC0: {
     title: "Fit C0",
     text:
-      "The center-bout arc (C0) can be constrained to cleanly intersect both the upper and lower bout arcs — a layout derived from Kevin Kelly's four-circles violin theory.\n\n" +
-      "Not all instruments follow this geometry. When disabled, C0's X and Y position can be set freely.",
+      "The center-bout arc (C0) can be constrained to cleanly intersect both the upper and lower bout arcs — a method drawn from Kevin Kelly's four-circles violin theory.\n\n" +
+      "Not all instruments follow this geometry. By default, C0's X and Y position can be set freely.",
   },
   cornerPosition: {
     title: "Corner Position",
@@ -73,23 +61,29 @@ export const FIELD_HELP = {
       "The XY coordinates for the corner tips. The corner arcs are drawn to meet at this point.\n\n" +
       "The default position is a good starting point, or helpful to reset if your values get out of bounds.",
   },
+  compoundArc: {
+    title: "Compound Arc",
+    text:
+      "A compound arc splits a single arc into two. This allows more pronounced corner than a single arc permits.\n\n" +
+      "The secondary arc is typically smaller than the primary. The sweep is how far the second arc turns, in degrees.\n\n" +
+      "Some Cremonese instruments feature a flat section as the bout approaches the arc, this can be approximated by using a compound arc with a very large primary arc radius.",
+  },
+  cornerCutoff: {
+    title: "Corner Cutoff",
+    text:
+      "Controls where the corner arc is trimmed, setting the final shape of the corner.",
+  },
+  button: {
+    title: "Button",
+    text:
+      "The button is the small semicircular tab at the top of the upper bout on the back plate. It reinforces the neck joint, and the heel of the neck is finished flush to it.\n\n" +
+      "Violin: 20–22mm wide, 10–14mm high. It appears only on the back — not on the top plate.",
+  },
   bitDiameter: {
     title: "Bit Diameter",
     text:
       "The diameter of the CNC router bit used to cut the mould. Strict 90° interior corners aren't achievable on a CNC; this value adds relief so corner blocks can seat properly.\n\n" +
       "Set to 0 if cutting by hand.",
-  },
-  compoundArc: {
-    title: "Compound Arc",
-    text:
-      "A compound arc splits one corner arc into two, joined end-to-end. This allows more pronounced corner than a single arc permits.\n\n" +
-      "Radius 2 is the secondary arc, typically smaller than the primary. The sweep is how far the second arc turns, in degrees, from where it takes over to the corner.",
-  },
-  purfling: {
-    title: "Purfling",
-    text:
-      "Offset: distance from the outer plate edge to the near wall of the channel.\n\n" +
-      "Width: The width of the channel — the span between the two purfling lines.",
   },
   archContours: {
     title: "Arch Contours",
@@ -149,12 +143,6 @@ export const FIELD_HELP = {
       "measured in mm from the bottom of the instrument.\n\n" +
       "This is a view control only — it is not saved with the recipe.\n\n" +
       "Note there can be some clipping around the corners, as some corners will intersect our cross section line at two points. This has no effect on the exported templates.",
-  },
-  cornerCutoff: {
-    title: "Corner Cutoff",
-    text:
-      "Controls where the corner arc is trimmed, setting the final length of the corner tip. Shorter values produce blunter corners; longer values produce more pronounced points.\n\n" +
-      "When in doubt, leave the corner a little long — the tip gets slightly rounded during final fitting.",
   },
   gougeSection: {
     title: "Channel Section",
