@@ -1,7 +1,7 @@
 ---
 id: viol-neck
 title: Viol neck
-kind: field
+kind: concept
 panel: mainBouts
 aliases: [gamba neck]
 status: unreviewed

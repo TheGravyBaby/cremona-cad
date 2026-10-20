@@ -17,10 +17,12 @@ import historyV0834 from './history/v0.8.3.4.md';
 import historyV083 from './history/v0.8.3.md';
 import historyV0880 from './history/v0.8.8.0.md';
 import historyV090 from './history/v0.9.0.md';
-import wikiOutlineBouts from './wiki/outline/bouts.md';
-import wikiOutlineVesica from './wiki/outline/vesica.md';
-import wikiOutlineViolNeck from './wiki/outline/viol-neck.md';
-import wikiStyle from './wiki/style.md';
+import wikiCanvasControls from './wiki/canvas/controls.md';
+import wikiCanvasTools from './wiki/canvas/tools.md';
+import wikiOutlineBouts from './wiki/panels/bouts.md';
+import wikiOutlineVesica from './wiki/concepts/vesica.md';
+import wikiOutlineViolNeck from './wiki/concepts/viol-neck.md';
+import wikiOverview from './wiki/overview.md'
 
 export const PAGE_SOURCES: Record<string, string> = {
   'booth/about-me.md': boothAboutMe,
@@ -40,10 +42,12 @@ export const PAGE_SOURCES: Record<string, string> = {
   'history/v0.8.3.md': historyV083,
   'history/v0.8.8.0.md': historyV0880,
   'history/v0.9.0.md': historyV090,
-  'wiki/outline/bouts.md': wikiOutlineBouts,
-  'wiki/outline/vesica.md': wikiOutlineVesica,
-  'wiki/outline/viol-neck.md': wikiOutlineViolNeck,
-  'wiki/style.md': wikiStyle,
+  'wiki/canvas/controls.md': wikiCanvasControls,
+  'wiki/canvas/tools.md': wikiCanvasTools,
+  'wiki/panels/bouts.md': wikiOutlineBouts,
+  'wiki/concepts/vesica.md': wikiOutlineVesica,
+  'wiki/concepts/viol-neck.md': wikiOutlineViolNeck,
+  'wiki/overview.md': wikiOverview
 };
 
 // the booth's tabs in order: a booth page by id, or the wiki or the history
