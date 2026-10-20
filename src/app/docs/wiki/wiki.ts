@@ -4,11 +4,12 @@ import { Article, ArticleKind, inWiki } from '../reader/article';
 import { DocPageComponent } from '../reader/doc-page';
 import { DocsService } from '../reader/docs.service';
 import { IndexGroup, IndexedPagesComponent } from '../reader/indexed-pages';
-import { VIOLIN_FAMILY_PANEL_IDS } from '../../recipes/violin-family/violin-family-types';
+import { idOfPath } from '../reader/registry';
+import { WIKI } from '../pages';
 
-// The wiki: a contents list down the side, one article at a time beside it. Fields aren't in
-// the contents, which would run to a hundred lines; each panel's page lists its own, and search
-// finds the rest.
+// The wiki: a contents list down the side, one article at a time beside it, in the order
+// pages/index.ts lists them. Fields aren't in the contents, which would run to a hundred lines;
+// each panel's page lists its own, and search finds the rest.
 @Component({
   selector: 'app-wiki',
   standalone: true,
@@ -33,14 +34,13 @@ export class WikiComponent {
   readonly results = computed(() => this.registry.search(this.query()).filter(inWiki));
   readonly measurements = computed(() => this.registry.measurements());
 
-  private readonly contents: IndexGroup[] = [
-    { label: 'CremonaCad', entries: this.registry.byKind('overview') },
-    { label: 'Panels', entries: this.panelsInOrder() },
-    { label: 'Concepts', entries: this.registry.byKind('concept') },
-    { label: 'Tools', entries: this.registry.byKind('tool') },
-    { label: 'Conditions', entries: this.registry.byKind('condition') },
-    { label: 'About these docs', entries: this.registry.byKind('meta') },
-  ].filter(g => g.entries.length);
+  private readonly contents: IndexGroup[] = WIKI.map(c => ({
+    label: c.label,
+    id: c.overview && idOfPath(c.overview.path),
+    entries: c.pages
+      .map(f => this.registry.get(idOfPath(f.path)))
+      .filter((a): a is Article => !!a && a.kind !== 'field'),
+  }));
 
   readonly nav = computed<IndexGroup[]>(() => {
     if (!this.query()) return this.contents;
@@ -55,13 +55,7 @@ export class WikiComponent {
 
   private startAt(): string {
     const asked = this.registry.get(this.docs.requested() ?? '');
-    return asked && inWiki(asked) ? asked.id : 'style';
-  }
-
-  private panelsInOrder(): Article[] {
-    return VIOLIN_FAMILY_PANEL_IDS
-      .map(id => this.registry.panelArticle(id))
-      .filter((a): a is Article => !!a);
+    return asked && inWiki(asked) ? asked.id : idOfPath(WIKI[0].overview?.path ?? '');
   }
 
   show(id: string): void {
@@ -80,7 +74,7 @@ export class WikiComponent {
   }
 
   kindLabel(kind: ArticleKind): string {
-    return { concept: 'Concept', field: 'Field', panel: 'Panel', tool: 'Tool', condition: 'Condition', howto: 'How to', meta: '', booth: '', release: 'Release' }[kind];
+    return { concept: 'Concept', field: 'Field', panel: 'Panel', tool: 'Tool', condition: 'Condition', howto: 'How to', meta: '', booth: '', release: 'Release', overview: '' }[kind];
   }
 
   standardRows(a: { standard?: Record<string, string> }): { key: string; value: string }[] {

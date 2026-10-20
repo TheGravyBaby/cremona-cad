@@ -27,6 +27,20 @@
   margin: 12px 0 3px 6px;
 }
 
+.nav-group-link {
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+
+.nav-group-link:hover,
+.nav-group-link.active {
+  opacity: 0.9;
+}
+
 .nav-topic {
   background: none;
   border: none;

@@ -8,6 +8,11 @@ export interface Measurement {
   standard: Record<string, string>;
 }
 
+// folders under pages/ are for the author's filing; ids stay global so links never carry a path
+export function idOfPath(file: string): string {
+  return file.replace(/^.*\//, '').replace(/\.md$/, '');
+}
+
 // Every article, parsed once from its source. `problems` collects what a human has to fix —
 // parse failures, duplicate ids, links to nothing — rather than throwing, so one bad file
 // doesn't take the rest of the booth down with it; docs.spec.ts asserts it is empty.
@@ -25,8 +30,7 @@ export class DocsRegistry {
         this.problems.push(e instanceof ArticleParseError ? e.message : `${file}: ${String(e)}`);
         continue;
       }
-      // folders under pages/ are for the author's filing; ids stay global so links never carry a path
-      const expected = file.replace(/^.*\//, '').replace(/\.md$/, '');
+      const expected = idOfPath(file);
       if (article.id !== expected) this.problems.push(`${file}: id "${article.id}" does not match the file name`);
       if (this.articles.has(article.id)) this.problems.push(`${file}: duplicate id "${article.id}"`);
       for (const p of componentProblems(article.body)) this.problems.push(`${file}: ${p}`);

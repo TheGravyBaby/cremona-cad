@@ -36,7 +36,7 @@ excluded in `angular.json`; only `test:stress` runs it.
 | `src/app/models/types.ts` | `Pt`/`Circle`/`Arc`/`Rectangle`. Read its header. |
 | `src/app/recipe-base/` | Panel flow, undo/redo, file load/save, toolbox sync. |
 | `src/app/theme/` | All colour and stroke. `palettes.ts` holds every constant; `theme.service.ts` the code. No file outside this folder holds a hex. |
-| `src/app/docs/` | Every word the app says to the user: `field-help.ts` (ⓘ), `tooltips.ts` (`docTip="id"`), `conditions.ts`, and the info booth (`info-booth/`). Every booth page, release notes included, is one Markdown file in `pages/` (listed in `pages/index.ts`, written to `pages/wiki/style.md`), rendered by `reader/`. There is no `CHANGELOG.md`; a release is `pages/history/vX.md`. |
+| `src/app/docs/` | Every word the app says to the user: `field-help.ts` (ⓘ), `tooltips.ts` (`docTip="id"`), `conditions.ts`, and the info booth (`info-booth/`). Every booth page, release notes included, is one Markdown file in `pages/` (listed in `pages/index.ts`, where the wiki's categories and their order live), rendered by `reader/`. There is no `CHANGELOG.md`; a release is `pages/history/vX.md`. |
 | `src/app/settings/` | The user's preferences: `SettingsService` (one typed object, signals, `localStorage`) and the top bar's settings menu. A new setting is a key on `AppSettings`, a line in `readSettings`, a row in the menu. |
 
 ## Where logic belongs
