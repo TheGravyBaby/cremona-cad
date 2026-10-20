@@ -3,8 +3,6 @@
 <section class="ui-group">
     <div class="ui-group-title">
         Ribs
-        <button type="button" class="info-icon" (click)="help('ribHeight')" title="More information"
-            aria-label="Information">ⓘ</button>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -15,6 +13,8 @@
             <span class="field-title">Upper Rib <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="arching.ribHeightUpper" (input)="edited()" />
         </label>
+         <button type="button" class="info-icon" (click)="help('ribHeight')" title="More information"
+            aria-label="Information">ⓘ</button>
     </div>
 </section>
 
@@ -26,8 +26,12 @@
 <section class="ui-group">
     <div class="ui-group-title">
         {{ plate === 'top' ? 'Top Plate' : 'Back Plate' }}
-        <button type="button" class="info-icon" (click)="help('curveType')" title="More information"
-            aria-label="Information">ⓘ</button>
+    </div>
+     <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Thickness <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [(ngModel)]="pa.thickness" (input)="edited()" />
+        </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
@@ -38,8 +42,9 @@
             <input type="radio" [name]="plate + '-arch-type'" value="spline" [(ngModel)]="arch.type" (change)="edited()" />
             <span>Spline</span>
         </div>
+            <button type="button" class="info-icon" (click)="help('curveType')" title="More information"
+                aria-label="Information">ⓘ</button>
     </div>
-
     @if (arch.type === 'catenary') {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -92,17 +97,5 @@
         <button type="button" class="panel-nav-btn" (click)="sortPoints(plate)">Sort by Position</button>
     </div>
     }
-
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Thickness <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.5" min="0" [(ngModel)]="pa.thickness" (input)="edited()" />
-        </label>
-    </div>
-    <div class="input-group basic-row field-row" role="group">
-        <span class="station-note" aria-label="Where the arch meets the channel">
-            @if (solved) { Lands on the channel at {{ solved.yStart.toFixed(1) }} and {{ solved.yEnd.toFixed(1) }} mm } @else { No arch drawn }
-        </span>
-    </div>
 </section>
 }

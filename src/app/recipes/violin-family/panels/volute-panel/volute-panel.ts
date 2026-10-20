@@ -18,6 +18,7 @@ import {
 import { defineSideScrollPath, solveScroll } from '../scroll-panel/scroll-panel';
 import { duckTailRoundTop } from '../scroll-widths-panel/scroll-widths-panel';
 import { neckTaper } from '../neck-panel/neck-panel';
+import { showFieldHelp } from '../../../../docs/field-help';
 
 // The volute: a style's spiral about the eye, two turns out to its front, and the crown (S0, S1)
 // running on from it. The scroll is drawn in its own side view, the nut at the origin on the neck's
@@ -38,7 +39,8 @@ export class VolutePanel implements ViolinFamilyPanel, OnInit {
   protected readonly pal = ThemeService.getPalette('stones');
   protected readonly styles = Object.entries(VOLUTE_STYLE_LABELS).map(([id, label]) => ({ id, label }));
   protected readonly arcEnd = (i: number) => turnsLabel((i + 1) / 4);
-
+  protected readonly help = showFieldHelp;
+  
   // after Stradivari's Betts on a 350 mm body, scaled by body length. The whole scroll is seeded
   // here, its widths too, so the later scroll panels only reveal. F0 shares S3's centre, as on the
   // Betts, so its radius and the flat are read off the solved back; the eye is placed flush with
