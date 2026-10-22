@@ -12,6 +12,15 @@ TODO: write this article.
 
 ## Fields
 
+| Field | Description |
+|---|---|
+| Name | TODO |
+| Description | TODO |
+| Source | TODO |
+| Height | TODO |
+| Width | TODO |
+| Overhang | TODO |
+| Ribs | TODO |
 
 ## What it feeds
 
