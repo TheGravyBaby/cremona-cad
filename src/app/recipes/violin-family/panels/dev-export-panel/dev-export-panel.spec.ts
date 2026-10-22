@@ -10,12 +10,14 @@ import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
+import { FHolePlacementPanel } from '../fhole-placement-panel/fhole-placement-panel';
+import { FHoleContoursPanel, fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
 import { MOULD_EXPORT_STEP, MouldPanel, solveMould } from '../mould-panel/mould-panel';
-import { archingToolpaths, Bit, contourToolpaths, CRADLE, CradleSettings, cradleToolpaths, DEFAULT_SETTINGS, EXPORTS, ExportId, gcodeJob, MACHINE, MOULD_TABS, mouldToolpaths, planExport, PLATE_TABS, PlateSettings, purflingToolpaths, STOCK_OF, SURFACE, Tab, TOOLS } from './dev-export-panel';
+import { archingToolpaths, Bit, contourToolpaths, CRADLE, CradleSettings, cradleToolpaths, cutPlan, DEFAULT_SETTINGS, EXPORTS, ExportId, FHOLE, FholeSettings, fholeToolpaths, gcodeJob, jobNotes, MACHINE, MOULD_TABS, mouldToolpaths, planExport, PLATE_TABS, PlateSettings, purflingToolpaths, SURFACE, Tab, TOOLS } from './dev-export-panel';
 import { ThemeService } from '../../../../theme/theme.service';
 
 // what a maker would check before cutting: the bit's centre runs a bit's radius off the cut line,
@@ -30,6 +32,8 @@ const seeded = (): ViolinFamilyParams => {
   MainBoutsPanel.seed(p);
   CornersPanel.seed(p);
   OuterContourPanel.seed(p);
+  FHolePlacementPanel.seed(p);
+  FHoleContoursPanel.seed(p);
   FlutingPanel.seed(p);
   LongArchingPanel.seed(p);
   MouldPanel.seed(p);
@@ -41,7 +45,10 @@ const purflingBit = (): Bit => {
   const t = TOOLS.find(t => t.diameter === 1.2)!;
   return { diameter: t.diameter, shape: t.shape, feeds: t.feeds.soft };
 };
-const bitFor = (id: ExportId, p: ViolinFamilyParams): Bit => id === 'mould' ? { diameter: p.mould!.bitDiameter, shape: 'flat', feeds: null } : id === 'purfling' ? purflingBit() : flat;
+const asBit = (t: { diameter: number; shape: Bit['shape']; angle?: number; feeds: { soft: Bit['feeds'] } }): Bit => ({ diameter: t.diameter, shape: t.shape, angle: t.angle, feeds: t.feeds.soft });
+const eyeBit = (): Bit => asBit(TOOLS.find(t => t.number === DEFAULT_SETTINGS.tools.eyes)!);
+const vBit = (): Bit => asBit(TOOLS.find(t => t.shape === 'v')!);
+const bitFor = (id: ExportId, p: ViolinFamilyParams): Bit => id === 'mould' ? { diameter: p.mould!.bitDiameter, shape: 'flat', feeds: null } : id === 'purfling' ? purflingBit() : id === 'fholes' ? eyeBit() : flat;
 const ball: Bit = { diameter: 6.35, shape: 'ball', feeds: null };
 
 const runLength = (tab: Tab): number => {
@@ -168,16 +175,18 @@ describe('the exports on offer', () => {
   const pal = ThemeService.getPalette('classicCremona');
   const flags = {} as any;
 
-  // a row in the dropdown with no planner behind it would offer a download that never comes
-  it('plan every export the dropdown lists, finely for the file as well', () => {
+  // a row in the dropdown with no planner behind it would offer a download that never comes; and
+  // the plan the panel shows is the file's header, which has to know the cut's length either way
+  it('plan every export the dropdown lists, finely for the file as well, and say how long the cut is', () => {
     for (const { id } of EXPORTS) {
-      const g = JSON.parse(JSON.stringify(DEFAULT_SETTINGS[STOCK_OF[id]]));
       for (const fine of [false, true]) {
-        const plan = planExport(id, p, bitFor(id, p), g, pal, flags, fine);
+        const plan = planExport(p, { ...DEFAULT_SETTINGS, job: id }, bitFor(id, p), pal, flags, fine);
         expect(plan, `${id} fine=${fine}`).not.toBeNull();
         expect(plan!.toolpaths.failures, `${id} fine=${fine}`).toEqual([]);
         expect(plan!.toolpaths.paths.length + (fine ? plan!.toolpaths.surfaces.length : 1)).toBeGreaterThan(0);
         expect(plan!.layers.length).toBeGreaterThan(0);
+        expect(cutPlan(plan!.toolpaths, feeds).metres, `${id} fine=${fine}`).toBeGreaterThan(0);
+        expect(jobNotes(plan!.toolpaths, feeds).join('\n'), `${id} fine=${fine}`).toMatch(/^Z-?[\d.]+ to Z-?[\d.]+ in \d+ pass/m);
       }
     }
   }, 30000);
@@ -316,7 +325,7 @@ describe('the arching toolpaths', () => {
     }, 20000);
 
     it('skips the lines the blank\'s roof never reaches on the top terrace', () => {
-      const seamX = g.stock.width / 2 - tp.sheetOffset.x;
+      const seamX = tp.stockOrigin.x + g.seam - tp.sheetOffset.x;
       const reach = (pts: { x: number }[]) => Math.max(...pts.map(pt => Math.abs(pt.x - seamX)));
       expect(reach(tp.surfaces[0].pts)).toBeLessThan(reach(tp.surfaces.at(-1)!.pts) / 2);
     });
@@ -344,8 +353,8 @@ describe('the arching toolpaths', () => {
     expect(tp.raster!.xs.at(-1)).toBeCloseTo(Math.max(...xs) + SURFACE.skirt, 6);
     expect(tp.raster!.yMin).toBeLessThanOrEqual(Math.min(...ys) - SURFACE.skirt);
     expect(tp.raster!.yMax).toBeGreaterThanOrEqual(Math.max(...ys) + SURFACE.skirt);
-    expect(tp.sheetOffset.x).toBeCloseTo(g.seam, 6);
-    expect((Math.min(...ys) + Math.max(...ys)) / 2 + tp.sheetOffset.y).toBeCloseTo(g.stock.length / 2, 6);
+    expect(tp.sheetOffset.x).toBeCloseTo(g.fence.x + g.seam, 6);
+    expect((Math.min(...ys) + Math.max(...ys)) / 2 + tp.sheetOffset.y).toBeCloseTo(g.fence.y + g.stock.length / 2, 6);
     // a wider blank with the seam off its middle: the plate follows the seam
     const wide = { thickness: 22, edge: 10, width: 260, length: 420 };
     const moved = archingToolpaths(p, surface, flat, arch({ stock: wide, seam: g.seam + 7 }), false);
@@ -355,10 +364,10 @@ describe('the arching toolpaths', () => {
     expect(archingToolpaths(p, surface, flat, arch({ seam: 60 }), false).failures.join(' ')).toMatch(/runs off the blank.*left/);
     expect(archingToolpaths(p, surface, flat, arch({ stock: { ...wide, length: 360 } }), false).failures.join(' ')).toMatch(/runs off the blank.*bottom.*top/);
     // the blank in the harness: the file shifts to the fences' corner, the fit does not change
-    const held = archingToolpaths(p, surface, flat, g, false, undefined, { x: 30, y: 12 });
+    const held = archingToolpaths(p, surface, flat, arch({ fence: { x: 30, y: 12 } }), false);
     expect(held.failures).toEqual([]);
-    expect(held.sheetOffset.x - tp.sheetOffset.x).toBeCloseTo(30, 6);
-    expect(held.sheetOffset.y - tp.sheetOffset.y).toBeCloseTo(12, 6);
+    expect(held.sheetOffset.x - tp.sheetOffset.x).toBeCloseTo(30 - g.fence.x, 6);
+    expect(held.sheetOffset.y - tp.sheetOffset.y).toBeCloseTo(12 - g.fence.y, 6);
     expect(held.stockOrigin).toEqual({ x: 30, y: 12 });
     expect(held.notes.join(' ')).toMatch(/HARNESS ZERO, fences at X30 Y12/);
   });
@@ -376,10 +385,10 @@ describe('the arching toolpaths', () => {
       for (const cut of job.cuts) {
         expect('pts' in cut).toBe(true);
         for (const pt of 'pts' in cut ? cut.pts : []) {
-          expect(pt.x).toBeGreaterThan(0);
-          expect(pt.x).toBeLessThan(g.stock.width);
-          expect(pt.y).toBeGreaterThan(0);
-          expect(pt.y).toBeLessThan(g.stock.length);
+          expect(pt.x).toBeGreaterThan(tp.stockOrigin.x);
+          expect(pt.x).toBeLessThan(tp.stockOrigin.x + g.stock.width);
+          expect(pt.y).toBeGreaterThan(tp.stockOrigin.y);
+          expect(pt.y).toBeLessThan(tp.stockOrigin.y + g.stock.length);
           expect(pt.z).toBeGreaterThanOrEqual(tp.floorZ);
           expect(pt.z).toBeLessThan(g.stock.thickness);
         }
@@ -469,10 +478,10 @@ describe('the purfling channel toolpaths', () => {
     const job = gcodeJob(tp, tool, tool.feeds.soft!);
     expect(job.passes).toEqual([]);
     for (const cut of job.cuts) for (const pt of 'pts' in cut ? cut.pts : []) {
-      expect(pt.x).toBeGreaterThan(0);
-      expect(pt.x).toBeLessThan(g.stock.width);
-      expect(pt.y).toBeGreaterThan(0);
-      expect(pt.y).toBeLessThan(g.stock.length);
+      expect(pt.x).toBeGreaterThan(tp.stockOrigin.x);
+      expect(pt.x).toBeLessThan(tp.stockOrigin.x + g.stock.width);
+      expect(pt.y).toBeGreaterThan(tp.stockOrigin.y);
+      expect(pt.y).toBeLessThan(tp.stockOrigin.y + g.stock.length);
     }
     const text = buildGcode(job);
     expect(text.split('\n').filter(l => l.startsWith('(Surface Purfling')).length).toBe(tp.surfaces.length);
@@ -629,4 +638,131 @@ describe('the cradle toolpaths', () => {
     const wide = cradleToolpaths(p, surface, o, flat, cradle(), { ...CRADLE, lip: 14 });
     expect(wide.failures.join(' ')).toMatch(/lip (reaches under the arch|is too wide)/);
   });
+});
+
+describe('the f-hole toolpaths', () => {
+  const p = seeded();
+  const o = solveOuterContour(p)!;
+  const s = solveFholeContours(p)!;
+  const arching = solveCrossArching(p)!;
+  const surface = arching.top!;
+  const cradle = (over: Partial<CradleSettings> = {}): CradleSettings => ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.cradle)), ...over });
+  const fholes = (over: Partial<FholeSettings> = {}): FholeSettings => ({ ...DEFAULT_SETTINGS.fholes, ...over });
+  const seat = (c: CradleSettings) => arching[c.plate]!;
+  const lipZ = DEFAULT_SETTINGS.cradle.stock.thickness - CRADLE.wall;
+  const edge = p.arching!.top.thickness;
+  // the outside of the plate as it rests face up on the lip
+  const zAt = (pt: Pt) => lipZ + edge + (surfaceZAt(surface, pt.x, pt.y) ?? 0);
+  const eyes = [p.fHoles!.UEye, p.fHoles!.LEye];
+  const mirror = (c: Pt) => ({ x: -c.x, y: c.y });
+
+  it('solves whole, with the f-holes seeded', () => {
+    expect(s.path).toBeTruthy();
+    expect(fholePath(p, s, true)).toBeTruthy();
+  });
+
+  describe('the eyes', () => {
+    const bit = eyeBit();
+    const r = bit.diameter / 2;
+    const tp = fholeToolpaths(p, s, surface, seat(cradle()), o, bit, cradle(), fholes(), true);
+
+    it('clear each eye both sides, inside the knife allowance, clockwise from the centre out', () => {
+      expect(tp.failures).toEqual([]);
+      expect(tp.surfaces.length).toBe(4);
+      for (const run of tp.surfaces) {
+        const centres = [...eyes, ...eyes.map(mirror)];
+        const eye = eyes[centres.findIndex(c => run.pts.every(pt => Math.hypot(pt.x - c.x, pt.y - c.y) <= 9)) % 2];
+        const c = centres.find(c => run.pts.every(pt => Math.hypot(pt.x - c.x, pt.y - c.y) <= 9))!;
+        expect(c, run.name).toBeTruthy();
+        for (const pt of run.pts) expect(Math.hypot(pt.x - c.x, pt.y - c.y), `${run.name}`).toBeLessThanOrEqual(eye.r - FHOLE.allowance - r + 0.01);
+        // the outermost loop reaches the allowance line, a bit radius short
+        expect(Math.max(...run.pts.map(pt => Math.hypot(pt.x - c.x, pt.y - c.y)))).toBeGreaterThan(eye.r - FHOLE.allowance - r - 0.05);
+        // the first loop turns clockwise
+        const first = run.pts.slice(0, 16);
+        expect(signedPolygonArea(first)).toBeLessThan(0);
+      }
+      expect(tp.surfaces.map(run => run.name).sort()).toEqual(['Lower eye, bass', 'Lower eye, treble', 'Upper eye, bass', 'Upper eye, treble']);
+    });
+
+    it('follows the surface down a step at a time, through the typed thickness and its margin', () => {
+      const step = bit.feeds!.stepDown;
+      const through = DEFAULT_SETTINGS.fholes.thickness + FHOLE.exitMargin;
+      for (const run of tp.surfaces) {
+        const under = run.pts.map(pt => zAt(pt) - pt.z);
+        for (const [i, u] of under.entries()) {
+          expect(u, `${run.name} point ${i}`).toBeGreaterThan(step - 1e-6);
+          expect(u, `${run.name} point ${i}`).toBeLessThan(through + 1e-6);
+          if (i) expect(u - under[i - 1], `${run.name} point ${i}`).toBeLessThan(step + 1e-6);
+        }
+        expect(Math.max(...under)).toBeCloseTo(through, 6);
+        expect(Math.min(...run.pts.map(pt => pt.z))).toBeGreaterThanOrEqual(tp.floorZ);
+      }
+      expect(tp.passes).toBe(Math.ceil(through / step));
+    });
+
+    it('refuses a ball, a bit wider than an eye, and an eye over the cradle\'s lip', () => {
+      expect(fholeToolpaths(p, s, surface, seat(cradle()), o, ball, cradle(), fholes(), true).failures.join(' ')).toMatch(/flat/);
+      expect(fholeToolpaths(p, s, surface, seat(cradle()), o, flat, cradle(), fholes(), true).failures.join(' ')).toMatch(/too wide/);
+      const wide = fholeToolpaths(p, s, surface, seat(cradle()), o, bit, cradle(), fholes(), true, { ...CRADLE, lip: 30 });
+      expect(wide.failures.join(' ')).toMatch(/lip/);
+    });
+  });
+
+  describe('the scribe', () => {
+    const bit = vBit();
+    const tp = fholeToolpaths(p, s, surface, seat(cradle()), o, bit, cradle(), fholes({ stage: 'scribe' }), true);
+
+    it('draws both outlines as drawn, one pass a scribe depth under the surface', () => {
+      expect(tp.failures).toEqual([]);
+      expect(tp.surfaces.length).toBe(2);
+      expect(tp.passes).toBe(1);
+      for (const [i, run] of tp.surfaces.entries()) {
+        const drawn = buildPolylineIndex(samplePathToPolyline(fholePath(p, s, i === 1)!, 0.1));
+        expect(run.pts[0]).toEqual(run.pts[run.pts.length - 1]);
+        for (const pt of run.pts) {
+          expect(distPointToPolylineIndexed(pt, drawn), run.name).toBeLessThan(0.05);
+          expect(zAt(pt) - pt.z, run.name).toBeCloseTo(DEFAULT_SETTINGS.fholes.scribeDepth, 6);
+        }
+        // the wing tips are kept, not cut across: the run reaches each tip
+        const tips = [s.UTip!, s.LTip!].map(t => (i === 1 ? mirror(t) : t));
+        for (const tip of tips) expect(Math.min(...run.pts.map(pt => Math.hypot(pt.x - tip.x, pt.y - tip.y)))).toBeLessThan(0.02);
+      }
+    });
+
+    it('wants a V bit', () => {
+      expect(fholeToolpaths(p, s, surface, seat(cradle()), o, eyeBit(), cradle(), fholes({ stage: 'scribe' }), true).failures.join(' ')).toMatch(/V bit/);
+    });
+  });
+
+  it('sits where the cradle put the plate, under a safe height clearing the crown, and says what it expects', () => {
+    for (const plate of ['top', 'back'] as const) {
+      const c = cradle({ plate });
+      const pocket = cradleToolpaths(p, seat(c), o, flat, c);
+      for (const fh of [fholes(), fholes({ stage: 'scribe' })]) {
+        const tp = fholeToolpaths(p, s, surface, seat(c), o, fh.stage === 'eyes' ? eyeBit() : vBit(), c, fh, true);
+        expect(tp.failures).toEqual([]);
+        expect(tp.sheetOffset).toEqual(pocket.sheetOffset);
+        expect(tp.stockOrigin).toEqual({ x: 0, y: 0 });
+        expect(tp.notes.join(' ')).toMatch(/SLAB LOWER LEFT/);
+        expect(tp.caution).toMatch(/GRADUATED/);
+        const crown = lipZ + edge + p.arching!.top.arch.height;
+        expect(tp.stockTopZ).toBeCloseTo(crown, 6);
+        for (const run of tp.surfaces) for (const pt of run.pts) expect(pt.z).toBeLessThan(crown);
+      }
+    }
+  }, 30000);
+
+  it('writes both files as surface runs, the caution at the pause', () => {
+    for (const fh of [fholes(), fholes({ stage: 'scribe' })]) {
+      const bit = fh.stage === 'eyes' ? eyeBit() : vBit();
+      const t = TOOLS.find(t => t.number === DEFAULT_SETTINGS.tools[fh.stage])!;
+      const tp = fholeToolpaths(p, s, surface, seat(cradle()), o, bit, cradle(), fh, true);
+      const job = gcodeJob(tp, t, t.feeds.soft!);
+      expect(job.passes).toEqual([]);
+      expect(job.safeZ).toBeGreaterThan(Math.max(...tp.surfaces.flatMap(run => run.pts.map(pt => pt.z))));
+      const text = buildGcode(job);
+      expect(text).toMatch(/\(Surface /);
+      expect(text).toMatch(/MSG, EXPECTS THE GRADUATED/);
+    }
+  }, 20000);
 });

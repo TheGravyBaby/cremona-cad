@@ -30,6 +30,7 @@ import { MouldPanel } from './panels/mould-panel/mould-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
 import { DevExportPanel } from './panels/dev-export-panel/dev-export-panel';
 import { CORPUS_TEMPLATES, isLocSourced, thumbnailHref } from './templates/corpus';
+import { IconDirective } from '../../icons/icon.directive';
 
 // The Violin Family recipe: the Ceruti model rebuilt on a split between what the user sets
 // (`d.params`, the file) and what each panel's solver derives from it (never written out). The
@@ -41,7 +42,7 @@ import { CORPUS_TEMPLATES, isLocSourced, thumbnailHref } from './templates/corpu
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, ScrollPanel, ScrollWidthsPanel, StringSetupPanel, MouldPanel, ExportPanel, DevExportPanel],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, ScrollPanel, ScrollWidthsPanel, StringSetupPanel, MouldPanel, ExportPanel, DevExportPanel, IconDirective],
   templateUrl: './violin-family.html',
   styleUrls: ['../../sidebar.css', './violin-family.css'],
 })

@@ -1,8 +1,12 @@
 // The subset of Markdown the articles use: headings, paragraphs, lists, tables, and inline code,
-// bold, italic, web and mail links and [[wiki links]]. Anything else renders as text. Output goes
-// through Angular's [innerHTML] sanitiser, so the article html carries nothing it would strip.
+// bold, italic, web and mail links, [[wiki links]] and :icon: names from icons.ts. Anything else
+// renders as text. The doc page trusts this html past Angular's sanitiser, which would strip the
+// icons' svg, so every character of the source must go through escapeHtml first.
 
 import { LINK_PATTERN } from './article';
+import { iconSvg, isIconName } from '../../icons/icons';
+
+const ICON_TOKEN = /:([a-z][a-z0-9-]*):/g;
 
 export type LinkResolver = (slug: string) => { href: string; title: string } | null;
 
@@ -27,6 +31,7 @@ function inline(text: string, resolve: LinkResolver): string {
     s = s.replace(/\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
     s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+    s = s.replace(ICON_TOKEN, (token, name: string) => isIconName(name) ? iconSvg(name, 16, { class: 'doc-icon' }) : token);
     return s;
   }).join('');
 }
@@ -37,6 +42,7 @@ export function renderMarkdown(md: string, resolve: LinkResolver): string {
   let para: string[] = [];
   let list: { tag: 'ul' | 'ol'; items: string[] } | null = null;
   let table: string[][] | null = null;
+  let tableHead = false;
 
   const flushPara = () => {
     if (para.length) out.push(`<p>${inline(para.join(' '), resolve)}</p>`);
@@ -48,12 +54,13 @@ export function renderMarkdown(md: string, resolve: LinkResolver): string {
   };
   const flushTable = () => {
     if (table && table.length) {
-      const [head, ...rows] = table;
-      const th = head.map(c => `<th>${inline(c, resolve)}</th>`).join('');
+      const rows = tableHead ? table.slice(1) : table;
+      const th = tableHead ? `<thead><tr>${table[0].map(c => `<th>${inline(c, resolve)}</th>`).join('')}</tr></thead>` : '';
       const tr = rows.map(r => `<tr>${r.map(c => `<td>${inline(c, resolve)}</td>`).join('')}</tr>`).join('');
-      out.push(`<table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`);
+      out.push(`<table>${th}<tbody>${tr}</tbody></table>`);
     }
     table = null;
+    tableHead = false;
   };
   const flushAll = () => { flushPara(); flushList(); flushTable(); };
 
@@ -83,7 +90,8 @@ export function renderMarkdown(md: string, resolve: LinkResolver): string {
     if (line.startsWith('|')) {
       flushPara(); flushList();
       const cells = line.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
-      if (cells.every(c => /^:?-+:?$/.test(c))) continue;
+      // a header is the row above the first separator; a table opening on a separator has none
+      if (cells.every(c => /^:?-+:?$/.test(c))) { if (table?.length === 1) tableHead = true; continue; }
       (table ??= []).push(cells);
       continue;
     }
@@ -170,6 +178,7 @@ export function renderPage(md: string, resolve: LinkResolver): PagePiece[] {
 export function markdownToText(md: string, titleFor: (slug: string) => string | undefined = () => undefined): string {
   return md
     .replace(/^\s*<\/?[a-z][a-z-]*>\s*$/gm, '')
+    .replace(ICON_TOKEN, (token, name: string) => isIconName(name) ? '' : token)
     .replace(/`([^`]*)`/g, '$1')
     .replace(/^!\[([^\]]*)\]\(\S+\)$/gm, '$1')
     .replace(LINK_PATTERN, (_, slug: string, label?: string) => label?.trim() || titleFor(slug.trim()) || slug.trim())

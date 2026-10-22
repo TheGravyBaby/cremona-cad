@@ -2,11 +2,12 @@ import { Component, ElementRef, EventEmitter, HostListener, Output, Input, injec
 import { MessageCenterComponent } from '../shared/message-center.component';
 import { SettingsMenuComponent } from '../settings/settings-menu';
 import { BoothTab } from '../docs/pages';
+import { IconDirective } from '../icons/icon.directive';
 
 @Component({
   selector: 'app-top-bar',
   standalone: true,
-  imports: [MessageCenterComponent, SettingsMenuComponent],
+  imports: [MessageCenterComponent, SettingsMenuComponent, IconDirective],
   templateUrl: './top-bar.html',
   styleUrls: ['./top-bar.css'],
 })

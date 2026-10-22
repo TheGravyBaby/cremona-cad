@@ -67,9 +67,9 @@ On a Mac, Cmd works wherever Ctrl is listed.
 |---|---|
 | Line: Shift (held) | Lock to common angles: multiples of 30° and 45° |
 | Line: Type a number, then Enter | Set the length exactly. Angle and starting point are preserved.|
-| Line: Ctrl (held, while dragging) | Identifies if a the line was started on an edge. If so, it locks the line angle to the tangent of that edge.  |
+| Line: Ctrl (held, while dragging) | Identifies if the line was started on an edge. If so, it locks the line angle to the tangent of that edge.  |
 
-| Arc: Shift | Use the longer arc length between the two points
+| Arc: Shift | Use the longer arc length between the two points |
 | Join Arc: Shift | Cycle through the possible joins |
 
 | Polyline: Enter or double-click | Finish |

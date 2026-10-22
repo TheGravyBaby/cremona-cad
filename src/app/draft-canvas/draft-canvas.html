@@ -54,28 +54,15 @@
       <div #zoomGroup class="zoom-group">
       <div class="zoom-controls">
         <button type="button" class="zoom-btn" (click)="fitCamera(); draw()" title="Fit to view (F)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 4H5a1 1 0 0 0-1 1v4" />
-            <path d="M15 4h4a1 1 0 0 1 1 1v4" />
-            <path d="M9 20H5a1 1 0 0 1-1-1v-4" />
-            <path d="M15 20h4a1 1 0 0 0 1-1v-4" />
-          </svg>
+          <svg icon="fit" width="14" height="14"></svg>
         </button>
         <button type="button" class="zoom-btn" (click)="applyZoom(pxPerMm / 1.1)" title="Zoom out">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round">
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+          <svg icon="minus" width="14" height="14"></svg>
         </button>
         <button type="button" class="zoom-readout" [class.active]="viewOpen" (click)="viewOpen = !viewOpen"
           docTip="view.zoom">{{ pxPerMm.toFixed(1) }}</button>
         <button type="button" class="zoom-btn" (click)="applyZoom(pxPerMm * 1.1)" title="Zoom in">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+          <svg icon="plus" width="14" height="14"></svg>
         </button>
       </div>
 

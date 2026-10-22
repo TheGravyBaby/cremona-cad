@@ -3,6 +3,7 @@ import { SelectionActions, writeSvgToSystemClipboard } from '../tools/selection-
 import { UndoCoordinator } from '../../helpers/undoCoordinator';
 import { downloadSvgFile } from '../../helpers/fileExporter';
 import { TooltipDirective } from '../../docs/tooltips';
+import { IconDirective } from '../../icons/icon.directive';
 
 /**
  * The document-wide edit verbs — undo and redo, clipboard, file, duplicate, group, delete — as a
@@ -15,7 +16,7 @@ import { TooltipDirective } from '../../docs/tooltips';
 @Component({
   selector: 'app-edit-menu',
   standalone: true,
-  imports: [TooltipDirective],
+  imports: [TooltipDirective, IconDirective],
   templateUrl: './edit-menu.html',
   styleUrls: ['./edit-menu.css'],
 })
