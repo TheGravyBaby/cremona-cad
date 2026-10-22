@@ -13,6 +13,7 @@ import { downloadSvgFile } from '../../helpers/fileExporter';
 import { TooltipDirective } from '../../docs/tooltips';
 import { ScopeMenuComponent } from '../scope-menu/scope-menu';
 import { svgImportEmpty } from '../../docs/conditions';
+import { IconDirective } from '../../icons/icon.directive';
 
 /** A row in either list: a layer or an image, told apart only where the store needs to know. */
 export type ScopeKind = 'layer' | 'image';
@@ -39,7 +40,7 @@ type Scoped = { id: string; scope?: PanelScope };
 @Component({
   selector: 'app-layer-controls',
   standalone: true,
-  imports: [TooltipDirective, NgTemplateOutlet, ScopeMenuComponent],
+  imports: [TooltipDirective, NgTemplateOutlet, ScopeMenuComponent, IconDirective],
   templateUrl: './layer-controls.html',
   styleUrls: ['./layer-controls.css'],
 })

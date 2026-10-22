@@ -13,6 +13,7 @@ import { PanelPalette, ThemeService } from '../../theme/theme.service';
 import { RECIPE_KEY, writeWorkingState } from '../../helpers/workingStorage';
 import { error } from '../../shared/message-emitter';
 import { FOUR_CIRCLES_DEFAULTS, FourCircles, FourCirclesParams, FourCirclesViewFlags } from './hello-world-types';
+import { IconDirective } from '../../icons/icon.directive';
 
 
 const blankRecipe = (): RecipeInterface<FourCirclesParams> => ({
@@ -25,7 +26,7 @@ const blankRecipe = (): RecipeInterface<FourCirclesParams> => ({
 @Component({
   selector: 'app-hello-world-recipe',
   standalone: true,
-  imports: [FormsModule, RecipeToolbarComponent, NumberStepperDirective],
+  imports: [FormsModule, RecipeToolbarComponent, NumberStepperDirective, IconDirective],
   templateUrl: './hello-world-recipe.html',
   styleUrls: ['../../sidebar.css', './hello-world-recipe.css'],
 })

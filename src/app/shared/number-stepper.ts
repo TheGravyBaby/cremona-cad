@@ -1,4 +1,5 @@
 import { Directive, ElementRef, OnDestroy, OnInit, inject } from '@angular/core';
+import { iconSvg } from '../icons/icons';
 
 /**
  * Touch steppers for the sidebar's number fields.
@@ -60,9 +61,7 @@ export class NumberStepperDirective implements OnInit, OnDestroy {
     b.setAttribute('aria-label', label);
     // not a tab stop: 130 fields would mean 260 extra stops, and a keyboard already has arrow keys
     b.tabIndex = -1;
-    b.innerHTML = dir === 'up'
-      ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>'
-      : '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+    b.innerHTML = iconSvg(dir === 'up' ? 'chevron-up' : 'chevron-down', 10, { 'stroke-width': '3' });
     b.addEventListener('click', (e) => {
       e.preventDefault();
       this.step(dir);

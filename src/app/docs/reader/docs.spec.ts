@@ -58,6 +58,19 @@ describe('renderMarkdown', () => {
     expect(() => parseArticle(sample('', '![pic](docs/x.svg)\n\nThe summary.'))).toThrow(/summary/);
   });
 
+  it('gives a table a header only when a separator follows its first row', () => {
+    expect(renderMarkdown('|---|---|\n| a | 1 |\n| b | 2 |', resolve))
+      .toBe('<table><tbody><tr><td>a</td><td>1</td></tr><tr><td>b</td><td>2</td></tr></tbody></table>');
+  });
+
+  it('draws a known :icon: and leaves any other colon pair as text', () => {
+    const html = renderMarkdown(':line: Line, :nothing: and 12:30:45', resolve);
+    expect(html).toContain('<svg');
+    expect(html).toContain('class="doc-icon"');
+    expect(html).toContain(':nothing: and 12:30:45');
+    expect(markdownToText(':line: Line')).toBe('Line');
+  });
+
   it('escapes html in the source', () => {
     expect(renderMarkdown('<script>x</script>', resolve)).toBe('<p>&lt;script&gt;x&lt;/script&gt;</p>');
   });

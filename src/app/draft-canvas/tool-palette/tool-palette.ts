@@ -5,6 +5,8 @@ import { ToolRegistryService, ToolSlot } from '../tools/tool-registry';
 import { isSmallViewport } from '../../helpers/viewport';
 import { HOTKEY_LETTER_BY_TOOL } from '../tools/tool-hotkeys';
 import { SelectionActions } from '../tools/selection-actions';
+import { IconDirective } from '../../icons/icon.directive';
+import { IconName } from '../../icons/icons';
 
 /** A button that acts on the selection once, at once — it never goes active the way a tool does.
  * Or, with `tool` set, a tool filed among the commands it belongs with (Rotate beside the quarter
@@ -25,7 +27,7 @@ type ModifyRow = { slot?: ToolSlot; label?: string; commands?: SelectionCommand[
 @Component({
   selector: 'app-tool-palette',
   standalone: true,
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, IconDirective],
   templateUrl: './tool-palette.html',
   styleUrls: ['./tool-palette.css'],
 })
@@ -330,6 +332,11 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
   chooseFlyoutVariant(slot: ToolSlot, tool: DraftTool): void {
     this.openFlyout = null;
     this.toolRegistry.selectVariant(slot, tool);
+  }
+
+  // tool and command ids double as icon names; the palette spec holds them to it
+  iconOf(id: string): IconName {
+    return id as IconName;
   }
 
   /** The hotkey for a tool or command id, formatted for a tooltip (e.g. " (L)"), or '' if it has none. */

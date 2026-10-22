@@ -10,11 +10,11 @@
             </select>
         </label>
     </div>
-    @if (onBlank) {
+    @if (onBlank || inCradle) {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Plate</span>
-            <select [(ngModel)]="blank.plate" (change)="edited()">
+            <span class="field-title">{{ inCradle ? 'Cradle cut to' : 'Plate' }}</span>
+            <select [(ngModel)]="cutTo.plate" (change)="edited()">
                 <option value="top">Top</option>
                 <option value="back">Back</option>
             </select>
@@ -23,22 +23,11 @@
         <label class="field-cell">
             <span class="field-title">Stage</span>
             <select [(ngModel)]="blank.stage" (change)="edited()">
-                <option value="rough">Arching, roughing</option>
-                <option value="finish">Arching, finishing</option>
+                <option value="rough">Roughing</option>
+                <option value="finish">Finishing</option>
             </select>
         </label>
-        }
-    </div>
-    }
-    @if (settings.job === 'cradle') {
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Plate</span>
-            <select [(ngModel)]="cradle.plate" (change)="edited()">
-                <option value="top">Top</option>
-                <option value="back">Back</option>
-            </select>
-        </label>
+        } @else if (settings.job === 'cradle') {
         <label class="field-cell">
             <span class="field-title">Stage</span>
             <select [(ngModel)]="cradle.stage" (change)="edited()">
@@ -46,46 +35,72 @@
                 <option value="hole">Hole</option>
             </select>
         </label>
+        } @else if (settings.job === 'fholes') {
+        <label class="field-cell">
+            <span class="field-title">Stage</span>
+            <select [(ngModel)]="fholes.stage" (change)="edited()">
+                <option value="eyes">Eyes</option>
+                <option value="scribe">Scribe</option>
+            </select>
+        </label>
+        }
     </div>
     }
 </section>
+
+@if (settings.job === 'fholes') {
+<section class="ui-group">
+    <div class="ui-group-title">F-holes</div>
+    @if (fholes.stage === 'eyes') {
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Plate at the eyes" [step]="0.1" [min]="0" [value]="fholes.thickness"
+            (valueChange)="fholes.thickness = $event; edited()"></app-mm-inch>
+    </div>
+    <p class="hint">The graduated thickness there. The eyes go through it by {{ fhole.exitMargin }} mm, into the cradle's hole.</p>
+    } @else {
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Scribe depth" [step]="0.05" [min]="0" [value]="fholes.scribeDepth"
+            (valueChange)="fholes.scribeDepth = $event; edited()"></app-mm-inch>
+    </div>
+    <p class="hint">Under the surface. The groove's centre is the drawn line at any depth.</p>
+    }
+</section>
+}
 
 @if (onBlank) {
 <section class="ui-group">
     <div class="ui-group-title">Harness</div>
     <div class="input-group basic-row field-row" role="group">
-        <app-mm-inch label="Fence X" [step]="0.5" [min]="0" [value]="settings.fence.x"
-            (valueChange)="settings.fence.x = $event; edited()"></app-mm-inch>
-        <app-mm-inch label="Fence Y" [step]="0.5" [min]="0" [value]="settings.fence.y"
-            (valueChange)="settings.fence.y = $event; edited()"></app-mm-inch>
+        <app-mm-inch label="Fence X" [step]="0.5" [min]="0" [value]="blank.fence.x"
+            (valueChange)="blank.fence.x = $event; edited()"></app-mm-inch>
+        <app-mm-inch label="Fence Y" [step]="0.5" [min]="0" [value]="blank.fence.y"
+            (valueChange)="blank.fence.y = $event; edited()"></app-mm-inch>
     </div>
-    <p class="hint">Where the fences stand from the harness's zero, the file's XY0: the vertical fence's X, the horizontal fence's Y. The stock is pushed into their corner. The same for every part cut in the harness.</p>
+    <p class="hint">Where the fences stand from the harness's zero, the file's XY0. The blank is pushed into their corner.</p>
 </section>
 }
 
 <section class="ui-group">
-    <div class="ui-group-title">{{ onBlank ? 'Blank' : settings.job === 'cradle' ? 'Slab' : 'Stock' }}</div>
+    <div class="ui-group-title">{{ onBlank ? 'Blank' : inCradle ? 'Slab' : 'Sheet' }}</div>
     @if (onBlank) {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="At the seam" [step]="0.1" [min]="0" [value]="blank.stock.thickness"
             (valueChange)="blank.stock.thickness = $event; edited()"></app-mm-inch>
-    </div>
-    <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="At the edges" [step]="0.1" [min]="0" [value]="blank.stock.edge"
             (valueChange)="blank.stock.edge = $event; edited()"></app-mm-inch>
     </div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Seam from left" [step]="0.5" [min]="0" [value]="blank.seam"
+            (valueChange)="blank.seam = $event; edited()"></app-mm-inch>
+    </div>
+    <p class="hint">From the blank's left edge, against the fence. The plate's centre line sits on it, centred along the blank.</p>
     @if (settings.job === 'purfling') {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Strip height" [step]="0.1" [min]="0" [value]="blank.purflingDepth"
             (valueChange)="blank.purflingDepth = $event; edited()"></app-mm-inch>
     </div>
-    <p class="hint">The channel goes this deep under the plate's edge. Its width is the Outer Contour panel's. The blank is the Plate part's.</p>
+    <p class="hint">How deep the channel goes under the plate's edge. Its width is the Outer Contour panel's.</p>
     }
-    <div class="input-group basic-row field-row" role="group">
-        <app-mm-inch label="Seam from left" [step]="0.5" [min]="0" [value]="blank.seam"
-            (valueChange)="blank.seam = $event; edited()"></app-mm-inch>
-    </div>
-    <p class="hint">The seam's distance from the blank's left edge, as it sits against the fence. The plate mirrors on the seam and is centred along the blank. The same in every file cut in this blank.</p>
     } @else {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Thickness" [step]="0.1" [min]="0" [value]="g.stock.thickness"
@@ -95,8 +110,6 @@
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Width" [step]="1" [min]="0" [value]="g.stock.width"
             (valueChange)="g.stock.width = $event; edited()"></app-mm-inch>
-    </div>
-    <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Length" [step]="1" [min]="0" [value]="g.stock.length"
             (valueChange)="g.stock.length = $event; edited()"></app-mm-inch>
     </div>
@@ -113,13 +126,13 @@
 
 <section class="ui-group">
     <div class="ui-group-title">Bit</div>
-    @if (onBlank || settings.job === 'cradle') {
+    @if (stage; as stage) {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell field-cell--full">
-            <span class="field-title">{{ stageShape === 'ball' ? 'Ball' : 'Flat' }}</span>
-            <select [(ngModel)]="blank[stageTool]" (change)="edited()">
-                @for (t of toolsFor(stageShape); track t.number) {
-                <option [ngValue]="t.number">#{{ t.number }} {{ t.name }}{{ t.feeds[g.wood] ? '' : ' (no feeds yet)' }}</option>
+            <span class="field-title">{{ stageShape[stage] === 'ball' ? 'Ball' : stageShape[stage] === 'v' ? 'V' : 'Flat' }}</span>
+            <select [(ngModel)]="settings.tools[stage]" (change)="edited()">
+                @for (t of toolsFor(stageShape[stage]); track t.number) {
+                <option [ngValue]="t.number">#{{ t.number }} {{ t.name }}{{ t.feeds[wood] ? '' : ' (no feeds yet)' }}</option>
                 }
             </select>
         </label>
@@ -140,100 +153,26 @@
     }
 </section>
 
-@let plan = cutPlan;
 <section class="ui-group">
     <div class="ui-group-title">
         Plan
         <button type="button" class="info-icon" (click)="help()" title="Why these defaults"
             aria-label="Information">ⓘ</button>
     </div>
-    @if (feeds && plan) {
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Cut <span class="unit-label">mm/min</span></span>
-            <input type="number" class="basic-input" disabled [ngModel]="feeds.cutFeed" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Plunge <span class="unit-label">mm/min</span></span>
-            <input type="number" class="basic-input" disabled [ngModel]="feeds.plungeFeed" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Step Down <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" disabled [ngModel]="feeds.stepDown" />
-        </label>
-    </div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Stock Top <span class="unit-label">Z</span></span>
-            <input type="number" class="basic-input" disabled [ngModel]="plan.stockTopZ" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Floor <span class="unit-label">Z</span></span>
-            <input type="number" class="basic-input" disabled [ngModel]="plan.floorZ" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Passes</span>
-            <input type="number" class="basic-input" disabled [ngModel]="plan.passes" />
-        </label>
-    </div>
-    } @else if (tool) {
-    <p class="hint">No feeds for {{ g.wood }} wood with this bit yet. Add a row from the bit maker's chart and cut scrap with it first.</p>
+    @if (!toolpaths) {
+    <p class="hint">The part has to solve first.</p>
+    } @else if (!feeds) {
+    <p class="hint">No feeds for {{ wood }} wood with this bit yet. Add a row from the bit maker's chart and cut scrap with it first.</p>
+    } @else {
+    @for (line of notes; track $index) {
+    <p class="hint">{{ line }}</p>
     }
-    @if (settings.job === 'mould') {
-    <p class="hint">
-        Windows first, then the outline. {{ mouldTabs.outline }} tabs on the outline and {{ mouldTabs.window }} per window,
-        {{ machine.tabHeight }} mm high. Safe Z {{ machine.safeZ }} mm above the stock. {{ machine.overcut }} mm into the spoilboard.
-    </p>
-    } @else if (!toolpaths) {
-    <p class="hint">The {{ settings.job === 'cradle' ? cradle.plate : blank.plate }} plate's arching{{ settings.job === 'purfling' ? ' and purfling have' : ' has' }} to solve first.</p>
-    } @else if (toolpaths.raster; as raster) {
-    <p class="hint">
-        {{ raster.xs.length }} lines along the length, {{ (raster.xs[1] - raster.xs[0]).toFixed(2) }} mm apart,
-        {{ surface.skirt }} mm past the outline.
-        @if (raster.levels.length) {
-        {{ raster.levels.length }} terraces, leaving {{ surface.leave }} mm.
-        } @else {
-        One pass, a {{ surface.scallop }} mm scallop.
-        }
-        About {{ toolpaths.metres?.toFixed(0) }} m of cutting@if (minutes !== null) {, {{ minutes }} min at the cut feed}.
-        Z0 is the bed under the blank's joint face. The floor is the bottom of the fluting channel.
-    </p>
-    } @else if (settings.job === 'cradle') {
-    <p class="hint">
-        @if (cradle.stage === 'pocket') {
-        {{ toolpaths.paths.length }} loop{{ toolpaths.paths.length === 1 ? '' : 's' }} clearing the ring from the lip's inner edge out to the pocket's side,
-        {{ cradleSpec.clearance }} mm clear of the outline, from the slab's top down to the lip at Z{{ toolpaths.floorZ.toFixed(2) }}. The lip is {{ cradleSpec.lip }} mm wide.
-        } @else {
-        Through the slab along the lip's inner edge, clockwise, {{ toolpaths.paths[0]?.tabs?.length }} tabs {{ machine.tabHeight }} mm high; the piece drops out.
-        Face down the crown hangs {{ (cradle.stock.thickness - cradleSpec.wall - params.arching![cradle.plate].arch.height).toFixed(1) }} mm off the bed.
-        }
-        @if (toolpaths.metres !== undefined) { About {{ toolpaths.metres.toFixed(1) }} m of cutting@if (minutes !== null) {, {{ minutes }} min at the cut feed}. }
-        Pocket first, then the hole. Clamp the slab to the table and set XY0 at its lower-left corner with the probe.
-    </p>
-    } @else if (settings.job === 'purfling') {
-    <p class="hint"><strong>{{ surfacedPlate }}</strong> The channel is cut from the land the finishing pass leaves.</p>
-    <p class="hint">
-        {{ toolpaths.surfaces.length || 'The' }} pass{{ toolpaths.surfaces.length === 1 ? '' : 'es' }} across the channel,
-        {{ toolpaths.passes }} round{{ toolpaths.passes === 1 ? '' : 's' }} down to {{ blank.purflingDepth }} mm under the edge, Z{{ toolpaths.floorZ.toFixed(2) }}.
-        About {{ toolpaths.metres?.toFixed(1) }} m of cutting@if (minutes !== null) {, {{ minutes }} min at the cut feed}.
-        Cut after the finishing pass, in the same setup.
-    </p>
-    } @else if (settings.job === 'contour') {
-    <p class="hint"><strong>{{ surfacedPlate }}</strong> The passes start in the flat land the arching leaves round the outline, not at the blank's top.</p>
-    <p class="hint">
-        A bit radius outside the outline, counterclockwise. {{ toolpaths.paths[0]?.tabs?.length }} tabs, {{ plateTabs.width }} mm long and
-        {{ plateTabs.height }} mm high, at the widest of each bout and the waist of each C.
-        Passes from the land at Z{{ toolpaths.cutTopZ?.toFixed(2) }} to Z{{ toolpaths.floorZ.toFixed(2) }}, {{ machine.overcut }} mm into the bed.
-        @if (toolpaths.metres !== undefined) { About {{ toolpaths.metres.toFixed(1) }} m of cutting@if (minutes !== null) {, {{ minutes }} min at the cut feed}. }
-        Cut last: once through, only the tabs hold the plate.
-    </p>
     }
     @for (problem of toolpaths?.failures ?? []; track problem) {
-    <p class="hint">{{ problem }}</p>
+    <p class="hint"><strong>{{ problem }}</strong></p>
     }
     <div class="export-primary">
         <button type="button" class="recipe-btn" (click)="reset()">Reset</button>
         <button type="button" class="recipe-btn recipe-btn--primary" [disabled]="!canDownload" (click)="download()">Download G-code</button>
     </div>
-    <p class="hint">Check the file in a G-code viewer and air-cut it before touching stock.</p>
 </section>

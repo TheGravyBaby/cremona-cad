@@ -35,6 +35,7 @@ excluded in `angular.json`; only `test:stress` runs it.
 | `src/app/helpers/` | Instrument-agnostic math, rendering, exporters, `validators.ts` (`solveSection`), `workingStorage.ts`. |
 | `src/app/models/types.ts` | `Pt`/`Circle`/`Arc`/`Rectangle`. Read its header. |
 | `src/app/recipe-base/` | Panel flow, undo/redo, file load/save, toolbox sync. |
+| `src/app/icons/` | Every button glyph, one entry each in `icons.ts`. A template draws one with `<svg icon="name" width height>`; a doc page with `:name:`. No inline `<svg>` on a button. |
 | `src/app/theme/` | All colour and stroke. `palettes.ts` holds every constant; `theme.service.ts` the code. No file outside this folder holds a hex. |
 | `src/app/docs/` | Every word the app says to the user: `field-help.ts` (ⓘ), `tooltips.ts` (`docTip="id"`), `conditions.ts`, and the info booth (`info-booth/`). Every booth page, release notes included, is one Markdown file in `pages/` (listed in `pages/index.ts`, where the wiki's categories and their order live), rendered by `reader/`. There is no `CHANGELOG.md`; a release is `pages/history/vX.md`. |
 | `src/app/settings/` | The user's preferences: `SettingsService` (one typed object, signals, `localStorage`) and the top bar's settings menu. A new setting is a key on `AppSettings`, a line in `readSettings`, a row in the menu. |
@@ -99,7 +100,7 @@ the edit settles, not on every keystroke. `export-panel` takes `drawn` only; don
 ## Adding a tool
 
 Write `createXTool(...)` returning a `DraftTool` and add it to `toolRows` or `modifyRows` in
-`tools/tool-registry.ts`. Nothing else. Reuse `TwoPointTool`/`ThreePointTool`/`ChainTool`.
+`tools/tool-registry.ts`, and its glyph under the tool's id in `icons/icons.ts`. Nothing else. Reuse `TwoPointTool`/`ThreePointTool`/`ChainTool`.
 Layer/image visibility is one `scope` field (`panel-scope.ts`), with no separate hidden flag.
 `getEditableShapes()` is the single editability gate. A group is just a shared `groupId`. Missing
 `layerId` means `DEFAULT_LAYER_ID`.

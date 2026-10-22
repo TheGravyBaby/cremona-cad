@@ -6,12 +6,7 @@
   <div class="lc-group">
     <div class="lc-strip">
       <button type="button" class="lc-btn" [class.active]="layersOpen" (click)="toggleLayers()" title="Layers">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="12 3 21 8 12 13 3 8 12 3" />
-          <polyline points="3 13 12 18 21 13" />
-          <polyline points="3 18 12 23 21 18" />
-        </svg>
+        <svg icon="layers" width="16" height="16"></svg>
       </button>
       <!-- Master for everything drawn, mirroring the reference-image master beside it — so either
            side of the drawing can be dropped out of view in one click. -->
@@ -56,11 +51,7 @@
           @if (canMoveSelectionTo(layer)) {
           <button type="button" class="layer-tab-icon-btn move-here"
             (click)="moveSelectionTo(layer.id); $event.stopPropagation()" docTip="layers.moveSelection">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3v11M7 9l5 5 5-5" />
-              <path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
-            </svg>
+            <svg icon="move-to-layer" width="14" height="14"></svg>
           </button>
           }
           <button type="button" class="layer-tab-icon-btn"
@@ -85,33 +76,16 @@
       <div class="lc-action-row">
         <button type="button" class="lc-action" (click)="svgFileInput.click()"
           docTip="layers.importSvg">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
+          <svg icon="upload" width="14" height="14"></svg>
           <span>Import</span>
         </button>
         <button type="button" class="lc-action" (click)="exportSvg()" [disabled]="!canExport"
           docTip="layers.saveLayer">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
+          <svg icon="download" width="14" height="14"></svg>
           <span>Export</span>
         </button>
         <button type="button" class="lc-action" (click)="clearActiveLayer()" title="Clear this layer's shapes">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            <line x1="10" y1="11" x2="10" y2="17" />
-            <line x1="14" y1="11" x2="14" y2="17" />
-          </svg>
+          <svg icon="clear" width="14" height="14"></svg>
           <span>Clear</span>
         </button>
       </div>
@@ -126,12 +100,7 @@
     <div class="lc-strip">
       <button type="button" class="lc-btn" [class.active]="imagesOpen" (click)="toggleImages()"
         title="Reference images">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <circle cx="8.5" cy="8.5" r="1.5" />
-          <path d="M21 15l-5-5L5 21" />
-        </svg>
+        <svg icon="image" width="16" height="16"></svg>
       </button>
       <button type="button" class="lc-eye" [class.on]="showImages"
         [title]="showImages ? 'Hide all reference images' : 'Show all reference images'" (click)="toggleShowImages()">
@@ -175,21 +144,12 @@
       }
       <div class="lc-action-row">
         <button type="button" class="lc-action" (click)="addImage()" docTip="images.upload">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
+          <svg icon="upload" width="14" height="14"></svg>
           <span>Upload</span>
         </button>
         <button type="button" class="lc-action" [class.active]="linkOpen" (click)="toggleLinkField()"
           docTip="images.link">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
-            <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
-          </svg>
+          <svg icon="link" width="14" height="14"></svg>
           <span>Link</span>
         </button>
       </div>
@@ -220,34 +180,17 @@
        "visible" looks the same everywhere it appears. -->
   <ng-template #eyeIcon let-on="on">
     @if (on) {
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
+    <svg icon="eye" width="11" height="11"></svg>
     } @else {
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <path
-        d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24" />
-      <line x1="1" y1="1" x2="23" y2="23" />
-    </svg>
+    <svg icon="eye-off" width="11" height="11"></svg>
     }
   </ng-template>
 
   <ng-template #lockIcon let-locked="locked">
     @if (locked) {
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="11" width="16" height="9" rx="1.5" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
+    <svg icon="lock" width="13" height="13"></svg>
     } @else {
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="11" width="16" height="9" rx="1.5" />
-      <path d="M7 11V7a5 5 0 0 1 9.5-2.2" />
-    </svg>
+    <svg icon="unlock" width="13" height="13"></svg>
     }
   </ng-template>
 </div>

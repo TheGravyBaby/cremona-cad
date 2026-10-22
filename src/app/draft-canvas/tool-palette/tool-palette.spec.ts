@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ToolPaletteComponent } from './tool-palette';
 import { ToolRegistryService } from '../tools/tool-registry';
 import { SelectionActions } from '../tools/selection-actions';
+import { isIconName } from '../../icons/icons';
 
 const OPEN_KEY = 'draft-canvas-tool-palette-open';
 
@@ -53,6 +54,16 @@ describe('ToolPaletteComponent', () => {
     const body = el('.tool-dock-body')!;
     expect(body.style.gridTemplateRows).toBe('');
     expect(body.style.gridAutoFlow).toBe('');
+  });
+
+  it('has an icon for every tool and command it shows', async () => {
+    await create();
+    const registry = TestBed.inject(ToolRegistryService);
+    const ids = [
+      ...[...registry.toolRows, ...registry.modifyRows].flat().flatMap(s => component.variantsOf(s)).map(t => t.id),
+      ...component.modifyLayout.flatMap(row => row.commands ?? []).map(c => c.id),
+    ];
+    expect(ids.filter(id => !isIconName(id))).toEqual([]);
   });
 
   it('shows the tab a hotkeyed tool lives on', async () => {

@@ -1,13 +1,7 @@
 <div class="lc-group">
   <div class="lc-strip">
     <button type="button" class="lc-btn" [class.active]="open" (click)="toggleOpen()" title="Axes and grid">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 20V4" />
-        <path d="M1.5 8L4 4l2.5 4" />
-        <path d="M4 20h16" />
-        <path d="M16 22.5L20 20l-4-2.5" />
-      </svg>
+      <svg icon="axes" width="16" height="16"></svg>
     </button>
     <button type="button" class="lc-eye" [class.on]="axisGrid.visible"
       [title]="axisGrid.visible ? 'Hide axes and grid' : 'Show axes and grid'" (click)="toggle('visible')">
@@ -52,17 +46,8 @@
 
 <ng-template #eyeIcon let-on="on">
   @if (on) {
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-    stroke-linecap="round" stroke-linejoin="round">
-    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
-    <circle cx="12" cy="12" r="3" />
-  </svg>
+  <svg icon="eye" width="11" height="11"></svg>
   } @else {
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-    stroke-linecap="round" stroke-linejoin="round">
-    <path
-      d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24" />
-    <line x1="1" y1="1" x2="23" y2="23" />
-  </svg>
+  <svg icon="eye-off" width="11" height="11"></svg>
   }
 </ng-template>

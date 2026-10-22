@@ -42,6 +42,7 @@ import { EditMenuComponent } from './edit-menu/edit-menu';
 import { ToolPaletteComponent } from './tool-palette/tool-palette';
 import { TooltipDirective } from '../docs/tooltips';
 import { imageAlreadyPlaced, imageLinkFailed, imageResized } from '../docs/conditions';
+import { IconDirective } from '../icons/icon.directive';
 
 type SvgGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 /** A world-space group and its unflipped overlay twin, the two selections every renderer draws into. */
@@ -50,7 +51,7 @@ type LayerPair = { g: SvgGroup; ui: SvgGroup };
 @Component({
   selector: 'app-draft-canvas',
   standalone: true,
-  imports: [TooltipDirective, ToolPaletteComponent, SettingsBarComponent, LayerControlsComponent, AxisControlsComponent, EditMenuComponent],
+  imports: [TooltipDirective, ToolPaletteComponent, SettingsBarComponent, LayerControlsComponent, AxisControlsComponent, EditMenuComponent, IconDirective],
   templateUrl: './draft-canvas.html',
   styleUrls: ['./draft-canvas.css'],
 })

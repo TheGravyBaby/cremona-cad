@@ -1,4 +1,5 @@
 import { Component, computed, inject, input } from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
 import { DocCarouselComponent } from './doc-carousel';
 import { DocsService } from './docs.service';
 
@@ -14,8 +15,11 @@ import { DocsService } from './docs.service';
 })
 export class DocPageComponent {
   private readonly registry = inject(DocsService).registry;
+  private readonly sanitizer = inject(DomSanitizer);
 
   readonly id = input.required<string>();
   readonly article = computed(() => this.registry.get(this.id()));
-  readonly pieces = computed(() => this.registry.pieces(this.id()));
+  // renderMarkdown escapes every character of the source, and the sanitiser would strip the icons
+  readonly pieces = computed(() => this.registry.pieces(this.id()).map(piece =>
+    piece.kind === 'prose' ? { ...piece, html: this.sanitizer.bypassSecurityTrustHtml(piece.html) } : piece));
 }

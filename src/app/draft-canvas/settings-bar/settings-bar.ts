@@ -16,6 +16,7 @@ import { TooltipDirective } from '../../docs/tooltips';
 import { ScopeMenuComponent } from '../scope-menu/scope-menu';
 import { PanelScope, scopeDescription } from '../tools/panel-scope';
 import { CANVAS_COLORS } from '../../theme/palettes';
+import { IconDirective } from '../../icons/icon.directive';
 
 const POPUP_EDGE_GAP_PX = 8;
 
@@ -29,7 +30,7 @@ const POPUP_EDGE_GAP_PX = 8;
 @Component({
   selector: 'app-settings-bar',
   standalone: true,
-  imports: [TooltipDirective, ScopeMenuComponent],
+  imports: [TooltipDirective, ScopeMenuComponent, IconDirective],
   templateUrl: './settings-bar.html',
   styleUrls: ['./settings-bar.css'],
 })

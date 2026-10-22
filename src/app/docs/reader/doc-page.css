@@ -131,3 +131,13 @@
   font-weight: 600;
   opacity: 0.8;
 }
+
+/* an icon and its name read as one mark, so that cell never wraps */
+:host ::ng-deep td:has(> .doc-icon:first-child) {
+  white-space: nowrap;
+}
+
+:host ::ng-deep .doc-icon {
+  vertical-align: -3px;
+  margin-right: 6px;
+}

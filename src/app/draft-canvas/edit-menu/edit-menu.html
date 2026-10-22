@@ -4,97 +4,51 @@
      internal copy is a fallback either way. -->
 <div class="edit-popup" role="menu">
   <button class="menu-row" role="menuitem" (click)="undo.undo(); done.emit()" [disabled]="!undo.canUndo()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="9 14 4 9 9 4" />
-      <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
-    </svg>
+    <svg icon="undo" width="16" height="16"></svg>
     <span class="menu-label">Undo</span><kbd>Ctrl+Z</kbd>
   </button>
   <button class="menu-row" role="menuitem" (click)="undo.redo(); done.emit()" [disabled]="!undo.canRedo()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="15 14 20 9 15 4" />
-      <path d="M4 20v-7a4 4 0 0 1 4-4h12" />
-    </svg>
+    <svg icon="redo" width="16" height="16"></svg>
     <span class="menu-label">Redo</span><kbd>Ctrl+Y</kbd>
   </button>
   <div class="menu-sep" role="separator"></div>
   <button class="menu-row" role="menuitem" (click)="cut()" [disabled]="!actions.canCut">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="6" cy="6" r="3" />
-      <circle cx="6" cy="18" r="3" />
-      <line x1="20" y1="4" x2="8.12" y2="15.88" />
-      <line x1="14.47" y1="14.48" x2="20" y2="20" />
-      <line x1="8.12" y1="8.12" x2="12" y2="12" />
-    </svg>
+    <svg icon="cut" width="16" height="16"></svg>
     <span class="menu-label">Cut</span><kbd>Ctrl+X</kbd>
   </button>
   <button class="menu-row" role="menuitem" (click)="copy()" [disabled]="!actions.canCopy"
     docTip="edit.copy">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <rect x="9" y="9" width="13" height="13" rx="2" />
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
+    <svg icon="copy" width="16" height="16"></svg>
     <span class="menu-label">Copy</span><kbd>Ctrl+C</kbd>
   </button>
   <button class="menu-row" role="menuitem" (click)="paste()"
     docTip="edit.paste">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-      <rect x="8" y="2" width="8" height="4" rx="1" />
-    </svg>
+    <svg icon="paste" width="16" height="16"></svg>
     <span class="menu-label">Paste</span><kbd>Ctrl+V</kbd>
   </button>
   <button class="menu-row" role="menuitem" (click)="exportSvg()" [disabled]="!actions.canExport"
     docTip="edit.saveSelection">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="7 10 12 15 17 10" />
-      <line x1="12" y1="15" x2="12" y2="3" />
-    </svg>
+    <svg icon="download" width="16" height="16"></svg>
     <span class="menu-label">Export selection</span>
   </button>
   <button class="menu-row" role="menuitem" (click)="run(actions.duplicate)"
     [disabled]="!actions.canDuplicate"
     docTip="edit.duplicate">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="3" width="11" height="11" rx="2" />
-      <rect x="10" y="10" width="11" height="11" rx="2" />
-    </svg>
+    <svg icon="duplicate" width="16" height="16"></svg>
     <span class="menu-label">Duplicate</span><kbd>Ctrl+D</kbd>
   </button>
   <button class="menu-row" role="menuitem" (click)="run(actions.group)" [disabled]="!actions.canGroup">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 2.5" />
-      <rect x="7" y="7" width="4" height="4" />
-      <circle cx="15" cy="15" r="2.2" />
-    </svg>
+    <svg icon="group" width="16" height="16"></svg>
     <span class="menu-label">Group</span><kbd>Ctrl+G</kbd>
   </button>
   <button class="menu-row" role="menuitem" (click)="run(actions.ungroup)"
     [disabled]="!actions.canUngroup">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="4" width="6" height="6" />
-      <circle cx="16.5" cy="16.5" r="3" />
-    </svg>
+    <svg icon="ungroup" width="16" height="16"></svg>
     <span class="menu-label">Ungroup</span><kbd>Ctrl+Shift+G</kbd>
   </button>
   <button class="menu-row" role="menuitem" (click)="run(actions.delete)"
     [disabled]="!actions.canDelete">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-    </svg>
+    <svg icon="delete" width="16" height="16"></svg>
     <span class="menu-label">Delete</span><kbd>Del</kbd>
   </button>
 </div>

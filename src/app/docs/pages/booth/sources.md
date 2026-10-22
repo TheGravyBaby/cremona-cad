@@ -5,11 +5,11 @@ kind: booth
 ---
 ## Major Influences
 
-### [**Beard, David.**](https://davidofsantabarbara.blogspot.com/2019/07/david-beard-cremona-revival-instrument.html) Santa Barbra, California.
-The work of David Beard has been instrumental to the development of this program. His website, videos, and presence in online discussions have been a rich body of work from which I routinely draw from. If you are interested in breaking down violin making from a historical perspective his work is a natural start.
+### [**Beard, David.**](https://davidofsantabarbara.blogspot.com/2019/07/david-beard-cremona-revival-instrument.html) Santa Barbara, California.
+The work of David Beard has been instrumental to the development of this program. His website, videos, and presence in online discussions have been a rich body of work from which I routinely draw. If you are interested in breaking down violin making from a historical perspective, his work is a natural start.
 
 ### [**Sora, Davide.**](https://davidesora.altervista.org/) Cremona, Italy. 
-Theory alone would not have been sufficient to properly model these instruments. David Sora, an excellent maker out Cremona Italy, has contributed greatly to the community by making freely available a large corpus of videos from his workshop. His methods for making involve extreme attentionn to detail, with frequent use of geometric templates and patters. Studying his videos has been critical in understanding the making process.
+Theory alone would not have been sufficient to properly model these instruments. Davide Sora, an excellent maker out of Cremona, Italy, has contributed greatly to the community by making freely available a large corpus of videos from his workshop. His methods for making involve extreme attention to detail, with frequent use of geometric templates and patterns. Studying his videos has been critical in understanding the making process.
 
 ## Reading
 

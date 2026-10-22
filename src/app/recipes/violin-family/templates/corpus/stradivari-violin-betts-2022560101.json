@@ -1,5 +1,5 @@
 {
-  "key": "stradavari-violin-betts",
+  "key": "stradivari-violin-betts",
   "recipeName": "violin-family-recipe",
   "fileName": "Violin - Antonio Stradivari - Betts",
   "description": "Cremona, 1704. LoC catalogue dimensions; no arching published.",
@@ -453,6 +453,10 @@
           "scrollWidths",
           "volute"
         ]
+      },
+      "credit": {
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154811/?sp=18&st=image"
       }
     },
     {
@@ -469,6 +473,10 @@
         "only": [
           "scrollWidths"
         ]
+      },
+      "credit": {
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154811/?sp=18&st=image"
       }
     },
     {
@@ -485,6 +493,10 @@
         "only": [
           "scrollWidths"
         ]
+      },
+      "credit": {
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154811/?sp=18&st=image"
       }
     }
   ]

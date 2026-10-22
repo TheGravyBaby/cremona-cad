@@ -198,21 +198,12 @@
     </span>
     <button type="button" class="settings-action" (click)="applyPenPreset()"
       docTip="settings.resetPen">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-        <path d="M15 5l4 4" />
-      </svg>
+      <svg icon="pen" width="13" height="13"></svg>
       <span>Pen</span>
     </button>
     <button type="button" class="settings-action" (click)="applyHighlighterPreset()"
       docTip="settings.highlighter">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 11l6 6-3 3H8v-4l1-1" />
-        <path d="M14 6l4 4" />
-        <path d="M17.5 2.5l4 4L11 17l-6-6L15.5 2.5a2 2 0 0 1 2 0z" />
-      </svg>
+      <svg icon="highlighter" width="13" height="13"></svg>
       <span>Highlighter</span>
     </button>
   }
@@ -305,47 +296,27 @@
       [title]="imageSuppressionUnavailable
         ? 'This image\'s source doesn\'t allow the browser to read its pixels, so its background can\'t be faded'
         : 'Fade near-white pixels to transparent, so a scan on white paper reads against a dark canvas'">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3c3.5 4 6 7.2 6 10.5a6 6 0 0 1-12 0C6 10.2 8.5 7 12 3z" />
-      </svg>
+      <svg icon="fade-white" width="13" height="13"></svg>
     </button>
     <button type="button" class="settings-action" [class.active]="imageMirrored" (click)="toggleImageMirrored()"
       docTip="settings.imageMirror">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3v18" />
-        <path d="M16 7l4 5-4 5" />
-        <path d="M8 7l-4 5 4 5" />
-      </svg>
+      <svg icon="mirror-image" width="13" height="13"></svg>
       <!-- <span>Mirror</span> -->
     </button>
     <button type="button" class="settings-action" [class.active]="imageCropped" (click)="toggleCropPopup($any($event.currentTarget))"
       docTip="settings.imageCrop">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <path d="M6 2v14a2 2 0 0 0 2 2h14" />
-        <path d="M2 6h14a2 2 0 0 1 2 2v14" />
-      </svg>
+      <svg icon="crop" width="13" height="13"></svg>
       <!-- <span>Crop</span> -->
     </button>
     @if (hasPanels) {
     <button type="button" class="settings-action" (click)="toggleScopePopup($any($event.currentTarget))"
       docTip="settings.imagePanels">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3l9 5-9 5-9-5 9-5z" />
-        <path d="M3 13l9 5 9-5" />
-      </svg>
+      <svg icon="panel-scope" width="13" height="13"></svg>
     </button>
     }
     <button type="button" class="settings-action" (click)="lockImage()"
       docTip="settings.imageLock">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <rect x="4" y="11" width="16" height="9" rx="1.5" />
-        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-      </svg>
+      <svg icon="lock" width="13" height="13"></svg>
       <!-- <span>Lock</span> -->
     </button>
   }
