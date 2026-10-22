@@ -2,6 +2,8 @@
 id: tools
 title: Tools
 kind: overview
+image: wiki/tools.svg
+caption: Draw and Modify 
 aliases: [toolbox, palette, drafting tools]
 ---
 On the left side of the application there are a variety of tools you can use to assist you in drafting. These tools are split into two groups: draw and modify.
@@ -16,7 +18,7 @@ The draw tools identify and snap to edges of existing geometry. When snapped to 
 ## Lines — L
 
 |---|---|
-| :line: Line | This draws a simple line between two points. Hold SHIFT to snap the angle. Hold CTRL to draw tangent to a snapped object. You can edit the distance of a line on selection, or type a distance in and hit enter at draw time.|
+| :line: Line | This draws a simple line between two points. Hold *Shift* to snap the angle. Hold *Ctrl* to draw tangent to a snapped object. You can edit the distance of a line on selection, or type a distance in and hit *Enter* at draw time.|
 | :polyline: Polyline | Connects multiple lines together. |
 | :line-tangent: Tangent Line | Select a path and pick a point; a tangent line will be drawn between them. |
 | :line-perpendicular: Perpendicular Line | Select a path and pick a point; a perpendicular line will be drawn between them. |
@@ -35,19 +37,19 @@ The draw tools identify and snap to edges of existing geometry. When snapped to 
 ## Arcs — A
 
 |---|---|
-| :arc: Center First | First select the center point for a circle, then two points along its radius which define the arc span. Hold SHIFT to select the longer span between two points. You may display dashed lines to the center by selecting the compass option. |
+| :arc: Center First | First select the center point for a circle, then two points along its radius which define the arc span. Hold *Shift* to select the longer span between two points. You may display dashed lines to the center by selecting the compass option. |
 | :arc-start: Center Second | Here the first click defines the starting point of the arc, the second click defines the arc center, and the third click defines the end of the arc segment. |
 | :arc-ends-center: Center Last | Here the first two clicks define points along the arc path, while the third click defines the center. |
 | :arc-through: Three Point | Here you never define the center; your three clicks define points along the arc path. |
 | :arc-tangent: Tangent Arc | This tool will draw an arc that is always tangent to the path of a snapped shape. |
-| :arc-chain: Chained Arc | This tool allows you to draw multiple arcs that are smoothly joined. Hold SHIFT to change the sweep direction of the arc being drawn at the tangent point. |
-| :join-arc: Join Arc | This one is cool. Use this tool to draw a smooth biarc join between two selected paths. There are often multiple solutions, some of which can look fairly odd. Hit SHIFT to cycle through the solutions; there is usually a pretty one in there. |
+| :arc-chain: Chained Arc | This tool allows you to draw multiple arcs that are smoothly joined. Hold *Shift* to change the sweep direction of the arc being drawn at the tangent point. |
+| :join-arc: Join Arc | This one is cool. Use this tool to draw a smooth biarc join between two selected paths. There are often multiple solutions, some of which can look fairly odd. Hit *Shift* to cycle through the solutions; there is usually a pretty one in there. |
 
 ## Circle & Polygons — C
 
 |---|---|
 | :circle: Circle | Select a center, then a radius, then a circle is drawn. |
-| :polygon-3: Triangle | Same as the circle tool except we draw an equilateral triangle. You may hold SHIFT to snap the radius to a standard angle.|
+| :polygon-3: Triangle | Same as the circle tool except we draw an equilateral triangle. You may hold *Shift* to snap the radius to a standard angle.|
 | :polygon-4: Square | - |
 | :polygon-5: Pentagon | - |
 | :polygon-6: Hexagon | - |
@@ -56,29 +58,29 @@ The draw tools identify and snap to edges of existing geometry. When snapped to 
 ## Boxed Shapes — R
 
 |---|---|
-| :rect: Rectangle | Draws a rectangle between two points. Holding SHIFT will draw a square.|
+| :rect: Rectangle | Draws a rectangle between two points. Holding *Shift* will draw a square.|
 | :right-triangle: Right Triangle | Draws a right triangle between two points. |
 
 ## Mathematical Curves — H
 
 |---|---|
-| :batten: Batten | Batten draws a spline curve that intersects a series of points you place on the canvas. Hit enter when you are done. Double-clicking along a batten will add a control point. Holding CTRL and double-clicking an existing control point will remove it. |
+| :batten: Batten | Batten draws a spline curve that intersects a series of points you place on the canvas. Hit *Enter* when you are done. *Double-clicking* along a batten will add a control point. Holding *Ctrl* and *double-clicking* an existing control point will remove it. |
 | :catenary: Catenary | A catenary is the natural curve a rope takes when suspended between two points. Pick two points and then select a third for the depth of the curve. You may edit the depth of a selected curve in its settings bar.  |
 | :cycloid: Cycloid | A cycloid is a curve drawn by tracking a point within a circle as it rotates along a plane. Pick two points and then select a third for the depth of the curve. Cycloid factor indicates how far along the radius the draw point is selected. Percentage will scale a "window" of the cycloid to the given distance. |
 
 ## Marks
 
 |---|---|
-| :text: Text | Select a point and then begin typing to add text. Press ENTER to confirm. If you select existing text, you may press enter to begin editing it. SHIFT+ENTER will create a new line. |
+| :text: Text | Select a point and then begin typing to add text. Press *Enter* to confirm. If you select existing text, you may press *Enter* to begin editing it. *Shift+Enter* will create a new line. |
 | :point: Point | Draws a small crosshair at a given point.  |
-| :eraser: Eraser | Click and hold and then drag over objects to erase them.  |
+| :eraser: Eraser | *Click and hold* and then *drag* over objects to erase them.  |
 
 ## Modify
 
 |---|---|
-| :group: Group | You can group and ungroup multiple selected objects. You can also do this by right clicking a selection or using CTRL+G. Grouped objects are treated as single objects for the various modify tools. |
+| :group: Group | You can group and ungroup multiple selected objects. You can also do this by *right-clicking* a selection or using *Ctrl+G*. Grouped objects are treated as single objects for the various modify tools. |
 | :move: Move | Select an object, then pick a point. Travel to a new point and the object will be translated by the difference between those two points. |
-| :offset: Offset | Offsets an object by some quantity. Not all objects or paths can be offset. Type in a metric value and hit enter to offset to that exact amount. |
+| :offset: Offset | Offsets an object by some quantity. Not all objects or paths can be offset. Type in a metric value and hit *Enter* to offset to that exact amount. |
 | :fillet: Fillet | Draws an arc fillet between two lines. You can edit the radius of the fillet on the bottom bar when the tool is selected. Once a fillet is made, the two lines are altered. |
 | :scale: Scale | Select an object or a group and then two points to scale them. The object always retains its aspect ratio. |
 | :rotate: Rotate | Select an object or group and then two points to rotate it. There are two rotate tools for fast clockwise and counterclockwise rotation about an object's geometric center. |

@@ -18,9 +18,32 @@ import historyV083 from './history/v0.8.3.md';
 import historyV0880 from './history/v0.8.8.0.md';
 import historyV090 from './history/v0.9.0.md';
 import wikiOverview from './wiki/overview.md';
+import wikiCanvasCanvas from './wiki/cremonaCad/canvas.md';
 import wikiCanvasControls from './wiki/cremonaCad/controls.md';
+import wikiCanvasImages from './wiki/cremonaCad/images.md';
+import wikiCanvasLayers from './wiki/cremonaCad/layers.md';
 import wikiCanvasTools from './wiki/cremonaCad/tools.md';
+import wikiPanelsBase from './wiki/panels/base.md';
+import wikiPanelsCorners from './wiki/panels/corners.md';
+import wikiPanelsCenterBout from './wiki/panels/center-bout.md';
+import wikiPanelsOuterContour from './wiki/panels/outer-contour.md';
+import wikiPanelsFluting from './wiki/panels/fluting.md';
+import wikiPanelsFHolePlacement from './wiki/panels/f-hole-placement.md';
+import wikiPanelsFHoleContours from './wiki/panels/f-hole-contours.md';
+import wikiPanelsLongArching from './wiki/panels/long-arching.md';
+import wikiPanelsCrossArching from './wiki/panels/cross-arching.md';
+import wikiPanelsNeck from './wiki/panels/neck.md';
+import wikiPanelsVolute from './wiki/panels/volute.md';
+import wikiPanelsScroll from './wiki/panels/scroll.md';
+import wikiPanelsScrollWidths from './wiki/panels/scroll-widths.md';
+import wikiPanelsStringSetup from './wiki/panels/string-setup.md';
+import wikiPanelsMould from './wiki/panels/mould.md';
+import wikiPanelsExport from './wiki/panels/export.md';
+import wikiCanvasFiles from './wiki/cremonaCad/files.md';
+import wikiConceptsParametric from './wiki/concepts/parametric-models.md';
+import wikiPanelsPanel from './wiki/panels/panel.md';
 import wikiPanelsBouts from './wiki/panels/bouts.md';
+import wikiConceptsPerspective from './wiki/concepts/perspective.md';
 import wikiConceptsVesica from './wiki/concepts/vesica.md';
 import wikiConceptsViolNeck from './wiki/concepts/viol-neck.md';
 
@@ -36,19 +59,42 @@ export const WIKI: WikiCategory[] = [
     label: 'CremonaCad',
     overview: page('wiki/overview.md', wikiOverview),
     pages: [
-      page('wiki/canvas/tools.md', wikiCanvasTools),
-      page('wiki/canvas/controls.md', wikiCanvasControls),
+      page('wiki/cremonaCad/canvas.md', wikiCanvasCanvas),
+      page('wiki/cremonaCad/controls.md', wikiCanvasControls),
+      page('wiki/cremonaCad/files.md', wikiCanvasFiles),
+      page('wiki/cremonaCad/tools.md', wikiCanvasTools),
+      page('wiki/cremonaCad/layers.md', wikiCanvasLayers),
+      page('wiki/cremonaCad/images.md', wikiCanvasImages),
     ],
   },
   {
     label: 'Panels',
+    overview: page('wiki/panels/panel.md', wikiPanelsPanel),
     pages: [
+      page('wiki/panels/base.md', wikiPanelsBase),
       page('wiki/panels/bouts.md', wikiPanelsBouts),
+      page('wiki/panels/corners.md', wikiPanelsCorners),
+      page('wiki/panels/center-bout.md', wikiPanelsCenterBout),
+      page('wiki/panels/outer-contour.md', wikiPanelsOuterContour),
+      page('wiki/panels/fluting.md', wikiPanelsFluting),
+      page('wiki/panels/f-hole-placement.md', wikiPanelsFHolePlacement),
+      page('wiki/panels/f-hole-contours.md', wikiPanelsFHoleContours),
+      page('wiki/panels/long-arching.md', wikiPanelsLongArching),
+      page('wiki/panels/cross-arching.md', wikiPanelsCrossArching),
+      page('wiki/panels/neck.md', wikiPanelsNeck),
+      page('wiki/panels/volute.md', wikiPanelsVolute),
+      page('wiki/panels/scroll.md', wikiPanelsScroll),
+      page('wiki/panels/scroll-widths.md', wikiPanelsScrollWidths),
+      page('wiki/panels/string-setup.md', wikiPanelsStringSetup),
+      page('wiki/panels/mould.md', wikiPanelsMould),
+      page('wiki/panels/export.md', wikiPanelsExport),
     ],
   },
   {
     label: 'Concepts',
     pages: [
+      page('wiki/concepts/parametric-models.md', wikiConceptsParametric),
+      page('wiki/concepts/perspective.md', wikiConceptsPerspective),
       page('wiki/concepts/vesica.md', wikiConceptsVesica),
       page('wiki/concepts/viol-neck.md', wikiConceptsViolNeck),
     ],
