@@ -1,5 +1,8 @@
 :host {
+  --doc-serif: 'Linux Libertine', 'Georgia', 'Times', serif;
+  --doc-rule: color-mix(in srgb, currentColor 25%, transparent 75%);
   display: block;
+  line-height: 1.6;
 }
 
 .page-head {
@@ -13,8 +16,9 @@
 
 .page-head h3 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-family: var(--doc-serif);
+  font-size: 26px;
+  font-weight: 400;
   flex: 1;
 }
 
@@ -31,23 +35,19 @@
 }
 
 :host ::ng-deep h4 {
-  margin: 14px 0 5px;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  opacity: 0.75;
-}
-
-/* headings stay flush left and everything after the first one steps in, so a heading reads as a divider */
-:host ::ng-deep h4 ~ :not(h4, h5, h6, figure) {
-  margin-left: 14px;
+  margin: 22px 0 8px;
+  padding-bottom: 2px;
+  font-family: var(--doc-serif);
+  font-size: 21px;
+  font-weight: 400;
+  line-height: 1.3;
+  border-bottom: 1px solid var(--doc-rule);
 }
 
 :host ::ng-deep h5 {
-  margin: 12px 0 4px;
-  font-size: 13px;
-  font-weight: 600;
+  margin: 16px 0 4px;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 :host ::ng-deep p {
@@ -120,21 +120,30 @@
 
 :host ::ng-deep table {
   border-collapse: collapse;
-  margin: 0 0 12px;
+  margin: 4px 0 14px;
   font-size: 13px;
+  line-height: 1.5;
+  background: color-mix(in srgb, currentColor 3%, transparent 97%);
+  border: 1px solid var(--doc-rule);
 }
 
 :host ::ng-deep th,
 :host ::ng-deep td {
   text-align: left;
-  padding: 3px 10px 3px 0;
-  border-bottom: 1px solid var(--ui-border-soft, #444);
+  padding: 5px 10px;
+  border: 1px solid var(--doc-rule);
   vertical-align: top;
 }
 
 :host ::ng-deep th {
-  font-weight: 600;
-  opacity: 0.8;
+  font-weight: 700;
+  text-align: center;
+  background: color-mix(in srgb, currentColor 10%, transparent 90%);
+}
+
+:host ::ng-deep td:first-child:not(:last-child) {
+  font-weight: 700;
+  background: color-mix(in srgb, currentColor 7%, transparent 93%);
 }
 
 /* an icon and its name read as one mark, so that cell never wraps */
