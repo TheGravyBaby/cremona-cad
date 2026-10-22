@@ -25,6 +25,9 @@ export interface Article {
   status?: ArticleStatus;
   // YYYY-MM-DD; a release without one is unreleased
   date?: string;
+  // the lead figure, pinned top right above the body; the caption is optional
+  image?: string;
+  caption?: string;
   summary: string;
   body: string;
   links: string[];
@@ -32,7 +35,7 @@ export interface Article {
   images: string[];
 }
 
-const FRONT_MATTER_KEYS = new Set(['id', 'title', 'kind', 'panel', 'aliases', 'unit', 'standard', 'status', 'date']);
+const FRONT_MATTER_KEYS = new Set(['id', 'title', 'kind', 'panel', 'aliases', 'unit', 'standard', 'status', 'date', 'image', 'caption']);
 
 export class ArticleParseError extends Error {}
 
@@ -141,6 +144,8 @@ export function parseArticle(source: string, file?: string): Article {
     standard: standard as Record<string, string> | undefined,
     status: status as ArticleStatus | undefined,
     date,
-    summary, body, links: linksIn(body), images: imagesIn(body),
+    image: str('image'), caption: str('caption'),
+    summary, body, links: linksIn(body),
+    images: [...(str('image') ? [str('image')!] : []), ...imagesIn(body)],
   };
 }

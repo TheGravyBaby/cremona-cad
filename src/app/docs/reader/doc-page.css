@@ -13,7 +13,7 @@
 
 .page-head h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
   flex: 1;
 }
@@ -37,6 +37,11 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   opacity: 0.75;
+}
+
+/* headings stay flush left and everything after the first one steps in, so a heading reads as a divider */
+:host ::ng-deep h4 ~ :not(h4, h5, h6, figure) {
+  margin-left: 14px;
 }
 
 :host ::ng-deep h5 {

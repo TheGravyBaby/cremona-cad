@@ -45,6 +45,17 @@ describe('buildGcode', () => {
   const text = buildGcode(job());
   const path = trace(text);
 
+  it('lifts out of an open run and rapids back to its start between passes, never feeding across', () => {
+    const run = [{ x: 10, y: 10 }, { x: 90, y: 10 }, { x: 90, y: 90 }];
+    const passes = [15, 10, 5];
+    const open = trace(buildGcode(job({ passes, cuts: [{ name: 'run', loop: run, tabs: [] }] })));
+    const atStart = (m: Move) => m.x === 10 && m.y === 10;
+    expect(open.filter(m => m.g === 'G0' && atStart(m)).length).toBe(passes.length);
+    for (const m of open.filter(m => m.g === 'G0' && m.x !== undefined)) expect(m.z).toBe(31.7);
+    expect(open.some(m => m.g === 'G1' && atStart(m))).toBe(false);
+    expect(open.filter(m => m.g === 'G1' && m.x === 90 && m.y === 90).length).toBe(passes.length);
+  });
+
   it('opens in absolute millimetres and ends retracted with the spindle off', () => {
     const lines = text.trim().split('\n');
     expect(lines.slice(0, 20)).toEqual(expect.arrayContaining(['G90', 'G21']));

@@ -19,7 +19,8 @@ export interface GcodeTab {
 
 export interface ProfileCut {
   name: string;
-  // the cutter centre's path, closed: its first point repeated last
+  // the cutter centre's path: a loop when its first point is repeated last, the bit staying down
+  // between passes; else an open run the bit lifts out of and comes back to the start of
   loop: Pt[];
   tabs: GcodeTab[];
 }
@@ -163,20 +164,27 @@ class Writer {
     return ` F${fmt(feed)}`;
   }
 
-  // the loop once per pass, the bit staying down between passes, up over the tabs on the passes
-  // below them, and back to the safe height at the end
+  // the path once per pass, up over the tabs on the passes below them, and back to the safe height
+  // at the end. A loop keeps the bit down between passes; an open run lifts it and rapids it back
+  // to the start, since feeding from the run's end to its start would cut across the work
   cut(cut: ProfileCut): void {
     let stations = tabStations(cut);
+    let first = stations[0].pt, last = stations[stations.length - 1].pt;
+    let open = Math.hypot(last.x - first.x, last.y - first.y) > 1e-9;
     this.comment(`Cut ${cut.name}`);
-    this.rapidXY(stations[0].pt);
-    for (let z of this.job.passes) {
+    this.rapidXY(first);
+    this.job.passes.forEach((z, pass) => {
+      if (pass && open) {
+        this.rapidZ(this.job.safeZ);
+        this.rapidXY(first);
+      }
       let lifted = z < this.job.tabTop;
       for (let i = 1; i < stations.length; i++) {
         let s = stations[i];
         this.feedZ(lifted && s.inTab ? this.job.tabTop : z);
         this.feedXY(s.pt);
       }
-    }
+    });
     this.rapidZ(this.job.safeZ);
   }
 

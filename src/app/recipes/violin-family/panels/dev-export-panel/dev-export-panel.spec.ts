@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { buildGcode } from '../../../../helpers/gcodeExporter';
-import { pointInPolygon, signedPolygonArea } from '../../../../helpers/math/simpleGeometry';
+import { dist, normalizeRadians, pointInPolygon, pointOnCircle, signedPolygonArea } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed, polylineCumulativeLengths } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
@@ -17,7 +17,10 @@ import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
 import { MOULD_EXPORT_STEP, MouldPanel, solveMould } from '../mould-panel/mould-panel';
-import { archingToolpaths, Bit, contourToolpaths, CRADLE, CradleSettings, cradleToolpaths, cutPlan, DEFAULT_SETTINGS, EXPORTS, ExportId, FHOLE, FholeSettings, fholeToolpaths, gcodeJob, jobNotes, MACHINE, MOULD_TABS, mouldToolpaths, planExport, PLATE_TABS, PlateSettings, purflingToolpaths, SURFACE, Tab, TOOLS } from './dev-export-panel';
+import { NeckPanel, solveNeck } from '../neck-panel/neck-panel';
+import { VolutePanel } from '../volute-panel/volute-panel';
+import { solveScroll } from '../scroll-panel/scroll-panel';
+import { archingToolpaths, Bit, contourToolpaths, CRADLE, CradleSettings, cradleToolpaths, cutPlan, DEFAULT_SETTINGS, EXPORTS, ExportId, FHOLE, FholeSettings, fholeToolpaths, gcodeJob, jobNotes, MACHINE, MOULD_TABS, mouldToolpaths, planExport, PLATE_TABS, PlateSettings, purflingToolpaths, SCROLL, ScrollSettings, scrollToolpaths, sideOutline, SURFACE, Tab, TOOLS } from './dev-export-panel';
 import { ThemeService } from '../../../../theme/theme.service';
 
 // what a maker would check before cutting: the bit's centre runs a bit's radius off the cut line,
@@ -36,6 +39,8 @@ const seeded = (): ViolinFamilyParams => {
   FHoleContoursPanel.seed(p);
   FlutingPanel.seed(p);
   LongArchingPanel.seed(p);
+  NeckPanel.seed(p);
+  VolutePanel.seed(p);
   MouldPanel.seed(p);
   return p;
 };
@@ -765,4 +770,139 @@ describe('the f-hole toolpaths', () => {
       expect(text).toMatch(/MSG, EXPECTS THE GRADUATED/);
     }
   }, 20000);
+});
+
+describe('the scroll side profile toolpaths', () => {
+  const p = seeded();
+  const n = solveNeck(p)!;
+  const s = solveScroll(p)!;
+  const t = TOOLS.find(t => t.number === DEFAULT_SETTINGS.tools.scroll)!;
+  const bit: Bit = { diameter: t.diameter, shape: t.shape, feeds: t.feeds.hard };
+  const r = bit.diameter / 2;
+  const scroll = (over: Partial<ScrollSettings> = {}): ScrollSettings => ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.scroll)), ...over });
+  const outline = sideOutline(p, n, s);
+  const profile = samplePathToPolyline(outline.d, 0.25);
+  const mirror = (pt: Pt) => ({ x: -pt.x, y: pt.y });
+  // an index over an open run with no phantom segment closing it: the run is laid back on itself
+  const runIndex = (run: Pt[]) => buildPolylineIndex([...run, ...[...run].reverse()]);
+  const F1 = s.F1!;
+  const throat = pointOnCircle(F1, F1.start + normalizeRadians(F1.end - F1.start) / 2);
+  const crown = profile.reduce((a, b) => (b.y > a.y ? b : a));
+  const poll = profile.reduce((a, b) => (b.x < a.x ? b : a));
+
+  it('closes the blank\'s outline, the neck and the scroll seeded', () => {
+    expect(n.failures).toEqual([]);
+    expect(s.failures).toEqual([]);
+    expect(outline.pieces.length).toBeGreaterThan(10);
+    expect(Math.abs(profile[0].x)).toBeLessThan(1e-6);
+    expect(crown.y).toBeGreaterThan(0);
+    expect(poll.x).toBeLessThan(-20);
+  });
+
+  for (const side of ['left', 'right'] as const) {
+    describe(`the ${side} side`, () => {
+      const g = scroll({ side });
+      const tp = scrollToolpaths(p, n, s, bit, g, true);
+      const frame = (pt: Pt) => (side === 'left' ? pt : mirror(pt));
+      const idx = buildPolylineIndex(profile.map(frame));
+      const toFace = (pt: Pt) => (side === 'left' ? pt.x : -pt.x);
+      const pts = tp.paths.flatMap(path => path.loop);
+      const near = (pt: Pt) => Math.min(...tp.paths.map(path => distPointToPolylineIndexed(pt, runIndex(path.loop))));
+
+      it('runs a bit radius outside the outline, never into it, clear of the stem, in open runs', () => {
+        expect(tp.failures).toEqual([]);
+        expect(tp.paths.length).toBeGreaterThan(0);
+        for (const pt of pts) {
+          expect(distPointToPolylineIndexed(pt, idx), `at ${pt.x.toFixed(1)}, ${pt.y.toFixed(1)}`).toBeGreaterThan(r - 0.05);
+          // off the stem along its reach; past it the bit may round the chin
+          if (pt.y + tp.sheetOffset.y < g.fence.y + g.fence.reach + r + SCROLL.fenceClearance) expect(toFace(pt), `at ${pt.x.toFixed(1)}, ${pt.y.toFixed(1)}`).toBeLessThanOrEqual(g.faceInset - r - SCROLL.fenceClearance + 1e-6);
+        }
+        for (const path of tp.paths) expect(dist(path.loop[0], path.loop[path.loop.length - 1])).toBeGreaterThan(1);
+      });
+
+      it('reaches the head, the heel and every tab station, and stays out of the throat', () => {
+        for (const pt of [crown, poll, ...outline.stations].map(frame)) expect(near(pt), `at ${pt.x.toFixed(1)}, ${pt.y.toFixed(1)}`).toBeLessThan(r + 0.3);
+        expect(near(frame(throat))).toBeGreaterThan(r + SCROLL.bridge);
+        expect(tp.paths.reduce((sum, path) => sum + path.tabs.length, 0)).toBe(outline.stations.length);
+      });
+
+      it('steps down from the blank\'s top to past its middle, the tabs standing off the floor', () => {
+        const job = gcodeJob(tp, t, t.feeds.hard!);
+        const top = g.stock.thickness, floor = top / 2 - SCROLL.overlap;
+        expect(job.passes[0]).toBeCloseTo(top - t.feeds.hard!.stepDown, 6);
+        expect(job.passes[job.passes.length - 1]).toBeCloseTo(floor, 6);
+        expect(job.tabTop).toBeCloseTo(floor + SCROLL.tabHeight, 6);
+        const text = buildGcode(job);
+        expect(text.split('\n').filter(l => l.startsWith('(Cut Side profile')).length).toBe(tp.paths.length);
+        for (const cut of job.cuts) for (const pt of 'loop' in cut ? cut.loop : []) {
+          expect(pt.x).toBeGreaterThan(0);
+          expect(pt.x).toBeLessThan(g.harness.width);
+          expect(pt.y).toBeGreaterThan(g.fence.y);
+          expect(pt.y).toBeLessThan(g.harness.length);
+        }
+      });
+    });
+  }
+
+  it('mirrors the second side across the stem, tabs and all', () => {
+    const [a, b] = (['left', 'right'] as const).map(side => scrollToolpaths(p, n, s, bit, scroll({ side }), true));
+    const file = (tp: typeof a, pt: Pt) => ({ x: pt.x + tp.sheetOffset.x, y: pt.y + tp.sheetOffset.y });
+    const axis = DEFAULT_SETTINGS.scroll.fence.x + DEFAULT_SETTINGS.scroll.fence.thickness / 2;
+    const across = (pt: Pt) => ({ x: 2 * axis - pt.x, y: pt.y });
+    const left = a.paths.map(path => runIndex(path.loop.map(pt => file(a, pt))));
+    for (const path of b.paths) {
+      for (let i = 0; i < path.loop.length; i += 5) {
+        const pt = across(file(b, path.loop[i]));
+        expect(Math.min(...left.map(idx => distPointToPolylineIndexed(pt, idx))), `at ${pt.x.toFixed(1)}, ${pt.y.toFixed(1)}`).toBeLessThan(0.3);
+      }
+      for (const tab of path.tabs) {
+        const twin = a.paths.flatMap(q => q.tabs).find(q => dist(file(a, q.centre), across(file(b, tab.centre))) < 1.5);
+        expect(twin, `tab at ${tab.centre.x.toFixed(1)}, ${tab.centre.y.toFixed(1)}`).toBeTruthy();
+      }
+    }
+    expect(b.caution).toMatch(/FIRST SIDE/);
+  });
+
+  // the volute's front off the fingerboard plane: no wood there with the face on the plane, so the
+  // face is laid out that much in and planed down after, the chin cut flush with it past the stem
+  it('takes a chin past the fingerboard plane once the face is inset by it, and cuts it beyond the stem', () => {
+    const q: ViolinFamilyParams = JSON.parse(JSON.stringify(p));
+    q.scroll!.fitToNeck = false;
+    q.scroll!.eye.x = s.eye!.x + 2;
+    const qn = solveNeck(q)!, qs = solveScroll(q)!;
+    const over = Math.max(...samplePathToPolyline(sideOutline(q, qn, qs).d, 0.5).map(pt => pt.x));
+    expect(over).toBeCloseTo(2, 1);
+    expect(scrollToolpaths(q, qn, qs, bit, scroll()).failures.join(' ')).toMatch(/chin stands/);
+    const tp = scrollToolpaths(q, qn, qs, bit, scroll({ faceInset: 2 }), true);
+    expect(tp.failures).toEqual([]);
+    const chin = samplePathToPolyline(sideOutline(q, qn, qs).d, 0.5).filter(pt => pt.x > 1.9 && pt.y > 0).reduce((a, b) => (b.y < a.y ? b : a));
+    const near = Math.min(...tp.paths.map(path => distPointToPolylineIndexed(chin, runIndex(path.loop))));
+    expect(near).toBeLessThan(r + 0.3);
+    for (const pt of tp.paths.flatMap(path => path.loop)) {
+      const file = { x: pt.x + tp.sheetOffset.x, y: pt.y + tp.sheetOffset.y };
+      // nothing of the bit within the stem's own footprint
+      const inStem = file.x + r > DEFAULT_SETTINGS.scroll.fence.x && file.x - r < DEFAULT_SETTINGS.scroll.fence.x + DEFAULT_SETTINGS.scroll.fence.thickness && file.y - r < DEFAULT_SETTINGS.scroll.fence.y + DEFAULT_SETTINGS.scroll.fence.reach;
+      expect(inStem, `at ${file.x.toFixed(1)}, ${file.y.toFixed(1)}`).toBe(false);
+    }
+  });
+
+  it('cuts the face too once it is inset a bit\'s width, as one loop', () => {
+    const tp = scrollToolpaths(p, n, s, bit, scroll({ faceInset: bit.diameter + SCROLL.fenceClearance + 1 }), true);
+    expect(tp.failures).toEqual([]);
+    expect(tp.paths.length).toBe(1);
+    const loop = tp.paths[0].loop;
+    expect(loop[0]).toEqual(loop[loop.length - 1]);
+    expect(loop.some(pt => Math.abs(pt.x - r) < 0.05 && pt.y < 0)).toBe(true);
+  });
+
+  it('refuses a harness without room, a blank the profile runs off, a heel margin the crossbar catches, and a ball', () => {
+    const plan = (over: Partial<ScrollSettings>, b: Bit = bit) => scrollToolpaths(p, n, s, b, scroll(over)).failures.join(' ');
+    expect(plan({ fence: { x: 40, y: 25, thickness: 19, reach: 170 } })).toMatch(/room left/);
+    expect(plan({ fence: { x: 150, y: 25, thickness: 19, reach: 280 } })).toMatch(/stem reaches the scroll's chin/);
+    expect(plan({ harness: { width: 220, length: 400 } })).toMatch(/room right/);
+    expect(plan({ stock: { thickness: 46, width: 30, length: 280 } })).toMatch(/shallow/);
+    expect(plan({ stock: { thickness: 46, width: 65, length: 150 } })).toMatch(/short/);
+    expect(plan({ endMargin: 2 })).toMatch(/crossbar/);
+    expect(plan({}, ball)).toMatch(/flat/);
+  });
 });

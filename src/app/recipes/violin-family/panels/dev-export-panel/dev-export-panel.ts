@@ -1,19 +1,19 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { buildGcode, downloadGcodeFile, GcodeJob } from '../../../../helpers/gcodeExporter';
-import { closestPointOnSegment, dist, flipPointAboutY, pointInPolygon, signedPolygonArea, TURN } from '../../../../helpers/math/simpleGeometry';
-import { pathFromPolyline, pathsBounds, samplePathToPolyline } from '../../../../helpers/math/pathMath';
+import { angleFromCenter, angleWithinSweep, closestPointOnSegment, dist, flipPointAboutY, normalizeRadians, pointInPolygon, pointOnCircle, signedPolygonArea, TURN } from '../../../../helpers/math/simpleGeometry';
+import { Matrix2D, pathFromPolyline, pathsBounds, samplePathToPolyline, transformPath } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed, pointAtPolylineLength, polylineCumulativeLengths, polylineSlice, simplifyPolyline3D } from '../../../../helpers/math/vibeMath';
 import { erodePolygon, flattenPath, offsetPath } from '../../../../helpers/math/pathVibes';
 import { inchFraction } from '../../../../helpers/nearestFraction';
 import { renderCrosshair, renderPath, renderRect, renderText } from '../../../../helpers/renderFuncs';
 import { safeRun } from '../../../../helpers/validators';
-import { Circle, Pt, Pt3D, Rectangle } from '../../../../models/types';
+import { Arc, Circle, Pt, Pt3D, Rectangle } from '../../../../models/types';
 import { info } from '../../../../shared/message-emitter';
 import { MmInchField } from '../../../../shared/mm-inch-field';
 import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { FholeContoursSolve, MouldRelief, MouldSolve, OuterContourSolve, Plate, PlateSurface, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { FholeContoursSolve, MouldRelief, MouldSolve, NeckSolve, OuterContourSolve, Plate, PlateSurface, RenderLayer, ScrollSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { contourRings, contourSampleSteps, rowAt, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { BACK_ARCH_INK, CHANNEL_INK, TOP_ARCH_INK } from '../long-arching-panel/long-arching-panel';
 import { MOULD_EXPORT_STEP, renderMould, solveMould } from '../mould-panel/mould-panel';
@@ -22,6 +22,8 @@ import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
+import { scrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
+import { solveScroll } from '../scroll-panel/scroll-panel';
 
 // G-code for the maker's own machine, offered on localhost only: the files drive a CNC, and nobody
 // else's machine is ours to answer for. The recipe names this panel only inside @defer, so a
@@ -39,7 +41,7 @@ import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-con
 // a case in planExport that solves the part, plans its toolpaths and lists its layers. The sheet,
 // the tabs' lifts and the writer are shared, and the plan the panel shows is the file's own header
 
-export type ExportId = 'mould' | 'plate' | 'purfling' | 'contour' | 'cradle' | 'fholes';
+export type ExportId = 'mould' | 'plate' | 'purfling' | 'contour' | 'cradle' | 'fholes' | 'scroll';
 
 export interface ExportKind {
   id: ExportId;
@@ -47,13 +49,14 @@ export interface ExportKind {
 }
 
 export const EXPORTS: readonly ExportKind[] = [
-  { id: 'mould', label: 'Mould' }, { id: 'plate', label: 'Plate' }, { id: 'purfling', label: 'Purfling' }, { id: 'contour', label: 'Contour' }, { id: 'cradle', label: 'Cradle' }, { id: 'fholes', label: 'F-holes' },
+  { id: 'mould', label: 'Mould' }, { id: 'plate', label: 'Plate' }, { id: 'purfling', label: 'Purfling' }, { id: 'contour', label: 'Contour' }, { id: 'cradle', label: 'Cradle' }, { id: 'fholes', label: 'F-holes' }, { id: 'scroll', label: 'Scroll' },
 ];
 
 // whose stock an export cuts: the purfling and the contour are cut in the plate's blank, in the
-// plate's setup; the cradle in a slab of its own, and the f-holes in the plate held in that slab
-export type StockId = 'mould' | 'plate' | 'cradle';
-export const STOCK_OF: Record<ExportId, StockId> = { mould: 'mould', plate: 'plate', purfling: 'plate', contour: 'plate', cradle: 'cradle', fholes: 'cradle' };
+// plate's setup; the cradle in a slab of its own, and the f-holes in the plate held in that slab;
+// the scroll in the neck blank
+export type StockId = 'mould' | 'plate' | 'cradle' | 'scroll';
+export const STOCK_OF: Record<ExportId, StockId> = { mould: 'mould', plate: 'plate', purfling: 'plate', contour: 'plate', cradle: 'cradle', fholes: 'cradle', scroll: 'scroll' };
 
 export type Wood = 'soft' | 'hard';
 
@@ -107,13 +110,35 @@ export interface FholeSettings {
   scribeDepth: number;
 }
 
+// the neck blank's side profile, roughed from a maple billet lying cheek down: the billet's planed
+// face, the fingerboard plane, against the stem of a T fence and its heel end on the crossbar,
+// the head out to the stem's left. Rolled over onto the stem's right for the second file, the two
+// kerfs meeting in the middle, so no bit has to reach through the cheeks
+export type ScrollSide = 'left' | 'right';
+
+// `stock` is the billet: `thickness` across the cheeks (the file's Z), `width` back from the face,
+// `length` along the neck. The harness board stands from XY0 at its lower-left corner; the T
+// fence on it has its stem's left face at `fence.x`, `thickness` thick, running `reach` up from
+// the crossbar's face at `fence.y`: along the neck only, since the head may stand proud of the
+// face. `faceInset` is the fingerboard plane in from the billet's face: 0 puts the face on the
+// stem and leaves it uncut; a chin past the plane needs that much, planed off the face after;
+// a bit's width and more lets the file cut the face too. `endMargin` is the heel's lowest point
+// up from the billet's end on the crossbar
+export interface ScrollSettings extends StockSettings {
+  harness: { width: number; length: number };
+  fence: { x: number; y: number; thickness: number; reach: number };
+  side: ScrollSide;
+  faceInset: number;
+  endMargin: number;
+}
+
 // the bit slots, one per thing cut with a bit of its own, each the number of a row in TOOLS. The
 // cradle borrows the roughing bit; the mould's bit is the Mould panel's param
-export type StageKey = Stage | 'purfling' | 'contour' | FholeStage;
-export const STAGE_SHAPE: Record<StageKey, ToolShape> = { rough: 'flat', finish: 'ball', purfling: 'flat', contour: 'flat', eyes: 'flat', scribe: 'v' };
+export type StageKey = Stage | 'purfling' | 'contour' | FholeStage | 'scroll';
+export const STAGE_SHAPE: Record<StageKey, ToolShape> = { rough: 'flat', finish: 'ball', purfling: 'flat', contour: 'flat', eyes: 'flat', scribe: 'v', scroll: 'flat' };
 
 // one stock per setup: a mould comes out of a ply sheet, a plate and its purfling and contour out
-// of a blank, a cradle out of a slab
+// of a blank, a cradle out of a slab, a scroll out of the neck blank
 export interface DevExportSettings {
   job: ExportId;
   tools: Record<StageKey, number>;
@@ -121,15 +146,20 @@ export interface DevExportSettings {
   plate: PlateSettings;
   cradle: CradleSettings;
   fholes: FholeSettings;
+  scroll: ScrollSettings;
 }
 
 export const DEFAULT_SETTINGS: DevExportSettings = {
   job: 'mould',
-  tools: { rough: 2, finish: 3, purfling: 7, contour: 1, eyes: 6, scribe: 9 },
+  tools: { rough: 2, finish: 3, purfling: 7, contour: 1, eyes: 6, scribe: 9, scroll: 2 },
   mould: { stock: { thickness: 19, width: 300, length: 400 }, wood: 'soft' },
   plate: { stock: { thickness: 22, edge: 10, width: 230, length: 420 }, fence: { x: 25, y: 25 }, seam: 115, wood: 'soft', plate: 'top', stage: 'rough', purflingDepth: 2 },
   cradle: { stock: { thickness: 25, width: 230, length: 420 }, wood: 'soft', plate: 'back', stage: 'pocket' },
   fholes: { stage: 'eyes', thickness: 2.8, scribeDepth: 0.3 },
+  scroll: {
+    stock: { thickness: 46, width: 65, length: 280 }, wood: 'hard', harness: { width: 300, length: 400 }, fence: { x: 150, y: 25, thickness: 19, reach: 170 },
+    side: 'left', faceInset: 0, endMargin: 10,
+  },
 };
 
 // the slot the open job cuts with; none for the mould, whose bit is the recipe's
@@ -170,6 +200,12 @@ export type CradleSpec = { [K in keyof typeof CRADLE]: number };
 // the f-holes: the eyes stop `allowance` short of the drawn circle, left for the knife, and go
 // `exitMargin` past the typed thickness, since the graduated inside is the maker's own. mm
 export const FHOLE = { allowance: 0.5, exitMargin: 1 } as const;
+
+// how the neck blank is cut: each side goes `overlap` past the middle so the kerfs meet; tabs
+// stand `tabHeight` off each side's floor, leaving twice that less the overlaps in the middle;
+// the throat is bridged where the pocket narrows to the bit plus `bridge` either side, left for
+// the gouge; and the bit keeps `fenceClearance` off the fence. mm
+export const SCROLL = { overlap: 0.5, tabHeight: 2.5, tabWidth: 12, bridge: 1.5, fenceClearance: 1 } as const;
 
 // how a plate's surface is carved: lines along the length, the roughing in terraces that leave a
 // skin for the ball, the finishing one pass at the scallop's stepover. mm
@@ -233,6 +269,11 @@ const MACHINE_HELP = {
     `Two files. The eyes, cleared through the plate with a small flat bit in loops from the centre out, clockwise, stopping ${FHOLE.allowance} mm inside the drawn circle for the knife, down to the thickness you type plus ${FHOLE.exitMargin} mm, since the recipe has no map of the inside; below the eye is the cradle\'s hole, and an eye over its lip is refused. ` +
     'Then the outline, both holes as drawn with wing tips and nicks, scribed with a V bit a few tenths under the surface: its point is as fine as its depth, and the groove\'s centre is the drawn line whatever the depth, so the knife has a line to follow and the eyes drilled and sawn by hand are already done. ' +
     'Either way Z follows the surface along the loop, the outside at that point less the depth, so a small bit is never buried past its flutes at the high end of a hole that falls across the arch, and the safe height clears the crown, not the slab.\n\n' +
+    'SCROLL\n' +
+    'The neck blank\'s side profile, the one true outline a scroll has, roughed from the maple billet lying cheek down in the harness against a T fence: the planed face, which is the fingerboard plane, on the stem\'s left side and the heel end on the crossbar. The bit cannot reach through the cheeks, so the profile is cut from both faces, each file going half way and a little over; for the second the billet is rolled over onto the stem\'s other side, the same face on the stem, the same end on the crossbar, and the file is the first mirrored across the stem. The harness has to leave room for the head on both sides. ' +
+    `Tabs stand ${SCROLL.tabHeight} mm off each file\'s floor on the straight stretches of the neck\'s back, the pegbox\'s back and the top of the head, so what is left in the middle is a saw cut. ` +
+    `The throat, where the pegbox front dives under the first turn, is narrower than any bit that could reach it: the file bridges it where the pocket narrows to the bit plus ${SCROLL.bridge} mm a side and leaves it for the gouge, the maker\'s cut. ` +
+    'The stem runs along the neck only, ending under the head, since a volute\'s front may stand proud of the fingerboard plane. With the face inset at 0 the face sits on the stem and is never cut: the kerf runs from near the heel\'s front corner round to the top of the flat above the nut, and the two slivers left at the stem are sawn. A chin past the plane needs the face inset by at least that much: the chin is then cut flush with the billet\'s face beyond the stem, and the face is planed down to the plane after, the pass made anyway when the fingerboard is fitted. A face inset of a bit\'s width and more cuts the whole outline, face included.\n\n' +
     'PLANNING\n' +
     'The download plans the cut again from the fine solve that the sheet exports use, so the coarser sampling of the preview never reaches the file.',
 };
@@ -338,7 +379,9 @@ const PLATES: readonly Plate[] = ['top', 'back'];
 const STAGES: readonly Stage[] = ['rough', 'finish'];
 const CRADLE_STAGES: readonly CradleStage[] = ['pocket', 'hole'];
 const FHOLE_STAGES: readonly FholeStage[] = ['eyes', 'scribe'];
-const STOCKS: readonly StockId[] = ['mould', 'plate', 'cradle'];
+const SIDES: readonly ScrollSide[] = ['left', 'right'];
+const STOCKS: readonly StockId[] = ['mould', 'plate', 'cradle', 'scroll'];
+const MIRROR: Matrix2D = [-1, 0, 0, 1, 0, 0];
 
 @Component({
   selector: 'app-vf-dev-export-panel',
@@ -424,6 +467,14 @@ export class DevExportPanel implements ViolinFamilyPanel, OnInit {
     return this.settings.fholes;
   }
 
+  get scroll(): ScrollSettings {
+    return this.settings.scroll;
+  }
+
+  get isScroll(): boolean {
+    return this.settings.job === 'scroll';
+  }
+
   // the settings naming the plate the job is cut to
   get cutTo(): PlateSettings | CradleSettings {
     return this.onBlank ? this.blank : this.cradle;
@@ -484,7 +535,7 @@ export class DevExportPanel implements ViolinFamilyPanel, OnInit {
     if (!plan || plan.toolpaths.failures.length) return;
     let text = buildGcode(gcodeJob(plan.toolpaths, tool, feeds));
     let job = this.settings.job;
-    let part = job === 'plate' ? `plate-${this.blank.plate}-${this.blank.stage}` : job === 'cradle' ? `cradle-${this.cradle.plate}-${this.cradle.stage}` : job === 'fholes' ? `fholes-${this.fholes.stage}` : job === 'mould' ? job : `${job}-${this.blank.plate}`;
+    let part = job === 'plate' ? `plate-${this.blank.plate}-${this.blank.stage}` : job === 'cradle' ? `cradle-${this.cradle.plate}-${this.cradle.stage}` : job === 'fholes' ? `fholes-${this.fholes.stage}` : job === 'scroll' ? `scroll-${this.scroll.side}` : job === 'mould' ? job : `${job}-${this.blank.plate}`;
     downloadGcodeFile(`${this.fileName.trim() || 'violin-family'}-${part}.nc`, text);
   }
 }
@@ -542,6 +593,14 @@ export function planExport(p: ViolinFamilyParams, settings: DevExportSettings, b
       let toolpaths = fholeToolpaths(p, s, surface, seat, o, bit, c, settings.fholes, fine);
       return { toolpaths, layers: [renderOutline(surface, pal), renderHole(o, c.plate, pal), renderLines([s.path, fholePath(p, s, true)], pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, c, pal)] };
     }
+    case 'scroll': {
+      let n = solveNeck(p), s = solveScroll(p);
+      if (!n?.heel || !s?.S0 || !s.nape || !s.F1) return null;
+      let g = settings.scroll;
+      let toolpaths = scrollToolpaths(p, n, s, bit, g, fine);
+      let outline = sideOutline(p, n, s).d;
+      return { toolpaths, layers: [renderLines([g.side === 'left' ? outline : transformPath(outline, MIRROR)], pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, g, pal)] };
+    }
   }
 }
 
@@ -568,7 +627,8 @@ export const renderSheet = (tp: Toolpaths, g: StockSettings, pal: PanelPalette) 
   renderRect(new Rectangle(origin, { x: origin.x + w, y: origin.y + l }), color, 'none', STROKE_WEIGHT.guide, DASH.guide)(gr, ui);
   let inches = (mm: number) => inchFraction(mm / 25.4).replace(/^≈\s*/, '');
   renderText({ x: origin.x + w / 2, y: origin.y + l + 6 }, `${w} × ${l} mm  (${inches(w)}" × ${inches(l)}")`, color, SHEET_LABEL_SIZE)(gr, ui);
-  if (tp.stockOrigin.x || tp.stockOrigin.y) {
+  if (tp.fixture) renderPath(transformPath(tp.fixture, [1, 0, 0, 1, zero.x, zero.y]), pal.neutral, STROKE_WEIGHT.section)(gr, ui);
+  else if (tp.stockOrigin.x || tp.stockOrigin.y) {
     let reach = 20;
     renderPath(`M ${origin.x + w + reach} ${zero.y} L ${zero.x} ${zero.y} L ${zero.x} ${origin.y + l + reach}`, pal.neutral, STROKE_WEIGHT.section)(gr, ui);
     renderText({ x: zero.x - 6, y: origin.y + l + reach }, 'fence', pal.neutral, SHEET_LABEL_SIZE, -90)(gr, ui);
@@ -697,6 +757,15 @@ export function readSettings(): DevExportSettings {
   let f = stored.fholes;
   if (FHOLE_STAGES.includes(f?.stage)) out.fholes.stage = f.stage;
   for (let key of ['thickness', 'scribeDepth'] as const) if (positive(f?.[key])) out.fholes[key] = f[key];
+  let sc = stored.scroll;
+  if (SIDES.includes(sc?.side)) out.scroll.side = sc.side;
+  if (positive(sc?.faceInset) || sc?.faceInset === 0) out.scroll.faceInset = sc.faceInset;
+  if (positive(sc?.endMargin)) out.scroll.endMargin = sc.endMargin;
+  for (let key of ['width', 'length'] as const) if (positive(sc?.harness?.[key])) out.scroll.harness[key] = sc.harness[key];
+  for (let key of ['x', 'y', 'thickness', 'reach'] as const) {
+    let n = sc?.fence?.[key];
+    if (positive(n) || (n === 0 && (key === 'x' || key === 'y'))) out.scroll.fence[key] = n;
+  }
   return out;
 }
 
@@ -1180,6 +1249,221 @@ function boutStations(p: ViolinFamilyParams, loop: Pt[]): number[] {
   ].filter((f): f is number => f !== null);
 }
 
+// an outline kept as arcs and lines, so the bit can be offset round it: a sampled ring folds the
+// offset at every concave vertex
+type Piece = { kind: 'line'; a: Pt; b: Pt } | { kind: 'arc'; c: Pt; r: number; from: number; to: number; cw: boolean };
+
+const line = (a: Pt, b: Pt): Piece => ({ kind: 'line', a, b });
+// an Arc read counterclockwise from start to end, or backward, clockwise from end to start
+const arcPiece = (a: Arc, backward = false): Piece => backward ? { kind: 'arc', c: a, r: a.r, from: a.end, to: a.start, cw: true } : { kind: 'arc', c: a, r: a.r, from: a.start, to: a.end, cw: false };
+const pieceStart = (p: Piece): Pt => p.kind === 'line' ? p.a : pointOnCircle({ x: p.c.x, y: p.c.y, r: p.r }, p.from);
+const pieceEnd = (p: Piece): Pt => p.kind === 'line' ? p.b : pointOnCircle({ x: p.c.x, y: p.c.y, r: p.r }, p.to);
+const endAt = (p: Piece, pt: Pt): Piece => p.kind === 'line' ? { ...p, b: pt } : { ...p, to: angleFromCenter(p.c, pt) };
+const startAt = (p: Piece, pt: Pt): Piece => p.kind === 'line' ? { ...p, a: pt } : { ...p, from: angleFromCenter(p.c, pt) };
+
+// the pieces as one path, each carrying on from the last; the sweep flag is 1 for counterclockwise
+// in y-up space, as arcPathData writes it
+function piecesD(pieces: Piece[]): string {
+  let start = pieceStart(pieces[0]);
+  let d = pieces.map(p => {
+    let end = pieceEnd(p);
+    if (p.kind === 'line') return `L ${end.x} ${end.y}`;
+    let span = normalizeRadians(p.cw ? p.from - p.to : p.to - p.from);
+    return `A ${p.r} ${p.r} 0 ${span > TURN.half ? 1 : 0} ${p.cw ? 0 : 1} ${end.x} ${end.y}`;
+  });
+  return `M ${start.x} ${start.y} ${d.join(' ')}`;
+}
+
+// the neck blank's side profile in the scroll's frame, the fingerboard plane x = 0 and the nut's
+// foot at the origin: up the face from the root, the scroll's front as the Scroll panel draws it to
+// where the throat meets the spiral, the spiral from there out to the volute's front, the back
+// down to the nape, then the neck's back, heel cove and foot from the Neck panel's elevation. The
+// root is left a rectangle to the mortise floor, square to the plane, for the maker to fit.
+// `front` and `spiral` index the pieces walling the throat; `stations` are where the blank is held
+export interface SideOutline {
+  pieces: Piece[];
+  front: [number, number];
+  spiral: [number, number];
+  stations: Pt[];
+  d: string;
+}
+
+export function sideOutline(p: ViolinFamilyParams, n: NeckSolve, s: ScrollSolve): SideOutline {
+  let [a, b, c, d, tx, ty] = scrollOnNeck(p, n);
+  // the frame is turned by the neck's lean and moved to the nut's foot, so undoing it is the
+  // transpose on the difference, and an angle loses the lean
+  let toScroll = (q: Pt): Pt => new Pt(a * (q.x - tx) + b * (q.y - ty), c * (q.x - tx) + d * (q.y - ty));
+  let lean = Math.atan2(b, a);
+  let at = pointOnCircle;
+  let [S0, S1, S2, S3, nape, F0, F1, heel] = [s.S0!, s.S1!, s.S2!, s.S3!, s.nape!, s.F0!, s.F1!, n.heel!];
+  let foot = new Pt(0, toScroll(n.bottomFront!).y);
+  let heelStart = toScroll(at(heel, heel.start)), heelEnd = toScroll(at(heel, heel.end)), tip = toScroll(n.tip!);
+  let crossing = at(F1, F1.start);
+  let spiral = s.spiral!;
+  let on = spiral.map(arc => Math.abs(dist(arc, crossing) - arc.r) + (angleWithinSweep(angleFromCenter(arc, crossing), arc.start, arc.end) ? 0 : 1));
+  let j = on.indexOf(Math.min(...on));
+  let heelC = toScroll(heel);
+  let pieces: Piece[] = [
+    line(foot, at(F0, F0.start)),
+    arcPiece(F0), line(at(F0, F0.end), at(F1, F1.end)), arcPiece(F1, true),
+    { kind: 'arc', c: spiral[j], r: spiral[j].r, from: angleFromCenter(spiral[j], crossing), to: spiral[j].end, cw: false },
+    ...spiral.slice(0, j).reverse().map(arc => arcPiece(arc)),
+    arcPiece(S0), arcPiece(S1), arcPiece(S2),
+    line(at(S2, S2.end), at(S3, S3.end)), arcPiece(S3, true),
+    line(at(S3, S3.start), at(nape, nape.end)), arcPiece(nape, true),
+    line(at(nape, nape.start), heelStart),
+    { kind: 'arc', c: heelC, r: heel.r, from: heel.start - lean, to: heel.end - lean, cw: normalizeRadians(heel.end - heel.start) > TURN.half },
+    ...(dist(heelEnd, tip) > 1e-9 ? [line(heelEnd, tip)] : []),
+    line(tip, new Pt(tip.x, foot.y)), line(new Pt(tip.x, foot.y), foot),
+  ];
+  let napeStart = at(nape, nape.start);
+  let back = (f: number) => new Pt(napeStart.x + (heelStart.x - napeStart.x) * f, napeStart.y + (heelStart.y - napeStart.y) * f);
+  let S2end = at(S2, S2.end), S3end = at(S3, S3.end);
+  return {
+    pieces,
+    front: [1, 3],
+    spiral: [4, 5 + j],
+    stations: [back(1 / 3), back(2 / 3), new Pt((S2end.x + S3end.x) / 2, (S2end.y + S3end.y) / 2), at(S1, S1.start + normalizeRadians(S1.end - S1.start) / 2)],
+    d: `${piecesD(pieces)} Z`,
+  };
+}
+
+// the throat bridged for the gouge: the front's pieces are walked back from the crossing and the
+// spiral's out from it to where the pocket between them first opens to `width`, and a chord closes
+// it there. The pocket's walls are the two outlines themselves, so what is left is the part's
+function bridgeThroat(o: SideOutline, width: number): Piece[] {
+  let samples = ([from, to]: [number, number]) => {
+    let out: { pt: Pt; piece: number }[] = [];
+    for (let i = from; i <= to; i++) for (let pt of samplePathToPolyline(piecesD([o.pieces[i]]), 0.5, true)) out.push({ pt, piece: i });
+    return out;
+  };
+  let A = samples(o.front), B = samples(o.spiral);
+  let to = (pt: Pt, wall: { pt: Pt }[]) => {
+    let best = Infinity;
+    for (let i = 1; i < wall.length; i++) best = Math.min(best, closestPointOnSegment(pt, wall[i - 1].pt, wall[i].pt).dist);
+    return best;
+  };
+  let ka = A.length - 1;
+  while (ka > 0 && to(A[ka].pt, B) < width) ka--;
+  let kb = 0;
+  while (kb < B.length - 1 && to(B[kb].pt, A) < width) kb++;
+  if (ka === A.length - 1 && kb === 0) return o.pieces;
+  let a = A[ka], b = B[kb];
+  // a piece cut to under a millimetre folds the offset, so the chord lands on its boundary
+  // instead, which only opens the mouth a little wider
+  let headPiece = o.pieces[a.piece], tailPiece = o.pieces[b.piece];
+  let head = dist(a.pt, pieceStart(headPiece)) < 1 ? o.pieces.slice(0, a.piece) : [...o.pieces.slice(0, a.piece), endAt(headPiece, a.pt)];
+  let tail = dist(b.pt, pieceEnd(tailPiece)) < 1 ? o.pieces.slice(b.piece + 1) : [startAt(tailPiece, b.pt), ...o.pieces.slice(b.piece + 1)];
+  return [...head, line(pieceEnd(head[head.length - 1]), pieceStart(tail[0])), ...tail];
+}
+
+// the ring's stretches clear of the fence: the ring itself, closed, when none of it is in the
+// fence, else each run between the stretches that are
+function runsClearOf(ring: Pt[], inFence: (pt: Pt) => boolean): Pt[][] {
+  let first = ring.findIndex(inFence);
+  if (first < 0) return [[...ring, ring[0]]];
+  let runs: Pt[][] = [];
+  let run: Pt[] = [];
+  for (let pt of [...ring.slice(first), ...ring.slice(0, first)]) {
+    if (!inFence(pt)) run.push(pt);
+    else if (run.length) {
+      runs.push(run);
+      run = [];
+    }
+  }
+  if (run.length) runs.push(run);
+  return runs;
+}
+
+// the neck blank's side profile, one file a side: the bit a radius outside the outline, climbing,
+// from the blank's top to a little past its middle, lifting over tabs on the neck's back, the
+// pegbox's back and the head. The face sits on the T fence's stem, so with no inset it is never cut
+// and the kerf stops a clearance short of the stem at both ends; the second side is the first
+// mirrored across the stem, the blank rolled over onto its other side. The throat is bridged
+export function scrollToolpaths(p: ViolinFamilyParams, n: NeckSolve, s: ScrollSolve, bit: Bit, g: ScrollSettings, fine = false, spec = SCROLL): Toolpaths {
+  let { thickness: top, width: depth, length } = g.stock;
+  let { x: fx, y: fy, thickness: ft, reach } = g.fence;
+  let r = bit.diameter / 2;
+  let floor = top / 2 - spec.overlap;
+  let left = g.side === 'left';
+  let out = emptyToolpaths(top, floor, [
+    `Z0 = BED, blank top Z${top.toFixed(3)}; the ${left ? 'first' : 'second'} side, passes to Z${floor.toFixed(3)}, ${spec.overlap} past the middle`,
+    `XY0 = HARNESS ZERO; T fence, stem ${ft} thick at X${fx} reaching Y${fy + reach}, crossbar at Y${fy}; blank ${depth} x ${length} on the stem's ${g.side}, face on the stem, heel end on the crossbar`,
+    `Blank ${top} mm across the cheeks, ${g.wood} wood`,
+  ]);
+  if (!left) out.caution = 'EXPECTS THE FIRST SIDE CUT: the blank rolled over onto the stem\'s other side.';
+  if (!(bit.diameter > 0)) fail(out, 'The bit diameter has to be above 0.');
+  if (bit.shape !== 'flat') fail(out, 'The side profile takes a flat bit.');
+  if (!(g.faceInset >= 0)) fail(out, 'The face inset has to be 0 or more.');
+  let clear = 2 * r + spec.fenceClearance;
+  if (!(g.endMargin >= clear)) fail(out, `The heel margin has to clear the crossbar: at least ${clear.toFixed(1)} mm with this bit.`);
+  if (fx - depth < SHEET_MARGIN) fail(out, `No room left of the stem for the blank: the stem has to stand at least ${depth + SHEET_MARGIN} mm in.`);
+  if (fx + ft + depth > g.harness.width - SHEET_MARGIN) fail(out, `No room right of the stem for the blank: the harness has to be at least ${Math.ceil(fx + ft + depth + SHEET_MARGIN)} mm wide.`);
+  if (fy + length > g.harness.length - SHEET_MARGIN) fail(out, `The blank runs off the harness: it has to be at least ${Math.ceil(fy + length + SHEET_MARGIN)} mm long.`);
+  if (out.failures.length) return out;
+
+  let o = sideOutline(p, n, s);
+  let b = boundsOf(samplePathToPolyline(o.d, 1), 0);
+  if (b.maxX > g.faceInset + 1e-6) fail(out, `The scroll's chin stands ${b.maxX.toFixed(1)} mm proud of the fingerboard plane, past the blank's face: inset the face by at least that.`);
+  if (b.minX < g.faceInset - depth + SHEET_MARGIN) fail(out, `The blank is too shallow: the profile reaches ${(-b.minX).toFixed(0)} mm behind the fingerboard plane, so it needs ${Math.ceil(g.faceInset - b.minX + SHEET_MARGIN)} mm back from the face.`);
+  let height = b.maxY - b.minY;
+  if (height + g.endMargin > length - SHEET_MARGIN) fail(out, `The blank is too short: the profile is ${height.toFixed(0)} mm long, so it needs ${Math.ceil(height + g.endMargin + SHEET_MARGIN)} mm.`);
+  // the stem ends under the head: once the outline has left the face up the front, wherever it
+  // comes back within the bit's reach of the face is the chin, which the bit has to get round
+  let hug = g.faceInset - 2 * r - spec.fenceClearance;
+  let walk = samplePathToPolyline(o.d, 0.5);
+  let i = 0;
+  while (i < walk.length && walk[i].x > hug) i++;
+  while (i < walk.length && walk[i].x <= hug) i++;
+  let chin: Pt[] = [];
+  while (i < walk.length && walk[i].x > hug) chin.push(walk[i++]);
+  if (chin.length) {
+    let under = Math.min(...chin.map(pt => pt.y)) - b.minY + g.endMargin - r - spec.fenceClearance;
+    if (reach > under) fail(out, `The stem reaches the scroll's chin: it has to end under ${Math.floor(under)} mm from the crossbar.`);
+  }
+  if (out.failures.length) return out;
+
+  let width = bit.diameter + 2 * spec.bridge;
+  let d = `${piecesD(bridgeThroat(o, width))} Z`;
+  let stations = o.stations;
+  if (!left) {
+    d = transformPath(d, MIRROR);
+    stations = stations.map(flipPointAboutY);
+  }
+  let od = offsetPath(d, r);
+  if (!od) return fail(out, 'The side profile would not offset for the bit.');
+  let ring = samplePathToPolyline(od, fine ? 0.25 : 1);
+  if (signedPolygonArea(ring) < 0) ring.reverse();
+  let limit = g.faceInset - r - spec.fenceClearance;
+  let stemTop = b.minY - g.endMargin + reach + r + spec.fenceClearance;
+  let runs = runsClearOf(ring, pt => (left ? pt.x : -pt.x) > limit && pt.y < stemTop).filter(run => polylineCumulativeLengths(run)[run.length - 1] > bit.diameter);
+  if (!runs.length) return fail(out, 'Nothing of the profile is clear of the fence.');
+  runs.forEach((run, i) => {
+    let cum = polylineCumulativeLengths(run);
+    let at: number[] = [];
+    for (let station of stations) {
+      let best = -1, near = bit.diameter;
+      run.forEach((pt, k) => {
+        let dd = dist(pt, station);
+        if (dd < near) {
+          near = dd;
+          best = k;
+        }
+      });
+      if (best >= 0) at.push(cum[best]);
+    }
+    out.paths.push(tabsAlong(runs.length > 1 ? `Side profile ${i + 1}` : 'Side profile', run, at, spec.tabWidth));
+  });
+  out.tabTop = floor + spec.tabHeight;
+  out.stockOrigin = { x: left ? fx - depth : fx + ft, y: fy };
+  out.sheetOffset = { x: left ? fx - g.faceInset : fx + ft + g.faceInset, y: fy + g.endMargin - b.minY };
+  let rect = (x0: number, y0: number, x1: number, y1: number) => `M ${x0} ${y0} L ${x1} ${y0} L ${x1} ${y1} L ${x0} ${y1} Z`;
+  out.fixture = [rect(0, 0, g.harness.width, g.harness.length), rect(fx, fy, fx + ft, fy + reach), rect(fx - depth - 10, fy - ft, fx + ft + depth + 10, fy)].join(' ');
+  let tabs = out.paths.reduce((sum, path) => sum + path.tabs.length, 0);
+  out.notes.push(`Side profile in ${runs.length} run${runs.length === 1 ? '' : 's'}, ${tabs} tabs ${spec.tabHeight} high off the floor; the throat bridged for the gouge where it narrows to ${width.toFixed(1)}; the face ${g.faceInset ? `inset ${g.faceInset}` : 'on the stem, uncut'}; the bit reaches ${(top - floor).toFixed(1)} deep`);
+  return out;
+}
+
 interface Bounds {
   minX: number;
   maxX: number;
@@ -1314,6 +1598,8 @@ export interface Toolpaths {
   // already, said again at the machine's pause
   notes: string[];
   caution?: string;
+  // the harness and its fences, drawn round the stock, in the file's own coordinates
+  fixture?: string;
   // a surfacing job's lines, known before any height is, and its cutting length in metres
   // estimated from them, for the preview that has no runs yet
   raster?: Raster;
@@ -1395,6 +1681,20 @@ function withTabs(name: string, loop: Pt[], stations: number[], width: number, f
     }
   }
   return { name, loop, tabs };
+}
+
+// a run as a toolpath with a tab `width` long centred at each length along it; a tab that would
+// reach either end is left out, since the run is cut from end to end
+function tabsAlong(name: string, run: Pt[], at: number[], width: number): Toolpath {
+  let cum = polylineCumulativeLengths(run);
+  let total = cum[cum.length - 1];
+  let tabs: Tab[] = [];
+  for (let s of [...at].sort((a, b) => a - b)) {
+    let from = s - width / 2, to = s + width / 2;
+    if (from <= 0 || to >= total) continue;
+    tabs.push({ from, to, pts: polylineSlice(run, cum, from, to), centre: pointAtPolylineLength(run, cum, s) });
+  }
+  return { name, loop: run, tabs };
 }
 
 // the ring closed and restarted at its highest crossing of x = 0, the crossing itself a vertex
