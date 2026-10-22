@@ -69,7 +69,8 @@ export class DocsRegistry {
     const cached = this.pieceCache.get(id);
     if (cached) return cached;
     const a = this.articles.get(id);
-    const pieces = a ? renderPage(a.body, slug => this.link(slug)) : [];
+    const lead = a?.image ? `![${a.caption ?? ''}](${a.image})\n\n` : '';
+    const pieces = a ? renderPage(lead + a.body, slug => this.link(slug)) : [];
     this.pieceCache.set(id, pieces);
     return pieces;
   }

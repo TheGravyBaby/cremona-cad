@@ -46,6 +46,18 @@
         }
     </div>
     }
+    @if (isScroll) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Side</span>
+            <select [(ngModel)]="scroll.side" (change)="edited()">
+                <option value="left">First, left of the stem</option>
+                <option value="right">Second, right of the stem</option>
+            </select>
+        </label>
+    </div>
+    <p class="hint">Cheek down, the planed face on the stem, the heel end on the crossbar. Rolled over onto the stem's other side for the second file.</p>
+    }
 </section>
 
 @if (settings.job === 'fholes') {
@@ -78,10 +90,33 @@
     </div>
     <p class="hint">Where the fences stand from the harness's zero, the file's XY0. The blank is pushed into their corner.</p>
 </section>
+} @else if (isScroll) {
+<section class="ui-group">
+    <div class="ui-group-title">Harness</div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Width" [step]="1" [min]="0" [value]="scroll.harness.width"
+            (valueChange)="scroll.harness.width = $event; edited()"></app-mm-inch>
+        <app-mm-inch label="Length" [step]="1" [min]="0" [value]="scroll.harness.length"
+            (valueChange)="scroll.harness.length = $event; edited()"></app-mm-inch>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Stem X" [step]="0.5" [min]="0" [value]="scroll.fence.x"
+            (valueChange)="scroll.fence.x = $event; edited()"></app-mm-inch>
+        <app-mm-inch label="Crossbar Y" [step]="0.5" [min]="0" [value]="scroll.fence.y"
+            (valueChange)="scroll.fence.y = $event; edited()"></app-mm-inch>
+        <app-mm-inch label="Stem thickness" [step]="0.5" [min]="0" [value]="scroll.fence.thickness"
+            (valueChange)="scroll.fence.thickness = $event; edited()"></app-mm-inch>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Stem reach" [step]="1" [min]="0" [value]="scroll.fence.reach"
+            (valueChange)="scroll.fence.reach = $event; edited()"></app-mm-inch>
+    </div>
+    <p class="hint">The harness board from its lower-left corner, the file's XY0. The T fence's stem stands at X, its left face, and runs its reach up from the crossbar at Y, along the neck only: the head may stand proud of the face. The blank needs room on both sides of the stem.</p>
+</section>
 }
 
 <section class="ui-group">
-    <div class="ui-group-title">{{ onBlank ? 'Blank' : inCradle ? 'Slab' : 'Sheet' }}</div>
+    <div class="ui-group-title">{{ onBlank || isScroll ? 'Blank' : inCradle ? 'Slab' : 'Sheet' }}</div>
     @if (onBlank) {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="At the seam" [step]="0.1" [min]="0" [value]="blank.stock.thickness"
@@ -101,18 +136,38 @@
     </div>
     <p class="hint">How deep the channel goes under the plate's edge. Its width is the Outer Contour panel's.</p>
     }
+    } @else if (isScroll) {
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Across the cheeks" [step]="0.5" [min]="0" [value]="scroll.stock.thickness"
+            (valueChange)="scroll.stock.thickness = $event; edited()"></app-mm-inch>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Depth" [step]="1" [min]="0" [value]="scroll.stock.width"
+            (valueChange)="scroll.stock.width = $event; edited()"></app-mm-inch>
+        <app-mm-inch label="Length" [step]="1" [min]="0" [value]="scroll.stock.length"
+            (valueChange)="scroll.stock.length = $event; edited()"></app-mm-inch>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Face inset" [step]="0.5" [min]="0" [value]="scroll.faceInset"
+            (valueChange)="scroll.faceInset = $event; edited()"></app-mm-inch>
+        <app-mm-inch label="Heel margin" [step]="0.5" [min]="0" [value]="scroll.endMargin"
+            (valueChange)="scroll.endMargin = $event; edited()"></app-mm-inch>
+    </div>
+    <p class="hint">Depth is back from the planed face. The face inset is the fingerboard plane in from that face: 0 leaves the face on the stem, uncut; a bit's width and more cuts it. The heel margin is the heel's lowest point up from the end on the crossbar.</p>
     } @else {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Thickness" [step]="0.1" [min]="0" [value]="g.stock.thickness"
             (valueChange)="g.stock.thickness = $event; edited()"></app-mm-inch>
     </div>
     }
+    @if (!isScroll) {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Width" [step]="1" [min]="0" [value]="g.stock.width"
             (valueChange)="g.stock.width = $event; edited()"></app-mm-inch>
         <app-mm-inch label="Length" [step]="1" [min]="0" [value]="g.stock.length"
             (valueChange)="g.stock.length = $event; edited()"></app-mm-inch>
     </div>
+    }
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell field-cell--full">
             <span class="field-title">Wood</span>
