@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-9.5 341 56.68 149.81" width="56.7mm" height="149.8mm">
+<g transform="translate(0 831.811) scale(1 -1)">
+<path d="M 0 356 L 0 370 L -3.5 370 L -3.5 356 Z" fill="none" stroke="#e2bd9f" stroke-width="0.75" opacity="1"></path>
+<line x1="41.178137657791304" y1="347" x2="33.53725585120667" y2="347" stroke="#c2bbd1" stroke-width="0.75" opacity="1"></line>
+<line x1="21.522477663867477" y1="382.7377802388201" x2="10.146213741344596" y2="483.11399523209894" stroke="#868484" stroke-width="0.75" opacity="1"></line>
+<path d="M 21.522477663867477 382.7377802388201 A 10 10 0 0 0 12.89135292705707 371.69717881012764" fill="none" stroke="#b4473c" stroke-width="0.75" opacity="1"></path>
+<line x1="0" y1="370" x2="12.89135292705707" y2="371.69717881012764" stroke="#b4473c" stroke-width="0.75" opacity="1"></line>
+<line x1="39.98619172737229" y1="356.05372820312607" x2="41.178137657791304" y2="347" stroke="#d0803f" stroke-width="0.75" opacity="1"></line>
+<line x1="23.03499693920413" y1="484.81083573095964" x2="39.98619172737229" y2="356.05372820312607" stroke="#d0803f" stroke-width="0.75" opacity="1"></line>
+</g>
+</svg>
