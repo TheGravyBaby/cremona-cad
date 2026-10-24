@@ -47,7 +47,7 @@ const isArc = (a: any): a is LegacyArc => !!a && [a.x, a.y, a.r, a.start, a.end]
 // Ceruti's own defaults, by the body's height as it chose them
 const cerutiGouge = (height: number) => {
   let [sweepRadius, depth, sweepRadius_cBout] = height < 400 ? [15, 1, 7.5] : height < 500 ? [18, 1.5, 9] : height < 800 ? [28, 2, 14] : [38, 2.5, 19];
-  return { sweepRadius, depth, sweepRadius_cBout, cornerGouge: true };
+  return { sweepRadius, depth, sweepRadius_cBout, cornerGouge: false };
 };
 const cerutiArching = (height: number) => {
   let [ribHeightLower, ribHeightUpper, top, bottom, thickness] =

@@ -75,7 +75,7 @@
     },
     "fluting": {
       "flutingEdge": 1.5,
-      "cornerGouge": true,
+      "cornerGouge": false,
       "top": {
         "width": 11,
         "depth": 1,
