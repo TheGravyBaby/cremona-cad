@@ -294,7 +294,7 @@
         "sweepRadius": 15,
         "depth": 1,
         "sweepRadius_cBout": 7.5,
-        "cornerGouge": true
+        "cornerGouge": false
       },
       "cross": {
         "type": "cycloid",
@@ -312,7 +312,7 @@
         "sweepRadius": 15,
         "depth": 1,
         "sweepRadius_cBout": 7.5,
-        "cornerGouge": true
+        "cornerGouge": false
       },
       "cross": {
         "type": "cycloid",

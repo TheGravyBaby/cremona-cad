@@ -30,8 +30,8 @@
             <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="fluting.top.depth" (input)="edited()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Sweep <span class="unit-label">mm</span></span>
-            <div class="basic-display" aria-label="Top plate gouge sweep">{{ f.top?.sweep?.toFixed(1) ?? '–' }}</div>
+            <span class="field-title">Width to LB</span>
+            <div class="basic-display" aria-label="Top plate channel width to body width">{{ widthRatio(fluting.top.width) }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
@@ -45,10 +45,6 @@
             <span class="field-title">Width <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" [(ngModel)]="fluting.top.cBoutWidth" (input)="edited()"
                 [style.borderColor]="pal.ink(3)" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Sweep <span class="unit-label">mm</span></span>
-            <div class="basic-display" aria-label="Top plate C bout gouge sweep">{{ f.top?.cBoutSweep?.toFixed(1) ?? '–' }}</div>
         </label>
         }
         <button type="button" class="info-icon" (click)="help('gougeCBout')" title="More information"
@@ -69,8 +65,8 @@
             <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="fluting.back.depth" (input)="edited()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Sweep <span class="unit-label">mm</span></span>
-            <div class="basic-display" aria-label="Back plate gouge sweep">{{ f.back?.sweep?.toFixed(1) ?? '–' }}</div>
+            <span class="field-title">Width to LB</span>
+            <div class="basic-display" aria-label="Back plate channel width to body width">{{ widthRatio(fluting.back.width) }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
@@ -84,10 +80,6 @@
             <span class="field-title">Width <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" [(ngModel)]="fluting.back.cBoutWidth" (input)="edited()"
                 [style.borderColor]="pal.ink(0)" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Sweep <span class="unit-label">mm</span></span>
-            <div class="basic-display" aria-label="Back plate C bout gouge sweep">{{ f.back?.cBoutSweep?.toFixed(1) ?? '–' }}</div>
         </label>
         }
         <button type="button" class="info-icon" (click)="help('gougeCBout')" title="More information"

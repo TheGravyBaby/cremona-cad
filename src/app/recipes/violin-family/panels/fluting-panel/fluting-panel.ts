@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { findJoiningArcs } from '../../../../helpers/math/draftMath';
 import {
   closestPointOnSegment, dist, flipArcAboutY, offsetArcRadius, pointInPolygon, pointOnCircle, signedRadianDelta, TURN,
@@ -47,7 +48,7 @@ export class FlutingPanel implements ViolinFamilyPanel, OnInit {
     let [width, depth, cBoutWidth] =
       { violin: [11, 1, 7.5], viola: [14.5, 1.5, 10], cello: [21, 2, 14.5], bass: [27, 2.5, 19] }[familyStandards(p.body.height).family];
     let channel = (): ChannelParams => ({ width, depth, cBoutWidth, useCBoutGouge: true });
-    p.fluting = { flutingEdge: p.body.overhang * 0.5, cornerGouge: true, top: channel(), back: channel() };
+    p.fluting = { flutingEdge: p.body.overhang * 0.5, cornerGouge: false, top: channel(), back: channel() };
   }
 
   @Input({ required: true }) params!: ViolinFamilyParams;
@@ -57,6 +58,12 @@ export class FlutingPanel implements ViolinFamilyPanel, OnInit {
 
   // what the last draw solved; the template's width readouts and report() read it
   f!: FlutingSolve;
+
+  // the channel's width as a fraction of the body's lower bout width
+  protected widthRatio(width: number): string {
+    let ratio = width / this.params.body.width;
+    return Number.isFinite(ratio) ? nearestFraction(ratio) : '–';
+  }
 
   ngOnInit(): void {
     this.draw();
