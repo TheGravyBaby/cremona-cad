@@ -5,7 +5,7 @@ kind: overview
 image: wiki/c-hole.svg
 caption: Ironically, you cannot (yet) make this style of soundhole in CremonaCad. Still, it makes for a good logo.
 ---
-Welcome to CremonaCad, a one-of-a-kind tool for designing violins! This article will provide a high-level overview of the UI and the general process of designing an instrument. 
+Welcome to CremonaCad, a one of a kind tool for designing violins! This article will provide a high-level overview of the UI and a guide on how to get started. 
 
 
 ## Getting your bearings
@@ -20,7 +20,7 @@ Most of CremonaCad's UI elements are located on the edges of the screen. These e
 
 ## Starting your instrument
 ### Choosing a reference
-CremonaCad comes with several historical templates, but of course the fun in this is designing your own. Still, most makers at least start with a proven historical reference before beginning an instrument. To start, it is recommended that you find not only images, but also measurements for your reference instrument. Auction houses, such as Tarisio, will often publish measurements of bout widths along with high quality images of their instruments. 
+CremonaCad comes with several historical templates, but of course the fun in this is designing your own. Still, most makers at least start with a proven historical reference before beginning an instrument. To start, it is recommended that you find not only images, but also measurements for your reference instrument. Many online sources, such as Tarisio, will often publish measurements of the body along with their images. 
 
 ### Adding the image
 Once you have your reference image, you can paste it onto the canvas, or upload it from your machine. To do this, select the reference image tool on the bottom bar, and then click upload. 

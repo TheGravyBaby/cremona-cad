@@ -17,3 +17,7 @@ Theory alone would not have been sufficient to properly model these instruments.
 
 ### [**Gonzalez, Sebastian, Davide Salvi, Daniel Baeza, Fabio Antonacci, and Augusto Sarti.**](https://doi.org/10.1038/s41598-021-88931-z) "A Data-Driven Approach to Violin Making." *Scientific Reports* 11 (2021): 9455.
 
+
+https://927c1e94-f5d9-4c35-9822-15e73ac15c1e.usrfiles.com/ugd/927c1e_94596cc8c5e94bc2ab3e55fb31a48316.pdf
+
+https://en.wikipedia.org/wiki/Monotone_cubic_interpolation

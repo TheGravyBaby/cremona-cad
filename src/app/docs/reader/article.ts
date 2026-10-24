@@ -10,7 +10,7 @@ export function inWiki(a: { kind: ArticleKind }): boolean {
   return a.kind !== 'booth' && a.kind !== 'release';
 }
 
-export const ARTICLE_STATUSES = ['unreviewed', 'stale'] as const;
+export const ARTICLE_STATUSES = ['unreviewed', 'stale', 'WIP'] as const;
 export type ArticleStatus = typeof ARTICLE_STATUSES[number];
 
 export interface Article {

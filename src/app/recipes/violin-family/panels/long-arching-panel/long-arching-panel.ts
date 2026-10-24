@@ -88,8 +88,8 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
       let sideX = sideViewOffsetX(p);
       let side = renderBodySideProfile(p, a, o, this.pal, true, { highlight: this.highlighted, showGuides: this.flags.showModuleGuides });
       this.drawn.emit([
-        renderOuterContour(p, o, this.pal, this.flags, false, false),
-        renderFluting(p, f, this.pal, false, false),
+        renderOuterContour(p, o, this.pal, this.flags, false, true),
+        renderFluting(p, f, this.pal, false, true),
         renderFholes(p, this.pal),
         (g, ui) => side(g.append('g').attr('transform', `translate(${sideX},0)`), ui.append('g').attr('transform', `translate(${sideX},0)`)),
         renderSolveFailures(a.failures, this.pal.alert),

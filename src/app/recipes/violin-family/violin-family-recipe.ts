@@ -54,20 +54,24 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
     { id: 'corners', label: 'Corners', toggles: CornersPanel.renderToggles, seed: CornersPanel.seed },
     // no seed: its numbers are seeded with the bouts and the corners
     { id: 'centerBout', label: 'Center Bout', toggles: CenterBoutPanel.renderToggles },
+    { id: 'mould', label: 'Mould', toggles: MouldPanel.renderToggles, seed: MouldPanel.seed },
+
     { id: 'outerContour', label: 'Outer Contour', toggles: OuterContourPanel.renderToggles, seed: OuterContourPanel.seed },
     { id: 'fluting', label: 'Fluting Channel', toggles: FlutingPanel.renderToggles, seed: FlutingPanel.seed },
-    { id: 'fHolePlacement', label: 'F-Hole Placement', toggles: FHolePlacementPanel.renderToggles, seed: FHolePlacementPanel.seed },
-    { id: 'fHoleContours', label: 'F-Hole Contours', toggles: FHoleContoursPanel.renderToggles, seed: FHoleContoursPanel.seed },
     { id: 'longArching', label: 'Long Arching', toggles: LongArchingPanel.renderToggles, seed: LongArchingPanel.seed },
     // no seed: its shape is seeded with the long arch
     { id: 'crossArching', label: 'Cross Arching', toggles: CrossArchingPanel.renderToggles },
+    
+    { id: 'fHolePlacement', label: 'F-Hole Placement', toggles: FHolePlacementPanel.renderToggles, seed: FHolePlacementPanel.seed },
+    { id: 'fHoleContours', label: 'F-Hole Contours', toggles: FHoleContoursPanel.renderToggles, seed: FHoleContoursPanel.seed },
+
     { id: 'neck', label: 'Neck', toggles: NeckPanel.renderToggles, seed: NeckPanel.seed },
     { id: 'volute', label: 'Volute', toggles: VolutePanel.renderToggles, seed: VolutePanel.seed },
     // no seed: the scroll is seeded whole with the volute
     { id: 'scroll', label: 'Scroll', toggles: ScrollPanel.renderToggles },
     { id: 'scrollWidths', label: 'Scroll Widths', toggles: ScrollWidthsPanel.renderToggles },
+    
     { id: 'stringSetup', label: 'String Setup', toggles: StringSetupPanel.renderToggles, seed: StringSetupPanel.seed },
-    { id: 'mould', label: 'Mould', toggles: MouldPanel.renderToggles, seed: MouldPanel.seed },
     { id: 'export', label: 'Export', toggles: ExportPanel.renderToggles },
     // drives the maker's own CNC, so it is never offered off localhost; its component is only named
     // inside @defer, so its planner is a separate chunk that is fetched only when the tab opens
