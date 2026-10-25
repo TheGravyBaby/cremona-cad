@@ -123,7 +123,7 @@ export const FIELD_HELP = {
     title: "Long Arch Curve",
     text:
       "A catenary curve can be drawn by tracing a hanging rope or chain. There are many theories which suggest the long arch of a violin is an inverted catenary.\n\n" +
-      "A spline curves simulates the bending of a wooden spline through varios control points. This allows for a more complex curve and was a known curve drawing technique for Cremonese makers.",
+      "A spline curves simulates the bending of a wooden spline through various control points. This allows for a more complex curve and was a known curve drawing technique for Cremonese makers.",
   },
   crossSectionStation: {
     title: "Cross-Section Station",

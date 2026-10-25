@@ -7,9 +7,7 @@ status: unreviewed
 image: wiki/cross-arching.svg
 caption: A cross section of the plates.
 ---
-TODO: write this article.
-
-## What this stage draws
+This panel allows you to define the cross arching on the top and back plates. Much like with the long arch, this is a topic 
 
 
 ## Fields

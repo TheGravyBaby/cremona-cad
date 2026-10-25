@@ -41,7 +41,36 @@
             <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="ss.fingerboardEndRadius" (input)="edited()" (focus)="focus('fbEndRadius', pal.ink(0))" (blur)="blur()" />
         </label>
+        <label class="field-cell">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="showMarks" /><span>Marks</span>
+            </div>
+        </label>
     </div>
+    @if (showMarks) {
+    <div class="ui-group">
+        <div class="input-group basic-row field-row" role="group">
+            <label class="field-cell field-cell--wide">
+                <span class="field-title">Semitones</span>
+                <input type="text" class="basic-input" placeholder="5, 7, 12" [style.border-color]="pal.ink(3)"
+                    [ngModel]="semitonesText" (ngModelChange)="semitonesEdited($event)" (focus)="focus('marks', pal.ink(3))" (blur)="blur()" />
+            </label>
+        </div>
+        <div class="input-group basic-row field-row" role="group">
+            <label class="field-cell">
+                <span class="field-title">X Offset <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="0.5" [style.border-color]="pal.ink(3)"
+                    [(ngModel)]="ss.marks.offset" (input)="edited()" (focus)="focus('marks', pal.ink(3))" (blur)="blur()" />
+            </label>
+            <label class="field-cell">
+                <span class="field-title">Diameter <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(3)"
+                    [(ngModel)]="ss.marks.diameter" (input)="edited()" (focus)="focus('marks', pal.ink(3))" (blur)="blur()" />
+            </label>
+        </div>
+    </div>
+    }
+
 </section>
 
 <section class="ui-group">

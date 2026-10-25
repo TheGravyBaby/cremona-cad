@@ -10,7 +10,7 @@ The base measurement panel allows you to set the primary bounds for your instrum
 It is important to understand the violin making process for real instruments, as this is what guides CremonaCad. A maker always starts with a mould, which the ribs are bent around. Traditionally, the maker will trace the outline of the ribs onto the top and back, with a small offset which will become the overhang. The overhang and rib width are defined on this panel, creating and inner and outer bounding box. The first few panels will draw arcs within the inner bounding box, so as to form the boundries of the mould.
 
 ## Reference Images
-It is likely that you will want to use an existing image as a reference, this panel is a sensible plac to upload and scale images. It is recommended that you find not only images, but also measurements for your reference instrument. Many online sources, such as Tarisio, will often publish measurements of the body along with their images. 
+It is likely that you will want to use an existing image as a reference, this panel is a sensible place to upload and scale images. It is recommended that you find not only images, but also measurements for your reference instrument. Many online sources, such as Tarisio, will often publish measurements of the body along with their images. 
 
 ### Adding the image
 Once you have your reference image, you can paste it onto the canvas, or upload it from your machine. To do this, select the reference image tool on the bottom bar, and then click upload. 

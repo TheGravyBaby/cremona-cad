@@ -488,6 +488,7 @@ select {
 }
 
 .field-cell.field-cell--xy { width: calc(2 * 84px + 6px); }
+.field-cell.field-cell--wide { width: calc(3 * 84px + 12px); }
 .xy-titles { display: flex; }
 .xy-titles > .field-title { flex: 1; }
 

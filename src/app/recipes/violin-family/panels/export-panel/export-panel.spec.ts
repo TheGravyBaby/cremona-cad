@@ -562,6 +562,7 @@ describe('the fingerboard solid', () => {
 
   it('crowns higher down the middle than at the edges, scoops the bass edge deeper than the treble, and holds the edge thickness at the nut', () => {
     const p = strung();
+    p.stringSetup!.marks.semitones = [];
     const ss = p.stringSetup!;
     const tris = stlTriangles(fingerboardStl(p, 1)!);
     const topVerts = tris.filter(t => t.n[2] > 0).flatMap(t => t.v);
@@ -575,7 +576,8 @@ describe('the fingerboard solid', () => {
     const mid = ss.scoopAt;
     const s = StringSetupPanelSolve(p);
     const halfMid = neckHalfWidthAt(p, s.neck, s.fingerboardEnd!.y) * mid / ss.fingerboardLength + (p.neck!.topWidth / 2) * (1 - mid / ss.fingerboardLength);
-    const centre = zNear(0, mid), bass = zNear(-halfMid + 1, mid), treble = zNear(halfMid - 1, mid);
+    // the solid's frame mirrors the front view's: bass at +x
+    const centre = zNear(0, mid), bass = zNear(halfMid - 1, mid), treble = zNear(-halfMid + 1, mid);
     expect(centre).toBeGreaterThan(bass);
     expect(centre).toBeGreaterThan(treble);
     expect(bass).toBeLessThan(treble);
@@ -587,5 +589,64 @@ describe('the fingerboard solid', () => {
     const nutEdge = topVerts.filter(v => Math.abs(v[0] + p.neck!.topWidth / 2) < 1e-6 && v[1] < 0.51);
     expect(nutEdge.length).toBeGreaterThan(0);
     for (const v of nutEdge) expect(v[2]).toBeCloseTo(t, 2);
+  });
+
+  it('sinks each position mark as a flat pocket 2 mm under the surface at its centre, leaving the rest of the top untouched', () => {
+    const plain = strung();
+    plain.stringSetup!.marks.semitones = [];
+    const marked = strung();
+    marked.stringSetup!.marks.semitones = [12];
+    marked.stringSetup!.marks.offset = 6;
+    marked.stringSetup!.marks.diameter = 4;
+    const gridMm = 0.5;
+    const topOf = (p: ViolinFamilyParams) => {
+      const m = new Map<string, number>();
+      for (const t of stlTriangles(fingerboardStl(p, gridMm)!)) if (t.n[2] > 0) for (const v of t.v) m.set(`${v[0].toFixed(3)},${v[1].toFixed(3)}`, v[2]);
+      return m;
+    };
+    const before = topOf(plain), after = topOf(marked);
+    const s = StringSetupPanelSolve(marked);
+    const [mark] = s.marks;
+    const d = Math.hypot(mark.station.x - s.neck.neckTop!.x, mark.station.y - s.neck.neckTop!.y);
+    // a treble-side dot in the front view lands at -x in the solid
+    const r = mark.dots[0].r, cx = -mark.dots[0].x;
+    expect(cx).toBeLessThan(0);
+    // the surface at the centre, read off the nearest unpocketed vertex; the crown is level there
+    let nearest = Infinity, centreZ = NaN;
+    for (const [key, z] of before) {
+      const [x, y] = key.split(',').map(Number);
+      const away = Math.hypot(x - cx, y - d);
+      if (away < nearest) { nearest = away; centreZ = z; }
+    }
+    const floor = centreZ - 2;
+    let inPocket = 0;
+    for (const [key, z] of after) {
+      const [x, y] = key.split(',').map(Number);
+      const away = Math.hypot(x - cx, y - d);
+      if (away <= r - gridMm) { inPocket++; expect(z).toBeCloseTo(floor, 1); }
+      else if (away > r + gridMm) expect(z).toBeCloseTo(before.get(key)!, 9);
+    }
+    expect(inPocket).toBeGreaterThan(0);
+    // the pocket is round: its floor covers the circle's area and ends on the rim, not a grid step.
+    // Read around the pocket only, since the board's edges stand near the floor's height too
+    const tris = stlTriangles(fingerboardStl(marked, gridMm)!);
+    const away = (v: number[]) => Math.hypot(v[0] - cx, v[1] - d);
+    const nearby = tris.filter(t => t.v.every(v => away(v) < r + 2));
+    const onFloor = (v: number[]) => Math.abs(v[2] - floor) < 0.05;
+    const floorArea = nearby.filter(t => t.n[2] > 0 && t.v.every(onFloor)).reduce((sum, t) => sum + footprint(t.v), 0);
+    expect(Math.abs(floorArea - Math.PI * r * r) / (Math.PI * r * r)).toBeLessThan(0.02);
+    // a half circle over the edge still builds a closed, finite solid, its rim wall stopping at the edge
+    const overEdge = strung();
+    overEdge.stringSetup!.marks.semitones = [12];
+    overEdge.stringSetup!.marks.offset = overEdge.neck!.topWidth / 2;
+    const edgeTris = stlTriangles(fingerboardStl(overEdge, gridMm)!);
+    expect(edgeTris.length).toBeGreaterThan(0);
+    expect(edgeTris.every(t => t.v.every(v => v.every(Number.isFinite)))).toBe(true);
+    // the rim is a 48-gon, whose chords dip a few microns inside the circle
+    const chordDip = r * (1 - Math.cos(Math.PI / 48));
+    for (const t of nearby) for (const v of t.v) {
+      if (onFloor(v)) expect(away(v)).toBeLessThanOrEqual(r + 1e-5);
+      else if (v[2] > floor + 0.5) expect(away(v)).toBeGreaterThanOrEqual(r - chordDip - 1e-5);
+    }
   });
 });

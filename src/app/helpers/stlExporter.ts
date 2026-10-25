@@ -2,7 +2,16 @@
 // flat base plane, and vertical walls where the field ends. With no outline, a cell is solid only
 // when all four corners have a height, so the edge is a grid staircase eroded by at most one cell
 // and the walls follow it. With an outline, the cells it crosses are clipped to it, so the top and
-// the base meet the walls on the outline itself and the solid closes.
+// the base meet the walls on the outline itself and the solid closes. A cut is a pocket sunk from
+// the top: a flat floor inside its rim, the cells the rim crosses split along it, and a wall from
+// the floor up to the surface, so the pocket is as round as its rim and not the grid.
+
+export interface HeightFieldCut {
+  /** the pocket's rim, a closed polygon in the field's mm */
+  outline: [number, number][];
+  /** z of the pocket's flat floor */
+  floorZ: number;
+}
 
 export interface HeightFieldStlOptions {
   xMin: number;
@@ -23,28 +32,46 @@ export interface HeightFieldStlOptions {
    * of the wall's x/y for a solid whose edge height varies, read at every outline vertex.
    */
   outlineTopZ?: number | ((x: number, y: number) => number);
+  /** pockets sunk from the top; where two overlap, the cells along their shared rim fall back to the grid */
+  cuts?: HeightFieldCut[];
 }
 
 /**
  * Sample `zAt` (null = outside the solid) over the grid and triangulate.
  * Returns a binary STL buffer in the same mm units as the inputs.
  */
-export function buildHeightFieldStl(zAt: (x: number, y: number) => number | null, opts: HeightFieldStlOptions): ArrayBuffer {
+export function buildHeightFieldStl(surfaceAt: (x: number, y: number) => number | null, opts: HeightFieldStlOptions): ArrayBuffer {
   const { xMin, yMin, gridMm, baseZ } = opts;
   const nx = Math.floor((opts.xMax - xMin) / gridMm) + 1;
   const ny = Math.floor((opts.yMax - yMin) / gridMm) + 1;
+  const cuts = opts.cuts ?? [];
+
+  // the field proper: the surface, or a pocket's floor where a cut covers the point
+  const cutAt = (x: number, y: number) => cuts.findIndex(c => pointInPolygon(x, y, c.outline));
+  const zAt = (x: number, y: number) => {
+    const v = surfaceAt(x, y);
+    if (v === null) return null;
+    const c = cutAt(x, y);
+    return c < 0 ? v : cuts[c].floorZ;
+  };
 
   const z = new Float64Array(nx * ny).fill(NaN);
+  const cutOf = new Int32Array(nx * ny).fill(-1);
   for (let j = 0; j < ny; j++) {
     for (let i = 0; i < nx; i++) {
-      const v = zAt(xMin + i * gridMm, yMin + j * gridMm);
-      if (v !== null) z[j * nx + i] = v;
+      const x = xMin + i * gridMm, y = yMin + j * gridMm;
+      const v = surfaceAt(x, y);
+      if (v === null) continue;
+      const c = cutAt(x, y);
+      cutOf[j * nx + i] = c;
+      z[j * nx + i] = c < 0 ? v : cuts[c].floorZ;
     }
   }
 
   const X = (i: number) => xMin + i * gridMm;
   const Y = (j: number) => yMin + j * gridMm;
   const zOf = (i: number, j: number) => z[j * nx + i];
+  const cellCorners = (i: number, j: number): [number, number][] => [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]];
   const inside = (i: number, j: number) => i >= 0 && j >= 0 && i < nx && j < ny && !Number.isNaN(zOf(i, j));
   const solidCell = (i: number, j: number) =>
     i >= 0 && j >= 0 && i < nx - 1 && j < ny - 1 &&
@@ -59,15 +86,62 @@ export function buildHeightFieldStl(zAt: (x: number, y: number) => number | null
     cx: number, cy: number, cz: number, dx: number, dy: number, dz: number,
   ) => { tri(ax, ay, az, bx, by, bz, cx, cy, cz); tri(ax, ay, az, cx, cy, cz, dx, dy, dz); };
 
+  // the piece of a cell on one side of a polygon, walked round the cell's corners with the
+  // crossings between them and fanned from its first point; `zc` gives a crossing's height
+  const fan = (ring: number[][], withBase: boolean) => {
+    // a crossing on a corner repeats it; the repeat would make a sliver with no area
+    const same = (u: number[], w: number[]) => Math.abs(u[0] - w[0]) < 1e-9 && Math.abs(u[1] - w[1]) < 1e-9;
+    const distinct = ring.filter((pt, k) => !same(pt, ring[(k + 1) % ring.length]));
+    if (distinct.length < 3) return;
+    const [a, ...rest] = distinct;
+    for (let k = 0; k + 1 < rest.length; k++) {
+      const b = rest[k], c = rest[k + 1];
+      tri(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
+      if (withBase) tri(a[0], a[1], baseZ, c[0], c[1], baseZ, b[0], b[1], baseZ);
+    }
+  };
+  const clippedRing = (
+    i: number, j: number, on: boolean[], cross: Crosser, zc: (pt: [number, number], from: [number, number]) => number,
+  ): number[][] => {
+    const corners = cellCorners(i, j);
+    const ring: number[][] = [];
+    for (let c = 0; c < 4; c++) {
+      const [ci, cj] = corners[c], [di, dj] = corners[(c + 1) % 4];
+      const here: [number, number] = [X(ci), Y(cj)], next: [number, number] = [X(di), Y(dj)];
+      if (on[c]) ring.push([here[0], here[1], zOf(ci, cj)]);
+      if (on[c] !== on[(c + 1) % 4]) {
+        const pt = on[c] ? cross(i, j, here, next) : cross(i, j, next, here);
+        ring.push([pt[0], pt[1], zc(pt, on[c] ? here : next)]);
+      }
+    }
+    return ring;
+  };
+  const cutCrossers = cuts.map(c => crosser(c.outline, nx, xMin, yMin, gridMm));
+
   for (let j = 0; j < ny - 1; j++) {
     for (let i = 0; i < nx - 1; i++) {
       if (!solidCell(i, j)) continue;
       const x0 = X(i), x1 = X(i + 1), y0 = Y(j), y1 = Y(j + 1);
       const z00 = zOf(i, j), z10 = zOf(i + 1, j), z01 = zOf(i, j + 1), z11 = zOf(i + 1, j + 1);
 
-      // Top (CCW from +z) and base (CW from +z).
-      quad(x0, y0, z00, x1, y0, z10, x1, y1, z11, x0, y1, z01);
+      // base (CW from +z)
       quad(x0, y0, baseZ, x0, y1, baseZ, x1, y1, baseZ, x1, y0, baseZ);
+
+      // a cell one cut's rim crosses splits along it: the surface piece outside, the floor inside.
+      // Corners in two different cuts, or none of them in one, take the plain top
+      const cutsHere = cellCorners(i, j).map(([ci, cj]) => cutOf[cj * nx + ci]);
+      const rim = cutsHere.find(c => c >= 0);
+      const split = rim !== undefined && cutsHere.some(c => c !== rim) && cutsHere.every(c => c < 0 || c === rim);
+      if (split) {
+        const inCut = cutsHere.map(c => c === rim);
+        const floor = cuts[rim].floorZ;
+        fan(clippedRing(i, j, inCut.map(v => !v), cutCrossers[rim], (pt, from) =>
+          surfaceAt(pt[0] + (from[0] - pt[0]) * 1e-3, pt[1] + (from[1] - pt[1]) * 1e-3) ?? floor), false);
+        fan(clippedRing(i, j, inCut, cutCrossers[rim], () => floor), false);
+      } else {
+        // top (CCW from +z)
+        quad(x0, y0, z00, x1, y0, z10, x1, y1, z11, x0, y1, z01);
+      }
 
       // Skirts on edges shared with non-solid neighbours, wound to face away from the cell.
       // Omitted when an explicit outline polygon is provided (outline walls replace staircase skirts).
@@ -80,106 +154,107 @@ export function buildHeightFieldStl(zAt: (x: number, y: number) => number | null
     }
   }
 
-  if (opts.outline) {
-    const poly = opts.outline;
-    const outlineTopZ = opts.outlineTopZ ?? baseZ + 1;
-    const topZAt = typeof outlineTopZ === 'number' ? () => outlineTopZ : outlineTopZ;
+  // a wall along a closed polygon from `bottom` up to `top` at each vertex, facing out of the solid:
+  // outward for the outline, into the hole for a cut. Segments the field doesn't reach are skipped,
+  // for a pocket rim running off the edge
+  const wall = (poly: [number, number][], bottom: (x: number, y: number) => number, top: (x: number, y: number) => number, facing: 'out' | 'in') => {
     const n = poly.length;
-
-    // the outline's segments bucketed by the grid cells their boxes cover, so a cell edge only
-    // asks the segments near it where the outline crosses. A segment lying on a grid line belongs
-    // to the cells on both sides of it
-    const buckets = new Map<number, number[]>();
-    const EPS = 1e-9;
-    for (let k = 0; k < n; k++) {
-      const [ax, ay] = poly[k], [bx, by] = poly[(k + 1) % n];
-      const i0 = Math.floor((Math.min(ax, bx) - xMin) / gridMm - EPS), i1 = Math.floor((Math.max(ax, bx) - xMin) / gridMm + EPS);
-      const j0 = Math.floor((Math.min(ay, by) - yMin) / gridMm - EPS), j1 = Math.floor((Math.max(ay, by) - yMin) / gridMm + EPS);
-      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-        const key = j * nx + i;
-        const list = buckets.get(key);
-        if (list) list.push(k); else buckets.set(key, [k]);
-      }
-    }
-
-    // where the outline crosses the cell edge from the inside corner `a` to the outside corner
-    // `b`, the nearest crossing to `a`; the edge's midpoint when the samples and the outline
-    // disagree about which side of it the plate ends on
-    const crossing = (i: number, j: number, a: [number, number], b: [number, number]): [number, number] => {
-      let best: [number, number] | null = null, bestT = Infinity;
-      const horizontal = a[1] === b[1];
-      for (const k of buckets.get(j * nx + i) ?? []) {
-        const [px, py] = poly[k], [qx, qy] = poly[(k + 1) % n];
-        let pt: [number, number] | null = null;
-        if (horizontal) {
-          if ((py <= a[1]) === (qy <= a[1])) continue;
-          pt = [px + ((a[1] - py) / (qy - py)) * (qx - px), a[1]];
-        } else {
-          if ((px <= a[0]) === (qx <= a[0])) continue;
-          pt = [a[0], py + ((a[0] - px) / (qx - px)) * (qy - py)];
-        }
-        const t = horizontal ? (pt[0] - a[0]) / (b[0] - a[0]) : (pt[1] - a[1]) / (b[1] - a[1]);
-        if (t >= 0 && t <= 1 && t < bestT) { bestT = t; best = pt; }
-      }
-      return best ?? [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-    };
-
-    // a cell the outline crosses: the corners on the plate and the crossings between them, walked
-    // round the cell, make the plate's piece of it, fanned from its first corner. A crossing's
-    // height is read a hair inside the outline, where the field still answers
-    for (let j = 0; j < ny - 1; j++) {
-      for (let i = 0; i < nx - 1; i++) {
-        if (solidCell(i, j)) continue;
-        const corners: [number, number][] = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]];
-        const on = corners.map(([ci, cj]) => inside(ci, cj));
-        if (!on.some(Boolean)) continue;
-        const ring: number[][] = [];
-        for (let c = 0; c < 4; c++) {
-          const [ci, cj] = corners[c], [di, dj] = corners[(c + 1) % 4];
-          const here: [number, number] = [X(ci), Y(cj)], next: [number, number] = [X(di), Y(dj)];
-          if (on[c]) ring.push([here[0], here[1], zOf(ci, cj)]);
-          if (on[c] !== on[(c + 1) % 4]) {
-            const pt = on[c] ? crossing(i, j, here, next) : crossing(i, j, next, here);
-            const from = on[c] ? here : next;
-            const zc = zAt(pt[0] + (from[0] - pt[0]) * 1e-3, pt[1] + (from[1] - pt[1]) * 1e-3) ?? topZAt(pt[0], pt[1]);
-            ring.push([pt[0], pt[1], zc]);
-          }
-        }
-        // a crossing on a corner repeats it; the repeat would make a sliver with no area
-        const same = (u: number[], w: number[]) => Math.abs(u[0] - w[0]) < 1e-9 && Math.abs(u[1] - w[1]) < 1e-9;
-        const distinct = ring.filter((pt, k) => !same(pt, ring[(k + 1) % ring.length]));
-        if (distinct.length < 3) continue;
-        const [a, ...rest] = distinct;
-        for (let k = 0; k + 1 < rest.length; k++) {
-          const b = rest[k], c = rest[k + 1];
-          tri(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
-          tri(a[0], a[1], baseZ, c[0], c[1], baseZ, b[0], b[1], baseZ);
-        }
-      }
-    }
-
-    // True outline walls: walk the boundary polygon and emit vertical wall quads.
-    // Determine polygon orientation via signed shoelace area (positive = CCW in standard coords).
     let area = 0;
     for (let k = 0; k < n; k++) {
       const [ax, ay] = poly[k], [bx, by] = poly[(k + 1) % n];
       area += ax * by - bx * ay;
     }
-    // CCW polygon: winding (p0,baseZ),(p1,baseZ),(p1,topZ),(p0,topZ) → outward normal.
-    // CW polygon:  reversed winding.
-    const ccw = area > 0;
+    // CCW polygon: (p0,bottom),(p1,bottom),(p1,top),(p0,top) faces outward; reversed faces in
+    const outward = (area > 0) === (facing === 'out');
     for (let k = 0; k < n; k++) {
       const [ax, ay] = poly[k], [bx, by] = poly[(k + 1) % n];
-      const za = topZAt(ax, ay), zb = topZAt(bx, by);
-      if (ccw) {
-        quad(ax, ay, baseZ, bx, by, baseZ, bx, by, zb, ax, ay, za);
-      } else {
-        quad(ax, ay, za, bx, by, zb, bx, by, baseZ, ax, ay, baseZ);
+      if (facing === 'in' && surfaceAt((ax + bx) / 2, (ay + by) / 2) === null) continue;
+      const za = top(ax, ay), zb = top(bx, by), fa = bottom(ax, ay), fb = bottom(bx, by);
+      if (outward) quad(ax, ay, fa, bx, by, fb, bx, by, zb, ax, ay, za);
+      else quad(ax, ay, za, bx, by, zb, bx, by, fb, ax, ay, fa);
+    }
+  };
+
+  if (opts.outline) {
+    const poly = opts.outline;
+    const outlineTopZ = opts.outlineTopZ ?? baseZ + 1;
+    const edgeZ = typeof outlineTopZ === 'number' ? () => outlineTopZ : outlineTopZ;
+    // the wall's top drops to a pocket's floor where its rim runs off the edge
+    const topZAt = (x: number, y: number) => { const c = cutAt(x, y); return c < 0 ? edgeZ(x, y) : cuts[c].floorZ; };
+    const crossing = crosser(poly, nx, xMin, yMin, gridMm);
+
+    // a cell the outline crosses: the corners on the plate and the crossings between them make
+    // the plate's piece of it. A crossing's height is read a hair inside the outline, where the
+    // field still answers
+    for (let j = 0; j < ny - 1; j++) {
+      for (let i = 0; i < nx - 1; i++) {
+        if (solidCell(i, j)) continue;
+        const on = cellCorners(i, j).map(([ci, cj]) => inside(ci, cj));
+        if (!on.some(Boolean)) continue;
+        fan(clippedRing(i, j, on, crossing, (pt, from) =>
+          zAt(pt[0] + (from[0] - pt[0]) * 1e-3, pt[1] + (from[1] - pt[1]) * 1e-3) ?? topZAt(pt[0], pt[1])), true);
       }
     }
+
+    wall(poly, () => baseZ, topZAt, 'out');
+  }
+
+  for (const cut of cuts) {
+    // the rim's surface is read a hair outside it, where the field is still the surface
+    wall(cut.outline, () => cut.floorZ, (x, y) => surfaceAt(x, y) ?? cut.floorZ, 'in');
   }
 
   return writeBinaryStl(tris);
+}
+
+type Crosser = (i: number, j: number, a: [number, number], b: [number, number]) => [number, number];
+
+// where `poly` crosses the cell edge from the inside corner `a` to the outside corner `b`, the
+// nearest crossing to `a`; the edge's midpoint when the samples and the polygon disagree about which
+// side of it the solid ends on. The polygon's segments are bucketed by the grid cells their boxes
+// cover, so a cell edge only asks the segments near it. A segment lying on a grid line belongs to
+// the cells on both sides of it
+function crosser(poly: [number, number][], nx: number, xMin: number, yMin: number, gridMm: number): Crosser {
+  const n = poly.length;
+  const buckets = new Map<number, number[]>();
+  const EPS = 1e-9;
+  for (let k = 0; k < n; k++) {
+    const [ax, ay] = poly[k], [bx, by] = poly[(k + 1) % n];
+    const i0 = Math.floor((Math.min(ax, bx) - xMin) / gridMm - EPS), i1 = Math.floor((Math.max(ax, bx) - xMin) / gridMm + EPS);
+    const j0 = Math.floor((Math.min(ay, by) - yMin) / gridMm - EPS), j1 = Math.floor((Math.max(ay, by) - yMin) / gridMm + EPS);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const key = j * nx + i;
+      const list = buckets.get(key);
+      if (list) list.push(k); else buckets.set(key, [k]);
+    }
+  }
+  return (i, j, a, b) => {
+    let best: [number, number] | null = null, bestT = Infinity;
+    const horizontal = a[1] === b[1];
+    for (const k of buckets.get(j * nx + i) ?? []) {
+      const [px, py] = poly[k], [qx, qy] = poly[(k + 1) % n];
+      let pt: [number, number] | null = null;
+      if (horizontal) {
+        if ((py <= a[1]) === (qy <= a[1])) continue;
+        pt = [px + ((a[1] - py) / (qy - py)) * (qx - px), a[1]];
+      } else {
+        if ((px <= a[0]) === (qx <= a[0])) continue;
+        pt = [a[0], py + ((a[0] - px) / (qx - px)) * (qy - py)];
+      }
+      const t = horizontal ? (pt[0] - a[0]) / (b[0] - a[0]) : (pt[1] - a[1]) / (b[1] - a[1]);
+      if (t >= 0 && t <= 1 && t < bestT) { bestT = t; best = pt; }
+    }
+    return best ?? [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  };
+}
+
+function pointInPolygon(x: number, y: number, poly: [number, number][]): boolean {
+  let inside = false;
+  for (let k = 0, m = poly.length - 1; k < poly.length; m = k++) {
+    const [ax, ay] = poly[k], [bx, by] = poly[m];
+    if ((ay > y) !== (by > y) && x < ax + ((y - ay) / (by - ay)) * (bx - ax)) inside = !inside;
+  }
+  return inside;
 }
 
 function writeBinaryStl(tris: number[]): ArrayBuffer {
