@@ -19,10 +19,10 @@ There are an enormous number of theories regarding how Cremonese arching was don
 These are natural curves that form when dangling a chain or rope between two points, and they approximate the long arch curve on many existing instruments. Because the curve is so easy to formulate, it very well could have been a shop practice in 17th century Cremonese making. Further, Catenaries offer interesting mechanical properties, loads on the top of the arch can be completely converted into compression rather than bending the plate.
 
 ### Splines
-Natural splines can be obtained by bending wood through a series of control points, and the technique was certainly known and available to makers in rennaisance Italy. Was this the technique used by the Cremonese masters? Who is to say... Historical correctness aside, splines offer a way to track well against almost any kind of arching. 
+Natural splines can be obtained by bending wood through a series of control points, and the technique was certainly known and available to makers in rennaisance Italy. Was this the technique used by the Cremonese masters? Who is to say... Historical correctness aside, splines offer a way to track well against almost any kind of arching. You may add and remove spline points, set their height as well as there position along the body measured as a percent. 
 
 ### Fluting Channel
-The fluting channel travels along the entire outer edge of the plate, the long arch must intercept the height you have given it while also smoothly joining the fluting channel. CremonaCad does this by iteratively running through possible solutions until it finds one, or if none, the arching will take off from the inner fluting edge. 
+The fluting channel travels along the entire outer edge of the plate, the long arch must intercept the height you have given it while also smoothly joining the fluting channel. CremonaCad solves this by iteratively running through possible solutions until a takeoff point is found. If none exists, the arching will take off from the inner fluting edge. 
 
 ## Fields
 
