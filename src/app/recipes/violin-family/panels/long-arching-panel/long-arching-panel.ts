@@ -47,11 +47,14 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
     if (p.arching || !p.fluting) return;
     let s = familyStandards(p.body.height);
     let [topH, backH] = { violin: [15, 14], viola: [20, 18], cello: [27, 25], bass: [55, 50] }[s.family];
-    let plate = (height: number) => ({
-      thickness: s.edgeThickness,
-      arch: { type: 'catenary' as const, height, peak: 50, peakRow: 2, points: seedPoints(height) },
-      cross: { type: 'cycloid' as const, d: 40, pct: 90, peak: 50, points: [{ x: 83, z: 50, mirror: true }], stations: [] },
-    });
+    let plate = (height: number) => {
+      let points = seedPoints(height);
+      return {
+        thickness: s.edgeThickness,
+        arch: { type: 'catenary' as const, height, peak: 50, peakRow: points.filter(pt => pt.t > 50).length, points },
+        cross: { type: 'cycloid' as const, d: 40, pct: 90, peak: 50, points: [{ x: 83, z: 50, mirror: true }], stations: [] },
+      };
+    };
     p.arching = { ribHeightLower: s.ribHeightLower, ribHeightUpper: s.ribHeightUpper, top: plate(topH), back: plate(backH) };
   }
 
@@ -151,10 +154,10 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
 // wood, so a long arch is rarely symmetric
 function seedPoints(height: number): LongArchParams['points'] {
   return [
-    { t: 87.5, z: +(height * 0.55).toFixed(1), mirror: false },
+    // { t: 87.5, z: +(height * 0.55).toFixed(1), mirror: false },
     { t: 75, z: +(height * 0.85).toFixed(1), mirror: false },
     { t: 25, z: +(height * 0.85).toFixed(1), mirror: false },
-    { t: 12.5, z: +(height * 0.55).toFixed(1), mirror: false },
+    // { t: 12.5, z: +(height * 0.55).toFixed(1), mirror: false },
   ];
 }
 
@@ -163,11 +166,12 @@ export const TOP_ARCH_INK = 2;
 export const BACK_ARCH_INK = 0;
 export const CHANNEL_INK = 1;
 
-// right of the plan, where every panel leaves room: the back's arch, which hangs below the back
-// plane, clears the top plate's edge
+// right of the plan, where every panel leaves room. The back's gluing plane holds still while the
+// arching is edited, a fixed reference on the canvas, until the back's arch would reach the plan
 export function sideViewOffsetX(p: ViolinFamilyParams): number {
   let a = p.arching!;
-  return p.body.width / 2 + p.body.overhang + p.body.rib + 20 + a.back.thickness + a.back.arch.height;
+  let clearance = Math.max(0.12 * p.body.height, 20 + a.back.thickness + a.back.arch.height);
+  return p.body.width / 2 + p.body.overhang + p.body.rib + clearance;
 }
 
 // the body's side profile: the rib between the two plates, the top growing up off it and the back

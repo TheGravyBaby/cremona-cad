@@ -2,17 +2,19 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { dist, moveInVectorSpace, pointAtDistanceToward, TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
-import { applyMatrix, pathFromPolygon } from '../../../../helpers/math/pathMath';
-import { occludePath } from '../../../../helpers/math/pathVibes';
+import { applyMatrix, pathFromCircle, pathFromPolygon } from '../../../../helpers/math/pathMath';
+import { intersectionFromTwoPaths, occludePath } from '../../../../helpers/math/pathVibes';
 import {
-  renderDashedLine, renderGuideBaseline, renderGuideKnot, renderPath, renderPolygon, renderSegment, renderSegmentHalo, renderSolveFailures, renderStroke, renderText,
+  renderDashedLine, renderFilledPath, renderGuideBaseline, renderGuideKnot, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo, renderSolveFailures, renderStroke, renderText,
 } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
-import { Pt, Vect2D } from '../../../../models/types';
+import { Circle, Pt, Vect2D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { OuterContourSolve, RenderLayer, ScrollSolve, StringSetupFailure, StringSetupSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import {
+  OuterContourSolve, PositionMarksParams, RenderLayer, ScrollSolve, StringSetupFailure, StringSetupSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
+} from '../../violin-family-types';
 import { familyStandards } from '../../violin-family-seed';
 import { solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
 import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
@@ -24,11 +26,13 @@ import { scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-pane
 
 // The string setup over the finished neck: the bridge on the top's arch, the nut, the fingerboard and
 // the string between them. Reference geometry, read off the neck and never shaping it; only the
-// neck's length is set here too, since it places the nut. The scroll, once its panels have solved it
-// whole, stands on the neck's end in both views. Panel and renders, then the solve.
+// neck's length is set here too, since it places the nut. The position marks are the one thing here
+// a maker cuts: dots inlaid in the board's face at chosen intervals, drawn in the front view. The
+// scroll, once its panels have solved it whole, stands on the neck's end in both views. Panel and
+// renders, then the solve.
 
 export type StringSetupHighlightKey =
-  'length' | 'bodyStop' | 'bridgeHeight' | 'nutThickness' | 'fbLength' | 'fbThickness' | 'fbNutRadius' | 'fbEndRadius' | 'scoopAt' | 'scoopBass' | 'scoopTreble';
+  'length' | 'bodyStop' | 'bridgeHeight' | 'nutThickness' | 'fbLength' | 'fbThickness' | 'fbNutRadius' | 'fbEndRadius' | 'scoopAt' | 'scoopBass' | 'scoopTreble' | 'marks';
 
 @Component({
   selector: 'app-vf-string-setup-panel',
@@ -42,7 +46,7 @@ export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
 
   static seed(p: ViolinFamilyParams): void {
     if (p.stringSetup || !p.neck) return;
-    p.stringSetup = { ...familyStandards(p.body.height).strings };
+    p.stringSetup = structuredClone(familyStandards(p.body.height).strings);
   }
 
   @Input({ required: true }) params!: ViolinFamilyParams;
@@ -53,18 +57,30 @@ export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
   // what the last draw solved; the readout and report() read it
   s!: StringSetupSolve;
   highlighted: { key: StringSetupHighlightKey; color: string } | null = null;
+  // the semitones as typed, so a half-typed list isn't reformatted under the cursor
+  semitonesText = '';
+  // the marks' controls shown; a design with marks opens with them out
+  showMarks = false;
 
   get stringLength(): number | null {
     return this.s?.nutTop && this.s.bridgeTop ? dist(this.s.nutTop, this.s.bridgeTop) : null;
   }
 
   ngOnInit(): void {
+    this.semitonesText = this.params.stringSetup!.marks.semitones.join(', ');
+    this.showMarks = this.params.stringSetup!.marks.semitones.length > 0;
     this.draw();
   }
 
   edited(): void {
     this.edit.emit();
     this.draw();
+  }
+
+  semitonesEdited(text: string): void {
+    this.semitonesText = text;
+    this.params.stringSetup!.marks.semitones = parseSemitones(text);
+    this.edited();
   }
 
   // the neck's length is edited here too, so its failures are this panel's to report
@@ -85,6 +101,10 @@ export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
   draw(): void {
     safeRun(() => {
       let p = this.params;
+      // an undo or a load changed the list behind the field
+      if (JSON.stringify(parseSemitones(this.semitonesText)) !== JSON.stringify(p.stringSetup!.marks.semitones)) {
+        this.semitonesText = p.stringSetup!.marks.semitones.join(', ');
+      }
       let s = this.s = solveStringSetup(p)!;
       let a = solveLongArching(p)!;
       let o = solveOuterContour(p)!;
@@ -100,7 +120,7 @@ export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
         renderSolveFailures([...s.neck.failures, ...s.failures], this.pal.alert),
       ];
       this.drawn.emit([
-        renderStringSetupFrontView(p, s, o, scrollInPlan, this.pal, this.flags.showFingerboard),
+        renderStringSetupFrontView(p, s, o, scrollInPlan, this.pal, this.flags.showFingerboard, this.highlighted),
         (g, ui) => {
           let frame = { g: g.append('g').attr('transform', `translate(${sideX},0)`), ui: ui.append('g').attr('transform', `translate(${sideX},0)`) };
           for (let layer of side) layer(frame.g, frame.ui);
@@ -118,6 +138,17 @@ const SCOOP_GUIDE_LABEL_SIZE = 4;
 const FRET_MARK_SEMITONES = 12;
 const FRET_TICK_HALF_LENGTH = 1;
 const LANDMARK_TICK_HALF_LENGTH = 3;
+const MARK_HALO_RADIUS = 3;
+
+export function parseSemitones(text: string): number[] {
+  return text.split(/[\s,;]+/).filter(Boolean).map(Number);
+}
+
+// equal temperament: each semitone shortens the sounding length by the twelfth root of 2, so
+// semitone n stops the string `length * (1 - 2^(-n/12))` from the nut
+export function semitoneStop(semitone: number, stringLength: number): number {
+  return stringLength * (1 - 2 ** (-semitone / 12));
+}
 
 // the bridge, the board, the nut and the string, over the neck renderNeck draws. The neck's front is
 // in colour since its length is set here
@@ -156,7 +187,7 @@ export const renderStringSetup = (
 
   if (s.nutTop && s.bridgeTop) {
     seg(s.nutTop, s.bridgeTop, pal.neutral);
-    if (opts.fretMarks && s.fingerboardEnd) renderFretTicks(s.nutTop, s.bridgeTop, dist(n.neckTop, s.fingerboardEnd), pal)(g, ui);
+    if (opts.fretMarks && s.fingerboardEnd) renderFretTicks(s.nutTop, s.bridgeTop, dist(n.neckTop, s.fingerboardEnd), ss.marks, pal)(g, ui);
   }
 };
 
@@ -274,6 +305,7 @@ const renderStringSetupFrontView = (
   scroll: ScrollSolve | null,
   pal: PanelPalette,
   showFingerboard: boolean,
+  highlighted: { key: StringSetupHighlightKey; color: string } | null = null,
 ): RenderLayer => {
   let n = s.neck;
   if (!n.neckTop) return () => {};
@@ -294,6 +326,9 @@ const renderStringSetupFrontView = (
       station = [new Pt(-half, y), new Pt(half, y)];
     }
   }
+  // a dot over the edge is inlaid as the part that lands on the board
+  let dots = board ? s.marks.flatMap(m => m.dots).map(dot => ({ dot, inlay: intersectionFromTwoPaths(pathFromCircle(dot), board!) })) : [];
+  let haloed = highlighted?.key === 'marks' ? highlighted.color : null;
   let nutY = applyMatrix(onNeck, new Pt(0, nk.nutHeight)).y;
   let nut = [new Pt(-nk.nutWidth / 2, topY), new Pt(nk.nutWidth / 2, topY), new Pt(nk.nutWidth / 2, nutY), new Pt(-nk.nutWidth / 2, nutY)];
 
@@ -323,6 +358,10 @@ const renderStringSetupFrontView = (
     if (bridge) renderPolygon(bridge, pal.ink(1), STROKE_WEIGHT.section)(g, ui);
     renderPath(board ?? neck, board ? pal.ink(0) : pal.neutral, STROKE_WEIGHT.section)(g, ui);
     if (station) renderDashedLine(station[0], station[1], pal.ink(0), '2 3', STROKE_WEIGHT.guide, 0.5)(g, ui);
+    for (let { dot, inlay } of dots) {
+      renderFilledPath(inlay, pal.ink(3), 1, 'nonzero')(g, ui);
+      if (haloed) renderPointHalo(dot, haloed, dot.r + MARK_HALO_RADIUS)(g, ui);
+    }
     renderPolygon(nut, pal.ink(0).faint(-3), STROKE_WEIGHT.section)(g, ui);
     // the nut and the neck below it are this view's own
     if (head) {
@@ -402,16 +441,16 @@ export function fingerboardCrownLine(p: ViolinFamilyParams, s: StringSetupSolve)
   return line;
 }
 
-// twelve-tone equal temperament: each semitone shortens the sounding length by the twelfth root of
-// 2, so semitone n sits `stringLength * (1 - 2^(-n/12))` from the nut. Ticks stop at the board's end
-function renderFretTicks(nut: Pt, bridge: Pt, boardLength: number, pal: PanelPalette) {
+// the first octave's semitones ticked up the string, the marked ones standing taller. Ticks stop
+// at the board's end
+function renderFretTicks(nut: Pt, bridge: Pt, boardLength: number, marks: PositionMarksParams, pal: PanelPalette) {
   let stringLength = dist(nut, bridge);
   let along: Vect2D = { a: (bridge.x - nut.x) / stringLength, b: (bridge.y - nut.y) / stringLength, mag: 1 };
   let across: Vect2D = { a: -along.b, b: along.a, mag: 1 };
 
   return (g: any, ui: any): void => {
     let tick = (semitone: number, halfLength: number, color: string) => {
-      let d = stringLength * (1 - 2 ** (-semitone / 12));
+      let d = semitoneStop(semitone, stringLength);
       if (d > boardLength) return;
       let center = moveInVectorSpace(nut, [{ ...along, mag: d }]);
       let a = moveInVectorSpace(center, [{ ...across, mag: halfLength }]);
@@ -419,12 +458,9 @@ function renderFretTicks(nut: Pt, bridge: Pt, boardLength: number, pal: PanelPal
       renderSegment(a, b, color, STROKE_WEIGHT.guide)(g, ui);
     };
     for (let semitone = 1; semitone <= FRET_MARK_SEMITONES; semitone++) {
-      if (![5, 7, 12].includes(semitone)) tick(semitone, FRET_TICK_HALF_LENGTH, pal.ink(0).faint(-3));
+      if (!marks.semitones.includes(semitone)) tick(semitone, FRET_TICK_HALF_LENGTH, pal.ink(0).faint(-3));
     }
-    // the perfect fourth, the perfect fifth and the octave
-    tick(5, LANDMARK_TICK_HALF_LENGTH, pal.ink(0).faint(-2));
-    tick(7, LANDMARK_TICK_HALF_LENGTH, pal.ink(0).faint(-5));
-    tick(12, LANDMARK_TICK_HALF_LENGTH, pal.ink(0).faint(3));
+    for (let semitone of marks.semitones) if (Number.isInteger(semitone) && semitone > 0) tick(semitone, LANDMARK_TICK_HALF_LENGTH, pal.ink(3));
   };
 }
 
@@ -436,7 +472,7 @@ export function solveStringSetup(p: ViolinFamilyParams): StringSetupSolve | null
   if (!p.stringSetup || !p.neck) return null;
   let ss = p.stringSetup;
   let neck = solveNeck(p)!;
-  let s: StringSetupSolve = { neck, bridgeFoot: null, bridge: null, bridgeTop: null, nutTop: null, fingerboardEnd: null, failures: [] };
+  let s: StringSetupSolve = { neck, bridgeFoot: null, bridge: null, bridgeTop: null, nutTop: null, fingerboardEnd: null, marks: [], failures: [] };
   let fail = (message: string, unsolved: StringSetupFailure['unsolved'], points: Pt[] = []): StringSetupFailure =>
     ({ message, unsolved, circles: [], segments: [], points });
   let { neckTop, root } = neck;
@@ -507,6 +543,38 @@ export function solveStringSetup(p: ViolinFamilyParams): StringSetupSolve | null
       return fail(`Nut: it stands below the fingerboard's crown, which is ${crownAtNut.toFixed(1)} mm off the neck at the nut.`, [],
         [moveInVectorSpace(neckTop, [{ ...normal, mag: crownAtNut }])]);
     }
+    return null;
+  });
+
+  // each interval stops the string a share of its length down from the nut; that point drops square
+  // onto the fingerboard plane for its station, and the dot sits across the board there, its offset
+  // scaled by the board's width. A mark past the board's end is left out and said so, the rest drawn
+  solveSection(s.failures, 'Position Marks', ['marks'], () => {
+    let m = ss.marks;
+    if (!s.nutTop || !s.bridgeTop || !s.fingerboardEnd) return fail('Position marks: the nut, the bridge and the board have to solve first; they\'re laid out between them.', ['marks']);
+    if (!m.semitones.every(n => Number.isInteger(n) && n > 0)) return fail('Position marks: each interval is a whole number of semitones above the open string, 1 or more.', ['marks']);
+    if (!(m.diameter > 0)) return fail('Position marks: the diameter needs a value above 0.', ['marks']);
+    // a dot may hang over the edge, inlaid as the part that lands on the board, but has to reach it
+    let halfAtNut = neckHalfWidthAt(p, neck, neckTop.y);
+    if (!Number.isFinite(m.offset) || Math.abs(m.offset) - m.diameter / 2 >= halfAtNut) {
+      return fail(`Position marks: the dot has to reach the board, which is ${(2 * halfAtNut).toFixed(1)} mm wide at the nut.`, ['marks']);
+    }
+    let stringLength = dist(s.nutTop, s.bridgeTop);
+    let boardLength = dist(neckTop, s.fingerboardEnd);
+    let board: Vect2D = { a: (s.fingerboardEnd.x - neckTop.x) / boardLength, b: (s.fingerboardEnd.y - neckTop.y) / boardLength, mag: 1 };
+    let past: number[] = [];
+    for (let semitone of [...new Set(m.semitones)].sort((a, b) => a - b)) {
+      let alongString = semitoneStop(semitone, stringLength);
+      let onString = pointAtDistanceToward(s.nutTop, s.bridgeTop, alongString);
+      let alongBoard = (onString.x - neckTop.x) * board.a + (onString.y - neckTop.y) * board.b;
+      if (alongBoard > boardLength) { past.push(semitone); continue; }
+      let station = moveInVectorSpace(neckTop, [{ ...board, mag: alongBoard }]);
+      // the share of the board scales with its width; an overhang past the edge is carried as is
+      let half = neckHalfWidthAt(p, neck, station.y);
+      let x = Math.sign(m.offset) * (Math.min(Math.abs(m.offset), halfAtNut) * half / halfAtNut + Math.max(0, Math.abs(m.offset) - halfAtNut));
+      s.marks.push({ semitone, alongString, station, dots: [new Circle(x, station.y, m.diameter / 2)] });
+    }
+    if (past.length) return fail(`Position marks: semitone${past.length > 1 ? 's' : ''} ${past.join(', ')} fall${past.length > 1 ? '' : 's'} past the board's end.`, []);
     return null;
   });
   return s;

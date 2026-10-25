@@ -261,6 +261,18 @@ export interface StringSetupParams {
   scoopAt: number;
   scoopBass: number;
   scoopTreble: number;
+  marks: PositionMarksParams;
+}
+
+// inlaid position marks on the board's face: dots at chosen equal-tempered semitones above the open
+// string. Every string shares the nut and the bridge, so an interval sits at one station across the
+// board. `offset` is the dot's centre off the board's centreline as read at the nut, -x the bass edge
+// as the player sees it with the scroll up; down the board the dot keeps that share of the widening
+// half width. Past the edge it may hang over, inlaid as the part that lands on the board
+export interface PositionMarksParams {
+  semitones: number[];
+  diameter: number;
+  offset: number;
 }
 
 // the inside mould: the rib outline with the blocks cut out of it. Only the blocks' sizes are typed;
@@ -704,7 +716,7 @@ export interface NeckSolve {
   failures: NeckFailure[];
 }
 
-export type StringSetupKey = 'bridge' | 'nut' | 'fingerboard' | 'scoop';
+export type StringSetupKey = 'bridge' | 'nut' | 'fingerboard' | 'scoop' | 'marks';
 export type StringSetupFailure = SolveFailure<StringSetupKey>;
 
 // the string setup in the side elevation, over the neck it was solved on: the bridge's foot on the
@@ -717,7 +729,18 @@ export interface StringSetupSolve {
   bridgeTop: Pt | null;
   nutTop: Pt | null;
   fingerboardEnd: Pt | null;
+  // the position marks that land on the board, in semitone order
+  marks: PositionMarkSolve[];
   failures: StringSetupFailure[];
+}
+
+// one position mark: how far down the string it sounds, its station on the fingerboard plane in the
+// side elevation, and its dots in plan (x across the board, y along it)
+export interface PositionMarkSolve {
+  semitone: number;
+  alongString: number;
+  station: Pt;
+  dots: Circle[];
 }
 
 export type ScrollKey = 'spiral' | 'S0' | 'S1' | 'S2' | 'S3' | 'nape' | 'backStraight' | 'F0' | 'F1' | 'flat' | 'frontStraight';

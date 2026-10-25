@@ -12,7 +12,7 @@ import {
   SvgPathExport, SvgTextExport,
 } from '../../../../helpers/fileExporter';
 import { downloadDxfFile } from '../../../../helpers/dxfExporter';
-import { buildHeightFieldStl, downloadStlFile } from '../../../../helpers/stlExporter';
+import { buildHeightFieldStl, downloadStlFile, HeightFieldCut } from '../../../../helpers/stlExporter';
 import { renderPath, renderText } from '../../../../helpers/renderFuncs';
 import { safeRun } from '../../../../helpers/validators';
 import { Arc, Circle, Pt, Rectangle } from '../../../../models/types';
@@ -846,11 +846,18 @@ function solvedFingerboard(p: ViolinFamilyParams): StringSetupSolve | null {
   return s;
 }
 
+// how deep a position mark's pocket is cut below the surface at its centre, a flat floor for the
+// inlay, and how finely its rim is drawn
+const MARK_POCKET_DEPTH = 2;
+const MARK_RIM_SEGMENTS = 48;
+
 // the fingerboard as a solid for the CNC, in its own frame: the gluing face flat on z = 0, the nut
-// end on y = 0 and the board running up +y, the bass edge at -x. The top is the conical crown
+// end on y = 0 and the board running up +y, which puts the bass edge at +x in a right-handed frame,
+// the mirror of the front view's. The top is the conical crown
 // standing on the chord between the two scooped edges at each station, that station's radius. The
 // outline is sampled a grid step apart all round so the end walls follow the crown and the long
-// walls the scoop. Null while the board or the scoop doesn't solve
+// walls the scoop. Each position mark is a round, flat-floored pocket sunk from the surface; one
+// over the edge notches the wall. Null while the board or the scoop doesn't solve
 export function fingerboardStl(p: ViolinFamilyParams, gridMm = 0.5): ArrayBuffer | null {
   let s = solvedFingerboard(p);
   if (!s) return null;
@@ -861,12 +868,20 @@ export function fingerboardStl(p: ViolinFamilyParams, gridMm = 0.5): ArrayBuffer
   let halfAt = (d: number) => neckHalfWidthAt(p, s.neck, worldY(d));
   let topZ = (x: number, d: number) => {
     let y = worldY(d), half = halfAt(d);
-    let side = Math.max(-1, Math.min(1, x / half));
+    let side = Math.max(-1, Math.min(1, -x / half));
     let edge = ss.fingerboardThickness - fingerboardScoopAt(p, s, y, side);
     let r = fingerboardRadiusAt(p, s, y);
     return edge + Math.sqrt(Math.max(0, r * r - x * x)) - Math.sqrt(Math.max(0, r * r - half * half));
   };
   let onBoard = (d: number) => Math.max(0, Math.min(length, d));
+  let cuts: HeightFieldCut[] = s.marks.flatMap(m => m.dots.map(dot => {
+    let x = -dot.x, d = dist(neckTop, m.station);
+    let rim = Array.from({ length: MARK_RIM_SEGMENTS }, (_, k): [number, number] => {
+      let a = k * TURN.full / MARK_RIM_SEGMENTS;
+      return [x + dot.r * Math.cos(a), d + dot.r * Math.sin(a)];
+    });
+    return { outline: rim, floorZ: Math.max(0, topZ(x, d) - MARK_POCKET_DEPTH) };
+  }));
   let outline: [number, number][] = [];
   let walk = (from: [number, number], to: [number, number]) => {
     let steps = Math.max(1, Math.ceil(Math.hypot(to[0] - from[0], to[1] - from[1]) / gridMm));
@@ -880,6 +895,7 @@ export function fingerboardStl(p: ViolinFamilyParams, gridMm = 0.5): ArrayBuffer
     xMin: -widest - 1, xMax: widest + 1, yMin: -1, yMax: length + 1, gridMm, baseZ: 0,
     outline,
     outlineTopZ: (x, y) => topZ(x, onBoard(y)),
+    cuts,
   });
 }
 

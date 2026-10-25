@@ -296,7 +296,12 @@
       "fingerboardEndRadius": 43,
       "scoopAt": 135,
       "scoopBass": 0.75,
-      "scoopTreble": 0.5
+      "scoopTreble": 0.5,
+      "marks": {
+        "semitones": [],
+        "diameter": 2,
+        "offset": 9
+      }
     },
     "mould": {
       "neckBlock": {
