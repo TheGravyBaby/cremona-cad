@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { EXPORT_DESCRIPTIONS } from '../../../../docs/export-descriptions';
-import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
+import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, pointAtDistanceToward, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
 import {
   applyMatrix, arcPathData, combinePathStrings, Matrix2D, pathFromArc, pathFromCircle, pathFromLine, pathFromPolygon, pathFromPolyline, pathFromRect,
   pathsBounds, rotatePath180, samplePathToPolyline, transformPath, translatePath,
@@ -18,7 +18,9 @@ import { safeRun } from '../../../../helpers/validators';
 import { Arc, Circle, Pt, Rectangle } from '../../../../models/types';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { NeckSolve, Plate, PlateSurface, RenderLayer, ScrollSolve, SurfaceRow, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
+import {
+  NeckSolve, Plate, PlateSurface, RenderLayer, ScrollSolve, StringSetupSolve, SurfaceRow, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey,
+} from '../../violin-family-types';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
@@ -26,7 +28,8 @@ import { purflingPath, ribArcs, solveOuterContour } from '../outer-contour-panel
 import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { buildArchPathFor, solveLongArching } from '../long-arching-panel/long-arching-panel';
 import { bodyLandmarks, rowAt, sectionRuns, solveCrossArching, STATION_MERGE_EPS_MM, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
-import { mortiseFloorY, scrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
+import { mortiseFloorY, neckHalfWidthAt, scrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
+import { fingerboardRadiusAt, fingerboardScoopAt, solveStringSetup } from '../string-setup-panel/string-setup-panel';
 import { defineSideScrollPath } from '../scroll-panel/scroll-panel';
 import { scrollBackStrip, scrollBackViewStrokes, scrollCompassWalk, scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
 import { blockLayout, MOULD_EXPORT_STEP, solveMould } from '../mould-panel/mould-panel';
@@ -34,12 +37,12 @@ import { blockLayout, MOULD_EXPORT_STEP, solveMould } from '../mould-panel/mould
 // The export panel: every sheet the drawing leaves the app on. Each is built once, by `exportSheet`,
 // from the earlier panels' solvers, and the preview, the SVG, the PDF and the DXF are all written
 // from that one sheet. Nothing is typed here, and nothing is written back to the params. Panel, then
-// the sheets, then what exists for the sheets alone: the arch templates, the neck template and the
-// plate solid.
+// the sheets, then what exists for the sheets alone: the arch templates, the neck template, the
+// plate solid and the fingerboard solid.
 
 type ScrollExportType = 'neckTemplate' | 'scrollSide' | 'scrollFrontView' | 'scrollBackView' | 'scrollBack' | 'scrollCompass';
 export type ExportType = 'innerContour' | 'topPlate' | 'backPlate' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate' | 'fholeTemplateNoEyes' | 'fholeTemplateArched' | ScrollExportType;
-export type ExportReady = ExportType | 'stlTop' | 'stlBack';
+export type ExportReady = ExportType | 'stlTop' | 'stlBack' | 'stlFingerboard';
 
 // the sheet's title on a PDF page, one at a time or in the full plan
 const SHEET_LABELS: Record<ExportType, string> = {
@@ -188,6 +191,11 @@ export class ExportPanel implements ViolinFamilyPanel, OnInit {
     downloadStlFile(`${this.baseName()}-${plate}-plate.stl`, plateStl(this.params, surface, plate));
   }
 
+  downloadFingerboardStl(): void {
+    let solid = fingerboardStl(this.params);
+    if (solid) downloadStlFile(`${this.baseName()}-fingerboard.stl`, solid);
+  }
+
   downloadFullPlan(): void {
     this.ready = exportReady(this.params);
     let p = this.params;
@@ -251,6 +259,7 @@ export function exportReady(p: ViolinFamilyParams): Set<ExportReady> {
     ready.add('mould');
     ready.add('blocks');
   }
+  if (solvedFingerboard(p)) ready.add('stlFingerboard');
   let scroll = solvedScroll(p);
   if (scroll) {
     ready.add('scrollSide');
@@ -828,6 +837,50 @@ function plateZAt(surface: PlateSurface): (x: number, y: number) => number | nul
     if (!row || y !== rowY) { rowY = y; row = rowAt(surface, y); }
     return surfaceZAt(surface, x, y, row);
   };
+}
+
+// the string setup with its board and scoop standing, or null
+function solvedFingerboard(p: ViolinFamilyParams): StringSetupSolve | null {
+  let s = p.stringSetup && p.neck ? solveStringSetup(p) : null;
+  if (!s?.fingerboardEnd || s.failures.some(f => f.unsolved.includes('fingerboard') || f.unsolved.includes('scoop'))) return null;
+  return s;
+}
+
+// the fingerboard as a solid for the CNC, in its own frame: the gluing face flat on z = 0, the nut
+// end on y = 0 and the board running up +y, the bass edge at -x. The top is the conical crown
+// standing on the chord between the two scooped edges at each station, that station's radius. The
+// outline is sampled a grid step apart all round so the end walls follow the crown and the long
+// walls the scoop. Null while the board or the scoop doesn't solve
+export function fingerboardStl(p: ViolinFamilyParams, gridMm = 0.5): ArrayBuffer | null {
+  let s = solvedFingerboard(p);
+  if (!s) return null;
+  let ss = p.stringSetup!;
+  let neckTop = s.neck.neckTop!, end = s.fingerboardEnd!;
+  let length = dist(neckTop, end);
+  let worldY = (d: number) => pointAtDistanceToward(neckTop, end, d).y;
+  let halfAt = (d: number) => neckHalfWidthAt(p, s.neck, worldY(d));
+  let topZ = (x: number, d: number) => {
+    let y = worldY(d), half = halfAt(d);
+    let side = Math.max(-1, Math.min(1, x / half));
+    let edge = ss.fingerboardThickness - fingerboardScoopAt(p, s, y, side);
+    let r = fingerboardRadiusAt(p, s, y);
+    return edge + Math.sqrt(Math.max(0, r * r - x * x)) - Math.sqrt(Math.max(0, r * r - half * half));
+  };
+  let onBoard = (d: number) => Math.max(0, Math.min(length, d));
+  let outline: [number, number][] = [];
+  let walk = (from: [number, number], to: [number, number]) => {
+    let steps = Math.max(1, Math.ceil(Math.hypot(to[0] - from[0], to[1] - from[1]) / gridMm));
+    for (let i = 0; i < steps; i++) outline.push([from[0] + (to[0] - from[0]) * i / steps, from[1] + (to[1] - from[1]) * i / steps]);
+  };
+  let topHalf = halfAt(0), endHalf = halfAt(length);
+  let corners: [number, number][] = [[-topHalf, 0], [topHalf, 0], [endHalf, length], [-endHalf, length]];
+  for (let k = 0; k < 4; k++) walk(corners[k], corners[(k + 1) % 4]);
+  let widest = Math.max(topHalf, endHalf);
+  return buildHeightFieldStl((x, y) => (y < 0 || y > length || Math.abs(x) > halfAt(y)) ? null : topZ(x, y), {
+    xMin: -widest - 1, xMax: widest + 1, yMin: -1, yMax: length + 1, gridMm, baseZ: 0,
+    outline,
+    outlineTopZ: (x, y) => topZ(x, onBoard(y)),
+  });
 }
 
 // a plate as a solid for the CNC: the carved surface over a flat base the plate's thickness down,

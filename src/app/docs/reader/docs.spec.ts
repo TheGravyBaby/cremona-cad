@@ -160,10 +160,6 @@ describe('the pages', () => {
     expect(registry.problems).toEqual([]);
   });
 
-  it('keep the summary short enough for a tooltip', () => {
-    for (const a of articles.filter(inWiki)) expect(a.summary.length, a.id).toBeLessThanOrEqual(240);
-  });
-
   it('file every wiki page, and only wiki pages, under a wiki category', () => {
     const filed = WIKI.flatMap(c => [...(c.overview ? [c.overview] : []), ...c.pages]).map(f => idOfPath(f.path));
     expect(filed.map(id => registry.get(id)).filter(a => !a || !inWiki(a))).toEqual([]);

@@ -246,14 +246,21 @@ export interface NeckParams {
 // the string setup, reference geometry over the neck that never shapes it. The bridge stands on the
 // top's arch the body stop down from the neck end, its height off the arch; the nut stands its
 // thickness off the neck's front at the nut; the board runs its length down the neck from the nut,
-// its thickness off the neck at the edges and its crown a cylinder of the radius across its width
+// its thickness off the neck at the edges and its crown a cone across its width: one radius at the
+// nut, another at the end, the radius between them running linearly along the board. The scoop is
+// planed along the top under the strings: how far from the nut it's deepest, and how deep under a
+// straightedge at the bass edge and at the treble edge, the depth running linearly across
 export interface StringSetupParams {
   bodyStop: number;
   bridgeHeight: number;
   nutThickness: number;
   fingerboardLength: number;
   fingerboardThickness: number;
-  fingerboardRadius: number;
+  fingerboardNutRadius: number;
+  fingerboardEndRadius: number;
+  scoopAt: number;
+  scoopBass: number;
+  scoopTreble: number;
 }
 
 // the inside mould: the rib outline with the blocks cut out of it. Only the blocks' sizes are typed;
@@ -697,7 +704,7 @@ export interface NeckSolve {
   failures: NeckFailure[];
 }
 
-export type StringSetupKey = 'bridge' | 'nut' | 'fingerboard';
+export type StringSetupKey = 'bridge' | 'nut' | 'fingerboard' | 'scoop';
 export type StringSetupFailure = SolveFailure<StringSetupKey>;
 
 // the string setup in the side elevation, over the neck it was solved on: the bridge's foot on the
@@ -781,6 +788,8 @@ export interface ViolinFamilyViewFlags {
   showFingerboard: boolean;
   // equal-tempered semitones marked up the string, as far as the board reaches
   showFretMarks: boolean;
+  // the board's scoop drawn exaggerated above the strings, since at scale it's a hair
+  showScoopGuide: boolean;
   showBlocks: boolean;
   showRibOutline: boolean;
 }
@@ -798,6 +807,7 @@ export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
   showVoluteConstruction: true,
   showFingerboard: true,
   showFretMarks: false,
+  showScoopGuide: true,
   showBlocks: true,
   showRibOutline: false,
 };

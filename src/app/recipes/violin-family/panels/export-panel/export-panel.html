@@ -37,9 +37,9 @@
             }
         }
 
-        @if (readyCount(['stlTop', 'stlBack'])) {
+        @if (readyCount(['stlTop', 'stlBack', 'stlFingerboard'])) {
             <details class="export-group">
-                <summary><span class="export-group__chevron">▶</span>3D<span class="export-group__count">{{ readyCount(['stlTop', 'stlBack']) }}</span></summary>
+                <summary><span class="export-group__chevron">▶</span>3D<span class="export-group__count">{{ readyCount(['stlTop', 'stlBack', 'stlFingerboard']) }}</span></summary>
                 <div class="export-group__body">
                     @if (ready.has('stlTop')) {
                         <div class="export-row">
@@ -56,6 +56,15 @@
                             <span class="export-row__desc">{{ describe('stlBack') }}</span>
                             <div class="export-row__actions">
                                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadStl('back')">STL</button>
+                            </div>
+                        </div>
+                    }
+                    @if (ready.has('stlFingerboard')) {
+                        <div class="export-row">
+                            <span class="export-row__name">Fingerboard 3D</span>
+                            <span class="export-row__desc">{{ describe('stlFingerboard') }}</span>
+                            <div class="export-row__actions">
+                                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadFingerboardStl()">STL</button>
                             </div>
                         </div>
                     }

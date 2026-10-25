@@ -292,7 +292,11 @@
       "nutThickness": 7.5,
       "fingerboardLength": 270,
       "fingerboardThickness": 5,
-      "fingerboardRadius": 42
+      "fingerboardNutRadius": 41,
+      "fingerboardEndRadius": 43,
+      "scoopAt": 135,
+      "scoopBass": 0.75,
+      "scoopTreble": 0.5
     },
     "mould": {
       "neckBlock": {
@@ -452,41 +456,6 @@
       "credit": {
         "attribution": "Library of Congress, Music Division. Gift of Mrs. Brookings, 1938.",
         "url": "https://www.loc.gov/resource/music.musihas-200154831/?sp=14&st=image"
-      }
-    },
-    {
-      "id": "shape-mvemsq8m-1",
-      "label": "Img 4",
-      "href": "[image data stripped, 131251 chars]",
-      "x": -115.63151882645506,
-      "y": -14.166977646019413,
-      "width": 49.966102568645375,
-      "height": 131.3179479567916,
-      "rotationDeg": 0.9,
-      "opacity": 0.7,
-      "locked": true,
-      "scope": {
-        "only": [
-          "scrollWidths"
-        ]
-      }
-    },
-    {
-      "id": "shape-mvemxgp0-2",
-      "label": "Img 5",
-      "href": "[image data stripped, 186811 chars]",
-      "x": 18.683091442688394,
-      "y": -18.75129013061526,
-      "width": 64.81151904954953,
-      "height": 134.12952804565433,
-      "rotationDeg": 0,
-      "opacity": 0.7,
-      "suppressWhite": true,
-      "locked": true,
-      "scope": {
-        "only": [
-          "scrollWidths"
-        ]
       }
     }
   ],

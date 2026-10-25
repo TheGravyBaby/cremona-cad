@@ -322,6 +322,13 @@
     </button>
     }
 
+    @if (renderToggleButtons.includes('showScoopGuide')) {
+    <button type="button" class="vt-btn" [class.active]="viewFlags.showScoopGuide"
+        (click)="onRenderToggle('showScoopGuide')" title="Show Scoop Guide" aria-label="Show Scoop Guide">
+        <svg icon="scoop-guide" width="18" height="18"></svg>
+    </button>
+    }
+
     @if (renderToggleButtons.includes('showBlocks')) {
     <button type="button" class="vt-btn" [class.active]="viewFlags.showBlocks"
         (click)="onRenderToggle('showBlocks')" title="Show Blocks" aria-label="Show Blocks">

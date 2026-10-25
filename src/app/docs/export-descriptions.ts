@@ -18,4 +18,5 @@ export const EXPORT_DESCRIPTIONS: Record<string, string> = {
   blocks: 'Individual block templates',
   stlTop: 'Arched top surface with fluting channel, for CNC',
   stlBack: 'Arched back surface with fluting channel, for CNC',
+  stlFingerboard: 'Fingerboard blank, conical crown and scoop over a flat gluing face, for CNC',
 };

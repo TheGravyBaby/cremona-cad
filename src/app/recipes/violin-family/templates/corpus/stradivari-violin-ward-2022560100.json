@@ -298,7 +298,11 @@
       "nutThickness": 7.5,
       "fingerboardLength": 270,
       "fingerboardThickness": 5,
-      "fingerboardRadius": 42
+      "fingerboardNutRadius": 41,
+      "fingerboardEndRadius": 43,
+      "scoopAt": 135,
+      "scoopBass": 0.75,
+      "scoopTreble": 0.5
     },
     "mould": {
       "neckBlock": {
