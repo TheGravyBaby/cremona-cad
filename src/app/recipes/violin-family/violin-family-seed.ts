@@ -126,7 +126,7 @@ export const FHOLE_SEED_RATIOS: FholeRatios & {
   U1toS: 1 / 5,
   U2toS: 3 / 10,
   U3toS: 2 / 5,
-  L1toS: 1 / 4,
+  L1toS: 3 / 10,
   L2toS: 3 / 8,
   L3toS: 1 / 2,
   U1End: 90,
