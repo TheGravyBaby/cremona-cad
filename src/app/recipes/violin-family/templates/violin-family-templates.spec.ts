@@ -74,7 +74,8 @@ describe('CORPUS_TEMPLATES', () => {
         solve ? solve.failures.map(f => `${t.key} ${name}: ${f.message}`) : [`${t.key} ${name}: no solve`]);
       expect(failed).toEqual([]);
     }
-  });
+    // cross arching every template takes a few seconds; the default 5 s flakes under a full run
+  }, 20000);
 });
 
 describe('thumbnailHref', () => {

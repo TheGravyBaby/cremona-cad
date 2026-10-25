@@ -14,11 +14,13 @@ import { FHoleContoursPanel } from '../fhole-contours-panel/fhole-contours-panel
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { NeckPanel } from '../neck-panel/neck-panel';
 import { VolutePanel } from '../volute-panel/volute-panel';
+import { solveStringSetup, StringSetupPanel } from '../string-setup-panel/string-setup-panel';
+import { neckHalfWidthAt } from '../neck-panel/neck-panel';
 import { MouldPanel } from '../mould-panel/mould-panel';
 import { solveScroll } from '../scroll-panel/scroll-panel';
 import { scrollBackStrip, scrollCompassWalk } from '../scroll-widths-panel/scroll-widths-panel';
 import { solveCrossArching } from '../cross-arching-panel/cross-arching-panel';
-import { ExportPanel, ExportType, exportReady, exportSheet, plateStl } from './export-panel';
+import { ExportPanel, ExportType, exportReady, exportSheet, fingerboardStl, plateStl } from './export-panel';
 
 // The last panel, and the one whose output leaves the app: a wrong path on a sheet is cut into wood.
 // What matters here is that a sheet is offered only once the stages it is drawn from exist, that a
@@ -63,8 +65,13 @@ const scrolled = (): ViolinFamilyParams => {
   VolutePanel.seed(p);
   return p;
 };
-const finished = (): ViolinFamilyParams => {
+const strung = (): ViolinFamilyParams => {
   const p = scrolled();
+  StringSetupPanel.seed(p);
+  return p;
+};
+const finished = (): ViolinFamilyParams => {
+  const p = strung();
   MouldPanel.seed(p);
   return p;
 };
@@ -157,7 +164,7 @@ describe('the export panel on opening', () => {
 
   it('offers every sheet once every stage is reached', () => {
     const ready = exportReady(finished());
-    for (const type of [...PLAIN_EXPORTS, ...ARCHING_EXPORTS, 'fholeTemplate', 'fholeTemplateArched', 'neckTemplate', ...SCROLL_EXPORTS, 'stlTop', 'stlBack'] as const) {
+    for (const type of [...PLAIN_EXPORTS, ...ARCHING_EXPORTS, 'fholeTemplate', 'fholeTemplateArched', 'neckTemplate', ...SCROLL_EXPORTS, 'stlTop', 'stlBack', 'stlFingerboard'] as const) {
       expect(ready.has(type), type).toBe(true);
     }
     expect(ready.has('fholeTemplateNoEyes')).toBe(false);
@@ -209,6 +216,7 @@ describe('a sheet whose stage was never reached', () => {
       for (const format of ['svg', 'pdf', 'dxf'] as const) expect(await captured(() => panel.download(type, format)), `${type} ${format}`).toBeNull();
     }
     expect(await captured(() => panel.downloadStl('top'))).toBeNull();
+    expect(await captured(() => panel.downloadFingerboardStl())).toBeNull();
     expect(await captured(() => panel.downloadBundle('templates'))).toBeNull();
   });
 
@@ -515,5 +523,69 @@ describe('the plate solids', () => {
     const perimeter = o.reduce((sum, a, k) => { const b = o[(k + 1) % o.length]; return sum + Math.hypot(b.x - a.x, b.y - a.y); }, 0);
     expect(Math.abs(topArea - outlineArea)).toBeLessThan(perimeter * gridMm / 20);
     expect(baseArea).toBeCloseTo(topArea, 6);
+  });
+});
+
+const StringSetupPanelSolve = (p: ViolinFamilyParams) => solveStringSetup(p)!;
+
+describe('the fingerboard solid', () => {
+  const footprint = (v: number[][]) => Math.abs((v[1][0] - v[0][0]) * (v[2][1] - v[0][1]) - (v[2][0] - v[0][0]) * (v[1][1] - v[0][1])) / 2;
+
+  it('waits for the board, and withholds itself while the scoop doesn\'t solve', () => {
+    expect(fingerboardStl(scrolled())).toBeNull();
+    const p = strung();
+    p.stringSetup!.scoopAt = 0;
+    expect(fingerboardStl(p)).toBeNull();
+    expect(exportReady(p).has('stlFingerboard')).toBe(false);
+    expect(exportReady(strung()).has('stlFingerboard')).toBe(true);
+  });
+
+  it('stands on a flat gluing face the board\'s trapezoid, nut on y = 0, its top covering it to the edge', () => {
+    const p = strung();
+    const ss = p.stringSetup!;
+    const gridMm = 1;
+    const tris = stlTriangles(fingerboardStl(p, gridMm)!);
+    const top = tris.filter(t => t.n[2] > 0), base = tris.filter(t => t.n[2] < 0);
+    for (const t of base) for (const v of t.v) expect(v[2]).toBe(0);
+    const topArea = top.reduce((sum, t) => sum + footprint(t.v), 0);
+    const baseArea = base.reduce((sum, t) => sum + footprint(t.v), 0);
+    const s = StringSetupPanelSolve(p);
+    const nutHalf = p.neck!.topWidth / 2, endHalf = neckHalfWidthAt(p, s.neck, s.fingerboardEnd!.y);
+    const outlineArea = (nutHalf + endHalf) * ss.fingerboardLength;
+    const perimeter = 2 * ss.fingerboardLength + 2 * nutHalf + 2 * endHalf;
+    expect(Math.abs(topArea - outlineArea)).toBeLessThan(perimeter * gridMm / 20);
+    expect(baseArea).toBeCloseTo(topArea, 6);
+    const ys = tris.flatMap(t => t.v.map(v => v[1]));
+    expect(Math.min(...ys)).toBeCloseTo(0, 6);
+    expect(Math.max(...ys)).toBeCloseTo(ss.fingerboardLength, 6);
+  });
+
+  it('crowns higher down the middle than at the edges, scoops the bass edge deeper than the treble, and holds the edge thickness at the nut', () => {
+    const p = strung();
+    const ss = p.stringSetup!;
+    const tris = stlTriangles(fingerboardStl(p, 1)!);
+    const topVerts = tris.filter(t => t.n[2] > 0).flatMap(t => t.v);
+    const t = ss.fingerboardThickness;
+    const near = (v: number[], x: number, y: number) => Math.abs(v[0] - x) < 0.51 && Math.abs(v[1] - y) < 0.51;
+    const zNear = (x: number, y: number) => {
+      const found = topVerts.filter(v => near(v, x, y));
+      expect(found.length, `vertex near ${x},${y}`).toBeGreaterThan(0);
+      return found.reduce((sum, v) => sum + v[2], 0) / found.length;
+    };
+    const mid = ss.scoopAt;
+    const s = StringSetupPanelSolve(p);
+    const halfMid = neckHalfWidthAt(p, s.neck, s.fingerboardEnd!.y) * mid / ss.fingerboardLength + (p.neck!.topWidth / 2) * (1 - mid / ss.fingerboardLength);
+    const centre = zNear(0, mid), bass = zNear(-halfMid + 1, mid), treble = zNear(halfMid - 1, mid);
+    expect(centre).toBeGreaterThan(bass);
+    expect(centre).toBeGreaterThan(treble);
+    expect(bass).toBeLessThan(treble);
+    // every top vertex within the crown's rise above the edge thickness and the scoop below it
+    for (const v of topVerts) {
+      expect(v[2]).toBeLessThanOrEqual(t + 6);
+      expect(v[2]).toBeGreaterThanOrEqual(t - Math.max(ss.scoopBass, ss.scoopTreble) - 1e-6);
+    }
+    const nutEdge = topVerts.filter(v => Math.abs(v[0] + p.neck!.topWidth / 2) < 1e-6 && v[1] < 0.51);
+    expect(nutEdge.length).toBeGreaterThan(0);
+    for (const v of nutEdge) expect(v[2]).toBeCloseTo(t, 2);
   });
 });

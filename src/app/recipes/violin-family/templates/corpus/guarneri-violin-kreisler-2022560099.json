@@ -271,7 +271,7 @@
       "backStraight": 21,
       "S3R": 34,
       "hang": 2,
-      "napeR": 12,
+      "napeR": 8,
       "napeCircle": false,
       "flat": 8,
       "F0R": 59,
@@ -395,17 +395,6 @@
         "attribution": "Library of Congress, Music Division. Gift of Fritz Kreisler, 1952.",
         "url": "https://www.loc.gov/resource/music.musihas-200154814/?sp=3&st=image"
       }
-    },
-    {
-      "id": "shape-mvfgzkkm-1",
-      "label": "Img 3",
-      "href": "[image data stripped, 163615 chars]",
-      "x": -45.05616146044864,
-      "y": -26.082891905097902,
-      "width": 56.6007011153913,
-      "height": 122.80124977409861,
-      "rotationDeg": 359.4,
-      "locked": false
     }
   ],
   "toolboxState": {

@@ -18,8 +18,11 @@ export interface HeightFieldStlOptions {
    * the top and base are clipped to it.
    */
   outline?: [number, number][];
-  /** Z height of the top edge of each outline wall segment (typically the plate thickness). */
-  outlineTopZ?: number;
+  /**
+   * Z of the top edge of each outline wall segment (typically the plate thickness), or a function
+   * of the wall's x/y for a solid whose edge height varies, read at every outline vertex.
+   */
+  outlineTopZ?: number | ((x: number, y: number) => number);
 }
 
 /**
@@ -79,16 +82,19 @@ export function buildHeightFieldStl(zAt: (x: number, y: number) => number | null
 
   if (opts.outline) {
     const poly = opts.outline;
-    const topZ = opts.outlineTopZ ?? baseZ + 1;
+    const outlineTopZ = opts.outlineTopZ ?? baseZ + 1;
+    const topZAt = typeof outlineTopZ === 'number' ? () => outlineTopZ : outlineTopZ;
     const n = poly.length;
 
     // the outline's segments bucketed by the grid cells their boxes cover, so a cell edge only
-    // asks the segments near it where the outline crosses
+    // asks the segments near it where the outline crosses. A segment lying on a grid line belongs
+    // to the cells on both sides of it
     const buckets = new Map<number, number[]>();
+    const EPS = 1e-9;
     for (let k = 0; k < n; k++) {
       const [ax, ay] = poly[k], [bx, by] = poly[(k + 1) % n];
-      const i0 = Math.floor((Math.min(ax, bx) - xMin) / gridMm), i1 = Math.floor((Math.max(ax, bx) - xMin) / gridMm);
-      const j0 = Math.floor((Math.min(ay, by) - yMin) / gridMm), j1 = Math.floor((Math.max(ay, by) - yMin) / gridMm);
+      const i0 = Math.floor((Math.min(ax, bx) - xMin) / gridMm - EPS), i1 = Math.floor((Math.max(ax, bx) - xMin) / gridMm + EPS);
+      const j0 = Math.floor((Math.min(ay, by) - yMin) / gridMm - EPS), j1 = Math.floor((Math.max(ay, by) - yMin) / gridMm + EPS);
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
         const key = j * nx + i;
         const list = buckets.get(key);
@@ -135,11 +141,15 @@ export function buildHeightFieldStl(zAt: (x: number, y: number) => number | null
           if (on[c] !== on[(c + 1) % 4]) {
             const pt = on[c] ? crossing(i, j, here, next) : crossing(i, j, next, here);
             const from = on[c] ? here : next;
-            const zc = zAt(pt[0] + (from[0] - pt[0]) * 1e-3, pt[1] + (from[1] - pt[1]) * 1e-3) ?? topZ;
+            const zc = zAt(pt[0] + (from[0] - pt[0]) * 1e-3, pt[1] + (from[1] - pt[1]) * 1e-3) ?? topZAt(pt[0], pt[1]);
             ring.push([pt[0], pt[1], zc]);
           }
         }
-        const [a, ...rest] = ring;
+        // a crossing on a corner repeats it; the repeat would make a sliver with no area
+        const same = (u: number[], w: number[]) => Math.abs(u[0] - w[0]) < 1e-9 && Math.abs(u[1] - w[1]) < 1e-9;
+        const distinct = ring.filter((pt, k) => !same(pt, ring[(k + 1) % ring.length]));
+        if (distinct.length < 3) continue;
+        const [a, ...rest] = distinct;
         for (let k = 0; k + 1 < rest.length; k++) {
           const b = rest[k], c = rest[k + 1];
           tri(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
@@ -160,10 +170,11 @@ export function buildHeightFieldStl(zAt: (x: number, y: number) => number | null
     const ccw = area > 0;
     for (let k = 0; k < n; k++) {
       const [ax, ay] = poly[k], [bx, by] = poly[(k + 1) % n];
+      const za = topZAt(ax, ay), zb = topZAt(bx, by);
       if (ccw) {
-        quad(ax, ay, baseZ, bx, by, baseZ, bx, by, topZ, ax, ay, topZ);
+        quad(ax, ay, baseZ, bx, by, baseZ, bx, by, zb, ax, ay, za);
       } else {
-        quad(ax, ay, topZ, bx, by, topZ, bx, by, baseZ, ax, ay, baseZ);
+        quad(ax, ay, za, bx, by, zb, bx, by, baseZ, ax, ay, baseZ);
       }
     }
   }

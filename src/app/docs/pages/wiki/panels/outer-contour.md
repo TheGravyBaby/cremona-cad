@@ -7,7 +7,7 @@ status: unreviewed
 image: wiki/outer-contour.svg
 caption: The outer contour of the default violin.
 ---
-This pabel allows you to complete the outer paths for the top and back plate as well as the purfling. In real making, the ribs are pinned to a billet of spruce or maple, and traced at an offset, with some additional arching done around the corners. The maker then cuts the traced path by hand. 
+This panel allows you to complete the outer paths for the top and back plate as well as the purfling. In real making, the ribs are pinned to a billet of spruce or maple, and traced at an offset, with some additional arching done around the corners. The maker then cuts the traced path by hand. 
 
 Here, the offset was already defined on the [[base ]] panel. The total sweep of the outer corner arcs is defined here by the user. A line is cut between these two arcs, and the feeling of the arc is greatly influenced by the angle of this line.
 

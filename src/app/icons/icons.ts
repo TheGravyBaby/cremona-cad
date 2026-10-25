@@ -283,6 +283,9 @@ export const ICONS = {
     <rect x="10.5" y="7" width="3" height="10" stroke-width="1.5" />
     <line x1="10.5" y1="12" x2="13.5" y2="12" stroke-width="1.5" />`,
   fingerboard: '<rect x="7" y="2" width="10" height="20" rx="3" />',
+  'scoop-guide': `<line x1="3" y1="8" x2="21" y2="8" opacity="0.4" />
+    <path d="M3 8 Q 12 17 21 8" />
+    <line x1="12" y1="12.5" x2="12" y2="21" opacity="0.4" />`,
   'fret-marks': `<line x1="12" y1="3" x2="12" y2="21" opacity="0.4" />
     <line x1="6" y1="7" x2="9" y2="7" />
     <line x1="6" y1="12" x2="9" y2="12" />

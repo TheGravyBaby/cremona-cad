@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { applyMatrix } from '../../../../helpers/math/pathMath';
 import { TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../../models/types';
-import { fingerboardCrown, fingerboardCrownLine, solveStringSetup, StringSetupPanel } from './string-setup-panel';
+import {
+  fingerboardCrown, fingerboardCrownLine, fingerboardEdgeLine, fingerboardRadiusAt, fingerboardScoopAt, scoopGuideGeometry, solveStringSetup, StringSetupPanel,
+} from './string-setup-panel';
 import { NeckPanel, neckHalfWidthAt, scrollOnNeck } from '../neck-panel/neck-panel';
 import { nutThickness, VolutePanel } from '../volute-panel/volute-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
@@ -109,10 +111,128 @@ describe('the string setup solve', () => {
     expect(off(p, s, crown.at(-1)!)).toBeCloseTo(t, 9);
     const rises = crown.slice(1, -1).map(pt => off(p, s, pt) - t);
     for (let i = 1; i < rises.length; i++) expect(rises[i]).toBeGreaterThan(rises[i - 1]);
-    // a cylinder's sagitta over the half width
-    const r = p.stringSetup!.fingerboardRadius;
-    const half = neckHalfWidthAt(p, s.neck, s.neck.neckTop!.y);
-    expect(fingerboardCrown(p, s, s.neck.neckTop!.y)).toBeCloseTo(r - Math.sqrt(r * r - half * half), 9);
+    // the sagitta over the half width, of the radius at that end
+    const topY = s.neck.neckTop!.y, endY = s.fingerboardEnd!.y;
+    for (const [r, y] of [[p.stringSetup!.fingerboardNutRadius, topY], [p.stringSetup!.fingerboardEndRadius, endY]]) {
+      const half = neckHalfWidthAt(p, s.neck, y);
+      expect(fingerboardCrown(p, s, y)).toBeCloseTo(r - Math.sqrt(r * r - half * half), 9);
+    }
+  });
+
+  it('runs the crown\'s radius from the nut\'s to the end\'s linearly along the board, and holds it past either end', () => {
+    const p = seeded();
+    p.stringSetup!.fingerboardNutRadius = 40;
+    p.stringSetup!.fingerboardEndRadius = 50;
+    const s = solved(p);
+    const topY = s.neck.neckTop!.y, endY = s.fingerboardEnd!.y;
+    expect(fingerboardRadiusAt(p, s, topY)).toBeCloseTo(40, 9);
+    expect(fingerboardRadiusAt(p, s, endY)).toBeCloseTo(50, 9);
+    expect(fingerboardRadiusAt(p, s, (topY + endY) / 2)).toBeCloseTo(45, 9);
+    expect(fingerboardRadiusAt(p, s, topY + (topY - endY))).toBeCloseTo(40, 9);
+    expect(fingerboardRadiusAt(p, s, endY - (topY - endY))).toBeCloseTo(50, 9);
+    // a tighter nut radius crowns the nut end higher
+    const wider: ViolinFamilyParams = JSON.parse(JSON.stringify(p));
+    wider.stringSetup!.fingerboardNutRadius = 50;
+    expect(fingerboardCrown(wider, solved(wider), topY)).toBeLessThan(fingerboardCrown(p, s, topY));
+  });
+
+  it('scoops each edge to its own depth at the one station, nothing at the ends, and runs the depth across linearly', () => {
+    const p = seeded();
+    const ss = p.stringSetup!;
+    ss.scoopAt = 100;
+    ss.scoopBass = 1;
+    ss.scoopTreble = 0.5;
+    const s = solved(p);
+    const top = s.neck.neckTop!, end = s.fingerboardEnd!;
+    const at = (d: number) => dist(top, end) ? new Pt(top.x + (end.x - top.x) * d / dist(top, end), top.y + (end.y - top.y) * d / dist(top, end)) : top;
+    for (const side of [-1, 0, 1] as const) {
+      expect(fingerboardScoopAt(p, s, top.y, side)).toBeCloseTo(0, 9);
+      expect(fingerboardScoopAt(p, s, end.y, side)).toBeCloseTo(0, 9);
+    }
+    expect(fingerboardScoopAt(p, s, at(100).y, -1)).toBeCloseTo(1, 9);
+    expect(fingerboardScoopAt(p, s, at(100).y, 1)).toBeCloseTo(0.5, 9);
+    expect(fingerboardScoopAt(p, s, at(100).y, 0)).toBeCloseTo(0.75, 9);
+    // deepening toward the station from either end, never past the typed depth
+    let last = 0;
+    for (let d = 0; d <= 100; d += 5) {
+      const scoop = fingerboardScoopAt(p, s, at(d).y, -1);
+      expect(scoop).toBeGreaterThanOrEqual(last);
+      expect(scoop).toBeLessThanOrEqual(1 + 1e-9);
+      last = scoop;
+    }
+    for (let d = 100; d <= ss.fingerboardLength; d += 5) {
+      const scoop = fingerboardScoopAt(p, s, at(d).y, -1);
+      expect(scoop).toBeLessThanOrEqual(last + 1e-9);
+      last = scoop;
+    }
+    // the two arcs meet level at the station
+    const step = 0.5;
+    expect(Math.abs(fingerboardScoopAt(p, s, at(100 + step).y, -1) - fingerboardScoopAt(p, s, at(100 - step).y, -1)) / step).toBeLessThan(1e-3);
+  });
+
+  it('planes the scoop into the edges and the crown line, and leaves them straight with none', () => {
+    const scooped = seeded();
+    const flat = seeded();
+    flat.stringSetup!.scoopBass = flat.stringSetup!.scoopTreble = 0;
+    const sScooped = solved(scooped), sFlat = solved(flat);
+    const t = scooped.stringSetup!.fingerboardThickness;
+    for (const pt of fingerboardEdgeLine(flat, sFlat, -1)) expect(off(flat, sFlat, pt)).toBeCloseTo(t, 9);
+    const edge = fingerboardEdgeLine(scooped, sScooped, -1);
+    expect(off(scooped, sScooped, edge[0])).toBeCloseTo(t, 9);
+    expect(off(scooped, sScooped, edge.at(-1)!)).toBeCloseTo(t, 9);
+    for (const pt of edge.slice(1, -1)) expect(off(scooped, sScooped, pt)).toBeLessThan(t);
+    const crownScooped = fingerboardCrownLine(scooped, sScooped)!, crownFlat = fingerboardCrownLine(flat, sFlat)!;
+    const deepest = Math.max(scooped.stringSetup!.scoopBass, scooped.stringSetup!.scoopTreble);
+    // the line's first two and last two points stand at the ends, where the scoop is nothing
+    for (let i = 2; i < crownScooped.length - 2; i++) {
+      const drop = off(flat, sFlat, crownFlat[i]) - off(scooped, sScooped, crownScooped[i]);
+      expect(drop).toBeGreaterThan(0);
+      expect(drop).toBeLessThanOrEqual(deepest + 1e-9);
+    }
+  });
+
+  it('lays the scoop guide at scale: a straightedge along the top, the edges their depths beneath it at the station', () => {
+    const p = seeded();
+    const ss = p.stringSetup!;
+    const s = solved(p);
+    const guide = scoopGuideGeometry(p, s)!;
+    const top = s.neck.neckTop!, end = s.fingerboardEnd!;
+    const t = ss.fingerboardThickness;
+    const along = (pt: Pt) => ((pt.x - top.x) * (end.x - top.x) + (pt.y - top.y) * (end.y - top.y)) / dist(top, end);
+    for (const pt of guide.straightedge) expect(off(p, s, pt)).toBeCloseTo(t, 9);
+    expect(along(guide.straightedge[0])).toBeCloseTo(0, 9);
+    expect(along(guide.straightedge[1])).toBeCloseTo(ss.fingerboardLength, 9);
+    const [deepestBass, onStraightedge] = guide.station;
+    expect(along(deepestBass)).toBeCloseTo(ss.scoopAt, 9);
+    expect(along(onStraightedge)).toBeCloseTo(ss.scoopAt, 9);
+    expect(off(p, s, onStraightedge) - off(p, s, deepestBass)).toBeCloseTo(ss.scoopBass, 9);
+    expect(off(p, s, onStraightedge) - off(p, s, guide.deepestTreble)).toBeCloseTo(ss.scoopTreble, 9);
+    // the edges never rise above the straightedge nor fall past their depth
+    for (const [edge, depth] of [[guide.bass, ss.scoopBass], [guide.treble, ss.scoopTreble]] as const) {
+      for (const pt of edge) {
+        expect(off(p, s, pt)).toBeLessThanOrEqual(t + 1e-9);
+        expect(off(p, s, pt)).toBeGreaterThanOrEqual(t - depth - 1e-9);
+      }
+    }
+  });
+
+  it('reports a scoop off the board or below zero, flattens the board and withholds the guide, keeping the crown', () => {
+    const edits = [
+      (p: ViolinFamilyParams) => { p.stringSetup!.scoopAt = p.stringSetup!.fingerboardLength; },
+      (p: ViolinFamilyParams) => { p.stringSetup!.scoopAt = 0; },
+      (p: ViolinFamilyParams) => { p.stringSetup!.scoopTreble = -0.5; },
+    ];
+    for (const edit of edits) {
+      const p = seeded();
+      edit(p);
+      const s = solveStringSetup(p)!;
+      expect(unsolved(s, 'scoop')).toBe(true);
+      expect(unsolved(s, 'fingerboard')).toBe(false);
+      expect(scoopGuideGeometry(p, s)).toBeNull();
+      const mid = fingerboardCrownLine(p, s)!;
+      expect(mid).not.toBeNull();
+      for (const pt of fingerboardEdgeLine(p, s, -1)) expect(off(p, s, pt)).toBeCloseTo(p.stringSetup!.fingerboardThickness, 9);
+    }
   });
 
   it('runs the seeded string clear of the board and its crown', () => {
@@ -125,7 +245,7 @@ describe('the string setup solve', () => {
   });
 
   it('reports a cleared field rather than drawing it', () => {
-    for (const key of ['bodyStop', 'bridgeHeight', 'nutThickness', 'fingerboardLength', 'fingerboardThickness', 'fingerboardRadius'] as const) {
+    for (const key of ['bodyStop', 'bridgeHeight', 'nutThickness', 'fingerboardLength', 'fingerboardThickness', 'fingerboardNutRadius', 'fingerboardEndRadius', 'scoopAt', 'scoopBass', 'scoopTreble'] as const) {
       const p = seeded();
       (p.stringSetup as any)[key] = null;
       const s = solveStringSetup(p)!;
@@ -145,13 +265,17 @@ describe('the string setup solve', () => {
     }
   });
 
-  it('reports a radius tighter than the board\'s half width, keeping the board but not its crown', () => {
-    const p = seeded();
-    p.stringSetup!.fingerboardRadius = p.neck!.topWidth / 2;
-    const s = solveStringSetup(p)!;
-    expect(unsolved(s, 'fingerboard')).toBe(true);
-    expect(s.fingerboardEnd).not.toBeNull();
-    expect(fingerboardCrownLine(p, s)).toBeNull();
+  it('reports a radius tighter than the board\'s half width at its own end, keeping the board but not its crown', () => {
+    const nut = (p: ViolinFamilyParams) => { p.stringSetup!.fingerboardNutRadius = p.neck!.topWidth / 2; };
+    const end = (p: ViolinFamilyParams) => { p.stringSetup!.fingerboardEndRadius = neckHalfWidthAt(p, solved(p).neck, solved(p).fingerboardEnd!.y); };
+    for (const edit of [nut, end]) {
+      const p = seeded();
+      edit(p);
+      const s = solveStringSetup(p)!;
+      expect(unsolved(s, 'fingerboard')).toBe(true);
+      expect(s.fingerboardEnd).not.toBeNull();
+      expect(fingerboardCrownLine(p, s)).toBeNull();
+    }
   });
 
   it('reports a nut sunk below the crown, and still stands it', () => {

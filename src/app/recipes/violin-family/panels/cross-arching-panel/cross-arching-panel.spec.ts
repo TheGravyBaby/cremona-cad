@@ -160,6 +160,8 @@ describe('a section', () => {
 
 describe('the surface', () => {
   const p = seeded();
+  // the corner pass is off by default; these tests compare it against the plain channel
+  p.fluting!.cornerGouge = true;
   const surface = topSurface(p);
 
   it('cuts one constant channel section the whole way round, including through the corners', () => {
