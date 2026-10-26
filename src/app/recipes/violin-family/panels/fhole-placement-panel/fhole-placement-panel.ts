@@ -45,7 +45,7 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
   // where two guide circles meet, and the stem seated in the frame the eyes and rises carve out
   static seed(p: ViolinFamilyParams): void {
     if (p.fHoles || !p.corners || !p.outerContour) return;
-    let waist = fholeWaist(p);
+    let waist = solveWaist(p);
     if (!waist || !solveOuterContour(p)?.top) return;
     let r = FHOLE_SEED_RATIOS;
     let lowerCorner = p.corners.LCr;
@@ -364,8 +364,7 @@ export const renderFholeEyePlacementGuides = (p: ViolinFamilyParams, rib: RibArc
   }
 
   // now find the midpoint between the corners
-  let midpointBetweenCorners = k.LCr.y + (k.UCr.y - k.LCr.y) / 2;
-  let waistMidPt = lineCircleIntersection(lineFromPointAndSlope(new Pt(0, midpointBetweenCorners), 0), rib.C0)[1];
+  let waistMidPt = solveWaist(p);
   if (waistMidPt) {
     let distToUpperEyeFromTangent = dist(f.UEye, waistMidPt);
     let upperEyeGuide = new Arc(waistMidPt.x, waistMidPt.y, distToUpperEyeFromTangent, 150 * TURN.degree, 210 * TURN.degree);
@@ -379,7 +378,7 @@ export const renderFholeEyePlacementGuides = (p: ViolinFamilyParams, rib: RibArc
 };
 
 // where the waist meets the centre bout's own arc: the point the upper eye's guides are struck from
-export function fholeWaist(p: ViolinFamilyParams): Pt | null {
+export function solveWaist(p: ViolinFamilyParams): Pt | null {
   let C0 = solveCenterBout(p)?.C0;
   return C0 ? new Pt(C0.x - C0.r, C0.y) : null;
 }
@@ -404,7 +403,7 @@ export function solveFholePlacementRatios(p: ViolinFamilyParams): Partial<FholeR
     r.LEyeXtoLCX = f.LEye.x / LCr.x;
     r.LEyeYtoLCY = f.LEye.y / LCr.y;
   }
-  let waist = fholeWaist(p);
+  let waist = solveWaist(p);
   if (waist) {
     r.UEyeGuidetoWaist = dist(f.UEye, waist) / waist.x;
     r.EyeSpantoWaist = dist(f.UEye, f.LEye) / dist(f.LEye, waist);
