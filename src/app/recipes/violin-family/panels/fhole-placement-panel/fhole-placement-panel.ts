@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections } from '../../../../helpers/math/draftMath';
 import {
-  angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, dist, flipCircleAboutY, flipPointAboutY, flipRectAboutY,
+  angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, dist, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY,
   lineCircleIntersection, lineFromPointAndSlope, pointOnCircle, TURN,
 } from '../../../../helpers/math/simpleGeometry';
 import { pathFromPolyline } from '../../../../helpers/math/pathMath';
@@ -36,7 +36,7 @@ import { showFieldHelp } from '../../../../docs/field-help';
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
 export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
-  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFholeBounds', 'showFholePlacementGuides', 'showFlutingEdge', 'showModuleGuides'];
+  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFholeBounds', 'showFholePlacementGuides', 'showBeardGuides', 'showFlutingEdge', 'showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('orchid');
   protected readonly help = showFieldHelp;
 
@@ -129,6 +129,7 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
       if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
       if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, ThemeService.getPalette('classicCremona')));
       if (this.flags.showFholePlacementGuides && rib) layers.push(renderFholeEyePlacementGuides(p, rib, this.pal));
+      if (this.flags.showBeardGuides) layers.push(renderBeardBoxes(p, ThemeService.getPalette('classicCremona')));
       if (this.flags.showFholeBounds) layers.push(renderFholeBounds(f, this.pal));
       layers.push(renderFholeRise(f, this.pal), renderFholeStem(f, this.pal), renderFholeEyes(f, this.pal));
       // the outer notch is struck from the lower wing's tip, so it waits on the contours
@@ -375,6 +376,25 @@ export const renderFholeEyePlacementGuides = (p: ViolinFamilyParams, rib: RibArc
   let distBetweenEyes = dist(f.UEye, f.LEye);
   let upperEyeGuideTwo = new Arc(f.LEye.x, f.LEye.y, distBetweenEyes, TURN.half, TURN.quarter);
   renderArcFromArcFancy(upperEyeGuideTwo, pal.neutral.faint(3))(g, ui);
+};
+
+export const renderBeardBoxes = (p: ViolinFamilyParams, pal: PanelPalette) => (g: any, ui: any): void => {
+  let h = p.body.height;
+  let f = p.fHoles!;
+  renderRect(new Rectangle(new Pt(-h / 6, h / 3), new Pt(h / 6, 2 * h / 3)), pal.ink(2), 'none', STROKE_WEIGHT.guide)(g, ui);
+  renderRect(new Rectangle(new Pt(-h / 18, 4 * h / 9), new Pt(h / 18, 5 * h / 9)), pal.ink(4), 'none', STROKE_WEIGHT.guide, DASH.hidden)(g, ui);
+  // its foot falls within 1.5 mm of the lower eye centres on the served violins
+  renderRect(new Rectangle(new Pt(-h / 9, 7 * h / 18), new Pt(h / 9, 11 * h / 18)), pal.ink(3), 'none', STROKE_WEIGHT.guide, DASH.hidden)(g, ui);
+
+  let waist = solveWaist(p);
+  renderDashedLine(new Pt(-waist.x, waist.y), new Pt(waist.x, waist.y), pal.neutral, DASH.guide, STROKE_WEIGHT.guide)(g, ui);
+  let long = new Arc(f.LEye.x, f.LEye.y, waist.y - f.LEye.y, TURN.quarter, angleFromCenter(f.LEye, f.UEye) + 10 * TURN.degree);
+  let edge = new Pt(waist.x + p.body.overhang + p.body.rib, waist.y);
+  let half = new Arc(edge.x, edge.y, long.r / 2, TURN.half, angleFromCenter(edge, f.UEye) + 10 * TURN.degree);
+  
+  for (let arc of [long, flipArcAboutY(long)]) renderArcFromArcFancy(arc, pal.ink(0))(g, ui);
+  // this one misses a lot, hard to know where the waist really is
+  // for (let arc of [half, flipArcAboutY(half)]) renderArcFromArcFancy(arc, pal.ink(1))(g, ui);
 };
 
 // where the waist meets the centre bout's own arc: the point the upper eye's guides are struck from

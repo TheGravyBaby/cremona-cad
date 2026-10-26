@@ -781,6 +781,8 @@ export interface ViolinFamilyViewFlags {
   renderOuterPath: boolean;
   showFholeBounds: boolean;
   showFholePlacementGuides: boolean;
+  // David Beard's center ninth, and 2/9 of the body standing on the lower eye's rise
+  showBeardGuides: boolean;
   // the top plate's inner channel edge, faint, where the f-holes are placed against it
   showFlutingEdge: boolean;
   // the figure a volute style finds its centres on
@@ -803,6 +805,7 @@ export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
   renderOuterPath: true,
   showFholeBounds: true,
   showFholePlacementGuides: false,
+  showBeardGuides: false,
   showFlutingEdge: false,
   showVoluteConstruction: true,
   showFingerboard: true,
