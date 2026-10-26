@@ -241,6 +241,15 @@
         </app-vf-export-panel>
         }
 
+        @if (openPanel === 'devFeatures') {
+        <app-vf-dev-features-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-dev-features-panel>
+        }
+
         @if (openPanel === 'devExport') {
         @defer {
         <app-vf-dev-export-panel #panelRef

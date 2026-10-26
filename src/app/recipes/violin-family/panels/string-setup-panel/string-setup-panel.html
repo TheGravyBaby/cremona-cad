@@ -29,67 +29,10 @@
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="ss.fingerboardThickness" (input)="edited()" (focus)="focus('fbThickness', pal.ink(0))" (blur)="blur()" />
         </label>
-    </div>
-
-    <div class="input-group basic-row field-row" role="group">
-     <label class="field-cell">
-            <span class="field-title">Radius at Nut, End <span class="unit-label">mm</span></span>
+        <label class="field-cell">
+            <span class="field-title">Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="ss.fingerboardNutRadius" (input)="edited()" (focus)="focus('fbNutRadius', pal.ink(0))" (blur)="blur()" />
-        </label>
-        <label class="field-cell">
-            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="ss.fingerboardEndRadius" (input)="edited()" (focus)="focus('fbEndRadius', pal.ink(0))" (blur)="blur()" />
-        </label>
-        <label class="field-cell">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showMarks" /><span>Marks</span>
-            </div>
-        </label>
-    </div>
-    @if (showMarks) {
-    <div class="ui-group">
-        <div class="input-group basic-row field-row" role="group">
-            <label class="field-cell field-cell--wide">
-                <span class="field-title">Semitones</span>
-                <input type="text" class="basic-input" placeholder="5, 7, 12" [style.border-color]="pal.ink(3)"
-                    [ngModel]="semitonesText" (ngModelChange)="semitonesEdited($event)" (focus)="focus('marks', pal.ink(3))" (blur)="blur()" />
-            </label>
-        </div>
-        <div class="input-group basic-row field-row" role="group">
-            <label class="field-cell">
-                <span class="field-title">X Offset <span class="unit-label">mm</span></span>
-                <input type="number" class="basic-input" step="0.5" [style.border-color]="pal.ink(3)"
-                    [(ngModel)]="ss.marks.offset" (input)="edited()" (focus)="focus('marks', pal.ink(3))" (blur)="blur()" />
-            </label>
-            <label class="field-cell">
-                <span class="field-title">Diameter <span class="unit-label">mm</span></span>
-                <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(3)"
-                    [(ngModel)]="ss.marks.diameter" (input)="edited()" (focus)="focus('marks', pal.ink(3))" (blur)="blur()" />
-            </label>
-        </div>
-    </div>
-    }
-
-</section>
-
-<section class="ui-group">
-    <div class="ui-group-title">Scoop</div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Deepest At <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="ss.scoopAt" (input)="edited()" (focus)="focus('scoopAt', pal.ink(0))" (blur)="blur()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Bass Depth <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.05" min="0" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="ss.scoopBass" (input)="edited()" (focus)="focus('scoopBass', pal.ink(0))" (blur)="blur()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Treble Depth <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.05" min="0" [style.border-color]="pal.ink(0).faint(-3)"
-                [(ngModel)]="ss.scoopTreble" (input)="edited()" (focus)="focus('scoopTreble', pal.ink(0).faint(-3))" (blur)="blur()" />
+                [ngModel]="ss.fingerboardNutRadius" (ngModelChange)="radiusEdited($event)" (focus)="focus('fbRadius', pal.ink(0))" (blur)="blur()" />
         </label>
     </div>
 </section>
