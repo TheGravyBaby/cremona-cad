@@ -118,9 +118,11 @@ git checkout -b feature/my-feature
 
 ## License
 
+Copyright © 2026 Andrew Argraves.
+
 Released under the **GNU General Public License v3.0 (GPL-3.0)**.
 
-You are free to use, modify, and distribute this software under the terms of the GPL-3.0 license. Any derivative works must also be distributed under the same license.
+You are free to use, modify, and distribute this software under the terms of the GPL-3.0 license. Any derivative works must also be distributed under the same license. The full text is in [LICENSE](LICENSE).
 
 ## Author
 

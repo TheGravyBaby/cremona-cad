@@ -82,8 +82,8 @@ export function backgroundSuppressionUnavailable(): void {
   );
 }
 
-export function svgImportEmpty(fileName: string): void {
-  warn(`Nothing in ${fileName} could be read as a shape.`, 'Import SVG');
+export function importEmpty(fileName: string): void {
+  warn(`Nothing in ${fileName} could be read as a shape.`, 'Import');
 }
 
 export function storageFull(): void {

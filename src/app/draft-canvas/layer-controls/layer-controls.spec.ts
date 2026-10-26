@@ -37,7 +37,7 @@ describe('LayerControlsComponent', () => {
       name = this.download;
     });
     try {
-      component.exportSvg();
+      component.exportLayer('svg');
     } finally {
       create.mockRestore(); revoke.mockRestore(); click.mockRestore();
     }

@@ -90,8 +90,7 @@ export class ScrollWidthsPanel implements ViolinFamilyPanel, OnInit {
   }
 }
 
-// the side profile with a crosshair on each width and the pegbox's hollow dashed inside it, the back
-// view beside the scroll's furthest reach and the front view beside the nut. Module arcs draw each
+// the side profile with a crosshair on each width, the back view beside the scroll's furthest reach and the front view beside the nut. Module arcs draw each
 // width in its own view as a circle of that diameter on the centreline at its height, as a maker
 // marks widths on the blank, with a centreline down each view. Everything is worked out here, once
 // a draw; the canvas replays the layer on every pan and zoom
@@ -113,7 +112,6 @@ export const renderScrollWidths = (
   let stub = scrollNeckStub(p);
   let backView = scrollBackViewStrokes(p, s, (x, y) => new Pt(back + x, y), -stub);
   let frontView = scrollFrontViewStrokes(p, s, (x, y) => new Pt(front + x, y), -stub);
-  let cavity = pegboxCavity(p, s);
   let frontStations: ScrollStationKey[] = ['neck', 'nut', 'hip', 'throat'];
 
   return (g: any, ui: any): void => {
@@ -138,8 +136,6 @@ export const renderScrollWidths = (
     strokes('turns', pal.ink(2));
     strokes('nut', pal.ink(0));
 
-    // in the side view the hollow is inside the wood
-    if (cavity) renderPath(pathFromPolyline(cavity), pal.ink(3).faint(-3), STROKE_WEIGHT.trace, 1, '4,4')(g, ui);
     if (showArcs) {
       // only the widths a maker sets out with compasses: behind, the crown, the poll and the duck
       // tail; in front, the crown, the throat and the hips. The crown's and the throat's hang as
@@ -364,7 +360,7 @@ export function scrollFrontViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, pl
   let turn3Top = on.turn3Back.at(-1)!;
   let { walls, bottom } = pegboxFrontOutline(p, s);
   let seen = (pts: Pt3D[]) => seenRuns(on, pts, false);
-  let { parts, at, stroke, contour, line, face } = viewStrokes(place);
+  let { parts, stroke, contour, line, face } = viewStrokes(place);
 
   // the round is hidden, and the nut stands nearest, hiding whatever of the pegbox is narrower than it
   let nut = [place(-nutHalf, 0), place(nutHalf, 0), place(nutHalf, nutHeight), place(-nutHalf, nutHeight)];
@@ -391,20 +387,6 @@ export function scrollFrontViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, pl
   contour(on.turn1Front, 'turns');
   for (let stretch of [on.turn2Back, on.turn2Front, clipPolylineAtY(on.turn3Back, eyeBottom, 'below'), on.turn3Front]) {
     for (let run of seen(stretch)) contour(run, 'turns');
-  }
-
-  // the hollow's mouth, each cheek's thickness in from the outside. It ends level where the side
-  // view's hollow does, unless the volute hides it first, and then it is left open
-  let hollowTop = scrollLines(p, s).frontStraight[1].y;
-  let mouthTop = Math.min(hollowTop, pegboxTop);
-  let mouth = [nutHeight, pegboxHipHeight(p), mouthTop]
-    .filter(y => y >= nutHeight && y <= mouthTop)
-    .map(y => new Pt(pegboxWidth(p, s, y) / 2 - v.wall, y));
-  if (mouth.length > 1 && mouth.every(pt => pt.x > 0)) {
-    let right = mouth.map(pt => at(pt, 1));
-    let left = mouth.map(pt => at(pt, -1));
-    let d = hollowTop <= pegboxTop ? pathFromPolygon([...right, ...left.reverse()]) : pathFromPolyline([...right.reverse(), ...left]);
-    parts.frontLight.push({ d, weight: STROKE_WEIGHT.trace });
   }
 
   // each face runs in to the widest stretch standing nearer at its height. The first turn has none
@@ -829,7 +811,6 @@ export function solveScrollWidths(p: ViolinFamilyParams): ScrollWidthsSolve | nu
   if (!failures.length) {
     let turns = scrollPath(p, scroll).turns.length;
     if (turns < 4) fail('Scroll widths: the spiral has to turn twice past the crown for the widths to hang on it.', keys);
-    else if (!pegboxCavity(p, scroll)) fail('Scroll widths: the pegbox wall is too thick for the hollow to reach its floor; the hollow is left undrawn.', []);
   }
   return { scroll, failures };
 }

@@ -46,6 +46,10 @@
   opacity: 0.4;
 }
 
+.menu-sub {
+  padding-left: 34px;
+}
+
 .menu-label {
   flex: 1;
 }

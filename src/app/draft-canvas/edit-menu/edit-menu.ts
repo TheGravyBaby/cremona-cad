@@ -2,8 +2,10 @@ import { Component, EventEmitter, Output, inject } from '@angular/core';
 import { SelectionActions, writeSvgToSystemClipboard } from '../tools/selection-actions';
 import { UndoCoordinator } from '../../helpers/undoCoordinator';
 import { downloadSvgFile } from '../../helpers/fileExporter';
+import { downloadDxfText } from '../../helpers/dxfExporter';
 import { TooltipDirective } from '../../docs/tooltips';
 import { IconDirective } from '../../icons/icon.directive';
+import { ToolboxStore } from '../tools/toolbox-store';
 
 /**
  * The document-wide edit verbs — undo and redo, clipboard, file, duplicate, group, delete — as a
@@ -25,8 +27,11 @@ export class EditMenuComponent {
   // merges the open recipe's param history with the toolbox's shape history, so Undo acts on
   // whichever acted most recently — see undoCoordinator.ts
   protected readonly undo = inject(UndoCoordinator);
+  protected readonly toolbox = inject(ToolboxStore);
   /** Fired after any row acts, so the menu can be closed. */
   @Output() done = new EventEmitter<void>();
+  // unfolds in place: a flyout would be clipped by the menu's own scroll box
+  protected layersOpen = false;
 
   run(verb: () => unknown): void {
     verb.call(this.actions);
@@ -41,6 +46,13 @@ export class EditMenuComponent {
     this.run(() => {
       const svg = this.actions.exportSvg();
       if (svg) downloadSvgFile('cremonacad-selection-export.svg', svg);
+    });
+  }
+
+  exportDxf(): void {
+    this.run(() => {
+      const dxf = this.actions.exportDxf();
+      if (dxf) downloadDxfText('cremonacad-selection-export.dxf', dxf);
     });
   }
 

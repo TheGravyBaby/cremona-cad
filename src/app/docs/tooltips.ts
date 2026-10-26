@@ -13,8 +13,8 @@ export const TOOLTIPS = {
 
   'layers.recipe': 'Everything the recipe draws. When this layer is unlocked you can select, measure and duplicate its pieces, but never edit them.',
   'layers.moveSelection': 'Moves the selection to this layer.',
-  'layers.importSvg': 'Imports an SVG file onto the active layer.',
-  'layers.saveLayer': 'Saves the active layer as a real size SVG file.',
+  'layers.importSvg': 'Imports an SVG or DXF file onto the active layer.',
+  'layers.saveLayer': 'Saves the active layer as a real size SVG or DXF file.',
 
   'images.unlock': 'Click to show and unlock this image. Double-click to rename it.',
   'images.upload': 'Places an image file on the canvas. You can also paste a copied image onto the canvas with Ctrl+V.',
