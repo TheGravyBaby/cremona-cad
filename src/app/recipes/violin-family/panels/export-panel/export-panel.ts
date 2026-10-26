@@ -30,6 +30,7 @@ import { buildArchPathFor, solveLongArching } from '../long-arching-panel/long-a
 import { bodyLandmarks, rowAt, sectionRuns, solveCrossArching, STATION_MERGE_EPS_MM, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { mortiseFloorY, neckHalfWidthAt, scrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
 import { fingerboardRadiusAt, fingerboardScoopAt, solveStringSetup } from '../string-setup-panel/string-setup-panel';
+import type { PositionMarkSolve } from '../dev-features-panel/dev-features-panel';
 import { defineSideScrollPath } from '../scroll-panel/scroll-panel';
 import { scrollBackStrip, scrollBackViewStrokes, scrollCompassWalk, scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
 import { blockLayout, MOULD_EXPORT_STEP, solveMould } from '../mould-panel/mould-panel';
@@ -191,6 +192,7 @@ export class ExportPanel implements ViolinFamilyPanel, OnInit {
     downloadStlFile(`${this.baseName()}-${plate}-plate.stl`, plateStl(this.params, surface, plate));
   }
 
+  // no button yet: kept for the fingerboard's CNC export to come
   downloadFingerboardStl(): void {
     let solid = fingerboardStl(this.params);
     if (solid) downloadStlFile(`${this.baseName()}-fingerboard.stl`, solid);
@@ -857,8 +859,9 @@ const MARK_RIM_SEGMENTS = 48;
 // standing on the chord between the two scooped edges at each station, that station's radius. The
 // outline is sampled a grid step apart all round so the end walls follow the crown and the long
 // walls the scoop. Each position mark is a round, flat-floored pocket sunk from the surface; one
-// over the edge notches the wall. Null while the board or the scoop doesn't solve
-export function fingerboardStl(p: ViolinFamilyParams, gridMm = 0.5): ArrayBuffer | null {
+// over the edge notches the wall. Null while the board or the scoop doesn't solve. Not offered in
+// the panel yet; kept for when the fingerboard joins the CNC exports
+export function fingerboardStl(p: ViolinFamilyParams, gridMm = 0.5, marks: PositionMarkSolve[] = []): ArrayBuffer | null {
   let s = solvedFingerboard(p);
   if (!s) return null;
   let ss = p.stringSetup!;
@@ -874,7 +877,7 @@ export function fingerboardStl(p: ViolinFamilyParams, gridMm = 0.5): ArrayBuffer
     return edge + Math.sqrt(Math.max(0, r * r - x * x)) - Math.sqrt(Math.max(0, r * r - half * half));
   };
   let onBoard = (d: number) => Math.max(0, Math.min(length, d));
-  let cuts: HeightFieldCut[] = s.marks.flatMap(m => m.dots.map(dot => {
+  let cuts: HeightFieldCut[] = marks.flatMap(m => m.dots.map(dot => {
     let x = -dot.x, d = dist(neckTop, m.station);
     let rim = Array.from({ length: MARK_RIM_SEGMENTS }, (_, k): [number, number] => {
       let a = k * TURN.full / MARK_RIM_SEGMENTS;

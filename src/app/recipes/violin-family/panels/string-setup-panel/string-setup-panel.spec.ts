@@ -4,7 +4,7 @@ import { applyMatrix } from '../../../../helpers/math/pathMath';
 import { TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../../models/types';
 import {
-  fingerboardCrown, fingerboardCrownLine, fingerboardEdgeLine, fingerboardRadiusAt, fingerboardScoopAt, parseSemitones, scoopGuideGeometry, semitoneStop, solveStringSetup,
+  fingerboardCrown, fingerboardCrownLine, fingerboardEdgeLine, fingerboardRadiusAt, fingerboardScoopAt, scoopGuideGeometry, solveStringSetup,
   StringSetupPanel,
 } from './string-setup-panel';
 import { NeckPanel, neckHalfWidthAt, scrollOnNeck } from '../neck-panel/neck-panel';
@@ -317,100 +317,5 @@ describe('the scroll set on the neck', () => {
     expect(nutThickness(p)).toBe(seededThickness + 2);
     p.stringSetup!.nutThickness = null as any;
     expect(nutThickness(p)).toBe(seededThickness);
-  });
-});
-
-describe('the position marks', () => {
-  it('seed as their own copy, so editing a design never edits the family standard', () => {
-    const p = seeded();
-    p.stringSetup!.marks.semitones.push(99);
-    p.stringSetup!.marks.offset += 1;
-    const q = seeded();
-    expect(q.stringSetup!.marks.semitones).not.toContain(99);
-    expect(q.stringSetup!.marks.offset).toBe(p.stringSetup!.marks.offset - 1);
-  });
-
-  it('stop the octave at half the string, the fifth near a third, each semitone further than the last', () => {
-    expect(semitoneStop(12, 300)).toBeCloseTo(150, 9);
-    expect(semitoneStop(24, 300)).toBeCloseTo(225, 9);
-    expect(semitoneStop(7, 300)).toBeCloseTo(100, 0);
-    for (let n = 1; n <= 24; n++) expect(semitoneStop(n, 300)).toBeGreaterThan(semitoneStop(n - 1, 300));
-  });
-
-  it('stop the string a share of its length from the nut, and drop the station square onto the board', () => {
-    const p = seeded();
-    p.stringSetup!.marks.semitones = [5, 7, 12];
-    const s = solved(p);
-    const stringLength = dist(s.nutTop!, s.bridgeTop!);
-    expect(s.marks.map(m => m.semitone)).toEqual([5, 7, 12]);
-    for (const m of s.marks) {
-      expect(m.alongString).toBeCloseTo(semitoneStop(m.semitone, stringLength), 9);
-      expect(off(p, s, m.station)).toBeCloseTo(0, 9);
-      const onString = new Pt(
-        s.nutTop!.x + (s.bridgeTop!.x - s.nutTop!.x) * m.alongString / stringLength,
-        s.nutTop!.y + (s.bridgeTop!.y - s.nutTop!.y) * m.alongString / stringLength);
-      // the drop runs along the plane's normal
-      const normal = normalOf(p);
-      const drop = { x: onString.x - m.station.x, y: onString.y - m.station.y };
-      expect(drop.x * normal.b - drop.y * normal.a).toBeCloseTo(0, 9);
-    }
-    expect(s.marks.find(m => m.semitone === 12)!.alongString).toBeCloseTo(stringLength / 2, 9);
-    // down the board in order, each nearer the end than the last
-    for (let i = 1; i < s.marks.length; i++) expect(dist(s.neck.neckTop!, s.marks[i].station)).toBeGreaterThan(dist(s.neck.neckTop!, s.marks[i - 1].station));
-  });
-
-  it('carry the offset down the board as a share of its width, mirrored by its sign, on the axis at 0', () => {
-    const p = seeded();
-    p.stringSetup!.marks.semitones = [7];
-    const ss = p.stringSetup!;
-    const dotFor = (offset: number) => { ss.marks.offset = offset; return solved(p).marks[0].dots[0]; };
-    const s = solved(p);
-    const station = s.marks[0].station;
-    const halfAtNut = neckHalfWidthAt(p, s.neck, s.neck.neckTop!.y);
-    const halfHere = neckHalfWidthAt(p, s.neck, station.y);
-    const treble = dotFor(6);
-    expect(treble.x).toBeCloseTo(6 * halfHere / halfAtNut, 9);
-    expect(treble.x).toBeGreaterThan(6);
-    expect(halfHere - treble.x).toBeGreaterThan(halfAtNut - 6);
-    expect(treble.y).toBeCloseTo(station.y, 9);
-    expect(treble.r).toBeCloseTo(ss.marks.diameter / 2, 9);
-    expect(dotFor(-6).x).toBeCloseTo(-treble.x, 9);
-    expect(dotFor(0).x).toBe(0);
-  });
-
-  it('leave a mark past the board\'s end out and say so, drawing the rest', () => {
-    const p = seeded();
-    p.stringSetup!.marks.semitones = [7, 60];
-    const s = solveStringSetup(p)!;
-    expect(s.marks.map(m => m.semitone)).toEqual([7]);
-    expect(s.failures.some(f => f.message.includes('60') && !f.unsolved.length)).toBe(true);
-  });
-
-  it('let a dot hang over the edge as a half circle, but refuse one that misses the board or a fractional interval', () => {
-    const p = seeded();
-    const s = solved(p);
-    const halfAtNut = neckHalfWidthAt(p, s.neck, s.neck.neckTop!.y);
-    p.stringSetup!.marks.semitones = [7.5];
-    expect(unsolved(solveStringSetup(p)!, 'marks')).toBe(true);
-    p.stringSetup!.marks.semitones = [7];
-    p.stringSetup!.marks.diameter = 2;
-    // centred on the edge, and most of the way off it
-    for (const offset of [halfAtNut, -halfAtNut, halfAtNut + 0.9, -(halfAtNut + 0.9)]) {
-      p.stringSetup!.marks.offset = offset;
-      expect(unsolved(solveStringSetup(p)!, 'marks')).toBe(false);
-    }
-    for (const offset of [halfAtNut + 1, -(halfAtNut + 1), halfAtNut + 5]) {
-      p.stringSetup!.marks.offset = offset;
-      expect(unsolved(solveStringSetup(p)!, 'marks')).toBe(true);
-    }
-    p.stringSetup!.marks.offset = 0;
-    expect(unsolved(solveStringSetup(p)!, 'marks')).toBe(false);
-  });
-
-  it('read the typed list however it is separated, keeping what cannot be read for the solve to refuse', () => {
-    expect(parseSemitones('5, 7, 12')).toEqual([5, 7, 12]);
-    expect(parseSemitones(' 5 7;12 ')).toEqual([5, 7, 12]);
-    expect(parseSemitones('')).toEqual([]);
-    expect(parseSemitones('5, x')).toEqual([5, NaN]);
   });
 });

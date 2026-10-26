@@ -2,18 +2,18 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { dist, moveInVectorSpace, pointAtDistanceToward, TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
-import { applyMatrix, pathFromCircle, pathFromPolygon } from '../../../../helpers/math/pathMath';
-import { intersectionFromTwoPaths, occludePath } from '../../../../helpers/math/pathVibes';
+import { applyMatrix, pathFromPolygon } from '../../../../helpers/math/pathMath';
+import { occludePath } from '../../../../helpers/math/pathVibes';
 import {
-  renderDashedLine, renderFilledPath, renderGuideBaseline, renderGuideKnot, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo, renderSolveFailures, renderStroke, renderText,
+  renderDashedLine, renderGuideBaseline, renderGuideKnot, renderPath, renderPolygon, renderSegment, renderSegmentHalo, renderSolveFailures, renderStroke, renderText,
 } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
-import { Circle, Pt, Vect2D } from '../../../../models/types';
+import { Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
-  OuterContourSolve, PositionMarksParams, RenderLayer, ScrollSolve, StringSetupFailure, StringSetupSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
+  OuterContourSolve, RenderLayer, ScrollSolve, StringSetupFailure, StringSetupSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
 } from '../../violin-family-types';
 import { familyStandards } from '../../violin-family-seed';
 import { solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
@@ -26,13 +26,13 @@ import { scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-pane
 
 // The string setup over the finished neck: the bridge on the top's arch, the nut, the fingerboard and
 // the string between them. Reference geometry, read off the neck and never shaping it; only the
-// neck's length is set here too, since it places the nut. The position marks are the one thing here
-// a maker cuts: dots inlaid in the board's face at chosen intervals, drawn in the front view. The
-// scroll, once its panels have solved it whole, stands on the neck's end in both views. Panel and
-// renders, then the solve.
+// neck's length is set here too, since it places the nut. The scroll, once its panels have solved it
+// whole, stands on the neck's end in both views. The panel keeps to a plain setup: one crown radius
+// and no scoop fields. The board still carries both radii and its scoop, set in the dev features
+// panel, which draws through renderStringSetupViews too. Panel and renders, then the solve.
 
 export type StringSetupHighlightKey =
-  'length' | 'bodyStop' | 'bridgeHeight' | 'nutThickness' | 'fbLength' | 'fbThickness' | 'fbNutRadius' | 'fbEndRadius' | 'scoopAt' | 'scoopBass' | 'scoopTreble' | 'marks';
+  'length' | 'bodyStop' | 'bridgeHeight' | 'nutThickness' | 'fbLength' | 'fbThickness' | 'fbRadius' | 'fbNutRadius' | 'fbEndRadius' | 'scoopAt' | 'scoopBass' | 'scoopTreble';
 
 @Component({
   selector: 'app-vf-string-setup-panel',
@@ -41,7 +41,7 @@ export type StringSetupHighlightKey =
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
 export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
-  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFingerboard', 'showFretMarks', 'showScoopGuide'];
+  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFingerboard'];
   protected readonly pal = ThemeService.getPalette('varnish');
 
   static seed(p: ViolinFamilyParams): void {
@@ -57,18 +57,12 @@ export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
   // what the last draw solved; the readout and report() read it
   s!: StringSetupSolve;
   highlighted: { key: StringSetupHighlightKey; color: string } | null = null;
-  // the semitones as typed, so a half-typed list isn't reformatted under the cursor
-  semitonesText = '';
-  // the marks' controls shown; a design with marks opens with them out
-  showMarks = false;
 
   get stringLength(): number | null {
     return this.s?.nutTop && this.s.bridgeTop ? dist(this.s.nutTop, this.s.bridgeTop) : null;
   }
 
   ngOnInit(): void {
-    this.semitonesText = this.params.stringSetup!.marks.semitones.join(', ');
-    this.showMarks = this.params.stringSetup!.marks.semitones.length > 0;
     this.draw();
   }
 
@@ -77,9 +71,9 @@ export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
     this.draw();
   }
 
-  semitonesEdited(text: string): void {
-    this.semitonesText = text;
-    this.params.stringSetup!.marks.semitones = parseSemitones(text);
+  // the one radius sets the board's crown the same at both ends
+  radiusEdited(r: number): void {
+    this.params.stringSetup!.fingerboardNutRadius = this.params.stringSetup!.fingerboardEndRadius = r;
     this.edited();
   }
 
@@ -100,55 +94,47 @@ export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
 
   draw(): void {
     safeRun(() => {
-      let p = this.params;
-      // an undo or a load changed the list behind the field
-      if (JSON.stringify(parseSemitones(this.semitonesText)) !== JSON.stringify(p.stringSetup!.marks.semitones)) {
-        this.semitonesText = p.stringSetup!.marks.semitones.join(', ');
-      }
-      let s = this.s = solveStringSetup(p)!;
-      let a = solveLongArching(p)!;
-      let o = solveOuterContour(p)!;
-      let w = p.scroll ? solveScrollWidths(p) : null;
-      let scroll = w && !w.scroll.failures.length ? w.scroll : undefined;
-      let scrollInPlan = scroll && !w!.failures.some(f => f.unsolved.length) ? scroll : null;
-      let sideX = sideViewOffsetX(p);
-      let side = [
-        renderBodySideProfile(p, a, o, this.pal, false, { ground: true }),
-        renderNeck(p, s.neck, this.pal, { ground: true, scroll }),
-        renderStringSetup(p, s, this.pal, { fingerboard: this.flags.showFingerboard, fretMarks: this.flags.showFretMarks, scoopGuide: this.flags.showScoopGuide }),
-        renderStringSetupHighlight(p, s, this.highlighted),
-        renderSolveFailures([...s.neck.failures, ...s.failures], this.pal.alert),
-      ];
-      this.drawn.emit([
-        renderStringSetupFrontView(p, s, o, scrollInPlan, this.pal, this.flags.showFingerboard, this.highlighted),
-        (g, ui) => {
-          let frame = { g: g.append('g').attr('transform', `translate(${sideX},0)`), ui: ui.append('g').attr('transform', `translate(${sideX},0)`) };
-          for (let layer of side) layer(frame.g, frame.ui);
-        },
-      ]);
+      let s = this.s = solveStringSetup(this.params)!;
+      this.drawn.emit(renderStringSetupViews(this.params, s, this.pal, { fingerboard: this.flags.showFingerboard, highlighted: this.highlighted }));
     });
   }
+}
+
+// the front view and the side elevation, the body under the neck in both. `front` and `side` are
+// drawn over each view in its own frame, for a panel adding to the setup
+export function renderStringSetupViews(
+  p: ViolinFamilyParams,
+  s: StringSetupSolve,
+  pal: PanelPalette,
+  opts: { fingerboard: boolean; scoopGuide?: boolean; highlighted?: { key: StringSetupHighlightKey; color: string } | null; front?: RenderLayer[]; side?: RenderLayer[] },
+): RenderLayer[] {
+  let a = solveLongArching(p)!;
+  let o = solveOuterContour(p)!;
+  let w = p.scroll ? solveScrollWidths(p) : null;
+  let scroll = w && !w.scroll.failures.length ? w.scroll : undefined;
+  let scrollInPlan = scroll && !w!.failures.some(f => f.unsolved.length) ? scroll : null;
+  let sideX = sideViewOffsetX(p);
+  let side = [
+    renderBodySideProfile(p, a, o, pal, false, { ground: true }),
+    renderNeck(p, s.neck, pal, { ground: true, scroll }),
+    renderStringSetup(p, s, pal, { fingerboard: opts.fingerboard, scoopGuide: opts.scoopGuide }),
+    ...(opts.side ?? []),
+    renderStringSetupHighlight(p, s, opts.highlighted ?? null),
+    renderSolveFailures([...s.neck.failures, ...s.failures], pal.alert),
+  ];
+  return [
+    renderStringSetupFrontView(p, s, o, scrollInPlan, pal, { fingerboard: opts.fingerboard, scoopStation: !!opts.scoopGuide }),
+    ...(opts.front ?? []),
+    (g, ui) => {
+      let frame = { g: g.append('g').attr('transform', `translate(${sideX},0)`), ui: ui.append('g').attr('transform', `translate(${sideX},0)`) };
+      for (let layer of side) layer(frame.g, frame.ui);
+    },
+  ];
 }
 
 const FINGERBOARD_CROWN_SAMPLES = 24;
 const FINGERBOARD_CROWN_OPACITY = 0.45;
 const SCOOP_GUIDE_LABEL_SIZE = 4;
-// how many semitones up the string to mark, and how far each tick reaches either side of it. Plain
-// semitones stay small so they read as a scale beside the fourth, fifth and octave
-const FRET_MARK_SEMITONES = 12;
-const FRET_TICK_HALF_LENGTH = 1;
-const LANDMARK_TICK_HALF_LENGTH = 3;
-const MARK_HALO_RADIUS = 3;
-
-export function parseSemitones(text: string): number[] {
-  return text.split(/[\s,;]+/).filter(Boolean).map(Number);
-}
-
-// equal temperament: each semitone shortens the sounding length by the twelfth root of 2, so
-// semitone n stops the string `length * (1 - 2^(-n/12))` from the nut
-export function semitoneStop(semitone: number, stringLength: number): number {
-  return stringLength * (1 - 2 ** (-semitone / 12));
-}
 
 // the bridge, the board, the nut and the string, over the neck renderNeck draws. The neck's front is
 // in colour since its length is set here
@@ -156,7 +142,7 @@ export const renderStringSetup = (
   p: ViolinFamilyParams,
   s: StringSetupSolve,
   pal: PanelPalette,
-  opts: { fingerboard?: boolean; fretMarks?: boolean; scoopGuide?: boolean } = {},
+  opts: { fingerboard?: boolean; scoopGuide?: boolean } = {},
 ) => (g: any, ui: any): void => {
   let n = s.neck;
   if (!n.neckTop || !n.root || !n.bottomFront) return;
@@ -185,10 +171,7 @@ export const renderStringSetup = (
   seg(n.bottomFront, n.root, pal.ink(2));
   seg(n.root, n.neckTop, pal.ink(2));
 
-  if (s.nutTop && s.bridgeTop) {
-    seg(s.nutTop, s.bridgeTop, pal.neutral);
-    if (opts.fretMarks && s.fingerboardEnd) renderFretTicks(s.nutTop, s.bridgeTop, dist(n.neckTop, s.fingerboardEnd), ss.marks, pal)(g, ui);
-  }
+  if (s.nutTop && s.bridgeTop) seg(s.nutTop, s.bridgeTop, pal.neutral);
 };
 
 const renderStringSetupHighlight = (
@@ -212,13 +195,14 @@ const renderStringSetupHighlight = (
     case 'nutThickness': if (s.nutTop) line(n.neckTop, s.nutTop); break;
     case 'fbLength': if (end) line(n.neckTop, end); break;
     case 'fbThickness': if (end) { line(n.neckTop, edgeAt(n.neckTop)); line(end, edgeAt(end)); } break;
-    // each radius lights its own half of the crown
+    // each radius lights its own half of the crown, the one radius all of it
+    case 'fbRadius':
     case 'fbNutRadius':
     case 'fbEndRadius': {
       let crown = fingerboardCrownLine(p, s);
       if (!crown) break;
       let mid = Math.ceil(crown.length / 2);
-      let half = key === 'fbNutRadius' ? crown.slice(0, mid) : crown.slice(mid - 1);
+      let half = key === 'fbRadius' ? crown : key === 'fbNutRadius' ? crown.slice(0, mid) : crown.slice(mid - 1);
       for (let i = 1; i < half.length; i++) line(half[i - 1], half[i]);
       break;
     }
@@ -294,6 +278,15 @@ export function scoopGuideGeometry(p: ViolinFamilyParams, s: StringSetupSolve):
   };
 }
 
+// the board in plan, nut to end, over the neck it covers. Null while the board doesn't solve
+export function fingerboardInPlan(p: ViolinFamilyParams, s: StringSetupSolve): string | null {
+  let n = s.neck;
+  if (!n.neckTop || !s.fingerboardEnd) return null;
+  let topY = n.neckTop.y, endY = s.fingerboardEnd.y;
+  let topHalf = p.neck!.topWidth / 2, endHalf = neckHalfWidthAt(p, n, endY);
+  return pathFromPolygon([new Pt(-endHalf, endY), new Pt(endHalf, endY), new Pt(topHalf, topY), new Pt(-topHalf, topY)]);
+}
+
 // the instrument from the front: the top plate with whatever the neck and board cover cut away, the
 // bridge across the upper eyes' inner edges, the board (or the bare neck with the board off), the nut
 // past its end and the scroll's front on up from it. Worked out here, once a draw; the canvas replays
@@ -304,8 +297,7 @@ const renderStringSetupFrontView = (
   o: OuterContourSolve,
   scroll: ScrollSolve | null,
   pal: PanelPalette,
-  showFingerboard: boolean,
-  highlighted: { key: StringSetupHighlightKey; color: string } | null = null,
+  opts: { fingerboard: boolean; scoopStation: boolean },
 ): RenderLayer => {
   let n = s.neck;
   if (!n.neckTop) return () => {};
@@ -313,22 +305,14 @@ const renderStringSetupFrontView = (
   let topY = n.neckTop.y;
   let onNeck = scrollOnNeck(p, n);
   let neck = neckInPlan(p, n);
-  let board: string | null = null;
+  let board = opts.fingerboard ? fingerboardInPlan(p, s) : null;
   // the scoop's deepest station across the board
   let station: [Pt, Pt] | null = null;
-  if (showFingerboard && s.fingerboardEnd) {
-    let endY = s.fingerboardEnd.y;
-    let endHalf = neckHalfWidthAt(p, n, endY);
-    board = pathFromPolygon([new Pt(-endHalf, endY), new Pt(endHalf, endY), new Pt(nk.topWidth / 2, topY), new Pt(-nk.topWidth / 2, topY)]);
-    if (scoopGuideGeometry(p, s)) {
-      let y = pointAtDistanceToward(n.neckTop, s.fingerboardEnd, p.stringSetup!.scoopAt).y;
-      let half = neckHalfWidthAt(p, n, y);
-      station = [new Pt(-half, y), new Pt(half, y)];
-    }
+  if (board && opts.scoopStation && scoopGuideGeometry(p, s)) {
+    let y = pointAtDistanceToward(n.neckTop, s.fingerboardEnd!, p.stringSetup!.scoopAt).y;
+    let half = neckHalfWidthAt(p, n, y);
+    station = [new Pt(-half, y), new Pt(half, y)];
   }
-  // a dot over the edge is inlaid as the part that lands on the board
-  let dots = board ? s.marks.flatMap(m => m.dots).map(dot => ({ dot, inlay: intersectionFromTwoPaths(pathFromCircle(dot), board!) })) : [];
-  let haloed = highlighted?.key === 'marks' ? highlighted.color : null;
   let nutY = applyMatrix(onNeck, new Pt(0, nk.nutHeight)).y;
   let nut = [new Pt(-nk.nutWidth / 2, topY), new Pt(nk.nutWidth / 2, topY), new Pt(nk.nutWidth / 2, nutY), new Pt(-nk.nutWidth / 2, nutY)];
 
@@ -358,10 +342,6 @@ const renderStringSetupFrontView = (
     if (bridge) renderPolygon(bridge, pal.ink(1), STROKE_WEIGHT.section)(g, ui);
     renderPath(board ?? neck, board ? pal.ink(0) : pal.neutral, STROKE_WEIGHT.section)(g, ui);
     if (station) renderDashedLine(station[0], station[1], pal.ink(0), '2 3', STROKE_WEIGHT.guide, 0.5)(g, ui);
-    for (let { dot, inlay } of dots) {
-      renderFilledPath(inlay, pal.ink(3), 1, 'nonzero')(g, ui);
-      if (haloed) renderPointHalo(dot, haloed, dot.r + MARK_HALO_RADIUS)(g, ui);
-    }
     renderPolygon(nut, pal.ink(0).faint(-3), STROKE_WEIGHT.section)(g, ui);
     // the nut and the neck below it are this view's own
     if (head) {
@@ -441,29 +421,6 @@ export function fingerboardCrownLine(p: ViolinFamilyParams, s: StringSetupSolve)
   return line;
 }
 
-// the first octave's semitones ticked up the string, the marked ones standing taller. Ticks stop
-// at the board's end
-function renderFretTicks(nut: Pt, bridge: Pt, boardLength: number, marks: PositionMarksParams, pal: PanelPalette) {
-  let stringLength = dist(nut, bridge);
-  let along: Vect2D = { a: (bridge.x - nut.x) / stringLength, b: (bridge.y - nut.y) / stringLength, mag: 1 };
-  let across: Vect2D = { a: -along.b, b: along.a, mag: 1 };
-
-  return (g: any, ui: any): void => {
-    let tick = (semitone: number, halfLength: number, color: string) => {
-      let d = semitoneStop(semitone, stringLength);
-      if (d > boardLength) return;
-      let center = moveInVectorSpace(nut, [{ ...along, mag: d }]);
-      let a = moveInVectorSpace(center, [{ ...across, mag: halfLength }]);
-      let b = moveInVectorSpace(center, [{ ...across, mag: -halfLength }]);
-      renderSegment(a, b, color, STROKE_WEIGHT.guide)(g, ui);
-    };
-    for (let semitone = 1; semitone <= FRET_MARK_SEMITONES; semitone++) {
-      if (!marks.semitones.includes(semitone)) tick(semitone, FRET_TICK_HALF_LENGTH, pal.ink(0).faint(-3));
-    }
-    for (let semitone of marks.semitones) if (Number.isInteger(semitone) && semitone > 0) tick(semitone, LANDMARK_TICK_HALF_LENGTH, pal.ink(3));
-  };
-}
-
 // a later panel reads the string setup by calling this; it returns and never writes to the params.
 // The bridge's feet sit on the top's arch along the channel's centreline, centred the body stop down
 // from the neck end. It stands plumb over them, whatever the arch and the rib taper do under it, and
@@ -472,7 +429,7 @@ export function solveStringSetup(p: ViolinFamilyParams): StringSetupSolve | null
   if (!p.stringSetup || !p.neck) return null;
   let ss = p.stringSetup;
   let neck = solveNeck(p)!;
-  let s: StringSetupSolve = { neck, bridgeFoot: null, bridge: null, bridgeTop: null, nutTop: null, fingerboardEnd: null, marks: [], failures: [] };
+  let s: StringSetupSolve = { neck, bridgeFoot: null, bridge: null, bridgeTop: null, nutTop: null, fingerboardEnd: null, failures: [] };
   let fail = (message: string, unsolved: StringSetupFailure['unsolved'], points: Pt[] = []): StringSetupFailure =>
     ({ message, unsolved, circles: [], segments: [], points });
   let { neckTop, root } = neck;
@@ -546,36 +503,5 @@ export function solveStringSetup(p: ViolinFamilyParams): StringSetupSolve | null
     return null;
   });
 
-  // each interval stops the string a share of its length down from the nut; that point drops square
-  // onto the fingerboard plane for its station, and the dot sits across the board there, its offset
-  // scaled by the board's width. A mark past the board's end is left out and said so, the rest drawn
-  solveSection(s.failures, 'Position Marks', ['marks'], () => {
-    let m = ss.marks;
-    if (!s.nutTop || !s.bridgeTop || !s.fingerboardEnd) return fail('Position marks: the nut, the bridge and the board have to solve first; they\'re laid out between them.', ['marks']);
-    if (!m.semitones.every(n => Number.isInteger(n) && n > 0)) return fail('Position marks: each interval is a whole number of semitones above the open string, 1 or more.', ['marks']);
-    if (!(m.diameter > 0)) return fail('Position marks: the diameter needs a value above 0.', ['marks']);
-    // a dot may hang over the edge, inlaid as the part that lands on the board, but has to reach it
-    let halfAtNut = neckHalfWidthAt(p, neck, neckTop.y);
-    if (!Number.isFinite(m.offset) || Math.abs(m.offset) - m.diameter / 2 >= halfAtNut) {
-      return fail(`Position marks: the dot has to reach the board, which is ${(2 * halfAtNut).toFixed(1)} mm wide at the nut.`, ['marks']);
-    }
-    let stringLength = dist(s.nutTop, s.bridgeTop);
-    let boardLength = dist(neckTop, s.fingerboardEnd);
-    let board: Vect2D = { a: (s.fingerboardEnd.x - neckTop.x) / boardLength, b: (s.fingerboardEnd.y - neckTop.y) / boardLength, mag: 1 };
-    let past: number[] = [];
-    for (let semitone of [...new Set(m.semitones)].sort((a, b) => a - b)) {
-      let alongString = semitoneStop(semitone, stringLength);
-      let onString = pointAtDistanceToward(s.nutTop, s.bridgeTop, alongString);
-      let alongBoard = (onString.x - neckTop.x) * board.a + (onString.y - neckTop.y) * board.b;
-      if (alongBoard > boardLength) { past.push(semitone); continue; }
-      let station = moveInVectorSpace(neckTop, [{ ...board, mag: alongBoard }]);
-      // the share of the board scales with its width; an overhang past the edge is carried as is
-      let half = neckHalfWidthAt(p, neck, station.y);
-      let x = Math.sign(m.offset) * (Math.min(Math.abs(m.offset), halfAtNut) * half / halfAtNut + Math.max(0, Math.abs(m.offset) - halfAtNut));
-      s.marks.push({ semitone, alongString, station, dots: [new Circle(x, station.y, m.diameter / 2)] });
-    }
-    if (past.length) return fail(`Position marks: semitone${past.length > 1 ? 's' : ''} ${past.join(', ')} fall${past.length > 1 ? '' : 's'} past the board's end.`, []);
-    return null;
-  });
   return s;
 }

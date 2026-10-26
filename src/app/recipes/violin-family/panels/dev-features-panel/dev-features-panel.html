@@ -1,0 +1,88 @@
+@let ss = params.stringSetup!;
+
+<section class="ui-group">
+    <div class="ui-group-title">Feature</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <select [(ngModel)]="state.feature" (change)="stateEdited()">
+                @for (f of features; track f.id) {
+                <option [value]="f.id">{{ f.label }}</option>
+                }
+            </select>
+        </label>
+    </div>
+</section>
+
+@switch (state.feature) {
+@case ('fingerboard') {
+<section class="ui-group">
+    <div class="ui-group-title">Fingerboard</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Length <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="ss.fingerboardLength" (input)="edited()" (focus)="focus('fbLength', pal.ink(0))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Nut Thickness <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0).faint(-3)"
+                [(ngModel)]="ss.nutThickness" (input)="edited()" (focus)="focus('nutThickness', pal.ink(0).faint(-3))" (blur)="blur()" />
+        </label>
+    </div>
+
+     <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Deepest At <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="ss.scoopAt" (input)="edited()" (focus)="focus('scoopAt', pal.ink(0))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Bass Depth <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.05" min="0" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="ss.scoopBass" (input)="edited()" (focus)="focus('scoopBass', pal.ink(0))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Treble Depth <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.05" min="0" [style.border-color]="pal.ink(0).faint(-3)"
+                [(ngModel)]="ss.scoopTreble" (input)="edited()" (focus)="focus('scoopTreble', pal.ink(0).faint(-3))" (blur)="blur()" />
+        </label>
+    </div>
+     <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">At Nut <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="ss.fingerboardNutRadius" (input)="edited()" (focus)="focus('fbNutRadius', pal.ink(0))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">At End <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="ss.fingerboardEndRadius" (input)="edited()" (focus)="focus('fbEndRadius', pal.ink(0))" (blur)="blur()" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Position Marks</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--wide">
+            <span class="field-title">Semitones</span>
+            <input type="text" class="basic-input" placeholder="5, 7, 12" [style.border-color]="pal.ink(3)"
+                [ngModel]="semitonesText" (ngModelChange)="semitonesEdited($event)" (focus)="focus('marks', pal.ink(3))" (blur)="blur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">X Offset <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" [style.border-color]="pal.ink(3)"
+                [(ngModel)]="marks.offset" (input)="stateEdited()" (focus)="focus('marks', pal.ink(3))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Diameter <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(3)"
+                [(ngModel)]="marks.diameter" (input)="stateEdited()" (focus)="focus('marks', pal.ink(3))" (blur)="blur()" />
+        </label>
+    </div>
+</section>
+
+}
+}

@@ -20,6 +20,7 @@ import { MouldPanel } from '../mould-panel/mould-panel';
 import { solveScroll } from '../scroll-panel/scroll-panel';
 import { scrollBackStrip, scrollCompassWalk } from '../scroll-widths-panel/scroll-widths-panel';
 import { solveCrossArching } from '../cross-arching-panel/cross-arching-panel';
+import { solvePositionMarks } from '../dev-features-panel/dev-features-panel';
 import { ExportPanel, ExportType, exportReady, exportSheet, fingerboardStl, plateStl } from './export-panel';
 
 // The last panel, and the one whose output leaves the app: a wrong path on a sheet is cut into wood.
@@ -562,7 +563,6 @@ describe('the fingerboard solid', () => {
 
   it('crowns higher down the middle than at the edges, scoops the bass edge deeper than the treble, and holds the edge thickness at the nut', () => {
     const p = strung();
-    p.stringSetup!.marks.semitones = [];
     const ss = p.stringSetup!;
     const tris = stlTriangles(fingerboardStl(p, 1)!);
     const topVerts = tris.filter(t => t.n[2] > 0).flatMap(t => t.v);
@@ -592,21 +592,17 @@ describe('the fingerboard solid', () => {
   });
 
   it('sinks each position mark as a flat pocket 2 mm under the surface at its centre, leaving the rest of the top untouched', () => {
-    const plain = strung();
-    plain.stringSetup!.marks.semitones = [];
-    const marked = strung();
-    marked.stringSetup!.marks.semitones = [12];
-    marked.stringSetup!.marks.offset = 6;
-    marked.stringSetup!.marks.diameter = 4;
+    const p = strung();
+    const s = StringSetupPanelSolve(p);
+    const marks = solvePositionMarks(p, s, { semitones: [12], offset: 6, diameter: 4 }).marks;
     const gridMm = 0.5;
-    const topOf = (p: ViolinFamilyParams) => {
-      const m = new Map<string, number>();
-      for (const t of stlTriangles(fingerboardStl(p, gridMm)!)) if (t.n[2] > 0) for (const v of t.v) m.set(`${v[0].toFixed(3)},${v[1].toFixed(3)}`, v[2]);
-      return m;
+    const topOf = (m: typeof marks) => {
+      const top = new Map<string, number>();
+      for (const t of stlTriangles(fingerboardStl(p, gridMm, m)!)) if (t.n[2] > 0) for (const v of t.v) top.set(`${v[0].toFixed(3)},${v[1].toFixed(3)}`, v[2]);
+      return top;
     };
-    const before = topOf(plain), after = topOf(marked);
-    const s = StringSetupPanelSolve(marked);
-    const [mark] = s.marks;
+    const before = topOf([]), after = topOf(marks);
+    const [mark] = marks;
     const d = Math.hypot(mark.station.x - s.neck.neckTop!.x, mark.station.y - s.neck.neckTop!.y);
     // a treble-side dot in the front view lands at -x in the solid
     const r = mark.dots[0].r, cx = -mark.dots[0].x;
@@ -629,17 +625,15 @@ describe('the fingerboard solid', () => {
     expect(inPocket).toBeGreaterThan(0);
     // the pocket is round: its floor covers the circle's area and ends on the rim, not a grid step.
     // Read around the pocket only, since the board's edges stand near the floor's height too
-    const tris = stlTriangles(fingerboardStl(marked, gridMm)!);
+    const tris = stlTriangles(fingerboardStl(p, gridMm, marks)!);
     const away = (v: number[]) => Math.hypot(v[0] - cx, v[1] - d);
     const nearby = tris.filter(t => t.v.every(v => away(v) < r + 2));
     const onFloor = (v: number[]) => Math.abs(v[2] - floor) < 0.05;
     const floorArea = nearby.filter(t => t.n[2] > 0 && t.v.every(onFloor)).reduce((sum, t) => sum + footprint(t.v), 0);
     expect(Math.abs(floorArea - Math.PI * r * r) / (Math.PI * r * r)).toBeLessThan(0.02);
     // a half circle over the edge still builds a closed, finite solid, its rim wall stopping at the edge
-    const overEdge = strung();
-    overEdge.stringSetup!.marks.semitones = [12];
-    overEdge.stringSetup!.marks.offset = overEdge.neck!.topWidth / 2;
-    const edgeTris = stlTriangles(fingerboardStl(overEdge, gridMm)!);
+    const overEdge = solvePositionMarks(p, s, { semitones: [12], offset: p.neck!.topWidth / 2, diameter: 4 }).marks;
+    const edgeTris = stlTriangles(fingerboardStl(p, gridMm, overEdge)!);
     expect(edgeTris.length).toBeGreaterThan(0);
     expect(edgeTris.every(t => t.v.every(v => v.every(Number.isFinite)))).toBe(true);
     // the rim is a 48-gon, whose chords dip a few microns inside the circle
