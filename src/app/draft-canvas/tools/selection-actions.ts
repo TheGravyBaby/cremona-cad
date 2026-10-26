@@ -1,8 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { DraftShape, isStroked, makeGroupId, makeShapeId } from './toolbox-shape';
 import { ToolboxStore } from './toolbox-store';
+import { DEFAULT_LAYER_ID, Layer } from './layer';
 import { SelectionStore, toolboxRef } from './selection-store';
 import { shapesToSvg, svgToShapes } from './shape-svg';
+import { dxfToShapes, shapesToDxf } from './shape-dxf';
 import { reflectAcross, rotateAbout, transformShape, translateShape } from './shape-transform';
 import { ShapeBounds, shapeBounds, unionBounds } from './shape-hit-test';
 import { Matrix2D } from '../../helpers/math/pathMath';
@@ -51,6 +53,11 @@ export class SelectionActions {
     return shapes.length > 1 && (shapes[0].groupId === undefined || shapes.some(s => s.groupId !== shapes[0].groupId));
   }
   get canUngroup(): boolean { return this.selection.toolboxShapes.some(s => s.groupId); }
+  get canMoveToLayer(): boolean { return this.toolbox.layers.some(l => this.canMoveTo(l)); }
+  /** An unlocked layer that some of the selected drawn shapes aren't on yet. */
+  canMoveTo(layer: Layer): boolean {
+    return !layer.locked && this.groupable.some(s => (s.layerId ?? DEFAULT_LAYER_ID) !== layer.id);
+  }
 
   private get groupable(): DraftShape[] { return this.selection.toolboxShapes.filter(s => s.type !== 'image'); }
 
@@ -87,6 +94,16 @@ export class SelectionActions {
     return shapes.length ? shapesToSvg(shapes) : null;
   }
 
+  /** The selection as DXF text, each drawn shape on its layer's name and recipe geometry on
+   * "Recipe". Null when there's nothing to write. */
+  exportDxf(): string | null {
+    const shapes = this.selection.shapes.filter(s => s.type !== 'image');
+    if (!shapes.length) return null;
+    const drawn = new Set(this.selection.toolboxShapes.map(s => s.id));
+    const names = new Map(this.toolbox.layers.map(l => [l.id, l.name]));
+    return shapesToDxf(shapes, s => drawn.has(s.id) ? names.get(s.layerId ?? DEFAULT_LAYER_ID) : 'Recipe');
+  }
+
   /** Copies the selection and returns it as SVG text for the system clipboard, or null when
    * there was nothing to copy. */
   copy(): string | null {
@@ -101,6 +118,11 @@ export class SelectionActions {
     const svg = this.copy();
     if (svg) this.toolbox.removeShapes(this.selection.toolboxShapes.filter(s => s.type !== 'image').map(s => s.id));
     return svg;
+  }
+
+  // images belong to no layer, so they never move
+  moveToLayer(layerId: string): void {
+    this.toolbox.moveShapesToLayer(this.groupable.map(s => s.id), layerId);
   }
 
   delete(): void {
@@ -131,8 +153,8 @@ export class SelectionActions {
 
   /** A file's shapes, exactly where the file has them: a drawing comes back at its own
    * coordinates, unlike a paste. */
-  import(text: string): boolean {
-    const shapes = svgToShapes(text);
+  import(text: string, format: 'svg' | 'dxf' = 'svg'): boolean {
+    const shapes = format === 'dxf' ? dxfToShapes(text) : svgToShapes(text);
     return shapes !== null && this.place(shapes);
   }
 

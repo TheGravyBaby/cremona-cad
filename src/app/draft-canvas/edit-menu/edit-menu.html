@@ -29,7 +29,11 @@
   <button class="menu-row" role="menuitem" (click)="exportSvg()" [disabled]="!actions.canExport"
     docTip="edit.saveSelection">
     <svg icon="download" width="16" height="16"></svg>
-    <span class="menu-label">Export selection</span>
+    <span class="menu-label">Export selection as SVG</span>
+  </button>
+  <button class="menu-row" role="menuitem" (click)="exportDxf()" [disabled]="!actions.canExport">
+    <svg icon="download" width="16" height="16"></svg>
+    <span class="menu-label">Export selection as DXF</span>
   </button>
   <button class="menu-row" role="menuitem" (click)="run(actions.duplicate)"
     [disabled]="!actions.canDuplicate"
@@ -46,6 +50,20 @@
     <svg icon="ungroup" width="16" height="16"></svg>
     <span class="menu-label">Ungroup</span><kbd>Ctrl+Shift+G</kbd>
   </button>
+  <button class="menu-row" role="menuitem" (click)="layersOpen = !layersOpen"
+    [disabled]="!actions.canMoveToLayer" [attr.aria-expanded]="layersOpen">
+    <svg icon="move-to-layer" width="16" height="16"></svg>
+    <span class="menu-label">Move to layer</span>
+    <svg [icon]="layersOpen ? 'chevron-up' : 'chevron-down'" width="14" height="14"></svg>
+  </button>
+  @if (layersOpen && actions.canMoveToLayer) {
+  @for (layer of toolbox.layers; track layer.id) {
+  <button class="menu-row menu-sub" role="menuitem" (click)="run(() => actions.moveToLayer(layer.id))"
+    [disabled]="!actions.canMoveTo(layer)">
+    <span class="menu-label">{{ layer.name }}</span>
+  </button>
+  }
+  }
   <button class="menu-row" role="menuitem" (click)="run(actions.delete)"
     [disabled]="!actions.canDelete">
     <svg icon="delete" width="16" height="16"></svg>

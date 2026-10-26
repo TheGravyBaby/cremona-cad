@@ -1,11 +1,16 @@
 import { arcCenterFromEndpoints } from './math/pathMath';
 import { normalizeRadians, TURN } from './math/simpleGeometry';
 
-type DxfEntity =
+/** Absent `layer` is DXF layer 0. */
+export type DxfEntity = (
   | { type: 'LINE'; x0: number; y0: number; x1: number; y1: number }
-  | { type: 'ARC'; cx: number; cy: number; r: number; startAngleDeg: number; endAngleDeg: number };
+  | { type: 'ARC'; cx: number; cy: number; r: number; startAngleDeg: number; endAngleDeg: number }
+  | { type: 'CIRCLE'; cx: number; cy: number; r: number }
+  | { type: 'POINT'; x: number; y: number }
+) & { layer?: string };
 
-export type DxfText = { text: string; x: number; y: number; height: number; rotationDeg?: number };
+/** Centred on (x, y) unless `align` is 'left', which hangs the text off it at mid-height. */
+export type DxfText = { text: string; x: number; y: number; height: number; rotationDeg?: number; layer?: string; align?: 'left' };
 
 function quadraticBezierPoint(
   p0: { x: number; y: number }, p1: { x: number; y: number }, p2: { x: number; y: number }, t: number
@@ -140,39 +145,68 @@ export function pathToDxfEntities(d: string): DxfEntity[] {
   return entities;
 }
 
-function buildDxfFile(entities: DxfEntity[], texts: DxfText[] = []): string {
+// R12 layer names allow letters, digits, $, - and _ only, 31 at most; stricter readers reject the rest
+export function dxfLayerName(name: string): string {
+  return name.trim().replace(/[^A-Za-z0-9$_-]+/g, '_').slice(0, 31) || '0';
+}
+
+export function buildDxfFile(entities: DxfEntity[], texts: DxfText[] = []): string {
   const lines: string[] = [];
   const push = (code: number, value: string | number) => {
     lines.push(String(code), String(value));
   };
+  const n = (v: number) => v.toFixed(4);
+  const layerOf = (item: { layer?: string }) => item.layer ? dxfLayerName(item.layer) : '0';
 
   push(0, 'SECTION'); push(2, 'HEADER');
   push(9, '$ACADVER'); push(1, 'AC1009');
   push(9, '$INSUNITS'); push(70, 4); // 4 = millimeters
   push(0, 'ENDSEC');
 
+  // a layer an entity names must be declared here, or strict readers drop the entity
+  const layers = [...new Set(['0', ...entities.map(layerOf), ...texts.map(layerOf)])];
+  push(0, 'SECTION'); push(2, 'TABLES');
+  push(0, 'TABLE'); push(2, 'LTYPE'); push(70, 1);
+  push(0, 'LTYPE'); push(2, 'CONTINUOUS'); push(70, 0); push(3, 'Solid line'); push(72, 65); push(73, 0); push(40, '0.0');
+  push(0, 'ENDTAB');
+  push(0, 'TABLE'); push(2, 'LAYER'); push(70, layers.length);
+  for (const name of layers) {
+    push(0, 'LAYER'); push(2, name); push(70, 0); push(62, 7); push(6, 'CONTINUOUS');
+  }
+  push(0, 'ENDTAB');
+  push(0, 'ENDSEC');
+
   push(0, 'SECTION'); push(2, 'ENTITIES');
   for (const entity of entities) {
-    if (entity.type === 'LINE') {
-      push(0, 'LINE'); push(8, '0');
-      push(10, entity.x0.toFixed(4)); push(20, entity.y0.toFixed(4)); push(30, '0.0');
-      push(11, entity.x1.toFixed(4)); push(21, entity.y1.toFixed(4)); push(31, '0.0');
-    } else {
-      push(0, 'ARC'); push(8, '0');
-      push(10, entity.cx.toFixed(4)); push(20, entity.cy.toFixed(4)); push(30, '0.0');
-      push(40, entity.r.toFixed(4));
-      push(50, entity.startAngleDeg.toFixed(4));
-      push(51, entity.endAngleDeg.toFixed(4));
+    push(0, entity.type); push(8, layerOf(entity));
+    switch (entity.type) {
+      case 'LINE':
+        push(10, n(entity.x0)); push(20, n(entity.y0)); push(30, '0.0');
+        push(11, n(entity.x1)); push(21, n(entity.y1)); push(31, '0.0');
+        break;
+      case 'ARC':
+        push(10, n(entity.cx)); push(20, n(entity.cy)); push(30, '0.0');
+        push(40, n(entity.r));
+        push(50, n(entity.startAngleDeg));
+        push(51, n(entity.endAngleDeg));
+        break;
+      case 'CIRCLE':
+        push(10, n(entity.cx)); push(20, n(entity.cy)); push(30, '0.0');
+        push(40, n(entity.r));
+        break;
+      case 'POINT':
+        push(10, n(entity.x)); push(20, n(entity.y)); push(30, '0.0');
+        break;
     }
   }
   for (const t of texts) {
-    push(0, 'TEXT'); push(8, '0');
-    push(10, t.x.toFixed(4)); push(20, t.y.toFixed(4)); push(30, '0.0');
-    push(40, t.height.toFixed(4));
+    push(0, 'TEXT'); push(8, layerOf(t));
+    push(10, n(t.x)); push(20, n(t.y)); push(30, '0.0');
+    push(40, n(t.height));
     push(1, t.text);
-    push(50, (t.rotationDeg ?? 0).toFixed(4));
-    push(72, 1); push(73, 2); // horizontal/vertical justification: middle-center
-    push(11, t.x.toFixed(4)); push(21, t.y.toFixed(4)); push(31, '0.0'); // alignment point, required for justified text
+    push(50, n(t.rotationDeg ?? 0));
+    push(72, t.align === 'left' ? 0 : 1); push(73, 2); // horizontal justification, vertical: middle
+    push(11, n(t.x)); push(21, n(t.y)); push(31, '0.0'); // alignment point, required for justified text
   }
   push(0, 'ENDSEC');
 
@@ -181,10 +215,7 @@ function buildDxfFile(entities: DxfEntity[], texts: DxfText[] = []): string {
   return lines.join('\n') + '\n';
 }
 
-export function downloadDxfFile(filename: string, pathD: string, texts: DxfText[] = []): void {
-  const entities = pathToDxfEntities(pathD);
-  const dxfContent = buildDxfFile(entities, texts);
-
+export function downloadDxfText(filename: string, dxfContent: string): void {
   const blob = new Blob([dxfContent], { type: 'application/dxf' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -194,4 +225,8 @@ export function downloadDxfFile(filename: string, pathD: string, texts: DxfText[
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+export function downloadDxfFile(filename: string, pathD: string, texts: DxfText[] = []): void {
+  downloadDxfText(filename, buildDxfFile(pathToDxfEntities(pathD), texts));
 }

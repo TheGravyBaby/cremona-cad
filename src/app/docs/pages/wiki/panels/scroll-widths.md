@@ -19,7 +19,6 @@ TODO: write this article.
 | Throat | TODO |
 | Hip | TODO |
 | Hip Y | TODO |
-| Wall | TODO |
 | Crown | TODO |
 | Poll | TODO |
 | Hip | TODO |

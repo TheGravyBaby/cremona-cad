@@ -6,13 +6,14 @@ import { DraftShape, ImageShape } from '../tools/toolbox-shape';
 import { DEFAULT_LAYER_ID, Layer } from '../tools/layer';
 import { PanelChoice } from '../tools/toolbox-store';
 import { PanelScope, scopeDescription, scopeLabel, scopeWith } from '../tools/panel-scope';
-import { SelectionStore } from '../tools/selection-store';
 import { SelectionActions } from '../tools/selection-actions';
 import { shapesToSvg } from '../tools/shape-svg';
+import { shapesToDxf } from '../tools/shape-dxf';
+import { downloadDxfText } from '../../helpers/dxfExporter';
 import { downloadSvgFile } from '../../helpers/fileExporter';
 import { TooltipDirective } from '../../docs/tooltips';
 import { ScopeMenuComponent } from '../scope-menu/scope-menu';
-import { svgImportEmpty } from '../../docs/conditions';
+import { importEmpty } from '../../docs/conditions';
 import { IconDirective } from '../../icons/icon.directive';
 
 /** A row in either list: a layer or an image, told apart only where the store needs to know. */
@@ -47,7 +48,6 @@ type Scoped = { id: string; scope?: PanelScope };
 export class LayerControlsComponent {
   private toolbox = inject(ToolboxStore);
   private toolRegistry = inject(ToolRegistryService);
-  private selection = inject(SelectionStore);
   private actions = inject(SelectionActions);
   private elRef = inject(ElementRef<HTMLElement>);
 
@@ -68,6 +68,9 @@ export class LayerControlsComponent {
   public linkOpen = false;
   /** Which row's scope menu is open; one at a time, like renaming. */
   public scopeMenuFor: string | null = null;
+  /** The export format flyout, fixed to the viewport beside its button: the popup scrolls, and
+   * would clip anything hung off it. */
+  public exportFlyout: { left: number; bottom: number } | null = null;
 
   // a press anywhere outside — the canvas above all — takes an open list down, and with it the
   // link field and any scope menu, so the next open starts clean
@@ -79,6 +82,7 @@ export class LayerControlsComponent {
     this.imagesOpen = false;
     this.linkOpen = false;
     this.scopeMenuFor = null;
+    this.exportFlyout = null;
   }
 
   // ===== Master show/hide switches =====
@@ -125,6 +129,7 @@ export class LayerControlsComponent {
     this.layersOpen = !this.layersOpen;
     this.imagesOpen = false;
     this.scopeMenuFor = null;
+    this.exportFlyout = null;
   }
 
   public get toolboxLayers(): Layer[] { return this.toolbox.layers; }
@@ -141,37 +146,38 @@ export class LayerControlsComponent {
 
   get canExport(): boolean { return this.activeLayerShapes.length > 0; }
 
-  /** The active layer as a real-size SVG file named after it. Drawn shapes only: the recipe has its
-   * own export panels, and the selection exports from the canvas's right-click menu. */
-  exportSvg(): void {
+  toggleExportFlyout(button: HTMLElement): void {
+    if (this.exportFlyout) { this.exportFlyout = null; return; }
+    const box = button.getBoundingClientRect();
+    this.exportFlyout = { left: box.right + 4, bottom: window.innerHeight - box.bottom };
+  }
+
+  /** The active layer as a real-size file named after it. Drawn shapes only: the recipe has its
+   * own export panels, and the selection exports from the canvas's right-click menu. A DXF puts
+   * every shape on a DXF layer of the same name. */
+  exportLayer(format: 'svg' | 'dxf'): void {
+    this.exportFlyout = null;
     const shapes = this.activeLayerShapes;
     if (!shapes.length) return;
     const name = this.toolbox.layers.find(l => l.id === this.toolbox.activeLayerId)?.name ?? '';
-    downloadSvgFile(`${name.replace(/[\\/:*?"<>|]/g, '').trim() || 'layer'}.svg`, shapesToSvg(shapes));
+    const file = `${name.replace(/[\\/:*?"<>|]/g, '').trim() || 'layer'}.${format}`;
+    if (format === 'svg') downloadSvgFile(file, shapesToSvg(shapes));
+    else downloadDxfText(file, shapesToDxf(shapes, () => name));
   }
 
-  /** Reads a picked SVG file onto the active layer, in place, as a paste would. Silent on a
-   * dismissed dialog. */
-  async importSvg(input: HTMLInputElement): Promise<void> {
+  /** Reads a picked SVG or DXF file onto the active layer, in place, as a paste would. Silent on
+   * a dismissed dialog. */
+  async importFile(input: HTMLInputElement): Promise<void> {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    if (!this.actions.import(await file.text())) svgImportEmpty(file.name);
+    const format = /\.dxf$/i.test(file.name) ? 'dxf' : 'svg';
+    if (!this.actions.import(await file.text(), format)) importEmpty(file.name);
   }
 
-  // images belong to no layer, so they never move
-  private get movableSelection(): DraftShape[] {
-    return this.selection.toolboxShapes.filter(s => s.type !== 'image');
-  }
+  canMoveSelectionTo(layer: Layer): boolean { return this.actions.canMoveTo(layer); }
 
-  /** Offered on an unlocked layer when some of the selected drawn shapes live elsewhere. */
-  canMoveSelectionTo(layer: Layer): boolean {
-    return !layer.locked && this.movableSelection.some(s => (s.layerId ?? DEFAULT_LAYER_ID) !== layer.id);
-  }
-
-  moveSelectionTo(id: string): void {
-    this.toolbox.moveShapesToLayer(this.movableSelection.map(s => s.id), id);
-  }
+  moveSelectionTo(id: string): void { this.actions.moveToLayer(id); }
 
   addLayer(): void {
     const id = this.toolbox.addLayer();

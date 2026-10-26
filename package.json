@@ -1,6 +1,8 @@
 {
   "name": "cremona-cad",
   "version": "0.9.0",
+  "author": "Andrew Argraves",
+  "license": "GPL-3.0-only",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",

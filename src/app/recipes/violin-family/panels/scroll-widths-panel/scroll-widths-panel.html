@@ -23,13 +23,6 @@
                 [(ngModel)]="v.hipHeight" (input)="edited()" (focus)="focus('hip', pal.ink(3).faint(-3))" (blur)="blur()" />
         </label>
     </div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(3).faint(-3)">Wall <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(3).faint(-3)"
-                [(ngModel)]="v.wall" (input)="edited()" />
-        </label>
-    </div>
 </section>
 
 <section class="ui-group">

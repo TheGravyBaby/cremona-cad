@@ -17,7 +17,7 @@
     </div>
 
     @if (layersOpen) {
-    <div class="lc-popup">
+    <div class="lc-popup" (scroll)="exportFlyout = null">
       <div class="layer-tabs">
         <!-- The instrument itself, as one more row. No eye (the render toggles decide what the
              recipe draws) and never the active layer (nothing is drawn onto it) — just the lock
@@ -74,13 +74,13 @@
       <!-- Files come and go through this list, as images do through theirs: the same Upload
            row, then the drawing out, then the layer cleared. -->
       <div class="lc-action-row">
-        <button type="button" class="lc-action" (click)="svgFileInput.click()"
+        <button type="button" class="lc-action" (click)="layerFileInput.click()"
           docTip="layers.importSvg">
           <svg icon="upload" width="14" height="14"></svg>
           <span>Import</span>
         </button>
-        <button type="button" class="lc-action" (click)="exportSvg()" [disabled]="!canExport"
-          docTip="layers.saveLayer">
+        <button #exportBtn type="button" class="lc-action" [class.active]="exportFlyout"
+          (click)="toggleExportFlyout(exportBtn)" [disabled]="!canExport" docTip="layers.saveLayer">
           <svg icon="download" width="14" height="14"></svg>
           <span>Export</span>
         </button>
@@ -89,11 +89,17 @@
           <span>Clear</span>
         </button>
       </div>
+      @if (exportFlyout) {
+      <div class="lc-flyout" role="menu" [style.left.px]="exportFlyout.left" [style.bottom.px]="exportFlyout.bottom">
+        <button type="button" class="lc-flyout-row" role="menuitem" (click)="exportLayer('svg')">SVG</button>
+        <button type="button" class="lc-flyout-row" role="menuitem" (click)="exportLayer('dxf')">DXF</button>
+      </div>
+      }
     </div>
     }
     <!-- outside the popup, which is torn down when it closes; a file dialog can only be opened
          by a real click, and this is the element it opens from -->
-    <input #svgFileInput type="file" accept=".svg,image/svg+xml" style="display:none" (change)="importSvg(svgFileInput)" />
+    <input #layerFileInput type="file" accept=".svg,image/svg+xml,.dxf" style="display:none" (change)="importFile(layerFileInput)" />
   </div>
 
   <div class="lc-group">
