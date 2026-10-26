@@ -277,6 +277,8 @@ export const ICONS = {
   'placement-guides': `<circle cx="8" cy="15" r="6" opacity="0.45" />
     <circle cx="16" cy="13" r="7" opacity="0.45" />
     <circle cx="12.4" cy="9.4" r="1.7" ${DOT} />`,
+  'beard-guides': `<rect x="5" y="3" width="14" height="18" rx="1" opacity="0.45" />
+    <rect x="5" y="10" width="14" height="8" ${GUIDE} />`,
   'fluting-edge': `<path d="M4 19a15 15 0 0 1 15-15" />
     <path d="M4 12a8 8 0 0 1 8-8" opacity="0.45" />`,
   'volute-construction': `<circle cx="12" cy="12" r="9" />
