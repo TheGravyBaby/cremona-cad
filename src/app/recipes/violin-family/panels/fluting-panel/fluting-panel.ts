@@ -363,23 +363,30 @@ function channelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, center
   return [...arcs, ...lowerJoin, ...upperJoin];
 }
 
-// one edge of the channel as a closed loop, `offset` in from the plate edge, the C bout's run at
-// `centerOffset`. The fluting edge it has to stay inside is taken at the outer of the two, or C0's
-// own end would sit outside it. No path when the C bout can't be joined to the bouts (`joined` false), or
-// when the loop doesn't close, as across a neck face the channel has eaten
-function channelPath(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number): { path: string | null; joined: boolean } {
-  let inset = p.body.overhang + p.body.rib;
-  let edge = outerEdgePath(p, rib, Math.min(offset, centerOffset));
-  let arcs = channelArcs(p, rib, inset - offset, inset - centerOffset, edge ? samplePathToPolyline(edge, 0.5) : null);
+// one closed loop `offset` from the rib line (in when negative), the C bout's run at `centerOffset`,
+// the corners bypassed by the channel's S joins and kept inside `edge`. `joined` false when the C
+// bout can't be joined to the bouts; no path with it true when the loop doesn't close, as across a
+// neck face the loop has eaten. The graduation reads its lining and boundary loops through this
+export function channelLoop(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, edge: Pt[] | null): { path: string | null; joined: boolean } {
+  let arcs = channelArcs(p, rib, offset, centerOffset, edge);
   if (!arcs) return { path: null, joined: false };
   let paths = [...arcs, ...arcs.map(arc => flipArcAboutY(arc))].map(arc => pathFromArc(arc));
-  let top = violNeckTopLine(p, rib, inset - offset);
+  let top = violNeckTopLine(p, rib, offset);
   if (top) paths.push(top);
   try {
     return { path: unifyConnectedSvgPaths(paths), joined: true };
   } catch {
     return { path: null, joined: true };
   }
+}
+
+// one edge of the channel, `offset` in from the plate edge, the C bout's run at `centerOffset`. The
+// fluting edge it has to stay inside is taken at the outer of the two, or C0's own end would sit
+// outside it
+function channelPath(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number): { path: string | null; joined: boolean } {
+  let inset = p.body.overhang + p.body.rib;
+  let edge = outerEdgePath(p, rib, Math.min(offset, centerOffset));
+  return channelLoop(p, rib, inset - offset, inset - centerOffset, edge ? samplePathToPolyline(edge, 0.5) : null);
 }
 
 // a later panel reads the channels by calling this; it returns and never writes to the params.

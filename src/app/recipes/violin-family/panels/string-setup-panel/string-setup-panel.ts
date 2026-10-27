@@ -28,7 +28,7 @@ import { scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-pane
 // the string between them. Reference geometry, read off the neck and never shaping it; only the
 // neck's length is set here too, since it places the nut. The scroll, once its panels have solved it
 // whole, stands on the neck's end in both views. The panel keeps to a plain setup: one crown radius
-// and no scoop fields. The board still carries both radii and its scoop, set in the dev features
+// and no scoop fields. The board still carries both radii and its scoop, set in the dev fingerboard
 // panel, which draws through renderStringSetupViews too. Panel and renders, then the solve.
 
 export type StringSetupHighlightKey =
