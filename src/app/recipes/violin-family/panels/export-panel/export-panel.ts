@@ -30,7 +30,7 @@ import { buildArchPathFor, solveLongArching } from '../long-arching-panel/long-a
 import { bodyLandmarks, rowAt, sectionRuns, solveCrossArching, STATION_MERGE_EPS_MM, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { mortiseFloorY, neckHalfWidthAt, scrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
 import { fingerboardRadiusAt, fingerboardScoopAt, solveStringSetup } from '../string-setup-panel/string-setup-panel';
-import type { PositionMarkSolve } from '../dev-features-panel/dev-features-panel';
+import type { PositionMarkSolve } from '../dev-fingerboard-panel/dev-fingerboard-panel';
 import { defineSideScrollPath } from '../scroll-panel/scroll-panel';
 import { scrollBackStrip, scrollBackViewStrokes, scrollCompassWalk, scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
 import { blockLayout, MOULD_EXPORT_STEP, solveMould } from '../mould-panel/mould-panel';

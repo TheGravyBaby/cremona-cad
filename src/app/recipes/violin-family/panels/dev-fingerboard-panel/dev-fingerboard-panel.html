@@ -1,21 +1,6 @@
 @let ss = params.stringSetup!;
 
 <section class="ui-group">
-    <div class="ui-group-title">Feature</div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell field-cell--full">
-            <select [(ngModel)]="state.feature" (change)="stateEdited()">
-                @for (f of features; track f.id) {
-                <option [value]="f.id">{{ f.label }}</option>
-                }
-            </select>
-        </label>
-    </div>
-</section>
-
-@switch (state.feature) {
-@case ('fingerboard') {
-<section class="ui-group">
     <div class="ui-group-title">Fingerboard</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -83,6 +68,3 @@
         </label>
     </div>
 </section>
-
-}
-}

@@ -15,21 +15,10 @@ import { familyStandards, FamilyStandards } from '../../violin-family-seed';
 import { neckHalfWidthAt } from '../neck-panel/neck-panel';
 import { fingerboardInPlan, renderStringSetupViews, solveStringSetup, StringSetupHighlightKey } from '../string-setup-panel/string-setup-panel';
 
-// Features being tried out, offered on localhost only and carried without promise of support. Each
-// entry in the dropdown bundles one concept's controls, its sections together. The fingerboard's
-// draws over the string setup. The scoop and the double radius are
-// the board's own, kept on p.stringSetup and solved there; the panel only gives them fields. The
-// position marks are kept off the file: their settings live in the tab's working state, and their
-// solve and renders live here.
-//
-// Adding a feature: a row in DEV_FEATURES, an @case with its sections in the template, and what it
-// draws in draw()
-
-export type DevFeatureId = 'fingerboard';
-
-export const DEV_FEATURES: readonly { id: DevFeatureId; label: string }[] = [
-  { id: 'fingerboard', label: 'Fingerboard' },
-];
+// The fingerboard, tried out on localhost only and carried without promise of support. It draws over
+// the string setup. The scoop and the double radius are the board's own, kept on p.stringSetup and
+// solved there; the panel only gives them fields. The position marks are kept off the file: their
+// settings live in the tab's working state, and their solve and renders live here.
 
 // inlaid position marks on the board's face: dots at chosen equal-tempered semitones above the open
 // string. Every string shares the nut and the bridge, so an interval sits at one station across the
@@ -59,12 +48,7 @@ export interface PositionMarksSolve {
   failures: PositionMarksFailure[];
 }
 
-interface DevFeaturesState {
-  feature: DevFeatureId;
-  marks: PositionMarksSettings | null;
-}
-
-const STATE_KEY = 'violinFamilyDevFeatures';
+const STATE_KEY = 'violinFamilyDevFingerboard';
 
 // a dot's size and its offset toward the bass on the bigger instruments, where the player looks
 // down the other side of the board
@@ -79,36 +63,32 @@ export function defaultPositionMarks(p: ViolinFamilyParams): PositionMarksSettin
   return { semitones: [5, 7, 12], ...MARK_DEFAULTS[familyStandards(p.body.height).family] };
 }
 
-type DevFeaturesHighlightKey = StringSetupHighlightKey | 'marks';
+type DevFingerboardHighlightKey = StringSetupHighlightKey | 'marks';
 
 @Component({
-  selector: 'app-vf-dev-features-panel',
+  selector: 'app-vf-dev-fingerboard-panel',
   imports: [FormsModule, NumberStepperDirective],
-  templateUrl: './dev-features-panel.html',
+  templateUrl: './dev-fingerboard-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class DevFeaturesPanel implements ViolinFamilyPanel, OnInit {
+export class DevFingerboardPanel implements ViolinFamilyPanel, OnInit {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFingerboard', 'showFretMarks', 'showScoopGuide'];
   protected readonly pal = ThemeService.getPalette('varnish');
-  protected readonly features = DEV_FEATURES;
 
   @Input({ required: true }) params!: ViolinFamilyParams;
   @Input({ required: true }) flags!: ViolinFamilyViewFlags;
   @Output() drawn = new EventEmitter<RenderLayer[]>();
   @Output() edit = new EventEmitter<void>();
 
-  state: DevFeaturesState = readState();
+  marks!: PositionMarksSettings;
   s!: StringSetupSolve;
-  m: PositionMarksSolve | null = null;
-  highlighted: { key: DevFeaturesHighlightKey; color: string } | null = null;
+  m!: PositionMarksSolve;
+  highlighted: { key: DevFingerboardHighlightKey; color: string } | null = null;
   // the semitones as typed, so a half-typed list isn't reformatted under the cursor
   semitonesText = '';
 
-  get marks(): PositionMarksSettings {
-    return this.state.marks ??= defaultPositionMarks(this.params);
-  }
-
   ngOnInit(): void {
+    this.marks = readMarks() ?? defaultPositionMarks(this.params);
     this.semitonesText = this.marks.semitones.join(', ');
     this.draw();
   }
@@ -121,7 +101,7 @@ export class DevFeaturesPanel implements ViolinFamilyPanel, OnInit {
 
   // the panel's own settings, kept for the tab alone
   stateEdited(): void {
-    writeWorkingState(STATE_KEY, JSON.stringify(this.state));
+    writeWorkingState(STATE_KEY, JSON.stringify(this.marks));
     this.draw();
   }
 
@@ -132,10 +112,10 @@ export class DevFeaturesPanel implements ViolinFamilyPanel, OnInit {
   }
 
   report(): void {
-    reportFailures([...this.s.failures, ...(this.m?.failures ?? [])], 'Dev Features');
+    reportFailures([...this.s.failures, ...this.m.failures], 'Dev Fingerboard');
   }
 
-  focus(key: DevFeaturesHighlightKey, color: string): void {
+  focus(key: DevFingerboardHighlightKey, color: string): void {
     this.highlighted = { key, color };
     this.draw();
   }
@@ -150,34 +130,27 @@ export class DevFeaturesPanel implements ViolinFamilyPanel, OnInit {
       let p = this.params;
       let s = this.s = solveStringSetup(p)!;
       let front: RenderLayer[] = [], side: RenderLayer[] = [];
-      this.m = null;
-      if (this.state.feature === 'fingerboard') {
-        let m = this.m = solvePositionMarks(p, s, this.marks);
-        let halo = this.highlighted?.key === 'marks' ? this.highlighted.color : null;
-        if (this.flags.showFingerboard) front.push(renderPositionMarks(p, s, m, this.pal, halo));
-        if (this.flags.showFretMarks) side.push(renderFretTicks(s, this.marks, this.pal));
-        side.push(renderSolveFailures(m.failures, this.pal.alert));
-      }
+      let m = this.m = solvePositionMarks(p, s, this.marks);
+      let halo = this.highlighted?.key === 'marks' ? this.highlighted.color : null;
+      if (this.flags.showFingerboard) front.push(renderPositionMarks(p, s, m, this.pal, halo));
+      if (this.flags.showFretMarks) side.push(renderFretTicks(s, this.marks, this.pal));
+      side.push(renderSolveFailures(m.failures, this.pal.alert));
       let highlighted = this.highlighted?.key === 'marks' ? null : this.highlighted as { key: StringSetupHighlightKey; color: string } | null;
       this.drawn.emit(renderStringSetupViews(p, s, this.pal, {
         fingerboard: this.flags.showFingerboard,
-        scoopGuide: this.state.feature === 'fingerboard' && this.flags.showScoopGuide,
+        scoopGuide: this.flags.showScoopGuide,
         highlighted, front, side,
       }));
     });
   }
 }
 
-function readState(): DevFeaturesState {
-  let fallback: DevFeaturesState = { feature: 'fingerboard', marks: null };
+function readMarks(): PositionMarksSettings | null {
   try {
-    let parsed = JSON.parse(readWorkingState(STATE_KEY) ?? '{}');
-    return {
-      feature: DEV_FEATURES.some(f => f.id === parsed.feature) ? parsed.feature : fallback.feature,
-      marks: parsed.marks && Array.isArray(parsed.marks.semitones) ? parsed.marks : null,
-    };
+    let parsed = JSON.parse(readWorkingState(STATE_KEY) ?? 'null');
+    return parsed && Array.isArray(parsed.semitones) ? parsed : null;
   } catch {
-    return fallback;
+    return null;
   }
 }
 

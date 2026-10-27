@@ -167,6 +167,8 @@ export interface FamilyStandards {
   neck: Omit<NeckParams, 'length'>;
   strings: StringSetupParams;
   bridge: BridgeBlank;
+  // the linings' thickness as glued, in from the ribs
+  lining: number;
   // the corner blocks' pad, height and width, and the neck and end blocks' height
   blocks: { pad: number; height: number; width: number; end: number };
 }
@@ -178,6 +180,7 @@ export const FAMILY_STANDARDS: readonly FamilyStandards[] = [
     neck: { angle: 7.5, upperThickness: 13, lowerThickness: 15, topWidth: 24, rootWidth: 33, heelRadius: 10, mortiseDepth: 6.5, overstand: 6.5, nutHeight: 6, nutWidth: 24 },
     strings: { bodyStop: 195, bridgeHeight: 33, nutThickness: 7.5, fingerboardLength: 270, fingerboardThickness: 5, fingerboardNutRadius: 41, fingerboardEndRadius: 43, scoopAt: 135, scoopBass: 0.75, scoopTreble: 0.5 },
     bridge: { footWidth: 43, footThickness: 5, topThickness: 2.3 },
+    lining: 2,
     blocks: { pad: 2.5, height: 20, width: 16, end: 20 },
   },
   {
@@ -186,6 +189,7 @@ export const FAMILY_STANDARDS: readonly FamilyStandards[] = [
     neck: { angle: 7.5, upperThickness: 14, lowerThickness: 15, topWidth: 25, rootWidth: 36, heelRadius: 11, mortiseDepth: 7, overstand: 9, nutHeight: 6.5, nutWidth: 25 },
     strings: { bodyStop: 225, bridgeHeight: 38, nutThickness: 8, fingerboardLength: 305, fingerboardThickness: 5.5, fingerboardNutRadius: 37, fingerboardEndRadius: 39, scoopAt: 152.5, scoopBass: 1, scoopTreble: 0.75 },
     bridge: { footWidth: 50, footThickness: 5 * 50 / 43, topThickness: 2.3 * 50 / 43 },
+    lining: 2.5,
     blocks: { pad: 4, height: 30, width: 24, end: 25 },
   },
   {
@@ -194,6 +198,7 @@ export const FAMILY_STANDARDS: readonly FamilyStandards[] = [
     neck: { angle: 7.5, upperThickness: 17, lowerThickness: 19, topWidth: 31, rootWidth: 46, heelRadius: 20, mortiseDepth: 10, overstand: 19, nutHeight: 9, nutWidth: 31 },
     strings: { bodyStop: 400, bridgeHeight: 90, nutThickness: 11, fingerboardLength: 580, fingerboardThickness: 7.5, fingerboardNutRadius: 60, fingerboardEndRadius: 64, scoopAt: 290, scoopBass: 1.5, scoopTreble: 1 },
     bridge: { footWidth: 90, footThickness: 11, topThickness: 2.6 },
+    lining: 3.5,
     blocks: { pad: 5, height: 40, width: 32, end: 45 },
   },
   {
@@ -202,6 +207,7 @@ export const FAMILY_STANDARDS: readonly FamilyStandards[] = [
     neck: { angle: 7.5, upperThickness: 22, lowerThickness: 30, topWidth: 42, rootWidth: 60, heelRadius: 30, mortiseDepth: 15, overstand: 25, nutHeight: 10, nutWidth: 42 },
     strings: { bodyStop: 610, bridgeHeight: 165, nutThickness: 15, fingerboardLength: 850, fingerboardThickness: 10, fingerboardNutRadius: 92, fingerboardEndRadius: 98, scoopAt: 425, scoopBass: 2.5, scoopTreble: 1.5 },
     bridge: { footWidth: 150, footThickness: 21, topThickness: 4.5 },
+    lining: 5,
     blocks: { pad: 8, height: 50, width: 40, end: 70 },
   },
 ];

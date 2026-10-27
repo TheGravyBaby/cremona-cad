@@ -20,7 +20,7 @@ import { MouldPanel } from '../mould-panel/mould-panel';
 import { solveScroll } from '../scroll-panel/scroll-panel';
 import { scrollBackStrip, scrollCompassWalk } from '../scroll-widths-panel/scroll-widths-panel';
 import { solveCrossArching } from '../cross-arching-panel/cross-arching-panel';
-import { solvePositionMarks } from '../dev-features-panel/dev-features-panel';
+import { solvePositionMarks } from '../dev-fingerboard-panel/dev-fingerboard-panel';
 import { ExportPanel, ExportType, exportReady, exportSheet, fingerboardStl, plateStl } from './export-panel';
 
 // The last panel, and the one whose output leaves the app: a wrong path on a sheet is cut into wood.

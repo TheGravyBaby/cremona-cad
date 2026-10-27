@@ -1,0 +1,15 @@
+<section class="ui-group">
+    <div class="ui-group-title">Glue Platform</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Lining <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="settings.lining" (input)="stateEdited()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Edge Inset <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(1)"
+                [(ngModel)]="settings.edgeInset" (input)="stateEdited()" />
+        </label>
+    </div>
+</section>

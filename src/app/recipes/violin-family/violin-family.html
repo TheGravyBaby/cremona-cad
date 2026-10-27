@@ -241,13 +241,22 @@
         </app-vf-export-panel>
         }
 
-        @if (openPanel === 'devFeatures') {
-        <app-vf-dev-features-panel #panelRef
+        @if (openPanel === 'devFingerboard') {
+        <app-vf-dev-fingerboard-panel #panelRef
             [params]="d.params"
             [flags]="viewFlags"
             (drawn)="draftChange.emit($event)"
             (edit)="onPanelEdit()">
-        </app-vf-dev-features-panel>
+        </app-vf-dev-fingerboard-panel>
+        }
+
+        @if (openPanel === 'devGraduation') {
+        <app-vf-dev-graduation-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-dev-graduation-panel>
         }
 
         @if (openPanel === 'devExport') {
