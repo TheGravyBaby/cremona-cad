@@ -27,10 +27,12 @@ import { MouldPanel, solveMould } from '../mould-panel/mould-panel';
 // graduation starts at. Its settings are kept off the file until the stage is official: they live
 // in the tab's working state, and their shapes and solve live here. Panel and render, then the solve.
 
-// where the plates can be graduated: every number is read in from the rib line (the ribs' inner
-// face). `lining` is the strip glued inside the ribs, so the glue platform ends that far in;
-// `edgeInset` is where the gouge may start, and `blockMargin` how far short of the neck and end
-// blocks' inner faces it stops. Held at 0 for now
+// where the plates can be graduated. `lining` and `edgeInset` are read in from the rib line (the
+// ribs' inner face): the lining is the strip glued inside the ribs, so the glue platform ends that
+// far in, and the edge inset is where the gouge may start. `blockMargin` is read from the neck and
+// end blocks' inner faces as the mould sizes them: positive, the gouge stops that far short of a
+// block; negative, the block is trimmed back by that much, as blocks are once off the mould, and
+// the gouge runs up to the trimmed face
 export interface GraduationSettings {
   lining: number;
   edgeInset: number;
@@ -142,6 +144,15 @@ export const renderGraduation = (p: ViolinFamilyParams, s: GraduationSolve, pal:
 // how much of a block's height its inner corners are rounded by
 const BLOCK_FILLET = 0.3;
 
+// a block with `trim` taken off its inner face, the face moving toward the ribs; null once nothing
+// of the block is left
+function trimBlock(rect: Rectangle, inward: 1 | -1, trim: number): Rectangle | null {
+  let near = inward > 0 ? Math.max(rect.Pt1.y, rect.Pt2.y) : Math.min(rect.Pt1.y, rect.Pt2.y);
+  let face = inward > 0 ? Math.min(rect.Pt1.y, rect.Pt2.y) + trim : Math.max(rect.Pt1.y, rect.Pt2.y) - trim;
+  if (inward * (near - face) <= 0) return null;
+  return new Rectangle(new Pt(rect.Pt1.x, near), new Pt(rect.Pt2.x, face));
+}
+
 // a neck or end block as the mould sizes it, trimmed to the rib line, its inner face flat and the
 // face's two corners rounded. `inward` is +1 for a block whose face looks down the body (the neck
 // block), -1 for one looking up (the end block). The loop reaches past the rib line and is cut to
@@ -195,11 +206,16 @@ function solveGraduationUncached(p: ViolinFamilyParams, gr: GraduationSettings):
   let faces = { neck: Infinity, end: -Infinity };
   solveSection(s.failures, 'Blocks', ['blockMargin'], () => {
     if (!blocks) return fail('Graduation: the neck and end blocks have to solve first.', ['blockMargin']);
-    if (!(Number.isFinite(gr.blockMargin) && gr.blockMargin >= 0)) return fail('Graduation: the block margin needs a value of 0 or more.', ['blockMargin']);
-    faces.neck = Math.min(blocks.neck.Pt1.y, blocks.neck.Pt2.y) - gr.blockMargin;
-    faces.end = Math.max(blocks.end.Pt1.y, blocks.end.Pt2.y) + gr.blockMargin;
+    if (!Number.isFinite(gr.blockMargin)) return fail('Graduation: the block margin needs a value.', ['blockMargin']);
+    let trim = Math.max(0, -gr.blockMargin);
+    let neck = trimBlock(blocks.neck, 1, trim);
+    let end = trimBlock(blocks.end, -1, trim);
+    if (!neck || !end) return fail('Graduation: the block margin trims a block away to nothing.', ['blockMargin']);
+    let hold = Math.max(0, gr.blockMargin);
+    faces.neck = Math.min(neck.Pt1.y, neck.Pt2.y) - hold;
+    faces.end = Math.max(end.Pt1.y, end.Pt2.y) + hold;
     if (!(faces.end < faces.neck)) return fail('Graduation: the blocks meet in the middle; nothing is left to graduate.', ['blockMargin']);
-    s.blocks = { neck: blockShape(ribLine, blocks.neck, 1), end: blockShape(ribLine, blocks.end, -1) };
+    s.blocks = { neck: blockShape(ribLine, neck, 1), end: blockShape(ribLine, end, -1) };
     return null;
   });
 
