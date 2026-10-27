@@ -133,7 +133,7 @@ describe('the graduation solve', () => {
     }
   });
 
-  it('holds the boundary off the blocks by the block margin', () => {
+  it('holds the boundary off the blocks by a positive block margin, leaving the blocks alone', () => {
     const p = seeded();
     const tight = solved(p).solve;
     const held = solved(p, s => s.blockMargin = 5).solve;
@@ -142,6 +142,33 @@ describe('the graduation solve', () => {
     expect(top(tight.boundary!) - top(held.boundary!)).toBeCloseTo(5, 3);
     expect(bottom(held.boundary!) - bottom(tight.boundary!)).toBeCloseTo(5, 3);
     expect(held.blocks!.neck).toBe(tight.blocks!.neck);
+    expect(held.blocks!.end).toBe(tight.blocks!.end);
+  });
+
+  it('trims the blocks back by a negative block margin and runs the boundary up to the trimmed faces', () => {
+    const p = seeded();
+    const whole = solved(p).solve;
+    const trimmed = solved(p, s => s.blockMargin = -5).solve;
+    const top = (d: string) => Math.max(...points(d).map(pt => pt.y));
+    const bottom = (d: string) => Math.min(...points(d).map(pt => pt.y));
+    // each block's face moves toward the ribs, its outer face staying put
+    expect(bottom(trimmed.blocks!.neck) - bottom(whole.blocks!.neck)).toBeCloseTo(5, 3);
+    expect(top(trimmed.blocks!.neck)).toBeCloseTo(top(whole.blocks!.neck), 3);
+    expect(top(whole.blocks!.end) - top(trimmed.blocks!.end)).toBeCloseTo(5, 3);
+    expect(bottom(trimmed.blocks!.end)).toBeCloseTo(bottom(whole.blocks!.end), 3);
+    // and the boundary meets the new faces
+    expect(top(trimmed.boundary!)).toBeCloseTo(bottom(trimmed.blocks!.neck), 3);
+    expect(bottom(trimmed.boundary!)).toBeCloseTo(top(trimmed.blocks!.end), 3);
+    expect(trimmed.failures).toEqual([]);
+  });
+
+  it('refuses a margin that trims a block away', () => {
+    const s = solved(seeded(), g => g.blockMargin = -1000).solve;
+    expect(s.blocks).toBeNull();
+    expect(s.failures.map(f => f.unsolved)).toEqual([['blockMargin']]);
+    // the loops still solve, uncut
+    expect(s.lining).not.toBeNull();
+    expect(s.boundary).not.toBeNull();
   });
 
   it('refuses an edge inset short of the linings', () => {

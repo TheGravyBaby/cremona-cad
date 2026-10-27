@@ -11,5 +11,10 @@
             <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(1)"
                 [(ngModel)]="settings.edgeInset" (input)="stateEdited()" />
         </label>
+        <label class="field-cell">
+            <span class="field-title">Block Margin <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" [style.border-color]="pal.ink(2)"
+                [(ngModel)]="settings.blockMargin" (input)="stateEdited()" />
+        </label>
     </div>
 </section>

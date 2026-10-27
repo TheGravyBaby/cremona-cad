@@ -383,7 +383,7 @@ export function channelLoop(p: ViolinFamilyParams, rib: RibArcs, offset: number,
 // one edge of the channel, `offset` in from the plate edge, the C bout's run at `centerOffset`. The
 // fluting edge it has to stay inside is taken at the outer of the two, or C0's own end would sit
 // outside it
-function channelPath(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number): { path: string | null; joined: boolean } {
+export function channelPath(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number): { path: string | null; joined: boolean } {
   let inset = p.body.overhang + p.body.rib;
   let edge = outerEdgePath(p, rib, Math.min(offset, centerOffset));
   return channelLoop(p, rib, inset - offset, inset - centerOffset, edge ? samplePathToPolyline(edge, 0.5) : null);

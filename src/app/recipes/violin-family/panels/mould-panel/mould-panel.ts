@@ -19,6 +19,7 @@ import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
+import { channelPath } from '../fluting-panel/fluting-panel';
 import { purflingPath, ribArcs } from '../outer-contour-panel/outer-contour-panel';
 
 // The inside mould the ribs are bent round: the rib outline with the blocks cut out of it, and the
@@ -31,7 +32,7 @@ import { purflingPath, ribArcs } from '../outer-contour-panel/outer-contour-pane
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
 export class MouldPanel implements ViolinFamilyPanel, OnInit {
-  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showBlocks', 'showRibOutline'];
+  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showBlocks', 'showRibOutline', 'showRibJoin'];
   protected readonly pal = ThemeService.getPalette('classicCremona');
   protected readonly help = showFieldHelp;
 
@@ -79,9 +80,14 @@ export class MouldPanel implements ViolinFamilyPanel, OnInit {
 
   draw(): void {
     safeRun(() => {
-      let s = this.s = solveMould(this.params)!;
+      let p = this.params;
+      let s = this.s = solveMould(p)!;
+      // the fluting channel's corner joins struck on the rib line: the wood the blocks have to fill
+      let rib = this.flags.showRibJoin ? ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!) : null;
+      let join = rib ? channelPath(p, rib, p.body.overhang + p.body.rib, p.body.overhang + p.body.rib).path : null;
       this.drawn.emit([
         renderMould(s, this.pal, this.flags),
+        ...(join ? [renderPath(join, this.pal.ink(2), STROKE_WEIGHT.guide)] : []),
         renderSolveFailures(s.failures, this.pal.alert),
       ]);
     });

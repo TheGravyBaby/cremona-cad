@@ -281,6 +281,8 @@ export const ICONS = {
     <rect x="5" y="10" width="14" height="8" ${GUIDE} />`,
   'fluting-edge': `<path d="M4 19a15 15 0 0 1 15-15" />
     <path d="M4 12a8 8 0 0 1 8-8" opacity="0.45" />`,
+  'rib-join': `<path d="M4 20V9a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v11" opacity="0.45" />
+    <path d="M4 20V12q0-2 2-2t2-2 2-2h4q2 0 2 2t2 2 2 2v8" />`,
   'volute-construction': `<circle cx="12" cy="12" r="9" />
     <rect x="10.5" y="7" width="3" height="10" stroke-width="1.5" />
     <line x1="10.5" y1="12" x2="13.5" y2="12" stroke-width="1.5" />`,

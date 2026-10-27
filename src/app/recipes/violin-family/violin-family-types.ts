@@ -785,6 +785,8 @@ export interface ViolinFamilyViewFlags {
   showBeardGuides: boolean;
   // the top plate's inner channel edge, faint, where the f-holes are placed against it
   showFlutingEdge: boolean;
+  // the corner-bypassing loop at the rib line itself, the wood a block has to fill
+  showRibJoin: boolean;
   // the figure a volute style finds its centres on
   showVoluteConstruction: boolean;
   showFingerboard: boolean;
@@ -807,6 +809,7 @@ export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
   showFholePlacementGuides: false,
   showBeardGuides: false,
   showFlutingEdge: false,
+  showRibJoin: false,
   showVoluteConstruction: true,
   showFingerboard: true,
   showFretMarks: false,

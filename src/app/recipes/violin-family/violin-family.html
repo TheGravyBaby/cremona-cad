@@ -374,5 +374,12 @@
         <svg icon="offset" width="18" height="18"></svg>
     </button>
     }
+
+    @if (renderToggleButtons.includes('showRibJoin')) {
+    <button type="button" class="vt-btn" [class.active]="viewFlags.showRibJoin"
+        (click)="onRenderToggle('showRibJoin')" title="Show Rib Line Join" aria-label="Show Rib Line Join">
+        <svg icon="rib-join" width="18" height="18"></svg>
+    </button>
+    }
 </div>
 }
