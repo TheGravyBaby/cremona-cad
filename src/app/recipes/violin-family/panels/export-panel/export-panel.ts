@@ -325,12 +325,11 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
     case 'scrollFrontView':
     case 'scrollBackView': {
       // the scroll seen from in front or behind, as the widths panel draws it: the head and the nut,
-      // the neck's sides from the nut up to where they meet it. The back is drawn alone, without
-      // the pegbox's front the panel shows standing out past it
+      // the neck's sides from the nut up to where they meet it
       let scroll = solvedScroll(p);
       if (!scroll?.widths) return null;
       let place = (x: number, y: number) => new Pt(x, y);
-      let strokes = type === 'scrollFrontView' ? scrollFrontViewStrokes(p, scroll.s, place, 0) : scrollBackViewStrokes(p, scroll.s, place, 0, { front: false });
+      let strokes = type === 'scrollFrontView' ? scrollFrontViewStrokes(p, scroll.s, place, 0) : scrollBackViewStrokes(p, scroll.s, place, 0);
       let d = combinePathStrings(Object.values(strokes).flat().map(s => 'line' in s ? pathFromLine(...s.line) : 'polygon' in s ? pathFromPolygon(s.polygon) : s.d));
       return sheet([black(translatePath(d, 0, -pathsBounds([d]).minY))]);
     }

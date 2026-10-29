@@ -164,7 +164,7 @@ export interface FamilyStandards {
   ribHeightUpper: number;
   edgeThickness: number;
   neckStop: number;
-  neck: Omit<NeckParams, 'length'>;
+  neck: Omit<NeckParams, 'length' | 'heelAngle'>;
   strings: StringSetupParams;
   bridge: BridgeBlank;
   // the linings' thickness as glued, in from the ribs

@@ -40,6 +40,7 @@ const solved = (p: ViolinFamilyParams): NeckSolve => {
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
 const normalOf = (p: ViolinFamilyParams) => vectorFromSlope(p.neck!.angle * TURN.degree);
 const directionOf = (p: ViolinFamilyParams) => vectorFromSlope(p.neck!.angle * TURN.degree + TURN.quarter);
+const footOf = (p: ViolinFamilyParams) => vectorFromSlope(p.neck!.heelAngle * TURN.degree);
 // how far under the fingerboard plane a point sits
 const under = (p: ViolinFamilyParams, s: NeckSolve, pt: Pt) => {
   const normal = normalOf(p);
@@ -155,26 +156,30 @@ describe('the heel', () => {
     expectTangentToBack(s);
   });
 
-  it('fillets onto a flat foot square to the neck when the radius is tight', () => {
-    const p = seeded();
-    p.neck!.heelRadius = 8;
-    const s = solved(p);
-    const [end, tip] = s.heelFace!;
-    expect(tip).toEqual(s.tip);
-    expect(dist(end, pointOnCircle(s.heel!, s.heel!.end))).toBeLessThan(1e-9);
-    expect(Math.atan2(end.y - tip.y, end.x - tip.x)).toBeCloseTo(p.neck!.angle * TURN.degree, 9);
-    const normal = normalOf(p);
-    expect(Math.abs((end.x - s.heel!.x) * normal.a + (end.y - s.heel!.y) * normal.b)).toBeLessThan(1e-9);
-    expectTangentToBack(s);
+  it('fillets onto a flat foot off the tip at the heel angle when the radius is tight', () => {
+    for (const tilt of [-10, 0, 15]) {
+      const p = seeded();
+      p.neck!.heelRadius = 8;
+      p.neck!.heelAngle = p.neck!.angle + tilt;
+      const s = solved(p);
+      const [end, tip] = s.heelFace!;
+      expect(tip).toEqual(s.tip);
+      expect(dist(end, pointOnCircle(s.heel!, s.heel!.end))).toBeLessThan(1e-9);
+      expect(Math.atan2(end.y - tip.y, end.x - tip.x)).toBeCloseTo(p.neck!.heelAngle * TURN.degree, 9);
+      const foot = footOf(p);
+      expect(Math.abs((end.x - s.heel!.x) * foot.a + (end.y - s.heel!.y) * foot.b)).toBeLessThan(1e-9);
+      expectTangentToBack(s);
+    }
   });
 
   it('never pockets: no point of the cove dips below the foot line', () => {
-    for (const radius of [3, 8, 15, 20, 25, 40, 80]) {
+    for (const radius of [3, 8, 15, 20, 25, 40, 80]) for (const tilt of [-10, 0, 15]) {
       const p = seeded();
       p.neck!.heelRadius = radius;
+      p.neck!.heelAngle = p.neck!.angle + tilt;
       const s = solved(p);
       const h = s.heel!;
-      const direction = directionOf(p);
+      const direction = vectorFromSlope(p.neck!.heelAngle * TURN.degree + TURN.quarter);
       let a1 = h.end;
       while (a1 - h.start > Math.PI) a1 -= 2 * Math.PI;
       while (a1 - h.start < -Math.PI) a1 += 2 * Math.PI;
@@ -182,9 +187,45 @@ describe('the heel', () => {
         const a = h.start + (a1 - h.start) * i / 64;
         const x = h.x + h.r * Math.cos(a) - s.tip!.x;
         const y = h.y + h.r * Math.sin(a) - s.tip!.y;
-        expect(x * direction.a + y * direction.b, `r=${radius}`).toBeGreaterThanOrEqual(-1e-9);
+        expect(x * direction.a + y * direction.b, `r=${radius} tilt=${tilt}`).toBeGreaterThanOrEqual(-1e-9);
       }
     }
+  });
+
+  it('rounds the corner where the foot off the tip at the heel angle meets the back', () => {
+    for (const tilt of [-10, 0, 15]) {
+      const p = seeded();
+      p.neck!.heelAngle = p.neck!.angle + tilt;
+      const s = solved(p);
+      const c = s.heelCorner!;
+      expect(Math.atan2(c.y - s.tip!.y, c.x - s.tip!.x)).toBeCloseTo(p.neck!.heelAngle * TURN.degree, 9);
+      expect(shortestDistanceFromPtToLine(c, lineFromTwoPoints(s.backNut!, s.backRoot!))).toBeLessThan(1e-9);
+    }
+  });
+
+  it('cuts the foot square to the neck, on the lower thickness, when the heel angle is the projection', () => {
+    const p = seeded();
+    p.neck!.heelAngle = p.neck!.angle;
+    const s = solved(p);
+    expect(dist(s.heelCorner!, s.lowerThickness![1])).toBeLessThan(1e-9);
+  });
+
+  it('leaves the neck wood alone when the heel angle turns', () => {
+    const p = seeded();
+    const before = solved(p);
+    p.neck!.heelAngle = p.neck!.angle + 15;
+    const s = solved(p);
+    for (const i of [0, 1] as const) expect(dist(s.lowerThickness![i], before.lowerThickness![i])).toBeLessThan(1e-9);
+    expect(dist(s.backRoot!, before.backRoot!)).toBeLessThan(1e-9);
+  });
+
+  it('reports a foot turned away from the back, and draws the back straight', () => {
+    const p = seeded();
+    p.neck!.heelAngle = p.neck!.angle - 91;
+    const s = solveNeck(p)!;
+    expect(s.heel).toBeNull();
+    expect(s.backRoot).not.toBeNull();
+    expect(s.failures.map(f => f.unsolved)).toEqual([['heel']]);
   });
 
   it('reports a back run out past the button tip, where no cove reaches, and draws the back straight', () => {
@@ -207,7 +248,7 @@ describe('the neck wood', () => {
     expect(under(p, s, front)).toBeCloseTo(0, 9);
   });
 
-  it('measures the lower thickness on the line the foot is cut along, through the button tip', () => {
+  it('measures the lower thickness square to the fingerboard plane, through the button tip', () => {
     const p = seeded();
     const s = solved(p);
     const along = directionOf(p);

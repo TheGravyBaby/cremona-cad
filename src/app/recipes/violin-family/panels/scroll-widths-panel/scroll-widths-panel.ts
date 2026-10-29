@@ -104,11 +104,13 @@ export const renderScrollWidths = (
 ): RenderLayer => {
   let w = p.scroll!.widths;
   let stations = scrollWidthStations(p, s);
-  let gap = 20;
+  // the views hold still while the widths are edited, a fixed reference against a photograph, until
+  // the widest would reach the side profile
   let widest = Math.max(w.eye, w.hip, w.foot, w.backHip, w.poll, p.neck!.nutWidth) / 2;
+  let clearance = Math.max(0.15 * p.body.height, 20 + widest);
   let extent = scrollExtent(s);
-  let back = -extent.width - gap - widest;
-  let front = nutThickness(p) + gap + widest;
+  let back = -extent.width - clearance;
+  let front = nutThickness(p) + clearance;
   let stub = scrollNeckStub(p);
   let backView = scrollBackViewStrokes(p, s, (x, y) => new Pt(back + x, y), -stub);
   let frontView = scrollFrontViewStrokes(p, s, (x, y) => new Pt(front + x, y), -stub);
@@ -221,9 +223,8 @@ function seenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[][] {
   return runs.filter(run => run.length > 1);
 }
 
-// the pegbox's front, sawn straight through the blank: from where it meets the spiral down to the
-// hips, in to the nut's edge at its top, square to the foot of the nut, and closing level there.
-// `walls` is the run from the hips down, `cheeks` the whole of it
+// the pegbox's front, sawn straight through the blank: from the hips in to the nut's edge at its
+// top, square to the foot of the nut, and closing level there
 function pegboxFrontOutline(p: ViolinFamilyParams, s: ScrollSolve) {
   let { nutHeight } = p.neck!;
   let hipY = pegboxHipHeight(p);
@@ -234,10 +235,8 @@ function pegboxFrontOutline(p: ViolinFamilyParams, s: ScrollSolve) {
     ...(nutHeight < hipY - 1e-6 ? [new Pt(pegboxWidth(p, s, nutHeight) / 2, nutHeight)] : []),
     ...(foot < hipY - 1e-6 ? [new Pt(pegboxWidth(p, s, foot) / 2, foot)] : []),
   ];
-  let top = pointOnCircle(s.F1!, s.F1!.start);
-  let cheeks = [...(top.y > hipY + 1e-6 ? [new Pt(pegboxWidth(p, s, top.y) / 2, top.y)] : []), ...walls];
   let bottom = [new Pt(pegboxWidth(p, s, foot) / 2, foot), new Pt(0, foot)];
-  return { foot, walls, cheeks, bottom };
+  return { walls, bottom };
 }
 
 export type ScrollViewStroke = { weight: number } & StrokeShape;
@@ -258,8 +257,6 @@ function viewStrokes(place: (x: number, y: number) => Pt) {
     if (pts.length < 2) return;
     for (let side of [1, -1]) stroke(pathFromPolyline(pts.map(pt => at(pt, side))), part, STROKE_WEIGHT.trace, cover);
   };
-  let closed = (pts: { x: number; y: number }[]) =>
-    pathFromPolygon([...pts.map(pt => at(pt, 1)), ...pts.map(pt => at(pt, -1)).reverse()]);
   let line = (a: Pt, b: Pt, part: ScrollViewPart) => parts[part].push({ line: [a, b], weight: STROKE_WEIGHT.trace });
   // a turn's face, seen edge on where the path turns over: level from the turn's own half-width in
   // to whatever stands nearer the viewer at that height, or right across where nothing does
@@ -267,14 +264,11 @@ function viewStrokes(place: (x: number, y: number) => Pt) {
     if (to === null) line(place(-from, y), place(from, y), part);
     else if (to < from) for (let side of [1, -1]) line(place(side * from, y), place(side * to, y), part);
   };
-  return { parts, at, stroke, contour, closed, line, face };
+  return { parts, at, stroke, contour, line, face };
 }
 
-// the scroll from behind, the neck's sides running on up from `neckFrom` until they meet it. The
-// pegbox's sawn front shows wherever it stands out past the back; `front: false` leaves it off,
-// for a sheet that is the back alone
-export function scrollBackViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, place: (x: number, y: number) => Pt, neckFrom: number, opts: { front?: boolean } = {}): ScrollView {
-  let front = opts.front ?? true;
+// the scroll from behind, the neck's sides running on up from `neckFrom` until they meet it
+export function scrollBackViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, place: (x: number, y: number) => Pt, neckFrom: number): ScrollView {
   let v = p.scroll!;
   let eye = s.eye!;
   let eyeHalf = v.widths.eye / 2;
@@ -287,19 +281,16 @@ export function scrollBackViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, pla
   let turn2Top = on.turn2Back.at(-1)!;
   let turn2Bottom = on.turn2Front.at(-1)!;
   let turn3Top = on.turn3Back.at(-1)!;
-  let { foot, cheeks, bottom } = pegboxFrontOutline(p, s);
   let seen = (pts: Pt3D[]) => seenRuns(on, pts, true);
-  let { parts, stroke, contour, closed, line, face } = viewStrokes(place);
+  let { parts, stroke, contour, line, face } = viewStrokes(place);
 
   // the back starts in the duck tail's round, the neck's back carried on round, and its own edges
-  // run up from the round's top. The pegbox's sawn front stands nearer the eye than nothing, so its
-  // cheeks show wherever they stand out past the back, in the front's colour
+  // run up from the round's top
   let r = duckTailRadius(p);
   let round = Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: 0, y: start.y, r }, TURN.half + TURN.half * i / 32)).map(pt => place(pt.x, pt.y));
-  let backFace = [...(r > 0 ? [pathFromPolygon(round)] : []), closed(on.back)];
 
-  // the neck's sides run on up until they meet the scroll, in the round or the front's cheeks
-  let overNeck = [...(r > 0 ? [pathFromPolygon(round)] : []), ...(front ? [closed(cheeks)] : [])];
+  // the neck's sides run on up until they meet the scroll's round
+  let overNeck = r > 0 ? [pathFromPolygon(round)] : null;
   for (let side of [1, -1]) {
     stroke(pathFromLine(place(side * scrollNeckHalfWidth(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidth(p, start.y), start.y)), 'neck', STROKE_WEIGHT.section, overNeck);
   }
@@ -313,12 +304,6 @@ export function scrollBackViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, pla
   }
 
   if (r > 0) parts.back.push({ d: pathFromPolyline(round), weight: STROKE_WEIGHT.trace });
-  // the front's bottom shows only where it overhangs the neck; over the neck it's smoothed in
-  let neck = closed([{ x: scrollNeckHalfWidth(p, neckFrom), y: neckFrom }, { x: scrollNeckHalfWidth(p, start.y), y: start.y }]);
-  if (front) {
-    contour(cheeks, 'front', backFace);
-    contour(bottom, 'front', [...backFace, neck]);
-  }
 
   // each face runs in to the widest stretch standing nearer at its height
   face(crown.y, crown.x, null, 'backLight');
@@ -328,15 +313,13 @@ export function scrollBackViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, pla
   for (let side of [1, -1]) line(place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'turns');
 
   // a foot wider than the round meets it along level shoulders, the back's own. A neck wider than
-  // the round meets it along a shoulder too, out from the round or from whichever of the foot and
-  // the cheeks stands out past it; a narrower one runs in under it
+  // the round meets it along a shoulder too, out from whichever of the round and the foot stands
+  // out further; a narrower one runs in under it
   if (start.x > r + 1e-6) {
     for (let side of [1, -1]) line(place(side * r, start.y), place(side * start.x, start.y), 'back');
   }
-  let frontTop = pointOnCircle(s.F1!, s.F1!.start);
-  let cheekHalf = front && start.y >= foot - 1e-9 && start.y <= frontTop.y + 1e-9 ? pegboxWidth(p, s, start.y) / 2 : 0;
   let neckHalf = scrollNeckHalfWidth(p, start.y);
-  let cheek = Math.max(r, start.x, cheekHalf);
+  let cheek = Math.max(r, start.x);
   if (neckHalf > cheek + 1e-6) {
     for (let side of [1, -1]) line(place(side * cheek, start.y), place(side * neckHalf, start.y), 'backLight');
   }

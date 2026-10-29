@@ -226,8 +226,10 @@ export interface CrossArchPoint {
 // the neck set in the side elevation and its widths in plan. Length runs along the fingerboard
 // plane from the mortise floor to the nut's foot, which it places; the angle is the fingerboard
 // plane's tilt off the top plate's square, in degrees. The thicknesses are the wood alone, the upper
-// square to that plane at the nut, the lower through the button tip. The overstand is how far the
-// fingerboard plane stands off the plate's edge at the root. The nut's height and width shape the
+// square to that plane at the nut, the lower through the button tip. The heel angle is the foot's
+// heading off the button tip, in degrees counterclockwise from level; at the neck's angle the foot is
+// cut square to the neck. The overstand is how far the fingerboard plane stands off the plate's edge
+// at the root. The nut's height and width shape the
 // scroll; they are seeded here, with the neck they sit on
 export interface NeckParams {
   length: number;
@@ -237,6 +239,7 @@ export interface NeckParams {
   topWidth: number;
   rootWidth: number;
   heelRadius: number;
+  heelAngle: number;
   mortiseDepth: number;
   overstand: number;
   nutHeight: number;
@@ -686,7 +689,9 @@ export type NeckFailure = SolveFailure<NeckKey>;
 // the neck in the side elevation, in the body section's frame (x up off the back's inner face, y up
 // the body). `root` is where the fingerboard plane stands off the plate edge, `bottomFront` where it
 // crosses the mortise floor, `neckTop` the nut's foot; `backNut`/`backRoot` the back line's ends,
-// `lowerThickness` the line the heel's foot is cut along. The heel is null where it can't stand,
+// `lowerThickness` the lower thickness square to the fingerboard plane through the button tip,
+// `heelCorner` where the foot off the tip at the heel angle meets the back, the corner the heel
+// rounds. The heel is null where it can't stand,
 // and the back then runs straight to the root; `heelFace` is the flat on to the tip when the arc
 // stops short of it
 export interface NeckSolve {
@@ -699,6 +704,7 @@ export interface NeckSolve {
   plateAtMortise: Pt | null;
   lowerThickness: [Pt, Pt] | null;
   tip: Pt | null;
+  heelCorner: Pt | null;
   heel: Arc | null;
   heelFace: [Pt, Pt] | null;
   failures: NeckFailure[];
