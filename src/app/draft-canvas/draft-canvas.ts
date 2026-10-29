@@ -1208,7 +1208,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   };
 
   onKeyDown = (event: KeyboardEvent) => {
-    // Don't intercept shortcuts when the user is typing in an input field
+    // Don't intercept shortcuts when the user is typing in an input field, or a key the focused
+    // control has already taken (a sidebar panel stepping a value with the arrows)
+    if (event.defaultPrevented) return;
     const tag = (event.target as HTMLElement)?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 

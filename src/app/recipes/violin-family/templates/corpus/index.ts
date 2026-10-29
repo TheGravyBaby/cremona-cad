@@ -25,10 +25,10 @@ export const CORPUS_TEMPLATES: ViolinFamilyTemplate[] = [
   // cast because JSON imports infer structurally (a literal `recipeName` widens to string);
   // the shape is pinned by violin-family-templates.spec.ts instead
   amatiViolinBrookings2022560097 as unknown as ViolinFamilyTemplate,
-  stradivariViolinWard2022560100 as unknown as ViolinFamilyTemplate,
+  // stradivariViolinWard2022560100 as unknown as ViolinFamilyTemplate,
   stradivariViolinBetts2022560101 as unknown as ViolinFamilyTemplate,
   guarneriViolinKreisler2022560099 as unknown as ViolinFamilyTemplate,
-  guarneriViolinGoldbergBaronVitta2023870692 as unknown as ViolinFamilyTemplate,
+  // guarneriViolinGoldbergBaronVitta2023870692 as unknown as ViolinFamilyTemplate,
   stradivariViolaCassavetti2022560103 as unknown as ViolinFamilyTemplate,
   stradivariCelloCastelbarco2022560102 as unknown as ViolinFamilyTemplate,
 ];

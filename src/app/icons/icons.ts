@@ -301,6 +301,15 @@ export const ICONS = {
   'rib-outline': `<rect x="2" y="2" width="20" height="20" rx="4" />
     <rect x="6.5" y="6.5" width="11" height="11" rx="2.5" stroke-dasharray="3 2.5" />`,
   circles: '<circle cx="12" cy="7" r="5" /><circle cx="12" cy="17" r="6" />',
+  'graduation-points': `<circle cx="7" cy="7" r="2" ${DOT} />
+    <circle cx="17" cy="9" r="2" ${DOT} />
+    <circle cx="9" cy="17" r="2" ${DOT} />
+    <circle cx="16.5" cy="16.5" r="2" ${DOT} />`,
+  'point-reach': `<circle cx="12" cy="12" r="8" stroke-dasharray="3 2.5" />
+    <circle cx="12" cy="12" r="1.8" ${DOT} />`,
+  'edge-reach': `<rect x="2.5" y="2.5" width="19" height="19" rx="4" />
+    <rect x="6.5" y="6.5" width="11" height="11" rx="2.5" stroke-dasharray="3 2.5" />
+    <line x1="12" y1="2.5" x2="12" y2="6.5" stroke-width="1.1" />`,
 
   // the corner of a button that holds variants behind it
   'flyout-mark': {

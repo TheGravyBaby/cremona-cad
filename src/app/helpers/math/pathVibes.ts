@@ -1,6 +1,7 @@
 import { Pt, Arc } from '../../models/types';
 import { svgPathProperties } from 'svg-path-properties';
 import * as polygonClipping from 'polygon-clipping';
+import * as d3 from 'd3';
 import { dist, angleFromCenter, normalizeRadians, TURN, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY, cubicBezierPoint, signedPolygonArea, closestPointOnSegment, pointInPolygon } from './simpleGeometry';
 import { circleCircleIntersections } from './draftMath';
 import { solveCatenaryA, battenBeziers, ArchSplineControlPoint, archSplineKnots, makeArchSplineZOf, trochoidNorm } from './vibeMath';
@@ -1383,4 +1384,31 @@ export function erodePolygon(ring: Pt[], d: number, step = d / 4): Pt[] | null {
     if (area > bestArea) { bestArea = area; best = outer; }
   }
   return best ? best.map(([x, y]) => new Pt(x, y)) : null;
+}
+
+// the ground a scalar field stands at or above each level, traced on a grid over the box and cut to
+// a loop, with `holes` cut out of it: per level, polygons each of an outer ring and its holes, the
+// levels in the order given
+export function fieldBands(valueAt: (x: number, y: number) => number, box: { minX: number; maxX: number; minY: number; maxY: number }, gridMm: number, levels: number[], clip: Pt[] | null, holes: Pt[][] = []): { level: number; polygons: Pt[][][] }[] {
+  const x0 = box.minX - gridMm, y0 = box.minY - gridMm;
+  const nx = Math.floor((box.maxX + gridMm - x0) / gridMm) + 2;
+  const ny = Math.floor((box.maxY + gridMm - y0) / gridMm) + 2;
+  const values = new Float64Array(nx * ny);
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) values[j * nx + i] = valueAt(x0 + i * gridMm, y0 + j * gridMm);
+  // d3 puts sample i at i + 0.5 in its own coordinates
+  const generator = d3.contours().size([nx, ny]).smooth(true);
+  const toGrid = (pt: Pt): [number, number] => [(pt.x - x0) / gridMm + 0.5, (pt.y - y0) / gridMm + 0.5];
+  const ring = (loop: Pt[]): [number, number][] => [...loop.map(toGrid), toGrid(loop[0])];
+  const clipPoly: [number, number][][][] | null = clip ? [[ring(clip), ...holes.map(ring)]] : null;
+  const clipper: any = (polygonClipping as any).default ?? polygonClipping;
+  const out: { level: number; polygons: Pt[][][] }[] = [];
+  for (const level of levels) {
+    // a hair under the level, so a field sitting exactly on it (a flat plateau at a reading) is
+    // whole ground, not the crumbs of rounding falling either side
+    let polys: number[][][][] = generator.contour(values as any, level - 1e-6).coordinates as any;
+    if (clipPoly) polys = clipper.intersection(polys, clipPoly) ?? [];
+    const polygons = polys.map(poly => poly.map(ring => ring.map(([cx, cy]) => new Pt(x0 + (cx - 0.5) * gridMm, y0 + (cy - 0.5) * gridMm))));
+    if (polygons.length) out.push({ level, polygons });
+  }
+  return out;
 }
