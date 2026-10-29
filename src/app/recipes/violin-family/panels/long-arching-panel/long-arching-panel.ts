@@ -51,7 +51,7 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
       let points = seedPoints(height);
       return {
         thickness: s.edgeThickness,
-        arch: { type: 'catenary' as const, height, peak: 50, peakRow: points.filter(pt => pt.t > 50).length, points },
+        long: { type: 'catenary' as const, height, peak: 50, peakRow: points.filter(pt => pt.t > 50).length, points },
         cross: { type: 'cycloid' as const, d: 40, pct: 90, peak: 50, points: [{ x: 83, z: 50, mirror: true }], stations: [] },
       };
     };
@@ -103,7 +103,7 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
   // a new point fills the widest gap in the curve as it stands, mirrored twins and the peak
   // included, since those are the knots on screen
   addPoint(plate: Plate): void {
-    let arch = this.params.arching![plate].arch;
+    let arch = this.params.arching![plate].long;
     let knots = [{ t: 0, z: 0 }, ...archSplineKnots(arch.height, longArchCurve(arch).points, arch.peak / 100), { t: 1, z: 0 }];
     let gap = 0, at = 0;
     for (let i = 0; i + 1 < knots.length; i++) {
@@ -119,7 +119,7 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
 
   // the peak keeps its place between the same points
   removePoint(plate: Plate, index: number): void {
-    let arch = this.params.arching![plate].arch;
+    let arch = this.params.arching![plate].long;
     if (index < (arch.peakRow ?? 0)) arch.peakRow!--;
     arch.points.splice(index, 1);
     this.edited();
@@ -127,14 +127,14 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
 
   // the upper end first, as the side view stands
   sortPoints(plate: Plate): void {
-    let arch = this.params.arching![plate].arch;
+    let arch = this.params.arching![plate].long;
     arch.points.sort((a, b) => b.t - a.t);
     arch.peakRow = arch.points.filter(pt => pt.t > arch.peak).length;
     this.edited();
   }
 
   moveRow(plate: Plate, move: RowMove): void {
-    let arch = this.params.arching![plate].arch;
+    let arch = this.params.arching![plate].long;
     arch.peakRow = applyRowMove(arch.points, arch.peakRow ?? 0, move);
     this.edited();
   }
@@ -170,7 +170,7 @@ export const CHANNEL_INK = 1;
 // arching is edited, a fixed reference on the canvas, until the back's arch would reach the plan
 export function sideViewOffsetX(p: ViolinFamilyParams): number {
   let a = p.arching!;
-  let clearance = Math.max(0.12 * p.body.height, 20 + a.back.thickness + a.back.arch.height);
+  let clearance = Math.max(0.12 * p.body.height, 20 + a.back.thickness + a.back.long.height);
   return p.body.width / 2 + p.body.overhang + p.body.rib + clearance;
 }
 
@@ -257,7 +257,7 @@ export const renderBodySideProfile = (
     // its takeoff: the takeoff moves with the channel, and a guide counting from it would label a
     // height nobody typed
     if (opts.showGuides) {
-      let authored = longArchCurve(p.arching![plate].arch);
+      let authored = longArchCurve(p.arching![plate].long);
       renderGuideBaseline(new Pt(outerZ, 0), new Pt(outerZ, p.body.height), color)(g, ui);
       for (let knot of archGuideKnots(authored)) {
         let y = yStart + knot.t * span;
@@ -515,7 +515,7 @@ export function solveLongArching(p: ViolinFamilyParams): LongArchingSolve | null
   for (let plate of ['top', 'back'] as const) {
     let label = plate === 'top' ? 'Top plate' : 'Back plate';
     let pa = a[plate];
-    let arch = pa.arch;
+    let arch = pa.long;
     solveSection(s.failures, label, [plate], () => {
       if (!f[plate]) return fail(`${label}: the fluting channel has to solve first.`, [plate]);
       if (!(pa.thickness > 0)) return fail(`${label}: the thickness needs a value above 0.`, [plate]);

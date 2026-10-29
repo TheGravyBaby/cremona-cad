@@ -245,7 +245,7 @@ describe('the arching toolpaths', () => {
   const p = seeded();
   const surface = solveCrossArching(p)!.top!;
   const thickness = p.arching!.top.thickness;
-  const archHeight = p.arching!.top.arch.height;
+  const archHeight = p.arching!.top.long.height;
   const arch = (over: Partial<PlateSettings> = {}): PlateSettings => ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.plate)), ...over });
   // the test's grid is coarser than the file's, so a footprint sampled on it can miss the true
   // high point by a little: second order for the ball, first order under the flat bit's edge
@@ -750,7 +750,7 @@ describe('the f-hole toolpaths', () => {
         expect(tp.stockOrigin).toEqual({ x: 0, y: 0 });
         expect(tp.notes.join(' ')).toMatch(/SLAB LOWER LEFT/);
         expect(tp.caution).toMatch(/GRADUATED/);
-        const crown = lipZ + edge + p.arching!.top.arch.height;
+        const crown = lipZ + edge + p.arching!.top.long.height;
         expect(tp.stockTopZ).toBeCloseTo(crown, 6);
         for (const run of tp.surfaces) for (const pt of run.pts) expect(pt.z).toBeLessThan(crown);
       }

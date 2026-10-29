@@ -52,15 +52,15 @@ describe('the long arching solve', () => {
     const a = p.arching!;
     expect(a.ribHeightLower).toBeGreaterThan(a.ribHeightUpper);
     for (const plate of ['top', 'back'] as const) {
-      expect(a[plate].arch.type).toBe('catenary');
-      expect(a[plate].arch.height).toBeGreaterThan(0);
-      expect(a[plate].arch.points.length).toBeGreaterThan(0);
-      expect(a[plate].arch.points.every(pt => pt.z > 0 && pt.z < a[plate].arch.height)).toBe(true);
+      expect(a[plate].long.type).toBe('catenary');
+      expect(a[plate].long.height).toBeGreaterThan(0);
+      expect(a[plate].long.points.length).toBeGreaterThan(0);
+      expect(a[plate].long.points.every(pt => pt.z > 0 && pt.z < a[plate].long.height)).toBe(true);
       expect(a[plate].cross.type).toBe('cycloid');
       expect(a[plate].cross.points.length).toBeGreaterThan(0);
       expect(a[plate].cross.stations).toEqual([]);
     }
-    a.top.arch.height += 1;
+    a.top.long.height += 1;
     const edited = JSON.stringify(p);
     LongArchingPanel.seed(p);
     expect(JSON.stringify(p)).toBe(edited);
@@ -70,7 +70,7 @@ describe('the long arching solve', () => {
     cello.body.width = 440;
     seeded(cello);
     expect(cello.arching!.ribHeightLower).toBeGreaterThan(a.ribHeightLower);
-    expect(cello.arching!.top.arch.height).toBeGreaterThan(a.top.arch.height);
+    expect(cello.arching!.top.long.height).toBeGreaterThan(a.top.long.height);
     expect(cello.arching!.top.thickness).toBeGreaterThan(a.top.thickness);
   });
 });
@@ -154,7 +154,7 @@ describe('the long arch', () => {
       // the peak stands the typed height above the plate edge
       let peak = 0;
       for (let y = 0; y <= la.span; y += 0.5) peak = Math.max(peak, archZAt(la.lowered, la.span, y, la.farZ) - la.takeoff.takeoffDepth);
-      expect(peak).toBeCloseTo(p.arching![plate].arch.height, 3);
+      expect(peak).toBeCloseTo(p.arching![plate].long.height, 3);
     }
   });
 
@@ -164,8 +164,8 @@ describe('the long arch', () => {
     expect(sym.farTakeoff.contactS).toBe(sym.takeoff.contactS);
     expect(sym.farZ).toBe(0);
 
-    p.arching!.top.arch.type = 'spline';
-    p.arching!.top.arch.points = [{ t: 97, z: -1.9, mirror: false }];
+    p.arching!.top.long.type = 'spline';
+    p.arching!.top.long.points = [{ t: 97, z: -1.9, mirror: false }];
     const one = solveLongArching(p)!.top!;
     expect(one.farTakeoff.contactS).not.toBeCloseTo(one.takeoff.contactS, 1);
     // the knot dips under the channel, so that end lands on the outer flank, past the trough
@@ -174,8 +174,8 @@ describe('the long arch', () => {
 
   it('keeps the closest landing and reports it where no tangent exists', () => {
     const p = seeded();
-    p.arching!.top.arch.type = 'spline';
-    p.arching!.top.arch.points = [{ t: 99, z: -1.9, mirror: false }];
+    p.arching!.top.long.type = 'spline';
+    p.arching!.top.long.points = [{ t: 99, z: -1.9, mirror: false }];
     const s = solveLongArching(p)!;
     expect(s.top).not.toBeNull();
     expect(s.top!.farTakeoff.tangent).toBe(false);
@@ -185,7 +185,7 @@ describe('the long arch', () => {
   it('is the same arch whichever end it is solved from', () => {
     const p = seeded();
     const g = p.fluting!.top;
-    const arch = longArchCurve({ ...p.arching!.top.arch, type: 'spline', points: [{ t: 25, z: 9, mirror: false }, { t: 80, z: 11, mirror: false }] });
+    const arch = longArchCurve({ ...p.arching!.top.long, type: 'spline', points: [{ t: 25, z: 9, mirror: false }, { t: 80, z: 11, mirror: false }] });
     const la = solveLongArch(p, arch, g)!;
     const flipped = solveLongArch(p, { ...arch, peak: 1 - arch.peak, points: arch.points.map(pt => ({ ...pt, t: 1 - pt.t })) }, g)!;
     expect(la.takeoff.contactS).toBeCloseTo(flipped.farTakeoff.contactS, 6);
@@ -195,7 +195,7 @@ describe('the long arch', () => {
 
   it('is the same arch whichever order its table rows run in', () => {
     const p = seeded();
-    const arch = p.arching!.top.arch;
+    const arch = p.arching!.top.long;
     arch.type = 'spline';
     const before = solveLongArching(p)!.top!;
     const curve = longArchCurve(arch);
@@ -210,17 +210,17 @@ describe('the long arch', () => {
   it('fails a point above the peak, one deeper than the plate, a position off the body, and a cleared height, each naming its plate', () => {
     const bad = (edit: (p: ViolinFamilyParams) => void): string[] => {
       const p = seeded();
-      p.arching!.back.arch.type = 'spline';
+      p.arching!.back.long.type = 'spline';
       edit(p);
       const s = solveLongArching(p)!;
       expect(s.back).toBeNull();
       expect(s.top).not.toBeNull();
       return s.failures.map(f => f.unsolved.join());
     };
-    expect(bad(p => { p.arching!.back.arch.points[0].z = p.arching!.back.arch.height + 1; })).toEqual(['back']);
-    expect(bad(p => { p.arching!.back.arch.points[0].z = -p.arching!.back.thickness - 1; })).toEqual(['back']);
-    expect(bad(p => { p.arching!.back.arch.points[0].t = 100; })).toEqual(['back']);
-    expect(bad(p => { (p.arching!.back.arch as any).height = null; })).toEqual(['back']);
-    expect(bad(p => { p.arching!.back.arch.peak = 3; })).toEqual(['back']);
+    expect(bad(p => { p.arching!.back.long.points[0].z = p.arching!.back.long.height + 1; })).toEqual(['back']);
+    expect(bad(p => { p.arching!.back.long.points[0].z = -p.arching!.back.thickness - 1; })).toEqual(['back']);
+    expect(bad(p => { p.arching!.back.long.points[0].t = 100; })).toEqual(['back']);
+    expect(bad(p => { (p.arching!.back.long as any).height = null; })).toEqual(['back']);
+    expect(bad(p => { p.arching!.back.long.peak = 3; })).toEqual(['back']);
   });
 });

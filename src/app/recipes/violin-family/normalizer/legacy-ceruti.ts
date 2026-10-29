@@ -283,7 +283,7 @@ function legacyFluting(c: any): FlutingParams {
 function legacyArching(c: any): ArchingParams | undefined {
   let a = c.arching;
   if (!a?.top?.arch || !a.bottom?.arch) return undefined;
-  let plate = (old: any) => ({ thickness: old.thickness, arch: longArch(old.arch), cross: crossArch(old.cross) });
+  let plate = (old: any) => ({ thickness: old.thickness, long: longArch(old.arch), cross: crossArch(old.cross) });
   return { ribHeightLower: a.ribHeightLower, ribHeightUpper: a.ribHeightUpper, top: plate(a.top), back: plate(a.bottom) };
 }
 

@@ -167,7 +167,7 @@ export interface ArchingParams {
 
 export interface PlateArchParams {
   thickness: number;
-  arch: LongArchParams;
+  long: LongArchParams;
   cross: CrossArchParams;
 }
 

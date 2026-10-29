@@ -172,8 +172,8 @@ describe('the normalizer', () => {
     const file = JSON.parse(JSON.stringify(amati));
     file.params.arching.top.arch = { type: 'cycloid', archHeight: 15, d: 0.6 };
     const p = normalizeViolinFamilyRecipe(file)!.params;
-    expect(p.arching!.top.arch).toMatchObject({ type: 'spline', height: 15, peak: 50 });
-    expect(p.arching!.top.arch.points.every(pt => pt.mirror && pt.z > 0 && pt.z < 15)).toBe(true);
+    expect(p.arching!.top.long).toMatchObject({ type: 'spline', height: 15, peak: 50 });
+    expect(p.arching!.top.long.points.every(pt => pt.mirror && pt.z > 0 && pt.z < 15)).toBe(true);
     expect(unsolved(solveLongArching(p))).toEqual([]);
   });
 
