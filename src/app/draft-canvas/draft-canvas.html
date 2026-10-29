@@ -10,7 +10,8 @@
         <!-- pointerdown is swallowed so the canvas neither closes the menu nor pans under it -->
         <app-edit-menu #contextMenuEl class="context-menu" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y"
           [style.max-height.px]="contextMenu.maxHeight"
-          (pointerdown)="$event.stopPropagation()" (done)="contextMenu = null" />
+          (pointerdown)="$event.stopPropagation()" (done)="contextMenu = null"
+          (imagePasted)="placeClipboardImage($event)" />
       }
       @if (editingTextShapeId) {
         <textarea #textEditArea class="text-edit-overlay"

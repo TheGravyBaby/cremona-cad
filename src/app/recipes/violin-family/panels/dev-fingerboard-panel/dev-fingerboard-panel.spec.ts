@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../../models/types';
-import { defaultPositionMarks, parseSemitones, PositionMarksSettings, semitoneStop, solvePositionMarks } from './dev-fingerboard-panel';
-import { solveStringSetup, StringSetupPanel } from '../string-setup-panel/string-setup-panel';
+import { defaultPositionMarks, parseSemitones, PositionMarksSettings, solvePositionMarks } from './dev-fingerboard-panel';
+import { semitoneStop, solveStringSetup, StringSetupPanel } from '../string-setup-panel/string-setup-panel';
 import { NeckPanel, neckHalfWidthAt } from '../neck-panel/neck-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';

@@ -4,7 +4,7 @@ import { pointOnCircle } from '../../../../helpers/math/simpleGeometry';
 import { polylinePointAtY } from '../../../../helpers/math/vibeMath';
 import { Pt, Pt3D } from '../../../../models/types';
 import {
-  pegboxCavity, pegboxHipHeight, pegboxWidth, scrollBackViewStrokes, scrollFrontViewStrokes, scrollPathStretches, scrollWidthStations,
+  pegboxCavity, pegboxHipHeight, pegboxWidth, scrollBackStrip, scrollBackViewStrokes, scrollFrontViewStrokes, scrollPathStretches, scrollWidthStations,
   solveScrollWidths,
 } from './scroll-widths-panel';
 import { VolutePanel } from '../volute-panel/volute-panel';
@@ -45,6 +45,18 @@ describe('the scroll widths', () => {
     const round = pointOnCircle(s.S3!, s.S3!.start).y + p.scroll!.widths.duckTail / 2;
     expect(pegboxHipHeight(p)).toBeCloseTo(round, 9);
     expect(scrollPathStretches(p, s).back[0].y).toBeCloseTo(round, 3);
+  });
+
+  it('run the duck tail\'s round on straight up to the foot, the path starting there', () => {
+    const p = seeded();
+    p.scroll!.duckTailStraight = 6;
+    const s = whole(p);
+    const r = p.scroll!.widths.duckTail / 2;
+    const round = pointOnCircle(s.S3!, s.S3!.start).y + r;
+    expect(scrollPathStretches(p, s).back[0].y).toBeCloseTo(round + 6, 3);
+    expect(scrollWidthStations(p, s).find(st => st.key === 'duckTail')!.at.y).toBeCloseTo(round, 3);
+    const straight = scrollBackStrip(p, s).outline.filter(pt => Math.abs(pt.x - r) < 1e-9).map(pt => pt.y);
+    expect(Math.max(...straight) - Math.min(...straight)).toBeGreaterThan(0);
   });
 
   it('set the front at the nut, the hips and the throat, tapering by height between', () => {

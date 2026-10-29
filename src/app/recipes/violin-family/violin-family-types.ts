@@ -317,25 +317,25 @@ export interface ScrollParams {
   S3R: number;
   hang: number;
   napeR: number;
-  // one circle through the duck tail, tangent to the neck's back, with no square line
-  napeCircle: boolean;
+  // the line from the duck tail to the nape, in degrees off square, rising toward the neck's back
+  napeAngle: number;
   flat: number;
   F0R: number;
   F0Sweep: number;
   frontStraight: number;
   F1R: number;
   widths: ScrollWidths;
-  // where the pegbox's front is widest, up from the nut's top, 0 none; where the back's slope turns,
-  // up from the foot at the round's top, 0 none; the wood left round the pegbox's hollow
+  // where the pegbox's front is widest, up from the nut's top, 0 none; how far the duck tail's round
+  // runs on straight up to the foot, by height, 0 none; the wood left round the pegbox's hollow
   hipHeight: number;
-  backHipHeight: number;
+  duckTailStraight: number;
   wall: number;
 }
 
 // full widths, cheek to cheek. The front is the pegbox sawn straight through the blank, by height:
 // out from the nut's edges to the hips, then tapering to `throat` at the foot of the front's
-// straight. The back starts in the duck tail's round, `foot` wide at the round's top, out on a
-// straight slope by height to `backHip` and on to `poll`, the back's furthest reach, and from there
+// straight. The back starts in the duck tail's round, its sides running on straight up to the foot,
+// `foot` wide there, out on a straight slope by height to `poll`, the back's furthest reach, and from there
 // on a curve through the crown and each turn, by distance along the back. The last turn is as wide
 // as the eye from its top on in
 export interface ScrollWidths {
@@ -343,7 +343,6 @@ export interface ScrollWidths {
   throat: number;
   duckTail: number;
   foot: number;
-  backHip: number;
   poll: number;
   crown: number;
   turn1Bottom: number;
@@ -744,7 +743,7 @@ export interface ScrollSolve {
   failures: ScrollFailure[];
 }
 
-export type ScrollWidthsKey = keyof ScrollWidths | 'hipHeight' | 'backHipHeight' | 'wall';
+export type ScrollWidthsKey = keyof ScrollWidths | 'hipHeight' | 'duckTailStraight' | 'wall';
 export type ScrollWidthsFailure = SolveFailure<ScrollWidthsKey>;
 
 // the side profile the widths hang on, and what the widths themselves say against it

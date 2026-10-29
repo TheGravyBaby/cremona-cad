@@ -3,17 +3,18 @@ import { FormsModule } from '@angular/forms';
 import { dist, moveInVectorSpace, pointAtDistanceToward } from '../../../../helpers/math/simpleGeometry';
 import { pathFromCircle } from '../../../../helpers/math/pathMath';
 import { intersectionFromTwoPaths } from '../../../../helpers/math/pathVibes';
-import { renderFilledPath, renderPointHalo, renderSegment, renderSolveFailures } from '../../../../helpers/renderFuncs';
+import { renderFilledPath, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection, SolveFailure } from '../../../../helpers/validators';
 import { readWorkingState, writeWorkingState } from '../../../../helpers/workingStorage';
 import { Circle, Pt, Vect2D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
-import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, StringSetupSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { familyStandards, FamilyStandards } from '../../violin-family-seed';
 import { neckHalfWidthAt } from '../neck-panel/neck-panel';
-import { fingerboardInPlan, renderStringSetupViews, solveStringSetup, StringSetupHighlightKey } from '../string-setup-panel/string-setup-panel';
+import {
+  fingerboardInPlan, renderFretTicks, renderStringSetupViews, semitoneStop, solveStringSetup, StringSetupHighlightKey,
+} from '../string-setup-panel/string-setup-panel';
 
 // The fingerboard, tried out on localhost only and carried without promise of support. It draws over
 // the string setup. The scoop and the double radius are the board's own, kept on p.stringSetup and
@@ -133,7 +134,7 @@ export class DevFingerboardPanel implements ViolinFamilyPanel, OnInit {
       let m = this.m = solvePositionMarks(p, s, this.marks);
       let halo = this.highlighted?.key === 'marks' ? this.highlighted.color : null;
       if (this.flags.showFingerboard) front.push(renderPositionMarks(p, s, m, this.pal, halo));
-      if (this.flags.showFretMarks) side.push(renderFretTicks(s, this.marks, this.pal));
+      if (this.flags.showFretMarks) side.push(renderFretTicks(s, this.marks.semitones, this.pal));
       side.push(renderSolveFailures(m.failures, this.pal.alert));
       let highlighted = this.highlighted?.key === 'marks' ? null : this.highlighted as { key: StringSetupHighlightKey; color: string } | null;
       this.drawn.emit(renderStringSetupViews(p, s, this.pal, {
@@ -154,21 +155,10 @@ function readMarks(): PositionMarksSettings | null {
   }
 }
 
-// how many semitones up the string to tick, and how far each tick reaches either side of it. Plain
-// semitones stay small so they read as a scale beside the marked ones
-const FRET_MARK_SEMITONES = 12;
-const FRET_TICK_HALF_LENGTH = 1;
-const LANDMARK_TICK_HALF_LENGTH = 3;
 const MARK_HALO_RADIUS = 3;
 
 export function parseSemitones(text: string): number[] {
   return text.split(/[\s,;]+/).filter(Boolean).map(Number);
-}
-
-// equal temperament: each semitone shortens the sounding length by the twelfth root of 2, so
-// semitone n stops the string `length * (1 - 2^(-n/12))` from the nut
-export function semitoneStop(semitone: number, stringLength: number): number {
-  return stringLength * (1 - 2 ** (-semitone / 12));
 }
 
 // the dots in the front view, each the part of it that lands on the board
@@ -181,29 +171,6 @@ const renderPositionMarks = (p: ViolinFamilyParams, s: StringSetupSolve, m: Posi
       if (halo) renderPointHalo(dot, halo, dot.r + MARK_HALO_RADIUS)(g, ui);
     }
   };
-};
-
-// the first octave's semitones ticked up the string in the side elevation, the marked ones standing
-// taller. Ticks stop at the board's end
-const renderFretTicks = (s: StringSetupSolve, marks: PositionMarksSettings, pal: PanelPalette): RenderLayer => (g: any, ui: any): void => {
-  let nut = s.nutTop, bridge = s.bridgeTop, neckTop = s.neck.neckTop;
-  if (!nut || !bridge || !neckTop || !s.fingerboardEnd) return;
-  let boardLength = dist(neckTop, s.fingerboardEnd);
-  let stringLength = dist(nut, bridge);
-  let along: Vect2D = { a: (bridge.x - nut.x) / stringLength, b: (bridge.y - nut.y) / stringLength, mag: 1 };
-  let across: Vect2D = { a: -along.b, b: along.a, mag: 1 };
-  let tick = (semitone: number, halfLength: number, color: string) => {
-    let d = semitoneStop(semitone, stringLength);
-    if (d > boardLength) return;
-    let center = moveInVectorSpace(nut, [{ ...along, mag: d }]);
-    let a = moveInVectorSpace(center, [{ ...across, mag: halfLength }]);
-    let b = moveInVectorSpace(center, [{ ...across, mag: -halfLength }]);
-    renderSegment(a, b, color, STROKE_WEIGHT.guide)(g, ui);
-  };
-  for (let semitone = 1; semitone <= FRET_MARK_SEMITONES; semitone++) {
-    if (!marks.semitones.includes(semitone)) tick(semitone, FRET_TICK_HALF_LENGTH, pal.ink(0).faint(-3));
-  }
-  for (let semitone of marks.semitones) if (Number.isInteger(semitone) && semitone > 0) tick(semitone, LANDMARK_TICK_HALF_LENGTH, pal.ink(3));
 };
 
 // each interval stops the string a share of its length down from the nut; that point drops square

@@ -25,8 +25,8 @@ import { neckTaper } from '../neck-panel/neck-panel';
 
 // the arcs take an arc halo; the straights, the flat and the neck's thickness a segment halo on the
 // line their length makes
-export type ScrollHighlightKey = 'S2' | 'S3' | 'nape' | 'F0' | 'F1' | 'backStraight' | 'flat' | 'frontStraight' | 'upperThickness';
-export type ScrollLine = 'square' | 'backStraight' | 'flat' | 'frontStraight';
+export type ScrollHighlightKey = 'S2' | 'S3' | 'nape' | 'napeAngle' | 'F0' | 'F1' | 'backStraight' | 'flat' | 'frontStraight' | 'upperThickness';
+export type ScrollLine = 'napeLine' | 'backStraight' | 'flat' | 'frontStraight';
 
 @Component({
   selector: 'app-vf-scroll-panel',
@@ -80,6 +80,7 @@ export class ScrollPanel implements ViolinFamilyPanel, OnInit {
       let key = this.highlighted?.key;
       let color = this.highlighted?.color ?? '';
       let line = (key === 'backStraight' || key === 'flat' || key === 'frontStraight') && !unsolved(s, key) ? scrollLines(p, s)[key]
+        : key === 'napeAngle' && s.nape ? scrollLines(p, s).napeLine
         : key === 'upperThickness' ? [new Pt(0, 0), new Pt(-p.neck!.upperThickness, 0)] as [Pt, Pt]
         : null;
       let arc = key === 'S2' || key === 'S3' || key === 'nape' || key === 'F0' || key === 'F1' ? s[key] : null;
@@ -100,7 +101,7 @@ export class ScrollPanel implements ViolinFamilyPanel, OnInit {
 const unsolved = (s: ScrollSolve, key: ScrollKey) => s.failures.some(f => f.unsolved.includes(key));
 
 // the back from S2 down to the nape, and the front up from the nut. A straight takes its arc's
-// colour, the square line the nape's; module guides box the head
+// colour, the nape's line the nape's; module guides box the head
 export const renderScroll = (
   p: ViolinFamilyParams,
   s: ScrollSolve,
@@ -130,7 +131,7 @@ export const renderScroll = (
   let line = ([a, b]: [Pt, Pt], color: string) => dist(a, b) > 1e-9 && renderSegment(a, b, color, STROKE_WEIGHT.trace)(g, ui);
   let lines = scrollLines(p, s);
   if (s.S2 && !unsolved(s, 'backStraight')) line(lines.backStraight, pal.ink(1).faint(-3));
-  if (s.nape) line(lines.square, pal.ink(1).faint(5));
+  if (s.nape) line(lines.napeLine, pal.ink(1).faint(5));
   if (!unsolved(s, 'flat')) line(lines.flat, pal.ink(3).faint(-3));
   if (s.F0 && !unsolved(s, 'frontStraight')) line(lines.frontStraight, pal.ink(3));
 };
@@ -145,7 +146,7 @@ export function scrollLines(p: ViolinFamilyParams, s: ScrollSolve): Record<Scrol
   let S2End = s.S2?.end ?? 0;
   let F0End = s.F0?.end ?? 0;
   return {
-    square: s.S3 && s.nape ? [pointOnCircle(s.S3, s.S3.start), pointOnCircle(s.nape, s.nape.end)] : [nutTop, nutTop],
+    napeLine: s.S3 && s.nape ? [pointOnCircle(s.S3, s.S3.start), pointOnCircle(s.nape, s.nape.end)] : [nutTop, nutTop],
     backStraight: [backTop, moveInVectorSpace(backTop, [{ ...vectorFromSlope(S2End + TURN.quarter), mag: v.backStraight }])],
     flat: [nutTop, new Pt(nutTop.x, nutTop.y + v.flat)],
     frontStraight: [frontTop, moveInVectorSpace(frontTop, [{ ...vectorFromSlope(F0End + TURN.quarter), mag: v.frontStraight }])],
@@ -205,7 +206,6 @@ export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
   let v = p.scroll!;
   // the neck's back leans off the fingerboard plane with the taper, thinning on up past the nut
   let taper = neckTaper(p);
-  let backAt = (y: number) => -p.neck!.upperThickness + taper * y;
   let lean = Math.atan(taper);
   let nutTop = new Pt(0, p.neck!.nutHeight);
   // a cleared field is null, which passes `>= 0`, so it is asked for first
@@ -242,39 +242,29 @@ export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
     let duckTail = pointOnCircle(s.S3, s.S3.start);
     if (!(v.napeR > 0)) return badArc('Back', 'nape', v.napeR, ['nape']);
 
-    // one circle through the duck tail, tangent to the neck's back: its centre a radius forward of
-    // the back, as far below the duck tail as puts the tail on it. Tighter than the gap it rises off
-    // the duck tail before coming round; wider, it meets the tail at an angle. A centre a radius off
-    // the back lies on x = taper * y + offset
-    let offset = -p.neck!.upperThickness - v.napeR * Math.hypot(1, taper);
-    if (v.napeCircle) {
-      let gap = backAt(duckTail.y) - duckTail.x;
-      let e = offset - duckTail.x;
-      let [a, b, c] = [1 + taper ** 2, 2 * (taper * e - duckTail.y), e ** 2 + duckTail.y ** 2 - v.napeR ** 2];
-      let disc = b ** 2 - 4 * a * c;
-      if (!(gap > 0) || disc < 0)
-        return {
-          message: `Back: a nape of ${v.napeR}mm can't reach the neck's back from the duck tail. Enlarge it past half the ${Math.round(gap * 10) / 10}mm between them, or bring the duck tail forward with S3 or the straight.`,
-          unsolved: ['nape'],
-          circles: [{ x: taper * duckTail.y + offset, y: duckTail.y, r: v.napeR }],
-          segments: [],
-        };
-      let y = (-b - Math.sqrt(disc)) / (2 * a);
-      let center = new Pt(taper * y + offset, y);
-      s.nape = new Arc(center.x, center.y, v.napeR, -lean, angleFromCenter(center, duckTail));
-      return null;
-    }
+    if (!Number.isFinite(v.napeAngle))
+      return { message: 'Back: the nape needs an angle, or 0.', unsolved: ['nape'], circles: [], segments: [] };
 
-    // a line runs square from the duck tail to the neck's back, the nape filleting the corner
-    let center = new Pt(taper * (duckTail.y - v.napeR) + offset, duckTail.y - v.napeR);
-    if (duckTail.x > center.x)
+    // a line leaves the duck tail at the nape angle off square, rising toward the neck's back,
+    // and the nape fillets the corner it makes there. Its centre is a radius below the line and a
+    // radius off the back, which puts it on x = taper * y + offset
+    let tilt = v.napeAngle * TURN.degree;
+    let dir = new Pt(Math.cos(tilt), Math.sin(tilt));
+    let inset = new Pt(duckTail.x + Math.sin(tilt) * v.napeR, duckTail.y - Math.cos(tilt) * v.napeR);
+    let offset = -p.neck!.upperThickness - v.napeR * Math.hypot(1, taper);
+    let closing = dir.x - taper * dir.y;
+    if (!(closing > 1e-9))
+      return { message: `Back: a nape angle of ${v.napeAngle}° never reaches the neck's back. Bring it nearer square.`, unsolved: ['nape'], circles: [], segments: [] };
+    let run = (taper * inset.y + offset - inset.x) / closing;
+    let center = new Pt(inset.x + dir.x * run, inset.y + dir.y * run);
+    if (run < 0)
       return {
-        message: `Back: the duck tail sits too far forward for a nape of ${v.napeR}mm to fit before the neck's back. Shrink the nape, or move the duck tail back with S3 or the straight.`,
+        message: `Back: the duck tail sits too far forward for a nape of ${v.napeR}mm to fit before the neck's back. Shrink the nape, move the duck tail back with S3 or the straight, or ease the nape angle.`,
         unsolved: ['nape'],
         circles: [{ x: center.x, y: center.y, r: v.napeR }],
-        segments: [[duckTail, new Pt(backAt(duckTail.y), duckTail.y)]],
+        segments: [[duckTail, new Pt(duckTail.x + dir.x * run, duckTail.y + dir.y * run)]],
       };
-    s.nape = new Arc(center.x, center.y, v.napeR, -lean, TURN.quarter);
+    s.nape = new Arc(center.x, center.y, v.napeR, -lean, TURN.quarter + tilt);
     return null;
   });
 

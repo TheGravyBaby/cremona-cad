@@ -106,7 +106,7 @@ export const renderScrollWidths = (
   let stations = scrollWidthStations(p, s);
   // the views hold still while the widths are edited, a fixed reference against a photograph, until
   // the widest would reach the side profile
-  let widest = Math.max(w.eye, w.hip, w.foot, w.backHip, w.poll, p.neck!.nutWidth) / 2;
+  let widest = Math.max(w.eye, w.hip, w.foot, w.poll, p.neck!.nutWidth) / 2;
   let clearance = Math.max(0.15 * p.body.height, 20 + widest);
   let extent = scrollExtent(s);
   let back = -extent.width - clearance;
@@ -173,7 +173,6 @@ export const renderScrollWidths = (
       crosshairs('throat', pal.ink(3).faint(1));
       crosshairs('duckTail', pal.ink(1).faint(3));
       crosshairs('foot', pal.ink(1).faint(-4));
-      crosshairs('backHip', pal.ink(1).faint(1));
       crosshairs('poll', pal.ink(1).faint(-3));
       crosshairs('crown', pal.ink(1).faint(5));
       crosshairs('turn1Bottom', pal.ink(2).faint(3));
@@ -284,10 +283,12 @@ export function scrollBackViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, pla
   let seen = (pts: Pt3D[]) => seenRuns(on, pts, true);
   let { parts, stroke, contour, line, face } = viewStrokes(place);
 
-  // the back starts in the duck tail's round, the neck's back carried on round, and its own edges
-  // run up from the round's top
+  // the back starts in the duck tail's round, the neck's back carried on round, its sides running on
+  // straight up to the foot, and its own edges run up from there
   let r = duckTailRadius(p);
-  let round = Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: 0, y: start.y, r }, TURN.half + TURN.half * i / 32)).map(pt => place(pt.x, pt.y));
+  let roundTop = duckTailRoundTop(p, s);
+  let round = Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: 0, y: roundTop, r }, TURN.half + TURN.half * i / 32)).map(pt => place(pt.x, pt.y));
+  if (start.y - roundTop > 1e-6) round = [place(-r, start.y), ...round, place(r, start.y)];
 
   // the neck's sides run on up until they meet the scroll's round
   let overNeck = r > 0 ? [pathFromPolygon(round)] : null;
@@ -409,20 +410,13 @@ export function pegboxHipHeight(p: ViolinFamilyParams): number {
   return p.neck!.nutHeight + p.scroll!.hipHeight;
 }
 
-// the back's hip, in this frame, or null for none: 0 or less is none. Past the poll it is the poll
-function backHipY(p: ViolinFamilyParams, path: ScrollPath): number | null {
-  let v = p.scroll!;
-  if (!(v.backHipHeight > 0)) return null;
-  return Math.min(path.at(0).y + v.backHipHeight, path.at(path.poll ?? path.crown).y);
-}
-
-// "the path": the back from the top of the duck tail's round, over the crown and round the spiral
-// in to the eye. `poll` is how far along it the back of the head reaches furthest back, its tangent
+// "the path": the back from the foot, over the crown and round the spiral in to the eye. `poll` is how far along it the back of the head reaches furthest back, its tangent
 // running straight up the neck, or null where no arc of the back passes that way above the path's
 // start; `crown` where the back tops out, and `turns` where the spiral levels after that: the bottom
 // of the first turn, the top and bottom of the second, the top of the last. `round` is how far the
-// duck tail sits below the path's start along the back, so `at` reaches it at -round
-type ScrollPath = Run & { round: number; poll: number | null; crown: number; turns: number[] };
+// duck tail sits below the path's start along the back, so `at` reaches it at -round, and `straight`
+// how far the round's top does
+type ScrollPath = Run & { round: number; straight: number; poll: number | null; crown: number; turns: number[] };
 
 function scrollPath(p: ViolinFamilyParams, s: ScrollSolve): ScrollPath {
   let backFoot = pointOnCircle(s.S3!, s.S3!.end);
@@ -431,8 +425,9 @@ function scrollPath(p: ViolinFamilyParams, s: ScrollSolve): ScrollPath {
   let crownArcs = [s.S2!, s.S1!, s.S0!];
   let whole = joinedRun([rise, ...crownArcs.map(a => arcRun(a, 'cw')), ...s.spiral!.map(a => arcRun(a, 'cw'))]);
 
-  // the path starts where the back first rises to the top of the duck tail's round
-  let start = riseAlongRun(whole, duckTailRoundTop(p, s), whole.length);
+  // the path starts where the back first rises to the foot, the straight above the round's top
+  let roundTop = riseAlongRun(whole, duckTailRoundTop(p, s), whole.length);
+  let start = riseAlongRun(whole, duckTailRoundTop(p, s) + p.scroll!.duckTailStraight, whole.length);
   let length = whole.length - start;
   let height = (at: number) => whole.at(start + at).y;
 
@@ -470,7 +465,7 @@ function scrollPath(p: ViolinFamilyParams, s: ScrollSolve): ScrollPath {
   levels.sort((a, b) => a - b);
   let turns = levels.filter((at, i) => at < length - 1e-6 && (i === 0 || at - levels[i - 1] > 1e-6));
 
-  return { length, at: at => whole.at(start + at), round: start, poll, crown, turns };
+  return { length, at: at => whole.at(start + at), round: start, straight: start - roundTop, poll, crown, turns };
 }
 
 function scrollFront(p: ViolinFamilyParams, s: ScrollSolve): Run {
@@ -503,8 +498,8 @@ export function pegboxWidth(p: ViolinFamilyParams, s: ScrollSolve, y: number): n
   return nutWidth + (hipWidth - nutWidth) * (y - nutHeight) / (hipY - nutHeight);
 }
 
-// the width along the path. The back goes out from its foot on the duck tail's round on straight
-// slopes, by height, to its hip and on to its poll, then leaves the slope tangent on a curve
+// the width along the path. The back goes out from its foot on a straight slope, by height, to its
+// poll, then leaves the slope tangent on a curve
 // through the volute's widths, by distance along the path. A back with no poll runs the slope all
 // the way up to the crown
 function pathWidth(p: ViolinFamilyParams, path: ScrollPath): (at: number) => number {
@@ -520,13 +515,7 @@ function pathWidth(p: ViolinFamilyParams, path: ScrollPath): (at: number) => num
 
   let startY = path.at(0).y;
   let toY = path.at(s[0]).y;
-  let hipY = backHipY(p, path);
-  let between = (from: number, to: number, y0: number, y1: number, y: number) => y1 - y0 > 1e-9 ? from + (to - from) * (y - y0) / (y1 - y0) : to;
-  let slope = (at: number) => {
-    let y = path.at(at).y;
-    if (hipY === null) return between(w.foot, widths[0], startY, toY, y);
-    return y <= hipY ? between(w.foot, w.backHip, startY, hipY, y) : between(w.backHip, widths[0], hipY, toY, y);
-  };
+  let slope = (at: number) => toY - startY > 1e-9 ? w.foot + (widths[0] - w.foot) * (path.at(at).y - startY) / (toY - startY) : widths[0];
 
   let h = s.slice(1).map((next, i) => next - s[i]);
   let delta = h.map((step, i) => (widths[i + 1] - widths[i]) / step);
@@ -568,32 +557,31 @@ export function scrollPathStretches(p: ViolinFamilyParams, s: ScrollSolve): Scro
 // the back unrolled into a strip, the duck tail to the bottom of the second turn: up the strip is
 // distance along the side profile, across it the back's width there, so laid on the carved back it
 // bends back into place and the maker draws round it. Below the path's start it is the duck tail's
-// round, closing to a point at the duck tail; a foot wider than the round steps out to it level, as
-// the shoulders do
+// round, closing to a point at the duck tail, and its straight; a foot wider than the round steps out
+// to it level, as the shoulders do
 export type ScrollBackStrip = { outline: Pt[]; length: number };
 
 export function scrollBackStrip(p: ViolinFamilyParams, s: ScrollSolve): ScrollBackStrip {
   let path = scrollPath(p, s);
   let width = pathWidth(p, path);
   let r = duckTailRadius(p);
-  let roundTop = path.at(0).y;
+  let roundTop = duckTailRoundTop(p, s);
   let end = path.turns[2] ?? path.length;
   let up = (at: number) => at + path.round;
   let step = 0.25;
 
   let side: Pt[] = [];
-  let n = Math.ceil(path.round / step);
+  let n = Math.ceil((path.round - path.straight) / step);
   for (let k = 0; k <= n && n > 0; k++) {
-    let at = -path.round + path.round * k / n;
-    side.push(new Pt(Math.sqrt(Math.max(r * r - (roundTop - path.at(at).y) ** 2, 0)), up(at)));
+    let at = -path.round + (path.round - path.straight) * k / n;
+    side.push(new Pt(Math.sqrt(Math.max(r * r - Math.max(roundTop - path.at(at).y, 0) ** 2, 0)), up(at)));
   }
+  if (path.straight > 1e-6) side.push(new Pt(r, up(0)));
 
-  // the hip and the poll are corners in the width, so the strip takes them exactly
-  let hipY = backHipY(p, path);
-  let hip = hipY === null ? null : riseAlongRun(path, hipY, path.crown);
+  // the poll is a corner in the width, so the strip takes it exactly
   let m = Math.max(Math.ceil(end / step), 1);
   let along = Array.from({ length: m + 1 }, (_, k) => end * k / m);
-  for (let at of [hip, path.poll]) if (at !== null && at < end) along.push(at);
+  if (path.poll !== null && path.poll < end) along.push(path.poll);
   along.sort((a, b) => a - b);
   for (let at of along) side.push(new Pt(width(at) / 2, up(at)));
 
@@ -604,8 +592,8 @@ export function scrollBackStrip(p: ViolinFamilyParams, s: ScrollSolve): ScrollBa
 // back and marks each width off the centreline. Each station sits along the spine the straight
 // compass distance from the last, not the distance along the path, so a compass set between two
 // crosshairs steps the same on the wood, and a circle its width across sets the compass for the
-// width. The duck tail is at the bottom, the foot about it where it is wider, the hip where there
-// is one, then the poll, and from there `steps` equal compass steps up the volute, the last landing
+// width. The duck tail's round is at the bottom, the foot about it or up its straight where it is
+// wider or there is one, then the poll, and from there `steps` equal compass steps up the volute, the last landing
 // on the second turn's bottom. The step is found by halving: the stretch they divide, `volute`, is
 // the path's own length from the poll, while the compass cuts each bend short, so the step depends
 // on how many there are and the chords never sum to it. A violin's volute runs about 175 mm, a
@@ -621,13 +609,8 @@ export function scrollCompassWalk(p: ViolinFamilyParams, s: ScrollSolve, steps =
   let end = path.turns[2] ?? path.length;
   steps = Math.max(1, Math.round(steps));
 
-  let marks: { s: number; half: number }[] = [{ s: 0, half: w.duckTail / 2 }];
-  if (w.foot > w.duckTail + 1e-9) marks.push({ s: 0, half: w.foot / 2 });
-  let hipY = backHipY(p, path);
-  if (hipY !== null) {
-    let hip = riseAlongRun(path, hipY, path.crown);
-    marks.push({ s: hip, half: width(hip) / 2 });
-  }
+  let marks: { s: number; half: number }[] = [{ s: -path.straight, half: w.duckTail / 2 }];
+  if (w.foot > w.duckTail + 1e-9 || path.straight > 1e-6) marks.push({ s: 0, half: w.foot / 2 });
   if (path.poll !== null && path.poll < end) marks.push({ s: path.poll, half: width(path.poll) / 2 });
 
   // the first point along the path a compass step from `from`, found by marching then halving, or
@@ -699,7 +682,7 @@ export function scrollFrontWidths(p: ViolinFamilyParams, s: ScrollSolve): Pt3D[]
 
 // where each of the panel's fields is marked in the side view, with the width there: the neck at
 // the nut's foot, then the front's up the pegbox's front, the nut, the hips and the throat; the
-// back's from the duck tail itself, then along the path from the top of its round in to the eye's
+// back's from the top of the duck tail's round, then along the path from the foot in to the eye's
 // centre. A back with no poll has no station for it
 export function scrollWidthStations(p: ViolinFamilyParams, s: ScrollSolve): ScrollStation[] {
   let w = p.scroll!.widths;
@@ -712,10 +695,8 @@ export function scrollWidthStations(p: ViolinFamilyParams, s: ScrollSolve): Scro
     { key: 'nut', at: new Pt(0, p.neck!.nutHeight), width: p.neck!.nutWidth },
     { key: 'hip', at: hip, width: pegboxWidth(p, s, hip.y) },
     { key: 'throat', at: pointOnCircle(s.F1!, s.F1!.end), width: w.throat },
-    { key: 'duckTail', at: path.at(0), width: w.duckTail },
+    { key: 'duckTail', at: path.at(-path.straight), width: w.duckTail },
     { key: 'foot', at: path.at(0), width: w.foot },
-    // with no hip, its mark sits on the foot's
-    { key: 'backHip', at: path.at(riseAlongRun(path, backHipY(p, path) ?? path.at(0).y, path.crown)), width: w.backHip },
     ...(path.poll === null ? [] : [{ key: 'poll' as const, at: path.at(path.poll), width: w.poll }]),
     { key: 'crown', at: path.at(path.crown), width: w.crown },
     { key: 'turn1Bottom', at: path.at(turn1Bottom), width: w.turn1Bottom },
@@ -778,8 +759,8 @@ export function solveScrollWidths(p: ViolinFamilyParams): ScrollWidthsSolve | nu
   let fail = (message: string, unsolved: ScrollWidthsKey[]) => failures.push({ message, unsolved, circles: [], segments: [] });
   let keys = Object.keys(w) as (keyof ScrollWidths)[];
 
-  if (!keys.every(k => Number.isFinite(w[k]) && w[k] >= 0) || ![v.hipHeight, v.backHipHeight, v.wall].every(Number.isFinite))
-    fail('Scroll widths: every width, hip height and the wall need a value, the widths 0 or more.', [...keys, 'hipHeight', 'backHipHeight', 'wall']);
+  if (!keys.every(k => Number.isFinite(w[k]) && w[k] >= 0) || ![v.hipHeight, v.wall].every(Number.isFinite) || !(v.duckTailStraight >= 0))
+    fail('Scroll widths: every width, the hip height, the straight and the wall need a value, the widths and the straight 0 or more.', [...keys, 'hipHeight', 'duckTailStraight', 'wall']);
   else if (!(v.wall > 0)) fail('Scroll widths: the pegbox wall needs a thickness above 0.', ['wall']);
   else {
     let duckTail = pointOnCircle(scroll.S3!, scroll.S3!.start).y - p.neck!.nutHeight;
@@ -792,8 +773,9 @@ export function solveScrollWidths(p: ViolinFamilyParams): ScrollWidthsSolve | nu
     for (let [lesser, greater, what] of order) if (w[greater] < w[lesser]) fail(`Scroll widths: ${what}.`, [lesser, greater]);
   }
   if (!failures.length) {
-    let turns = scrollPath(p, scroll).turns.length;
-    if (turns < 4) fail('Scroll widths: the spiral has to turn twice past the crown for the widths to hang on it.', keys);
+    let path = scrollPath(p, scroll);
+    if (!(path.crown > 1e-6)) fail("Scroll widths: the duck tail's straight runs the foot up past the crown. Shorten it.", ['duckTailStraight']);
+    else if (path.turns.length < 4) fail('Scroll widths: the spiral has to turn twice past the crown for the widths to hang on it.', keys);
   }
   return { scroll, failures };
 }

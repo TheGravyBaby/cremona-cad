@@ -229,7 +229,7 @@ export type ImageShape = ShapeBase & {
   /** Provenance and licence for the pixels — see ImageCredit. */
   credit?: ImageCredit;
   /** Per-image, unlike the single global slider the old reference popup had. Undefined means
-   * DEFAULT_IMAGE_OPACITY, which is what every pre-existing recipe file effectively had. */
+   * DEFAULT_IMAGE_OPACITY. */
   opacity?: number;
   /** Fades the image's background to transparent so a scan reads on a dark canvas — see
    * white-suppression.ts. Undefined means on, matching the old always-on behavior. */
@@ -257,8 +257,8 @@ export type ImageShape = ShapeBase & {
    */
 };
 
-/** What an image renders at when its shape doesn't say — the old global reference opacity. */
-export const DEFAULT_IMAGE_OPACITY = 0.25;
+/** What an image renders at when its shape doesn't say. */
+export const DEFAULT_IMAGE_OPACITY = 0.75;
 
 /**
  * Every shape the canvas can hold. Extend this union as new tools are added.

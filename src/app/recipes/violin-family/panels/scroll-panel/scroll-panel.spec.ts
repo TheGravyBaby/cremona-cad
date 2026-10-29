@@ -92,7 +92,7 @@ describe('the back', () => {
   });
 
   it('runs square from the duck tail to the neck\'s back, the nape filleting it in', () => {
-    const [a, b] = scrollLines(p, s).square;
+    const [a, b] = scrollLines(p, s).napeLine;
     meets(a, start(s.S3!));
     expect(b.y).toBeCloseTo(a.y, 9);
     meets(b, end(s.nape!));
@@ -102,12 +102,17 @@ describe('the back', () => {
     tangentToBack(q, t.nape!);
   });
 
-  it('fits the nape as one circle through the duck tail, tangent to the neck\'s back', () => {
+  it('tips the line up toward the neck\'s back by the nape angle, the nape tangent to it and the back', () => {
     const q = tapered();
-    q.scroll!.napeCircle = true;
-    q.scroll!.napeR = 20;
+    q.scroll!.napeAngle = 15;
     const t = solved(q);
-    meets(end(t.nape!), start(t.S3!));
+    const [a, b] = scrollLines(q, t).napeLine;
+    meets(a, start(t.S3!));
+    meets(b, end(t.nape!));
+    const tilt = 15 * Math.PI / 180;
+    expect(Math.atan2(b.y - a.y, b.x - a.x)).toBeCloseTo(tilt, 9);
+    const h = heading(t.nape!.end);
+    expect(h.x * (b.y - a.y) - h.y * (b.x - a.x)).toBeCloseTo(0, 9);
     tangentToBack(q, t.nape!);
   });
 
