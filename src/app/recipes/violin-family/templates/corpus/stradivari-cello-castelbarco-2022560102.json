@@ -58,7 +58,7 @@
     "outerContour": {
       "button": {
         "width": 20,
-        "height": 14.76
+        "height": 22
       },
       "purflingOffset": 6.05,
       "purflingChannelDepth": 1.2,
@@ -250,18 +250,18 @@
       "clampBox": true
     },
     "neck": {
-      "length": 293,
-      "angle": 7.5,
+      "length": 296,
+      "angle": 9.5,
       "upperThickness": 17.5,
-      "lowerThickness": 19,
+      "lowerThickness": 20,
       "topWidth": 33.5,
       "rootWidth": 46,
-      "heelRadius": 20,
-      "mortiseDepth": 10,
-      "overstand": 19,
+      "heelRadius": 18,
+      "mortiseDepth": 3.5,
+      "overstand": 15,
       "nutHeight": 10,
       "nutWidth": 46.5,
-      "heelAngle": 7.5
+      "heelAngle": 5
     },
     "scroll": {
       "style": "salviati",
@@ -317,6 +317,18 @@
       "wall": 11,
       "napeAngle": 10.5,
       "duckTailStraight": 7
+    },
+    "stringSetup": {
+      "bodyStop": 400,
+      "bridgeHeight": 90,
+      "nutThickness": 11,
+      "fingerboardLength": 580,
+      "fingerboardThickness": 7.5,
+      "fingerboardNutRadius": 60,
+      "fingerboardEndRadius": 64,
+      "scoopAt": 290,
+      "scoopBass": 1.5,
+      "scoopTreble": 1
     }
   },
   "ratios": {
@@ -342,7 +354,7 @@
     "C1toLBW": 0.1111111111111111,
     "C11toLBW": 0.0763888888888889,
     "BWtoLBW": 0.045454545454545456,
-    "BHtoBW": 0.738,
+    "BHtoBW": 1.1,
     "LEyetoW": 0.020454545454545454,
     "UEyetoLEye": 0.6666666666666666,
     "URisetoUEye": 1.2166666666666666,
@@ -401,7 +413,7 @@
       "rotationDeg": 0.2,
       "opacity": 0.4,
       "suppressWhite": false,
-      "locked": false,
+      "locked": true,
       "scope": {
         "only": [
           "longArching",
@@ -457,6 +469,11 @@
       "rotationDeg": 0,
       "opacity": 0.65,
       "locked": false,
+      "scope": {
+        "only": [
+          "scrollWidths"
+        ]
+      },
       "crop": {
         "left": 0.19,
         "top": 0,
@@ -473,40 +490,12 @@
       "width": 190.75349390608983,
       "height": 279.06972885131836,
       "rotationDeg": 0,
-      "locked": false
-    }
-  ],
-  "toolboxState": {
-    "shapes": [],
-    "currentColor": "#1d4ed8",
-    "currentDashed": false,
-    "currentTextSize": 9.3,
-    "currentStrokeWidth": 2,
-    "currentOpacity": 1,
-    "currentSectionColor2": "#93c5fd",
-    "currentSectionWeights": [
-      1,
-      1,
-      1
-    ],
-    "currentTickWeights": [
-      1,
-      1,
-      1
-    ],
-    "currentCycloidFactor": 1,
-    "currentCycloidPct": 1,
-    "currentFilletRadius": 5,
-    "layers": [
-      {
-        "id": "layer-default",
-        "name": "Layer 1",
-        "locked": false
+      "locked": false,
+      "scope": {
+        "only": [
+          "scrollWidths"
+        ]
       }
-    ],
-    "activeLayerId": "layer-default",
-    "showImages": true,
-    "showShapes": true,
-    "recipeLocked": true
-  }
+    }
+  ]
 }
