@@ -21,10 +21,9 @@ TODO: write this article.
 | Hip Y | TODO |
 | Crown | TODO |
 | Poll | TODO |
-| Hip | TODO |
-| Hip Y | TODO |
 | Foot | TODO |
 | Duck Tail | TODO |
+| Straight | TODO |
 | Turn 1 Bottom | TODO |
 | Turn 2 Top | TODO |
 | Turn 2 Bottom | TODO |

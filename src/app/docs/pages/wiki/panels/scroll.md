@@ -22,7 +22,7 @@ TODO: write this article.
 | S3 R | TODO |
 | Hang | TODO |
 | Nape R | TODO |
-| Circle | TODO |
+| Nape Angle | TODO |
 | Flat | TODO |
 | F0 R | TODO |
 | F0 Sweep | TODO |

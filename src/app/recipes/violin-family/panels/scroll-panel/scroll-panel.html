@@ -39,9 +39,9 @@
                 [(ngModel)]="v.napeR" (input)="edited()" (focus)="focus('nape', pal.ink(1).faint(5))" (blur)="blur()" />
         </label>
         <label class="field-cell">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="v.napeCircle" (change)="edited()" /><span>Circle</span>
-            </div>
+            <span class="field-title">Nape Angle <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="0.5" min="-89.5" max="89.5"
+                [(ngModel)]="v.napeAngle" (input)="edited()" (focus)="focus('napeAngle', pal.ink(1).faint(5))" (blur)="blur()" />
         </label>
     </div>
     @if (extent; as e) {

@@ -6,6 +6,7 @@ import { downloadDxfText } from '../../helpers/dxfExporter';
 import { TooltipDirective } from '../../docs/tooltips';
 import { IconDirective } from '../../icons/icon.directive';
 import { ToolboxStore } from '../tools/toolbox-store';
+import { ClipboardImage, imageFromClipboard } from '../tools/image-asset-store';
 
 /**
  * The document-wide edit verbs — undo and redo, clipboard, file, duplicate, group, delete — as a
@@ -30,6 +31,9 @@ export class EditMenuComponent {
   protected readonly toolbox = inject(ToolboxStore);
   /** Fired after any row acts, so the menu can be closed. */
   @Output() done = new EventEmitter<void>();
+  /** A pasted image, for the canvas to place as a reference image. Unbound, an image paste falls
+   * back to the internal copy. */
+  @Output() imagePasted = new EventEmitter<ClipboardImage>();
   // unfolds in place: a flyout would be clipped by the menu's own scroll box
   protected layersOpen = false;
 
@@ -57,17 +61,16 @@ export class EditMenuComponent {
   }
 
   /** Reads the system clipboard where the browser allows a page to (Chrome asks once; Firefox
-   * shows its own paste prompt), so SVG copied from another program lands too. When it won't, or
-   * holds something that isn't SVG, the internal copy is what gets pasted. */
+   * shows its own paste prompt), so SVG copied from another program lands too, and an image comes
+   * in as a reference image the way Ctrl+V brings it. When it won't, or holds nothing Cremona can
+   * use, the internal copy is what gets pasted. */
   async paste(): Promise<void> {
     this.done.emit();
-    let text: string | null = null;
-    try {
-      text = await navigator.clipboard?.readText() ?? null;
-    } catch {
-      text = null;
-    }
-    if (!this.actions.paste(text)) this.actions.paste(null);
+    const data = await readSystemClipboard();
+    if (data && this.actions.paste(data.getData('text/plain'))) return;
+    const image = data && this.imagePasted.observed ? imageFromClipboard(data) : null;
+    if (image) this.imagePasted.emit(image);
+    else this.actions.paste(null);
   }
 
   /** A button click is a user gesture, so the page may write the clipboard directly. Failure is
@@ -75,5 +78,26 @@ export class EditMenuComponent {
   private toSystemClipboard(svg: string | null): void {
     if (!svg || writeSvgToSystemClipboard(svg)) return;
     navigator.clipboard?.writeText(svg).catch(() => { });
+  }
+}
+
+// the async clipboard as a paste event's clipboardData would read it. read() is the only way to
+// reach an image; readText() covers a browser that has only that.
+async function readSystemClipboard(): Promise<{ getData(type: string): string; files: File[] } | null> {
+  const clipboard = typeof navigator === 'undefined' ? undefined : navigator.clipboard;
+  try {
+    const texts = new Map<string, string>();
+    const files: File[] = [];
+    for (const item of await clipboard!.read()) {
+      for (const type of item.types) {
+        const blob = await item.getType(type);
+        if (type.startsWith('image/')) files.push(new File([blob], 'pasted-image', { type }));
+        else if (!texts.has(type)) texts.set(type, await blob.text());
+      }
+    }
+    return { getData: type => texts.get(type) ?? '', files };
+  } catch {
+    const text = await clipboard?.readText().catch(() => null);
+    return text == null ? null : { getData: type => type === 'text/plain' ? text : '', files: [] };
   }
 }

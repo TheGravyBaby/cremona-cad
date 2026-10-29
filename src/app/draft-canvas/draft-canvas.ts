@@ -1719,7 +1719,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   // the address wins when it loads, so the saved recipe says where the picture came from; the
   // pasted pixels cover an address that won't load on its own (signed, or behind a login).
-  private async placeClipboardImage({ url, file }: ClipboardImage): Promise<void> {
+  protected async placeClipboardImage({ url, file }: ClipboardImage): Promise<void> {
     const linked = url ? await prepareLinkedImage(url).catch(() => null) : null;
     if (linked) {
       this.placeReferenceImage(linked.href, linked.width, linked.height);

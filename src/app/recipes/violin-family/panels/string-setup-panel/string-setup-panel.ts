@@ -8,7 +8,7 @@ import {
   renderDashedLine, renderGuideBaseline, renderGuideKnot, renderPath, renderPolygon, renderSegment, renderSegmentHalo, renderSolveFailures, renderStroke, renderText,
 } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
-import { Pt } from '../../../../models/types';
+import { Pt, Vect2D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
@@ -41,7 +41,7 @@ export type StringSetupHighlightKey =
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
 export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
-  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFingerboard'];
+  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFingerboard', 'showFretMarks'];
   protected readonly pal = ThemeService.getPalette('varnish');
 
   static seed(p: ViolinFamilyParams): void {
@@ -95,7 +95,8 @@ export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
   draw(): void {
     safeRun(() => {
       let s = this.s = solveStringSetup(this.params)!;
-      this.drawn.emit(renderStringSetupViews(this.params, s, this.pal, { fingerboard: this.flags.showFingerboard, highlighted: this.highlighted }));
+      let side = this.flags.showFretMarks ? [renderFretTicks(s, FRET_LANDMARKS, this.pal)] : [];
+      this.drawn.emit(renderStringSetupViews(this.params, s, this.pal, { fingerboard: this.flags.showFingerboard, highlighted: this.highlighted, side }));
     });
   }
 }
@@ -135,6 +136,42 @@ export function renderStringSetupViews(
 const FINGERBOARD_CROWN_SAMPLES = 24;
 const FINGERBOARD_CROWN_OPACITY = 0.45;
 const SCOOP_GUIDE_LABEL_SIZE = 4;
+// how many semitones up the string to tick, and how far each tick reaches either side of it. Plain
+// semitones stay small so they read as a scale beside the landmarks: the fourth, fifth and octave
+// here, the position marks in the dev fingerboard panel
+const FRET_MARK_SEMITONES = 12;
+const FRET_TICK_HALF_LENGTH = 1;
+const LANDMARK_TICK_HALF_LENGTH = 3;
+export const FRET_LANDMARKS = [5, 7, 12];
+
+// equal temperament: each semitone shortens the sounding length by the twelfth root of 2, so
+// semitone n stops the string `length * (1 - 2^(-n/12))` from the nut
+export function semitoneStop(semitone: number, stringLength: number): number {
+  return stringLength * (1 - 2 ** (-semitone / 12));
+}
+
+// the first octave's semitones ticked up the string in the side elevation, the landmarks standing
+// taller. Ticks stop at the board's end
+export const renderFretTicks = (s: StringSetupSolve, landmarks: number[], pal: PanelPalette): RenderLayer => (g: any, ui: any): void => {
+  let nut = s.nutTop, bridge = s.bridgeTop, neckTop = s.neck.neckTop;
+  if (!nut || !bridge || !neckTop || !s.fingerboardEnd) return;
+  let boardLength = dist(neckTop, s.fingerboardEnd);
+  let stringLength = dist(nut, bridge);
+  let along: Vect2D = { a: (bridge.x - nut.x) / stringLength, b: (bridge.y - nut.y) / stringLength, mag: 1 };
+  let across: Vect2D = { a: -along.b, b: along.a, mag: 1 };
+  let tick = (semitone: number, halfLength: number, color: string) => {
+    let d = semitoneStop(semitone, stringLength);
+    if (d > boardLength) return;
+    let center = moveInVectorSpace(nut, [{ ...along, mag: d }]);
+    let a = moveInVectorSpace(center, [{ ...across, mag: halfLength }]);
+    let b = moveInVectorSpace(center, [{ ...across, mag: -halfLength }]);
+    renderSegment(a, b, color, STROKE_WEIGHT.guide)(g, ui);
+  };
+  for (let semitone = 1; semitone <= FRET_MARK_SEMITONES; semitone++) {
+    if (!landmarks.includes(semitone)) tick(semitone, FRET_TICK_HALF_LENGTH, pal.ink(0).faint(-3));
+  }
+  for (let semitone of landmarks) if (Number.isInteger(semitone) && semitone > 0) tick(semitone, LANDMARK_TICK_HALF_LENGTH, pal.ink(3));
+};
 
 // the bridge, the board, the nut and the string, over the neck renderNeck draws. The neck's front is
 // in colour since its length is set here

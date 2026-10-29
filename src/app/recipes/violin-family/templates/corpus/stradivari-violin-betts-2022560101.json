@@ -285,7 +285,7 @@
       "S3R": 30,
       "hang": 0,
       "napeR": 13,
-      "napeCircle": false,
+      "napeAngle": 0,
       "flat": 8,
       "F0R": 57,
       "F0Sweep": 44,
@@ -296,7 +296,6 @@
         "throat": 18,
         "duckTail": 25.5,
         "foot": 25.5,
-        "backHip": 27,
         "poll": 19,
         "crown": 11.5,
         "turn1Bottom": 26,
@@ -305,7 +304,7 @@
         "eye": 41
       },
       "hipHeight": 13,
-      "backHipHeight": 0,
+      "duckTailStraight": 0,
       "wall": 5
     },
     "mould": {

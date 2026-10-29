@@ -66,7 +66,7 @@ export class VolutePanel implements ViolinFamilyPanel, OnInit {
       S3R: mm(35),
       hang: 0,
       napeR: mm(10),
-      napeCircle: false,
+      napeAngle: 0,
       flat: 0,
       F0R: mm(60), F0Sweep: 45,
       frontStraight: mm(18),
@@ -74,10 +74,9 @@ export class VolutePanel implements ViolinFamilyPanel, OnInit {
       // placeholders about a Stradivari head, to be set from the scroll being copied: hips a little
       // proud of the nut, the first turn wide enough that the pegbox runs in under it out of sight,
       // and the duck tail's round the neck's width
-      widths: { hip: mm(25), throat: mm(20), duckTail: mm(26), foot: mm(26), backHip: mm(26), poll: mm(24), crown: mm(13), turn1Bottom: mm(26), turn2Top: mm(30), turn2Bottom: mm(34), eye: mm(41) },
+      widths: { hip: mm(25), throat: mm(20), duckTail: mm(26), foot: mm(26), poll: mm(24), crown: mm(13), turn1Bottom: mm(26), turn2Top: mm(30), turn2Bottom: mm(34), eye: mm(41) },
       hipHeight: 0,
-      // a violin's back has no hip
-      backHipHeight: 0,
+      duckTailStraight: 0,
       wall: mm(5),
     };
     p.scroll = scroll;

@@ -41,18 +41,6 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).faint(1)">Hip <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1).faint(1)"
-                [disabled]="!(v.backHipHeight > 0)" [(ngModel)]="w.backHip" (input)="edited()" (focus)="focus('backHip', pal.ink(1).faint(1))" (blur)="blur()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Hip Y <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.5" min="0"
-                [(ngModel)]="v.backHipHeight" (input)="edited()" (focus)="focus('backHip', pal.ink(1).faint(1))" (blur)="blur()" />
-        </label>
-    </div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
             <span class="field-title" [style.color]="pal.ink(1).faint(-4)">Foot <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1).faint(-4)"
                 [(ngModel)]="w.foot" (input)="edited()" (focus)="focus('foot', pal.ink(1).faint(-4))" (blur)="blur()" />
@@ -61,6 +49,11 @@
             <span class="field-title" [style.color]="pal.ink(1).faint(3)">Duck Tail <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1).faint(3)"
                 [(ngModel)]="w.duckTail" (input)="edited()" (focus)="focus('duckTail', pal.ink(1).faint(3))" (blur)="blur()" />
+        </label>
+         <label class="field-cell">
+            <span class="field-title">Straight <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0"
+                [(ngModel)]="v.duckTailStraight" (input)="edited()" (focus)="focus('foot', pal.ink(1).faint(-4))" (blur)="blur()" />
         </label>
     </div>
 </section>
