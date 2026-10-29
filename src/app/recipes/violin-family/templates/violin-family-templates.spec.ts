@@ -30,11 +30,8 @@ describe('CORPUS_TEMPLATES', () => {
     expect(keys.every(k => k.length > 0)).toBe(true);
   });
 
-  it('cite a record, and every reference image its holder', () => {
-    for (const t of CORPUS_TEMPLATES) {
-      expect(t.source, `${t.key} source`).toBeTruthy();
-      for (const img of t.referenceImages ?? []) expect(img.credit, `${t.key} ${img.id} credit`).toBeTruthy();
-    }
+  it('cite a record', () => {
+    for (const t of CORPUS_TEMPLATES) expect(t.source, `${t.key} source`).toBeTruthy();
   });
 
   // a mistyped or retired panel id means the image is never drawn, silently

@@ -58,7 +58,7 @@
     "outerContour": {
       "button": {
         "width": 20,
-        "height": 11
+        "height": 10.8
       },
       "purflingOffset": 5.1,
       "purflingChannelDepth": 0.9,
@@ -230,23 +230,24 @@
       }
     },
     "neck": {
-      "length": 139.5,
+      "length": 137,
       "angle": 7,
-      "upperThickness": 14,
-      "lowerThickness": 13,
+      "upperThickness": 12.5,
+      "lowerThickness": 12.5,
       "topWidth": 23.5,
       "rootWidth": 31,
-      "heelRadius": 13,
+      "heelRadius": 12,
       "mortiseDepth": 4.5,
       "overstand": 4.1,
       "nutHeight": 5.5,
-      "nutWidth": 24
+      "nutWidth": 24,
+      "heelAngle": 7.5
     },
     "scroll": {
       "style": "fourPoint",
       "eye": {
         "x": -16.5,
-        "y": 86.3,
+        "y": 86.2,
         "r": 3.5
       },
       "fitToNeck": false,
@@ -254,15 +255,15 @@
       "seedLength": 4,
       "arcRadii": [
         5.25,
-        5.25,
-        7,
-        8,
-        10.25,
-        11.75,
-        14.75,
+        5.5,
+        7.2,
+        8.5,
+        10.75,
+        12,
+        15.25,
         15.75
       ],
-      "S0R": 21,
+      "S0R": 21.5,
       "S0Sweep": 64,
       "S1R": 26.6,
       "S1Sweep": 101,
@@ -271,7 +272,7 @@
       "backStraight": 24,
       "S3R": 31,
       "hang": -2.3,
-      "napeR": 8,
+      "napeR": 11.5,
       "napeCircle": false,
       "flat": 12.4,
       "F0R": 54.7,
@@ -286,10 +287,10 @@
         "backHip": 26,
         "poll": 18,
         "crown": 12,
-        "turn1Bottom": 25.5,
-        "turn2Top": 24,
+        "turn1Bottom": 25,
+        "turn2Top": 23,
         "turn2Bottom": 34,
-        "eye": 41.8
+        "eye": 40
       },
       "hipHeight": 8,
       "backHipHeight": 0,
@@ -298,14 +299,42 @@
     "stringSetup": {
       "bodyStop": 195,
       "bridgeHeight": 33,
-      "nutThickness": 7.5,
+      "nutThickness": 7.3,
       "fingerboardLength": 270,
-      "fingerboardThickness": 5,
-      "fingerboardNutRadius": 41,
-      "fingerboardEndRadius": 43,
+      "fingerboardThickness": 5.5,
+      "fingerboardNutRadius": 56,
+      "fingerboardEndRadius": 56,
       "scoopAt": 135,
       "scoopBass": 0.75,
       "scoopTreble": 0.5
+    },
+    "mould": {
+      "neckBlock": {
+        "width": 60,
+        "height": 20
+      },
+      "upperCornerBlock": {
+        "width": 16,
+        "height": 20,
+        "pad": {
+          "x": 2.5,
+          "y": -2.5
+        }
+      },
+      "lowerCornerBlock": {
+        "width": 16,
+        "height": 20,
+        "pad": {
+          "x": 2.5,
+          "y": 2.5
+        }
+      },
+      "endBlock": {
+        "width": 60,
+        "height": 20
+      },
+      "bitDiameter": 6.35,
+      "clampBox": true
     }
   },
   "ratios": {
@@ -331,7 +360,7 @@
     "C1toLBW": 0.18781725888324874,
     "C11toLBW": 0.10152284263959391,
     "BWtoLBW": 0.0975609756097561,
-    "BHtoBW": 0.55,
+    "BHtoBW": 0.54,
     "LEyetoW": 0.02097560975609756,
     "UEyetoLEye": 0.6395348837209303,
     "URisetoUEye": 2.090909090909091,
@@ -395,7 +424,8 @@
         "only": [
           "longArching",
           "crossArching",
-          "neck"
+          "neck",
+          "stringSetup"
         ]
       },
       "crop": {
@@ -418,6 +448,7 @@
       "width": 66.1921186292565,
       "height": 112.79809278130136,
       "rotationDeg": 357.6,
+      "opacity": 0.65,
       "locked": true,
       "scope": {
         "only": [
@@ -431,11 +462,12 @@
       "id": "shape-mvsvus0z-4",
       "label": "Img 5",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154815:musihas-200154815.0013/17,30,1303,1771/1024,/0/default.jpg",
-      "x": 24.368496388513996,
-      "y": -40.35413109577206,
-      "width": 45.191341634860294,
-      "height": 149.7264582081046,
+      "x": 36.421632150435286,
+      "y": -40.83504177430857,
+      "width": 45.66851470181322,
+      "height": 151.30741222899712,
       "rotationDeg": 359.4,
+      "opacity": 0.65,
       "locked": true,
       "scope": {
         "only": [
@@ -453,11 +485,12 @@
       "id": "shape-mvsw0cw0-5",
       "label": "Img 5",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154815:musihas-200154815.0012/26,17,1223,1719/1024,/0/default.jpg",
-      "x": -114.29956789938517,
-      "y": -34.14991000266778,
-      "width": 45.306207873441814,
-      "height": 148.06421041488647,
+      "x": -126.03254495982317,
+      "y": -34.52909560653842,
+      "width": 45.57523093413871,
+      "height": 148.94339869691507,
       "rotationDeg": 0.2,
+      "opacity": 0.65,
       "locked": true,
       "scope": {
         "only": [

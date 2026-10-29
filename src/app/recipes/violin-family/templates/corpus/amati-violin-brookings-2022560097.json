@@ -228,6 +228,7 @@
       "topWidth": 24,
       "rootWidth": 30,
       "heelRadius": 12,
+      "heelAngle": 5.5,
       "mortiseDepth": 5,
       "overstand": 6.5,
       "nutHeight": 6,

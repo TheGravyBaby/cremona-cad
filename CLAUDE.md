@@ -115,7 +115,8 @@ Layer/image visibility is one `scope` field (`panel-scope.ts`), with no separate
 - **The rib taper is placement, not carving.** Plates are carved against their own gluing plane;
   only the section views apply the tilt, as a rigid rotation.
 - **`innerFlutingDepth` stays.** Removing it reshapes every arch.
-- **The heel is a cove** (a convex arc can't reach the button tip). The foot is cut square to the neck.
+- **The heel is a cove** (a convex arc can't reach the button tip). The foot leaves the button tip at
+  `heelAngle` (degrees off level); the neck's angle cuts it square to the neck.
 - **The neck tapers**: `upperThickness` at the nut, `lowerThickness` at the heel, square to the
   fingerboard plane through the button tip.
 - **The scroll continues the neck's plane from `nut`**, not `nutString`; the nut stands proud.

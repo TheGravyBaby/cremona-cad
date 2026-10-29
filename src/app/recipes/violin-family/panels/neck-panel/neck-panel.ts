@@ -6,7 +6,7 @@ import {
 import { applyMatrix, Matrix2D, pathFromArc, pathFromLine, pathFromPolygon, transformPath, translatePath } from '../../../../helpers/math/pathMath';
 import { occludePath } from '../../../../helpers/math/pathVibes';
 import {
-  renderArcHalo, renderDashedLine, renderGuideBaseline, renderGuideMeasure, renderPath, renderPolygon, renderSegment,
+  AngleMarkSize, renderAngle, renderArcHalo, renderDashedLine, renderGuideBaseline, renderGuideMeasure, renderPath, renderPolygon, renderSegment,
   renderSegmentHalo, renderSolveFailures, renderStroke,
 } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
@@ -27,11 +27,11 @@ import { ScrollView, scrollBackViewStrokes, scrollFrontViewStrokes, solveScrollW
 // The neck set in the side elevation, and its widths in plan. Everything hangs off the top plate's
 // edge at the neck end, so the rib taper carries through: the fingerboard plane stands off that edge
 // by the overstand at the neck's angle, the neck's length along it from the mortise floor places
-// the nut, and the back runs straight from under the nut through the heel's corner. The heel is a
-// cove from the back down to the button tip; the foot is cut square to the neck. Panel and renders,
-// then the solve.
+// the nut, and the back runs straight from under the nut through the lower thickness. The foot
+// leaves the button tip at the heel angle and meets the back at the heel's corner; the heel is a
+// cove rounding that corner down to the tip. Panel and renders, then the solve.
 
-export type NeckHighlightKey = 'length' | 'upperThickness' | 'lowerThickness' | 'topWidth' | 'rootWidth' | 'heel' | 'buttonHeight' | 'mortise' | 'overstand' | 'angle';
+export type NeckHighlightKey = 'length' | 'upperThickness' | 'lowerThickness' | 'topWidth' | 'rootWidth' | 'heel' | 'heelAngle' | 'buttonHeight' | 'mortise' | 'overstand' | 'angle';
 
 @Component({
   selector: 'app-vf-neck-panel',
@@ -44,12 +44,12 @@ export class NeckPanel implements ViolinFamilyPanel, OnInit {
   protected readonly pal = ThemeService.getPalette('varnish');
 
   // the length runs along the fingerboard plane from the mortise floor, so the stop grows by the
-  // overhang and the mortise, at the neck's lean
+  // overhang and the mortise, at the neck's lean. The foot starts square to the neck
   static seed(p: ViolinFamilyParams): void {
     if (p.neck || !p.arching) return;
     let s = familyStandards(p.body.height);
     let inPlate = (p.body.overhang + s.neck.mortiseDepth) / Math.cos(s.neck.angle * TURN.degree);
-    p.neck = { length: Math.round((s.neckStop + inPlate) * 2) / 2, ...s.neck };
+    p.neck = { length: Math.round((s.neckStop + inPlate) * 2) / 2, ...s.neck, heelAngle: s.neck.angle };
   }
 
   @Input({ required: true }) params!: ViolinFamilyParams;
@@ -163,9 +163,9 @@ export const renderNeck = (
     if (!onNeck) seg(n.neckTop, n.backNut);
   } else {
     if (onNeck) hidden(backTop, n.backNut);
-    if (heel) {
-      hidden(pointOnCircle(heel, heel.start), backHeel);
-      hidden(backHeel, pointOnCircle(heel, heel.end));
+    if (heel && n.heelCorner) {
+      hidden(pointOnCircle(heel, heel.start), n.heelCorner);
+      hidden(n.heelCorner, pointOnCircle(heel, heel.end));
     }
   }
   seg(n.bottomFront, n.root, ink(pal.ink(2)));
@@ -180,6 +180,17 @@ export const renderNeck = (
   renderGuideMeasure(n.bottomFront, n.neckTop, pal.neutral, -2 * nk.upperThickness)(g, ui);
   renderGuideMeasure(n.neckTop, n.backNut, pal.neutral)(g, ui);
   renderGuideMeasure(frontHeel, backHeel, pal.neutral)(g, ui);
+  if (n.heelCorner) renderHeelAngle(n.tip, n.heelCorner, nk.heelAngle, pal.neutral)(g, ui);
+};
+
+// the heel angle as the toolbox's angle tool would mark it, at the button tip from level round to
+// the foot; it reads clockwise below level, so the sweep runs from the foot up to level there
+const renderHeelAngle = (tip: Pt, corner: Pt, heelAngle: number, color: string) => (g: any, ui: any): void => {
+  let reach = dist(tip, corner);
+  let level = new Pt(tip.x + reach, tip.y);
+  let size: AngleMarkSize = { strokeWidth: 1, arrowLen: 1, arrowHalfWidth: 0.35, overshoot: 0.5, textGap: 1.5, fontSize: 2.6 };
+  if (heelAngle >= 0) renderAngle(tip, level, corner, reach * 0.6, color, size)(g, ui);
+  else renderAngle(tip, corner, level, reach * 0.6, color, size)(g, ui);
 };
 
 // the halo behind whatever the focused field measures, in the view that shows it: the widths in
@@ -208,6 +219,7 @@ const renderNeckHighlight = (
       for (let dx of backDx === null ? [0] : [0, backDx]) line(new Pt(dx - nk.rootWidth / 2, floorY), new Pt(dx + nk.rootWidth / 2, floorY));
       break;
     case 'heel': if (n.heel) renderArcHalo(n.heel, color)(g, ui); break;
+    case 'heelAngle': if (n.heelCorner) line(n.tip, n.heelCorner); break;
     case 'buttonHeight': line(new Pt(0, p.body.height), n.tip); break;
     case 'mortise': line(new Pt(0, p.body.height - p.body.overhang), new Pt(0, floorY)); break;
     case 'overstand': if (n.plateEdge) line(n.plateEdge, n.root); break;
@@ -273,13 +285,14 @@ const renderNeckFrontView = (p: ViolinFamilyParams, n: NeckSolve, o: OuterContou
   // the scroll's frame seen from the front: across stays across, up the neck foreshortens by the angle
   if (scroll) {
     let onNeck = scrollOnNeck(p, n);
-    let drawn = (view: ScrollView) => {
-      let { nut: _, neck: __, ...rest } = view;
-      for (let stroke of Object.values(rest).flat()) renderStroke(stroke, pal.neutral)(g, ui);
+    // the neck below the nut is drawn here already; from behind its sides run on up past the nut to the scroll
+    let drawn = (view: ScrollView, sides: boolean) => {
+      let { nut: _, neck, ...rest } = view;
+      for (let stroke of [...Object.values(rest).flat(), ...(sides ? neck : [])]) renderStroke(stroke, pal.neutral)(g, ui);
     };
     let height = (y: number) => onNeck[3] * y + onNeck[5];
-    drawn(scrollFrontViewStrokes(p, scroll, (x, y) => new Pt(x, height(y)), 0));
-    if (o.back) drawn(scrollBackViewStrokes(p, scroll, (x, y) => new Pt(dx + x, height(y)), 0));
+    drawn(scrollFrontViewStrokes(p, scroll, (x, y) => new Pt(x, height(y)), 0), false);
+    if (o.back) drawn(scrollBackViewStrokes(p, scroll, (x, y) => new Pt(dx + x, height(y)), 0), true);
   }
 
   // drawn last, since they lie along the neck's own ends
@@ -308,18 +321,13 @@ function tipDepthBehindBack(backRoot: Pt, backNut: Pt, tip: Pt): number {
   return ((tip.y - backRoot.y) * (backNut.x - backRoot.x) - (tip.x - backRoot.x) * (backNut.y - backRoot.y)) / backRunLength;
 }
 
-// the heel rounds the corner at `backHeel` between the back and the foot running out to the tip.
-// The foot is cut square to the neck, not level with the body, so it leaves the tip square to the
-// fingerboard plane: a plain fillet if it fits, else the arc reaches the tip itself. Null when the
-// back runs out past the tip, where no cove can reach it
-function solveHeel(backHeel: Pt, backNut: Pt, tip: Pt, radius: number): Arc | null {
-  let tipDepth = tipDepthBehindBack(backHeel, backNut, tip);
-  if (!(radius > 0) || !(tipDepth > 0)) return null;
-
-  let backRunLength = dist(backHeel, backNut);
-  let footLength = dist(backHeel, tip);
-  let up: Vect2D = { a: (backNut.x - backHeel.x) / backRunLength, b: (backNut.y - backHeel.y) / backRunLength, mag: 1 };
-  let out: Vect2D = { a: (tip.x - backHeel.x) / footLength, b: (tip.y - backHeel.y) / footLength, mag: 1 };
+// the heel rounds `corner`, where the back meets the foot running out to the tip at the heel angle:
+// a plain fillet if it fits, else the arc reaches the tip itself
+function solveHeel(corner: Pt, backNut: Pt, tip: Pt, radius: number): Arc {
+  let backRunLength = dist(corner, backNut);
+  let footLength = dist(corner, tip);
+  let up: Vect2D = { a: (backNut.x - corner.x) / backRunLength, b: (backNut.y - corner.y) / backRunLength, mag: 1 };
+  let out: Vect2D = { a: (tip.x - corner.x) / footLength, b: (tip.y - corner.y) / footLength, mag: 1 };
   // off the back toward the tip, where the arc's centre stands
   let cos = up.a * out.a + up.b * out.b;
   let offBack: Vect2D = { a: (out.a - cos * up.a) / Math.sqrt(1 - cos * cos), b: (out.b - cos * up.b) / Math.sqrt(1 - cos * cos), mag: 1 };
@@ -328,13 +336,13 @@ function solveHeel(backHeel: Pt, backNut: Pt, tip: Pt, radius: number): Arc | nu
   let end: Pt;
   let tangentRun = radius * Math.sqrt((1 + cos) / (1 - cos));
   if (tangentRun < footLength) {
-    start = moveInVectorSpace(backHeel, [{ ...up, mag: tangentRun }]);
-    end = moveInVectorSpace(backHeel, [{ ...out, mag: tangentRun }]);
+    start = moveInVectorSpace(corner, [{ ...up, mag: tangentRun }]);
+    end = moveInVectorSpace(corner, [{ ...out, mag: tangentRun }]);
   } else {
-    let fromTip = new Pt(backHeel.x + offBack.a * radius - tip.x, backHeel.y + offBack.b * radius - tip.y);
+    let fromTip = new Pt(corner.x + offBack.a * radius - tip.x, corner.y + offBack.b * radius - tip.y);
     let along = fromTip.x * up.a + fromTip.y * up.b;
     let upBack = -along + Math.sqrt(Math.max(along * along - (fromTip.x ** 2 + fromTip.y ** 2) + radius * radius, 0));
-    start = moveInVectorSpace(backHeel, [{ ...up, mag: upBack }]);
+    start = moveInVectorSpace(corner, [{ ...up, mag: upBack }]);
     end = tip;
   }
 
@@ -351,7 +359,7 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
   let nk = p.neck;
   let s: NeckSolve = {
     plateEdge: null, root: null, bottomFront: null, neckTop: null, backNut: null, backRoot: null, plateAtMortise: null,
-    lowerThickness: null, tip: null, heel: null, heelFace: null, failures: [],
+    lowerThickness: null, tip: null, heelCorner: null, heel: null, heelFace: null, failures: [],
   };
   let fail = (message: string, unsolved: NeckFailure['unsolved']): NeckFailure => ({ message, unsolved, circles: [], segments: [] });
   let a = solveLongArching(p)!;
@@ -401,11 +409,23 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
       s.failures.push(fail('Heel: the heel radius needs a value above 0.', ['heel']));
       return null;
     }
-    s.heel = solveHeel(backHeel, backNut, tip, nk.heelRadius);
-    if (!s.heel) {
+    if (!(tipDepthBehindBack(backHeel, backNut, tip) > 0)) {
       s.failures.push(fail('Heel: the neck\'s back runs out past the button tip, so no cove can reach it. Thin the neck at the heel.', ['heel']));
       return null;
     }
+    if (!(nk.heelAngle > -90 && nk.heelAngle < 90)) {
+      s.failures.push(fail('Heel: the heel angle has to lie between -90° and 90°.', ['heel']));
+      return null;
+    }
+    let foot = vectorFromSlope(nk.heelAngle * TURN.degree);
+    let corner = intersectLines(lineFromTwoPoints(backNut, backHeel), lineFromTwoPoints(tip, moveInVectorSpace(tip, [foot])));
+    let alongBack = corner ? ((corner.x - s.backRoot.x) * (backNut.x - s.backRoot.x) + (corner.y - s.backRoot.y) * (backNut.y - s.backRoot.y)) / dist(s.backRoot, backNut) ** 2 : NaN;
+    if (!corner || (corner.x - tip.x) * foot.a + (corner.y - tip.y) * foot.b <= 0 || !(alongBack > 0 && alongBack < 1)) {
+      s.failures.push(fail('Heel: at this heel angle the foot never meets the neck\'s back between the root and the nut. Bring the angle nearer the neck projection.', ['heel']));
+      return null;
+    }
+    s.heelCorner = new Pt(corner.x, corner.y);
+    s.heel = solveHeel(s.heelCorner, backNut, tip, nk.heelRadius);
     let end = pointOnCircle(s.heel, s.heel.end);
     s.heelFace = dist(end, tip) > 1e-9 ? [end, tip] : null;
     return null;
