@@ -234,7 +234,7 @@ describe('the surface', () => {
       expect(z).not.toBeNull();
       peak = Math.max(peak, z!);
     }
-    expect(peak).toBeCloseTo(p.arching!.top.arch.height, 1);
+    expect(peak).toBeCloseTo(p.arching!.top.long.height, 1);
   });
 
   it('the corner pass only ever removes wood, and none along the flanks', () => {

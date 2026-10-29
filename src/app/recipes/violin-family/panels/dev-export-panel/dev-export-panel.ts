@@ -669,7 +669,7 @@ export const renderHole = (o: OuterContourSolve, plate: Plate, pal: PanelPalette
 // the plate's contours as the Cross Arching panel maps them, under the raster's lines
 export const renderArching = (p: ViolinFamilyParams, surface: PlateSurface, plate: Plate, tp: Toolpaths, pal: PanelPalette) => (gr: any, ui: any): void => {
   let ink = pal.ink(plate === 'top' ? TOP_ARCH_INK : BACK_ARCH_INK);
-  let { stepMm, gridMm } = contourSampleSteps(p, p.arching![plate].arch.height);
+  let { stepMm, gridMm } = contourSampleSteps(p, p.arching![plate].long.height);
   for (let { level, rings } of contourRings(p, surface, stepMm, gridMm)) {
     let d = rings.map(ring => `M ${ring.map(([x, y]) => `${x} ${y}`).join(' L ')} Z`).join(' ');
     renderPath(d, level <= 0 ? pal.ink(CHANNEL_INK) : ink, STROKE_WEIGHT.guide, level <= 0 ? 0.9 : 0.7)(gr, ui);
@@ -935,7 +935,7 @@ function insideOutline(outline: string, distance: number): string | null {
 export function cradleToolpaths(p: ViolinFamilyParams, surface: PlateSurface, o: OuterContourSolve, bit: Bit, g: CradleSettings, cradle: CradleSpec = CRADLE, machine = MACHINE): Toolpaths {
   let top = g.stock.thickness;
   let land = top - cradle.wall;
-  let archHeight = p.arching![g.plate].arch.height;
+  let archHeight = p.arching![g.plate].long.height;
   let out = emptyToolpaths(top, land, [
     `Z0 = BED, slab top Z${top.toFixed(3)}`,
     `XY0 = SLAB LOWER LEFT, slab ${g.stock.width} x ${g.stock.length}`,
@@ -1112,7 +1112,7 @@ export const GRADUATED_PLATE = 'EXPECTS THE GRADUATED TOP, FACE UP IN ITS CRADLE
 export function fholeToolpaths(p: ViolinFamilyParams, s: FholeContoursSolve, surface: PlateSurface, seat: PlateSurface, o: OuterContourSolve, bit: Bit, g: CradleSettings, fh: FholeSettings, fine = false, cradle: CradleSpec = CRADLE): Toolpaths {
   let top = g.stock.thickness, lipZ = top - cradle.wall;
   let edge = p.arching!.top.thickness;
-  let crown = lipZ + edge + p.arching!.top.arch.height;
+  let crown = lipZ + edge + p.arching!.top.long.height;
   let out = emptyToolpaths(crown, lipZ, [
     `Z0 = BED, slab top Z${top.toFixed(3)}; the top face up on the lip Z${lipZ.toFixed(3)}, its edge Z${(lipZ + edge).toFixed(3)}, its crown Z${crown.toFixed(3)}`,
     `XY0 = SLAB LOWER LEFT, slab ${g.stock.width} x ${g.stock.length}, cut to the ${g.plate}`,

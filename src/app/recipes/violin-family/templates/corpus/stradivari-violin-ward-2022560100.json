@@ -146,7 +146,7 @@
       "ribHeightUpper": 28.5,
       "top": {
         "thickness": 3.75,
-        "arch": {
+        "long": {
           "type": "spline",
           "height": 12,
           "peak": 50,
@@ -184,7 +184,7 @@
       },
       "back": {
         "thickness": 4.5,
-        "arch": {
+        "long": {
           "type": "spline",
           "height": 11.25,
           "peak": 50,

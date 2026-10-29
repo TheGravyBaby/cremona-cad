@@ -143,7 +143,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
         if (!surface) this.sampled[plate] = null;
       }
       let dx = -p.body.width * PLATE_LAYOUT_GAP;
-      let sideReach = sideX + Math.max(a.ribs!.zLower, a.ribs!.zUpper) + p.arching!.top.thickness + p.arching!.top.arch.height + STATION_LINE_OVERRUN_MM;
+      let sideReach = sideX + Math.max(a.ribs!.zLower, a.ribs!.zUpper) + p.arching!.top.thickness + p.arching!.top.long.height + STATION_LINE_OVERRUN_MM;
       let stationLine = renderDashedLine(new Pt(dx - p.body.width / 2 - STATION_LINE_OVERRUN_MM, y), new Pt(sideReach, y), this.pal.neutral, DASH.guide, STROKE_WEIGHT.section, 0.7);
       let side = renderBodySideProfile(p, a, o, this.pal, false, { ground: true, fluting: true });
 
@@ -287,11 +287,11 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
   // the lowest a point may dip, % of the arch height: the plate's thickness
   zFloor(plate: Plate): number {
     let pa = this.params.arching![plate];
-    return -100 * pa.thickness / Math.max(pa.arch.height, pa.thickness);
+    return -100 * pa.thickness / Math.max(pa.long.height, pa.thickness);
   }
 
   pctMax(plate: Plate): number {
-    return cycloidPctMax(this.params.arching![plate].thickness, this.params.arching![plate].arch.height);
+    return cycloidPctMax(this.params.arching![plate].thickness, this.params.arching![plate].long.height);
   }
 
   // one overlay at a time across both plates: the sampling is the costly part
@@ -368,7 +368,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
 
       if (mode === 'contours') {
         if (!c.contours) {
-          let { stepMm, gridMm } = contourSampleSteps(p, a[plate].arch.height);
+          let { stepMm, gridMm } = contourSampleSteps(p, a[plate].long.height);
           c.contours = {
             levels: contourRings(p, surface, stepMm, gridMm).map(({ level, rings }) => ({ level, rings: rings.map(ring => ring.map(([x, ry]) => new Pt3D(x, ry, level))) })),
             outline: surface.outline.map(pt => new Pt3D(pt.x, pt.y, 0)),
@@ -428,7 +428,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     if (!ribs || (halves.top === null && halves.back === null)) return () => {};
     let ribZ = ribHeightAt(p, y, ribs);
     // held still as the cursor scrubs, its top clearing the plate by the tallest the section can stand
-    let dy = -(Math.max(ribs.zLower, ribs.zUpper) + a.top.thickness + a.top.arch.height + 20);
+    let dy = -(Math.max(ribs.zLower, ribs.zUpper) + a.top.thickness + a.top.long.height + 20);
 
     let parts: RenderLayer[] = [];
     if (ribHalf !== null) {
@@ -1154,18 +1154,18 @@ function solvePlateSurface(p: ViolinFamilyParams, plate: Plate): { surface: Plat
     let channel = f[plate];
     let outline = plate === 'top' ? o.top : o.back;
     if (!channel || !outline || !f.outerEdge) return fail(`${label}: the fluting channel has to solve first.`);
-    if (!(pa.thickness > 0 && pa.arch.height > 0)) return fail(`${label}: the long arch has to solve first.`);
+    if (!(pa.thickness > 0 && pa.long.height > 0)) return fail(`${label}: the long arch has to solve first.`);
 
     let shapes: CrossShapeParams[] = [cross, ...cross.stations];
-    let zFloor = -100 * pa.thickness / Math.max(pa.arch.height, pa.thickness);
+    let zFloor = -100 * pa.thickness / Math.max(pa.long.height, pa.thickness);
     for (let shape of shapes) {
       // a cleared field reads as 0 against a range, so it is asked for first
       let typed = [shape.d, shape.pct, shape.peak, ...shape.points.flatMap(pt => [pt.x, pt.z])];
       if (!typed.every(Number.isFinite)) return fail(`${label}: every crown field needs a value.`);
       if (cross.type === 'cycloid') {
         if (!(shape.d >= 0 && shape.d <= 100)) return fail(`${label}: the cycloid factor has to sit between 0 and 100.`);
-        if (!(shape.pct >= 5 && shape.pct <= cycloidPctMax(pa.thickness, pa.arch.height)))
-          return fail(`${label}: the cycloid's percent has to sit between 5 and ${cycloidPctMax(pa.thickness, pa.arch.height)}; past that its ends dip deeper than the plate is thick.`);
+        if (!(shape.pct >= 5 && shape.pct <= cycloidPctMax(pa.thickness, pa.long.height)))
+          return fail(`${label}: the cycloid's percent has to sit between 5 and ${cycloidPctMax(pa.thickness, pa.long.height)}; past that its ends dip deeper than the plate is thick.`);
       }
       if (cross.type === 'spline') {
         if (!(shape.peak >= 30 && shape.peak <= 70)) return fail(`${label}: the crown has to sit between 30% and 70% of the width.`);

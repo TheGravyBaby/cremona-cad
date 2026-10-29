@@ -400,7 +400,7 @@ describe('the thickness field', () => {
     for (const [i, q] of f.loop.entries()) {
       expect(readings[i]).toBeCloseTo(f.edge + surfaceZAt(surface, q.x, q.y)!, 6);
       expect(readings[i]).toBeGreaterThanOrEqual(f.edge - p.fluting!.back.depth - 1e-6);
-      expect(readings[i]).toBeLessThanOrEqual(f.edge + p.arching!.back.arch.height + 1e-6);
+      expect(readings[i]).toBeLessThanOrEqual(f.edge + p.arching!.back.long.height + 1e-6);
     }
     for (const q of f.loop.filter((_, i) => i % 20 === 0)) expect(f.edgeAt(-q.x, q.y)).toBeCloseTo(f.edgeAt(q.x, q.y), 2);
     // the land outside the boundary reads the same way, back to the edge thickness on the flat
@@ -463,7 +463,7 @@ describe('the thickness field', () => {
       const s = defaultGraduation(p);
       // thicker than anything else on the plate, the boundary's arched readings included, so its
       // reach shows in the range
-      s.fHoleThickness = edgeThicknessOf(p, 'top') + p.arching!.top.arch.height + 1;
+      s.fHoleThickness = edgeThicknessOf(p, 'top') + p.arching!.top.long.height + 1;
       s.fHoleReach = 6;
       s.plates.top.points.forEach(pt => pt.thickness = edgeThicknessOf(p, 'top') - 1);
       return s;
