@@ -228,19 +228,20 @@ export function distPointToPolylineIndexed(p: Pt, idx: PolylineIndex): number {
  * e.g. sampling the arch surface's slope in the fluting channel's transverse
  * direction. Same outward ring scan and early-out bound.
  */
-export function closestPointToPolylineIndexed(p: Pt, idx: PolylineIndex): { dist: number; point: Pt } {
+export function closestPointToPolylineIndexed(p: Pt, idx: PolylineIndex): { dist: number; point: Pt; index: number } {
   const { poly, cellSize, minX, minY, cols, rows, cells } = idx;
   const ci = Math.floor((p.x - minX) / cellSize);
   const cj = Math.floor((p.y - minY) / cellSize);
   const maxRing = Math.max(ci, cols - 1 - ci, cj, rows - 1 - cj);
   let best = Infinity;
   let bestPt: Pt = poly[0] ?? p;
+  let bestIndex = 0;
 
   const scanCell = (x: number, y: number): void => {
     if (cells[y * cols + x].length === 0 || cellGapSq(idx, p, x, y) >= best * best) return;
     for (const i of cells[y * cols + x]) {
       const r = closestPointOnSegment(p, poly[i], poly[(i + 1) % poly.length]);
-      if (r.dist < best) { best = r.dist; bestPt = r.point; }
+      if (r.dist < best) { best = r.dist; bestPt = r.point; bestIndex = i; }
     }
   };
   const scanRow = (y: number, x0: number, x1: number): void => {
@@ -263,7 +264,7 @@ export function closestPointToPolylineIndexed(p: Pt, idx: PolylineIndex): { dist
     }
     if (best <= r * cellSize) break;
   }
-  return { dist: best, point: bestPt };
+  return { dist: best, point: bestPt, index: bestIndex };
 }
 
 /** Running length along an open polyline: `cum[i]` is how far poly[i] is from poly[0]. */
@@ -1020,4 +1021,72 @@ export function simplifyPolyline3D(pts: Pt3D[], tol: number): Pt3D[] {
   const out: Pt3D[] = [];
   for (let i = 0; i < n; i++) if (keep[i]) out.push(pts[i]);
   return out;
+}
+
+// each row of a cost table matched to a distinct column, the total cost least, rows no more than
+// columns; returns each row's column. The Hungarian method with potentials, O(rows² · columns)
+export function minCostAssignment(cost: number[][]): number[] {
+  const n = cost.length, m = n ? cost[0].length : 0;
+  if (n > m) throw new Error('minCostAssignment: more rows than columns');
+  const u = new Float64Array(n + 1), v = new Float64Array(m + 1);
+  const owner = new Int32Array(m + 1), way = new Int32Array(m + 1);
+  for (let i = 1; i <= n; i++) {
+    owner[0] = i;
+    let j0 = 0;
+    const minv = new Float64Array(m + 1).fill(Infinity);
+    const used = new Uint8Array(m + 1);
+    do {
+      used[j0] = 1;
+      const i0 = owner[j0];
+      let delta = Infinity, j1 = 0;
+      for (let j = 1; j <= m; j++) {
+        if (used[j]) continue;
+        const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+        if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
+        if (minv[j] < delta) { delta = minv[j]; j1 = j; }
+      }
+      for (let j = 0; j <= m; j++) {
+        if (used[j]) { u[owner[j]] += delta; v[j] -= delta; }
+        else minv[j] -= delta;
+      }
+      j0 = j1;
+    } while (owner[j0] !== 0);
+    do {
+      const j1 = way[j0];
+      owner[j0] = owner[j1];
+      j0 = j1;
+    } while (j0);
+  }
+  const out = new Array<number>(n).fill(-1);
+  for (let j = 1; j <= m; j++) if (owner[j]) out[owner[j] - 1] = j - 1;
+  return out;
+}
+
+// a value spoken for out to a radius: a reading at a point, or a line read along its length, whose
+// value may change with where along it the spot is nearest (then a function of the spot)
+export interface RadialSource { value: number | ((x: number, y: number) => number); reach: number; dist: (x: number, y: number) => number }
+
+// the blend of what reaches a spot, each source weighted by ((reach − d) / (reach · d))²: exact on a
+// source, flat where one reaches alone, and fading to nothing at its reach. Where none reaches, every
+// source weighted by the inverse square of how far beyond its reach the spot lies, softened by
+// half its reach, so the gaps shade smoothly toward whatever is nearest rather than breaking into
+// patches or cells
+export function radialBlend(sources: RadialSource[], x: number, y: number): number {
+  let sum = 0, weighted = 0;
+  let farSum = 0, farWeighted = 0;
+  for (const s of sources) {
+    const d = s.dist(x, y);
+    const v = typeof s.value === 'function' ? s.value(x, y) : s.value;
+    if (d < 1e-9) return v;
+    if (d >= s.reach) {
+      const w = 1 / (d - s.reach + s.reach / 2 + 1) ** 2;
+      farSum += w;
+      farWeighted += w * v;
+      continue;
+    }
+    const w = ((s.reach - d) / (s.reach * d)) ** 2;
+    sum += w;
+    weighted += w * v;
+  }
+  return sum > 0 ? weighted / sum : farSum > 0 ? farWeighted / farSum : NaN;
 }

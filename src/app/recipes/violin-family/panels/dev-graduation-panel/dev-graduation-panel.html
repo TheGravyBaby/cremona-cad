@@ -7,14 +7,154 @@
                 [(ngModel)]="settings.lining" (input)="stateEdited()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Edge Inset <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(1)"
-                [(ngModel)]="settings.edgeInset" (input)="stateEdited()" />
-        </label>
-        <label class="field-cell">
             <span class="field-title">Block Margin <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" [style.border-color]="pal.ink(2)"
                 [(ngModel)]="settings.blockMargin" (input)="stateEdited()" />
         </label>
     </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Edge Inset <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(1)"
+                [(ngModel)]="settings.edgeInset" (input)="stateEdited()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Edge Reach <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3)"
+                [(ngModel)]="settings.edgeReach" (input)="stateEdited()" />
+        </label>
+    </div>
 </section>
+
+@for (plate of plates; track plate) {
+@let g = settings.plates[plate];
+@let open = plate === active;
+@let map = maps[plate];
+<section class="ui-group graduation-plate">
+    <div class="ui-group-title graduation-plate__title" role="button" tabindex="0" [attr.aria-expanded]="open"
+        (click)="activate(plate)" (keydown.enter)="activate(plate)">
+        {{ plate === 'top' ? 'Top Graduation' : 'Back Graduation' }}
+        @if (open) {
+        <span class="graduation-scale" title="Thickness, thin to thick, shared by both plates">
+            {{ scale.lo.toFixed(1) }}
+            <span class="graduation-scale__bar" [style.background]="rampGradient"></span>
+            {{ scale.hi.toFixed(1) }} <span class="unit-label">mm</span>
+        </span>
+        } @else {
+        <span class="graduation-plate__summary">{{ summary(plate) }}</span>
+        <svg icon="chevron-down" width="12" height="12" stroke-width="2.4"></svg>
+        }
+    </div>
+    @if (open) {
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="radio" [name]="plate + '-graduation-layout'" value="zones" [(ngModel)]="g.style" (change)="relayout(plate)" />
+            <span>Zones</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" [name]="plate + '-graduation-layout'" value="grid" [(ngModel)]="g.style" (change)="relayout(plate)" />
+            <span>Grid</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" [name]="plate + '-graduation-layout'" value="blank" [(ngModel)]="g.style" (change)="relayout(plate)" />
+            <span>Blank</span>
+        </div>
+    </div>
+    @if (g.style === 'grid') {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Spacing <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="5" min="5" [(ngModel)]="g.spacing" (change)="relayout(plate)" />
+        </label>
+    </div>
+    }
+    @if (plate === 'top') {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">F-hole Thick <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0"
+                [(ngModel)]="settings.fHoleThickness" (input)="stateEdited()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">F-hole Reach <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3)"
+                [(ngModel)]="settings.fHoleReach" (input)="stateEdited()" />
+        </label>
+    </div>
+    }
+
+    @if (g.points.length) {
+    <div class="graduation-picks" role="group" aria-label="Pick points">
+        <button type="button" class="graduation-pick" (click)="pickAll()">All</button>
+    </div>
+    }
+    <div class="graduation-map" (keydown)="mapKey($event)">
+        @for (row of map.rows; track $index) {
+        <div class="graduation-map__row"
+            [style.grid-template-columns]="(map.labelled ? '28px ' : '') + 'repeat(' + map.columns + ', minmax(26px, 1fr))'">
+            @if (map.labelled) {
+            <button type="button" class="graduation-map__label" (click)="selectRow(row, $event)"
+                [attr.aria-label]="'Pick row ' + row.label">{{ row.label }}</button>
+            }
+            @for (i of row.cells; track $index) {
+            @if (i === null) {
+            <span></span>
+            } @else {
+            @let pt = g.points[i];
+            <button type="button" class="graduation-chip" [class.graduation-chip--picked]="selected.includes(i)"
+                [style.background]="fill(pt.thickness)" [style.color]="fillText(pt.thickness)"
+                (click)="select(i, $event)">{{ pt.thickness.toFixed(1) }}</button>
+            }
+            }
+        </div>
+        } @empty {
+        <div class="station-note">
+            @if (g.style === 'blank') { No points yet. } @else { No points: the boundary has to solve first. }
+        </div>
+        }
+    </div>
+
+    @if (picked.length) {
+    <div class="station-note">{{ pickNote() }}</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Thick <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" placeholder="mixed"
+                [ngModel]="shared('thickness')" (ngModelChange)="setAll('thickness', $event)"
+                (keydown.arrowup)="nudge('thickness', 0.1, $event)" (keydown.arrowdown)="nudge('thickness', -0.1, $event)" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Reach <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="5" min="1" placeholder="mixed"
+                [ngModel]="shared('reach')" (ngModelChange)="setAll('reach', $event)"
+                (keydown.arrowup)="nudge('reach', 5, $event)" (keydown.arrowdown)="nudge('reach', -5, $event)" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        @if (picked.length === 1) {
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">X <span class="unit-label">mm</span></span>
+                <span class="field-title">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Point position" title="Arrow keys move the point from either box">
+                <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Point X"
+                    [(ngModel)]="picked[0].x" (input)="stateEdited()" />
+                <input type="number" class="basic-input" step="1" data-xy="y" aria-label="Point Y"
+                    [(ngModel)]="picked[0].y" (input)="stateEdited()" />
+            </div>
+        </div>
+        }
+        <button type="button" class="panel-nav-btn" (click)="removeSelected()">Remove</button>
+    </div>
+    }
+    <div class="input-group basic-row field-row" role="group">
+        <button type="button" class="panel-nav-btn" (click)="addPoint()">+ Add Point</button>
+        <button type="button" class="panel-nav-btn" [class.active]="picking && !pickMirror" [attr.aria-pressed]="picking && !pickMirror" (click)="pickByClick()"
+            title="Click on the plate to place a point; Escape calls it off">{{ picking && !pickMirror ? 'Click the plate…' : '+ Add by Click' }}</button>
+        <button type="button" class="panel-nav-btn" [class.active]="picking && pickMirror" [attr.aria-pressed]="picking && pickMirror" (click)="pickByClick(true)"
+            title="Click on the plate to place a point and its twin across the joint; Escape calls it off">{{ picking && pickMirror ? 'Click the plate…' : '+ Add by Click Mirror' }}</button>
+    </div>
+    }
+</section>
+}

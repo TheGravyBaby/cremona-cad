@@ -416,3 +416,98 @@
     width: 76px;
   }
 }
+
+/* the graduation panel. A folded plate's title is its only control, so it reads as a button */
+.graduation-plate__title { cursor: pointer; }
+.graduation-plate__title:focus-visible { outline: 1px solid var(--ui-focus-border); outline-offset: 2px; }
+
+.graduation-plate__summary,
+.graduation-scale {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ui-text-secondary);
+}
+
+.graduation-scale__bar {
+  width: 56px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+/* the plate map: chips standing where the points do, a close grid scrolled sideways once it runs
+   out of room */
+.graduation-map {
+  max-height: 320px;
+  overflow: auto;
+  margin: 4px 0;
+}
+
+.graduation-map__row {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+.graduation-map__label {
+  width: 28px;
+  height: 20px;
+  flex: none;
+  padding: 0 4px 0 0;
+  border: none;
+  background: none;
+  text-align: right;
+  font-size: 10px;
+  color: var(--ui-text-secondary);
+  cursor: pointer;
+}
+
+.graduation-map__label:hover { color: var(--ui-text-primary); }
+
+.graduation-chip {
+  min-width: 30px;
+  height: 20px;
+  padding: 0 2px;
+  border: none;
+  border-radius: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.graduation-chip--picked { box-shadow: 0 0 0 2px var(--ui-text-primary); position: relative; }
+.graduation-chip:focus-visible { outline: 1px solid var(--ui-focus-border); outline-offset: 1px; }
+
+/* the picks above the map */
+.graduation-picks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.graduation-pick {
+  min-width: 24px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 3px;
+  background: var(--ui-control-bg);
+  color: var(--ui-text-primary);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.graduation-pick:hover { border-color: var(--ui-text-secondary); }
+
+/* a panel button held down while the canvas waits on a click for it */
+.panel-nav-btn.active {
+  border-color: var(--ui-focus-border);
+  background: var(--ui-control-bg-active);
+}

@@ -796,6 +796,12 @@ export interface ViolinFamilyViewFlags {
   showScoopGuide: boolean;
   showBlocks: boolean;
   showRibOutline: boolean;
+  // the graduation points themselves, dots and readings; off, the thickness map stands alone
+  showGraduationPoints: boolean;
+  // every graduation point's reach ring on the plate being worked; off, only the picked points'
+  showPointReaches: boolean;
+  // where the edge thickness and the f-hole thickness give way, the reach loops inside the boundary and round each hole
+  showEdgeReach: boolean;
 }
 
 export type ViolinFamilyToggleKey = keyof ViolinFamilyViewFlags;
@@ -816,6 +822,9 @@ export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
   showScoopGuide: true,
   showBlocks: true,
   showRibOutline: false,
+  showGraduationPoints: true,
+  showPointReaches: true,
+  showEdgeReach: true,
 };
 
 export interface HighlightedArc {

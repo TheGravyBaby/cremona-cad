@@ -29,6 +29,12 @@ export const PALETTES = {
     name: 'Ice and Fire',
     inks: ['#7c95da', '#648f7b', '#e49338'],
   },
+  // a plate held up to the lamp: four cool inks for the loops, one for the points, then a ramp from
+  // the glow of thin wood to the dark of thick
+  lamplight: {
+    name: 'Lamplight',
+    inks: ['#5a82b3', '#4f9a94', '#8a7fb0', '#9bb07a', '#4b55e3', '#f6efc6', '#f1c260', '#e38d3e', '#bd4f30', '#6b2522'],
+  },
   orchid: {
     name: 'Orchid',
     inks: ['#6450a1', '#64ac70', '#d6b78e', '#e49338'],

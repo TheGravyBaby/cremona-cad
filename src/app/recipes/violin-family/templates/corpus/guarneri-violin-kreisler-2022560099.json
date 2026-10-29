@@ -58,7 +58,7 @@
     "outerContour": {
       "button": {
         "width": 20,
-        "height": 13
+        "height": 11
       },
       "purflingOffset": 5.1,
       "purflingChannelDepth": 0.9,
@@ -175,7 +175,7 @@
           "peakRow": 2
         },
         "cross": {
-          "type": "spline",
+          "type": "cycloid",
           "d": 40,
           "pct": 90,
           "peak": 50,
@@ -232,68 +232,80 @@
     "neck": {
       "length": 139.5,
       "angle": 7,
-      "upperThickness": 10.5,
+      "upperThickness": 14,
       "lowerThickness": 13,
-      "topWidth": 24,
-      "rootWidth": 33,
-      "heelRadius": 12,
-      "mortiseDepth": 3,
-      "overstand": 4.5,
-      "nutHeight": 4.5,
+      "topWidth": 23.5,
+      "rootWidth": 31,
+      "heelRadius": 13,
+      "mortiseDepth": 4.5,
+      "overstand": 4.1,
+      "nutHeight": 5.5,
       "nutWidth": 24
     },
     "scroll": {
-      "style": "salviati",
+      "style": "fourPoint",
       "eye": {
-        "x": -15.79,
-        "y": 72.9,
-        "r": 3.25
+        "x": -16.5,
+        "y": 86.3,
+        "r": 3.5
       },
       "fitToNeck": false,
       "pitch": 6.7,
-      "seedLength": 3.5,
+      "seedLength": 4,
       "arcRadii": [
-        3.94,
-        4.81,
-        5.69,
-        7.44,
-        8.31,
-        10.94,
-        11.81,
-        15.31
+        5.25,
+        5.25,
+        7,
+        8,
+        10.25,
+        11.75,
+        14.75,
+        15.75
       ],
-      "S0R": 19,
-      "S0Sweep": 79,
-      "S1R": 25,
-      "S1Sweep": 85,
+      "S0R": 21,
+      "S0Sweep": 64,
+      "S1R": 26.6,
+      "S1Sweep": 101,
       "S2R": 40,
-      "S2Sweep": 52,
-      "backStraight": 21,
-      "S3R": 34,
-      "hang": 2,
+      "S2Sweep": 50,
+      "backStraight": 24,
+      "S3R": 31,
+      "hang": -2.3,
       "napeR": 8,
       "napeCircle": false,
-      "flat": 8,
-      "F0R": 59,
-      "F0Sweep": 45,
-      "frontStraight": 18,
-      "F1R": 9,
+      "flat": 12.4,
+      "F0R": 54.7,
+      "F0Sweep": 42,
+      "frontStraight": 22,
+      "F1R": 10,
       "widths": {
-        "hip": 25,
-        "throat": 20,
-        "duckTail": 26,
-        "foot": 26,
+        "hip": 26,
+        "throat": 20.2,
+        "duckTail": 26.1,
+        "foot": 26.1,
         "backHip": 26,
-        "poll": 24,
-        "crown": 13,
-        "turn1Bottom": 26,
-        "turn2Top": 30,
+        "poll": 18,
+        "crown": 12,
+        "turn1Bottom": 25.5,
+        "turn2Top": 24,
         "turn2Bottom": 34,
-        "eye": 42
+        "eye": 41.8
       },
-      "hipHeight": 6.9999999999999964,
+      "hipHeight": 8,
       "backHipHeight": 0,
       "wall": 5
+    },
+    "stringSetup": {
+      "bodyStop": 195,
+      "bridgeHeight": 33,
+      "nutThickness": 7.5,
+      "fingerboardLength": 270,
+      "fingerboardThickness": 5,
+      "fingerboardNutRadius": 41,
+      "fingerboardEndRadius": 43,
+      "scoopAt": 135,
+      "scoopBass": 0.75,
+      "scoopTreble": 0.5
     }
   },
   "ratios": {
@@ -319,7 +331,7 @@
     "C1toLBW": 0.18781725888324874,
     "C11toLBW": 0.10152284263959391,
     "BWtoLBW": 0.0975609756097561,
-    "BHtoBW": 0.65,
+    "BHtoBW": 0.55,
     "LEyetoW": 0.02097560975609756,
     "UEyetoLEye": 0.6395348837209303,
     "URisetoUEye": 2.090909090909091,
@@ -358,7 +370,8 @@
         "except": [
           "fluting",
           "volute",
-          "scroll"
+          "scroll",
+          "scrollWidths"
         ]
       },
       "credit": {
@@ -370,8 +383,8 @@
       "id": "guarneri-violin-kreisler-profiles",
       "label": "Profiles, both sides (sp=3)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154814:musihas-200154814.0003/full/pct:100.0/0/default.jpg",
-      "x": 115.6089263201744,
-      "y": -2.8132305273203144,
+      "x": 122.10892632017438,
+      "y": -4.813230527320314,
       "width": 96.99882338253346,
       "height": 390.7015075683594,
       "rotationDeg": 0.3,
@@ -395,39 +408,68 @@
         "attribution": "Library of Congress, Music Division. Gift of Fritz Kreisler, 1952.",
         "url": "https://www.loc.gov/resource/music.musihas-200154814/?sp=3&st=image"
       }
-    }
-  ],
-  "toolboxState": {
-    "shapes": [],
-    "currentColor": "#1d4ed8",
-    "currentDashed": false,
-    "currentTextSize": 9.3,
-    "currentStrokeWidth": 1.5,
-    "currentOpacity": 1,
-    "currentSectionColor2": "#93c5fd",
-    "currentSectionWeights": [
-      1,
-      1,
-      1
-    ],
-    "currentTickWeights": [
-      1,
-      1,
-      1
-    ],
-    "currentCycloidFactor": 1,
-    "currentCycloidPct": 1,
-    "currentFilletRadius": 5,
-    "layers": [
-      {
-        "id": "layer-default",
-        "name": "Layer 1",
-        "locked": false
+    },
+    {
+      "id": "shape-mvstj4o5-1",
+      "label": "scroll",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154815:musihas-200154815.0014/32,1050,1294,2206/1024,/0/default.jpg",
+      "x": -53.00370080303191,
+      "y": -3.7220041375150683,
+      "width": 66.1921186292565,
+      "height": 112.79809278130136,
+      "rotationDeg": 357.6,
+      "locked": true,
+      "scope": {
+        "only": [
+          "scrollWidths",
+          "volute",
+          "scroll"
+        ]
       }
-    ],
-    "activeLayerId": "layer-default",
-    "showImages": true,
-    "showShapes": true,
-    "recipeLocked": false
-  }
+    },
+    {
+      "id": "shape-mvsvus0z-4",
+      "label": "Img 5",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154815:musihas-200154815.0013/17,30,1303,1771/1024,/0/default.jpg",
+      "x": 24.368496388513996,
+      "y": -40.35413109577206,
+      "width": 45.191341634860294,
+      "height": 149.7264582081046,
+      "rotationDeg": 359.4,
+      "locked": true,
+      "scope": {
+        "only": [
+          "scrollWidths"
+        ]
+      },
+      "crop": {
+        "left": 0.28,
+        "top": 0,
+        "right": 0.31,
+        "bottom": 0
+      }
+    },
+    {
+      "id": "shape-mvsw0cw0-5",
+      "label": "Img 5",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154815:musihas-200154815.0012/26,17,1223,1719/1024,/0/default.jpg",
+      "x": -114.29956789938517,
+      "y": -34.14991000266778,
+      "width": 45.306207873441814,
+      "height": 148.06421041488647,
+      "rotationDeg": 0.2,
+      "locked": true,
+      "scope": {
+        "only": [
+          "scrollWidths"
+        ]
+      },
+      "crop": {
+        "left": 0.26,
+        "top": 0,
+        "right": 0.31,
+        "bottom": 0
+      }
+    }
+  ]
 }

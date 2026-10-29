@@ -1058,10 +1058,11 @@ export function contourRings(p: ViolinFamilyParams, surface: PlateSurface, stepM
   let levelVals: number[] = [];
   for (let k = Math.ceil(zMin / stepMm); k * stepMm <= zMax; k++) levelVals.push(k * stepMm);
 
+  // d3 puts sample i at i + 0.5 in its own coordinates
   let generator = d3.contours().size([nx, ny]).smooth(true);
   let toLocal = (rings: number[][][][]): [number, number][][] =>
-    rings.flat().map(ring => ring.map(([cx, cy]) => [-xMax + cx * gridMm, yMin + cy * gridMm] as [number, number]));
-  let outlineRing: [number, number][] = surface.outline.map(pt => [(pt.x + xMax) / gridMm, (pt.y - yMin) / gridMm] as [number, number]);
+    rings.flat().map(ring => ring.map(([cx, cy]) => [-xMax + (cx - 0.5) * gridMm, yMin + (cy - 0.5) * gridMm] as [number, number]));
+  let outlineRing: [number, number][] = surface.outline.map(pt => [(pt.x + xMax) / gridMm + 0.5, (pt.y - yMin) / gridMm + 0.5] as [number, number]);
   outlineRing.push(outlineRing[0]);
   let outlineClip: [number, number][][][] = [[outlineRing]];
 

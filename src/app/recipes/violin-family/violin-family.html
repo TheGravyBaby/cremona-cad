@@ -368,6 +368,27 @@
     </button>
     }
 
+    @if (renderToggleButtons.includes('showGraduationPoints')) {
+    <button type="button" class="vt-btn" [class.active]="viewFlags.showGraduationPoints"
+        (click)="onRenderToggle('showGraduationPoints')" title="Show Points" aria-label="Show Points">
+        <svg icon="graduation-points" width="18" height="18"></svg>
+    </button>
+    }
+
+    @if (renderToggleButtons.includes('showPointReaches')) {
+    <button type="button" class="vt-btn" [class.active]="viewFlags.showPointReaches"
+        (click)="onRenderToggle('showPointReaches')" title="Show Point Reaches" aria-label="Show Point Reaches">
+        <svg icon="point-reach" width="18" height="18"></svg>
+    </button>
+    }
+
+    @if (renderToggleButtons.includes('showEdgeReach')) {
+    <button type="button" class="vt-btn" [class.active]="viewFlags.showEdgeReach"
+        (click)="onRenderToggle('showEdgeReach')" title="Show Edge and F-Hole Reach" aria-label="Show Edge and F-Hole Reach">
+        <svg icon="edge-reach" width="18" height="18"></svg>
+    </button>
+    }
+
     @if (renderToggleButtons.includes('renderOuterPath')) {
     <button type="button" class="vt-btn" [class.active]="viewFlags.renderOuterPath"
         (click)="onRenderToggle('renderOuterPath')" title="Show Outer Path" aria-label="Show Outer Path">
