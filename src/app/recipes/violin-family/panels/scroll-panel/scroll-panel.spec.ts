@@ -7,16 +7,17 @@ import { VolutePanel } from '../volute-panel/volute-panel';
 import { NeckPanel, neckTaper } from '../neck-panel/neck-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
-import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
+import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { ScrollSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { ViolinFamilyParams } from '../../violin-family-types';
+import { ScrollSolve } from '../../violin-family-solves';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
 
 const seeded = (p = blank()): ViolinFamilyParams => {
-  for (const panel of [MainBoutsPanel, CornersPanel, OuterContourPanel, FlutingPanel, LongArchingPanel, NeckPanel, VolutePanel]) panel.seed(p);
+  for (const panel of [MainBoutsPanel, CornersPanel, PlateContourPanel, FlutingPanel, LongArchingPanel, NeckPanel, VolutePanel]) panel.seed(p);
   return p;
 };
 

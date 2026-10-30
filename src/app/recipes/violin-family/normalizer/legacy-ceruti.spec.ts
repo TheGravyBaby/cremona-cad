@@ -4,7 +4,7 @@ import { pointOnCircle, signedRadianDelta } from '../../../helpers/math/simpleGe
 import { solveMainBouts } from '../panels/main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../panels/corners-panel/corners-panel';
 import { solveCenterBout } from '../panels/center-bout-panel/center-bout-panel';
-import { solveOuterContour } from '../panels/outer-contour-panel/outer-contour-panel';
+import { solvePlateContour } from '../panels/plate-contour-panel/plate-contour-panel';
 import { gougeSweep, solveFluting } from '../panels/fluting-panel/fluting-panel';
 import { solveFholeContours } from '../panels/fhole-contours-panel/fhole-contours-panel';
 import { solveLongArching } from '../panels/long-arching-panel/long-arching-panel';
@@ -98,7 +98,7 @@ describe.each(LEGACY)('a legacy Ceruti file: %s', (name, file) => {
   });
 
   it('cuts the plate corners off where it saved them, and stands the button to the same tip', () => {
-    const s = solveOuterContour(p)!;
+    const s = solvePlateContour(p)!;
     expect(unsolved(s)).toEqual([]);
     const compound = { U31: o.U31DoubleArc, L31: o.L31DoubleArc, C21: o.C21DoubleArc, C11: o.C11DoubleArc } as Record<string, boolean>;
     for (const [k, arc] of Object.entries(c.outerCorners as Record<string, Arcish | null>)) {
@@ -191,8 +191,8 @@ describe('the normalizer', () => {
     const scopes = Object.fromEntries(normalizeViolinFamilyRecipe(file)!.referenceImages!.map(i => [i.id, i.scope]));
     expect(scopes).toEqual({
       hidden: { only: [] },
-      listed: { only: ['outerContour'] },
-      default: { except: ['export', 'outerContour', 'fluting'] },
+      listed: { only: ['plateContour'] },
+      default: { except: ['export', 'plateContour', 'fluting'] },
       excluded: { except: ['longArching'] },
       everywhere: undefined,
     });

@@ -6,7 +6,7 @@ import { SolveFailure } from '../../helpers/validators';
 import { MainBoutsPanel, solveMainBouts } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel, solveCorners } from './panels/corners-panel/corners-panel';
 import { solveCenterBout } from './panels/center-bout-panel/center-bout-panel';
-import { OuterContourPanel, solveOuterContour } from './panels/outer-contour-panel/outer-contour-panel';
+import { PlateContourPanel, solvePlateContour } from './panels/plate-contour-panel/plate-contour-panel';
 import { FlutingPanel, solveFluting } from './panels/fluting-panel/fluting-panel';
 import { FHolePlacementPanel } from './panels/fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel, solveFholeContours } from './panels/fhole-contours-panel/fhole-contours-panel';
@@ -37,7 +37,7 @@ const CHAIN: Stage[] = [
   { id: 'mainBouts', solve: solveMainBouts },
   { id: 'corners', solve: solveCorners },
   { id: 'centerBout', solve: solveCenterBout },
-  { id: 'outerContour', solve: solveOuterContour },
+  { id: 'plateContour', solve: solvePlateContour },
   { id: 'fluting', solve: solveFluting },
   { id: 'fHoleContours', solve: solveFholeContours },
   { id: 'longArching', solve: solveLongArching },
@@ -53,7 +53,7 @@ const FIRST_READER: Record<keyof ViolinFamilyParams, string> = {
   body: 'mainBouts',
   bouts: 'mainBouts',
   corners: 'corners',
-  outerContour: 'outerContour',
+  plateContour: 'plateContour',
   fluting: 'fluting',
   fHoles: 'fHoleContours',
   fHoleContours: 'fHoleContours',
@@ -62,9 +62,10 @@ const FIRST_READER: Record<keyof ViolinFamilyParams, string> = {
   scroll: 'scroll',
   stringSetup: 'stringSetup',
   mould: 'mould',
+  graduation: 'devGraduation',
 };
 
-const SEEDS = [MainBoutsPanel, CornersPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel,
+const SEEDS = [MainBoutsPanel, CornersPanel, PlateContourPanel, FlutingPanel, FHolePlacementPanel,
   FHoleContoursPanel, LongArchingPanel, NeckPanel, VolutePanel, StringSetupPanel, MouldPanel];
 
 function seedWhole(body: BodyParams): ViolinFamilyParams {

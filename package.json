@@ -10,7 +10,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:fast": "ng test --watch=false --exclude \"src/app/recipes/violin-family/panels/{fluting,long-arching,cross-arching}-panel/*.spec.ts\" --exclude \"src/app/recipes/violin-family/panels/export-panel/*.spec.ts\"",
-    "test:outline": "ng test --watch=false --include \"src/app/recipes/violin-family/panels/{base-measurements,main-bouts,corners,center-bout,outer-contour,fhole-placement,fhole-contours,mould,neck,volute,scroll,scroll-widths,string-setup,dev-fingerboard,dev-graduation}-panel/*.spec.ts\" --include \"src/app/recipes/violin-family/templates/*.spec.ts\"",
+    "test:outline": "ng test --watch=false --include \"src/app/recipes/violin-family/panels/{base-measurements,main-bouts,corners,center-bout,plate-contour,fhole-placement,fhole-contours,mould,neck,volute,scroll,scroll-widths,string-setup,dev-fingerboard,dev-graduation}-panel/*.spec.ts\" --include \"src/app/recipes/violin-family/templates/*.spec.ts\"",
     "test:arching": "ng test --watch=false --include \"src/app/recipes/violin-family/panels/{fluting,long-arching,cross-arching}-panel/*.spec.ts\"",
     "test:export": "ng test --watch=false --include \"src/app/recipes/violin-family/panels/export-panel/*.spec.ts\"",
     "test:draft-canvas": "ng test --watch=false --include \"src/app/draft-canvas/**/*.spec.ts\"",

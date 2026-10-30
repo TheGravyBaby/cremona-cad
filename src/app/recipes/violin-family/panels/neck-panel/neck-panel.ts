@@ -14,9 +14,10 @@ import { Arc, arcFromCircle, Circle, Pt, Vect2D } from '../../../../models/types
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { NeckFailure, NeckSolve, OuterContourSolve, RenderLayer, ScrollSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { NeckFailure, NeckSolve, PlateContourSolve, ScrollSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
-import { PLATE_LAYOUT_GAP, solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
+import { PLATE_LAYOUT_GAP, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
   channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, ribHeightAt, sideViewOffsetX, solveLongArching, topPlatePlacement,
@@ -91,7 +92,7 @@ export class NeckPanel implements ViolinFamilyPanel, OnInit {
       let p = this.params;
       let n = this.n = solveNeck(p)!;
       let a = solveLongArching(p)!;
-      let o = solveOuterContour(p)!;
+      let o = solvePlateContour(p)!;
       let w = p.scroll ? solveScrollWidths(p) : null;
       let scroll = w && !w.scroll.failures.length ? w.scroll : undefined;
       let scrollInPlan = scroll && !w!.failures.some(f => f.unsolved.length) ? scroll : null;
@@ -258,7 +259,7 @@ export function neckInPlan(p: ViolinFamilyParams, n: NeckSolve): string {
 // the instrument from the front, the top plate with whatever the neck covers cut away and the neck
 // over it, and beside it the back with the neck's sides coming out past its edge, the plate nearest
 // the eye. Only the two ends a width sets are in colour, the top the neck's and the root the root's
-const renderNeckFrontView = (p: ViolinFamilyParams, n: NeckSolve, o: OuterContourSolve, scroll: ScrollSolve | null, pal: PanelPalette) => (g: any, ui: any): void => {
+const renderNeckFrontView = (p: ViolinFamilyParams, n: NeckSolve, o: PlateContourSolve, scroll: ScrollSolve | null, pal: PanelPalette) => (g: any, ui: any): void => {
   if (!n.neckTop) return;
   let nk = p.neck!;
   let neck = neckInPlan(p, n);
@@ -372,7 +373,7 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
       return fail('Neck: the length, thicknesses and widths need values above 0.', ['neck', 'heel']);
     if (nk.mortiseDepth < 0 || nk.overstand < 0) return fail('Neck: the mortise and overstand can\'t be negative.', ['neck', 'heel']);
     if (!(nk.angle > -90 && nk.angle < 90)) return fail('Neck: the projection has to lie between -90° and 90°.', ['neck', 'heel']);
-    let buttonHeight = p.outerContour!.button.height;
+    let buttonHeight = p.plateContour!.button.height;
     if (!Number.isFinite(buttonHeight) || buttonHeight < 0) return fail('Neck: the button height needs a value of 0 or more.', ['neck', 'heel']);
 
     let angle = nk.angle * TURN.degree;

@@ -55,7 +55,7 @@
       "C11Sweep": 41.23,
       "C11DoubleArc": true
     },
-    "outerContour": {
+    "plateContour": {
       "button": {
         "width": 20,
         "height": 12.5
@@ -388,7 +388,7 @@
       "width": 217.06466640244588,
       "height": 372.6486110687256,
       "rotationDeg": 0,
-      "opacity": 0.4,
+      "opacity": 0.75,
       "suppressWhite": true,
       "locked": false,
       "scope": {
@@ -414,7 +414,7 @@
       "width": 121.35340375222657,
       "height": 382.6171592285156,
       "rotationDeg": 0.2,
-      "opacity": 0.4,
+      "opacity": 0.75,
       "suppressWhite": true,
       "locked": false,
       "scope": {

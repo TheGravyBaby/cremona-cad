@@ -8,12 +8,13 @@ import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { ThemeService } from '../../../../theme/theme.service';
-import { BodyFailure, BodyKey, BodySolve, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyRecipe, ViolinFamilyToggleKey } from '../../violin-family-types';
+import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyRecipe, ViolinFamilyToggleKey } from '../../violin-family-types';
+import { BodyFailure, BodyKey, BodySolve } from '../../violin-family-solves';
 import { ViolinFamilyRatios } from '../../violin-family-seed';
 import { renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCorners, solveCorners } from '../corners-panel/corners-panel';
 import { renderCenterBout, solveCenterBout } from '../center-bout-panel/center-bout-panel';
-import { renderOuterContour, solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
+import { renderPlateContour, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 
 // The body's envelope: the box the outline is drawn inside, and the rib line's box inset from it.
@@ -69,14 +70,14 @@ export class BaseMeasurementsPanel implements ViolinFamilyPanel, OnInit {
       let m = solveMainBouts(p);
       let c = solveCorners(p);
       let cb = solveCenterBout(p);
-      let o = solveOuterContour(p);
+      let o = solvePlateContour(p);
       let layers: RenderLayer[] = [];
 
       // a loaded instrument shows as built: the top plate's edge, purfling and f-holes. Otherwise
       // the instrument as far as it's been drafted, in grey under the envelope. Once there are
       // corners, the bouts end where the corners take over
       if (o?.top) {
-        layers.push(renderOuterContour(p, o, this.pal, { showModuleArcs: false }, false, false));
+        layers.push(renderPlateContour(p, o, this.pal, { showModuleArcs: false }, false, false));
         layers.push(renderFholes(p, this.pal));
       } else {
         if (m) {

@@ -15,14 +15,15 @@ import { Arc, arcFromCircle, Circle, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { ButtonParams, CenterBoutSolve, CornersSolve, MainBoutsSolve, OuterContourFailure, OuterContourKey, OuterContourSolve, OuterCornerKey, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { ButtonParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { CenterBoutSolve, CornersSolve, MainBoutsSolve, PlateContourFailure, PlateContourKey, PlateContourSolve, OuterCornerKey } from '../../violin-family-solves';
 import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
 import { solveMainBouts, violNeckCap } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { cornerTurn, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 
-// The outer contour: the plates' edges, the rib outline stood off by the inset. Each corner's arcs
+// The plate contour: the plates' edges, the rib outline stood off by the inset. Each corner's arcs
 // run on past the rib corner by their cutoffs and are cut across a flat (or its rounding); the
 // back carries the button; the purfling lines run inside the edge. The plates are drawn here and on
 // every panel after this one, never before it; the f-holes ride on the top plate once they are cut.
@@ -32,12 +33,12 @@ import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 export const PLATE_LAYOUT_GAP = 1.1;
 
 @Component({
-  selector: 'app-vf-outer-contour-panel',
+  selector: 'app-vf-plate-contour-panel',
   imports: [FormsModule, NumberStepperDirective],
-  templateUrl: './outer-contour-panel.html',
+  templateUrl: './plate-contour-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class OuterContourPanel implements ViolinFamilyPanel, OnInit {
+export class PlateContourPanel implements ViolinFamilyPanel, OnInit {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs'];
   protected readonly pal = ThemeService.getPalette('classicCremona');
   protected readonly help = showFieldHelp;
@@ -47,7 +48,7 @@ export class OuterContourPanel implements ViolinFamilyPanel, OnInit {
   // corner carrying that on its second arc scaled by radius so the run along the edge is the
   // same; the purfling a channel's width in from the edge; the button off the seed ratios
   static seed(p: ViolinFamilyParams): void {
-    if (p.outerContour || !p.corners) return;
+    if (p.plateContour || !p.corners) return;
     let cb = solveCenterBout(p);
     if (!cb?.C0 || !cb.C2 || !cb.C1) return;
     let k = p.corners;
@@ -60,7 +61,7 @@ export class OuterContourPanel implements ViolinFamilyPanel, OnInit {
     let C1Cutoff = 5;
     let L3Cutoff = 2.5;
 
-    p.outerContour = {
+    p.plateContour = {
       button: { width: buttonWidth, height: Math.round(buttonWidth * SEED_RATIOS.BHtoBW) },
       purflingOffset: inset + 1.2,
       purflingChannelDepth: 1.2,
@@ -83,7 +84,7 @@ export class OuterContourPanel implements ViolinFamilyPanel, OnInit {
   @Output() edit = new EventEmitter<void>();
 
   // what the last draw solved; report() reads it rather than solving again
-  o!: OuterContourSolve;
+  o!: PlateContourSolve;
   ratios: Partial<ViolinFamilyRatios> = {};
 
   ngOnInit(): void {
@@ -104,17 +105,17 @@ export class OuterContourPanel implements ViolinFamilyPanel, OnInit {
 
   // messages for what didn't solve, raised once the edit settles rather than on every keystroke
   report(): void {
-    reportFailures(this.o.failures, 'Outer Contour');
+    reportFailures(this.o.failures, 'Plate Contour');
   }
 
   draw(): void {
     safeRun(() => {
       let p = this.params;
-      let o = this.o = solveOuterContour(p)!;
-      this.ratios = solveOuterContourRatios(p);
+      let o = this.o = solvePlateContour(p)!;
+      this.ratios = solvePlateContourRatios(p);
       // the holes, once cut, ride on the top plate here as on every panel after this one
       this.drawn.emit([
-        renderOuterContour(p, o, this.pal, this.flags, true),
+        renderPlateContour(p, o, this.pal, this.flags, true),
         renderFholes(p, this.pal),
         renderSolveFailures(o.failures, this.pal.alert, true),
       ]);
@@ -125,9 +126,9 @@ export class OuterContourPanel implements ViolinFamilyPanel, OnInit {
 // the plates side by side as the sheets show them: the top at the body's place, the back to its
 // left with the button, unless `showBack` is off. On this panel the corner arcs, the button and the purfling take their own
 // inks over the neutral outlines; grey under a later panel's work
-export const renderOuterContour = (
+export const renderPlateContour = (
   p: ViolinFamilyParams,
-  o: OuterContourSolve,
+  o: PlateContourSolve,
   pal: PanelPalette,
   flags: Pick<ViolinFamilyViewFlags, 'showModuleArcs'>,
   currentModule: boolean,
@@ -199,7 +200,7 @@ export type OuterCorners = Partial<Record<OuterCornerKey, Arc>>;
 // compound corner's first arc is the plain offset and its second takes the cutoff. A viol corner
 // has none: its flank and C arc are cut where they meet
 export function outerCorners(p: ViolinFamilyParams, rib: RibArcs, inset: number): OuterCorners {
-  let o = p.outerContour!;
+  let o = p.plateContour!;
   let k = p.corners!;
   let cut = (arc: Arc, offset: number, cutoff: number): Arc => {
     let out = offsetArcRadius(arc, offset);
@@ -435,7 +436,7 @@ function buttonShape(
 
 // the button standing off the back plate's outline at `offset`, and the U0 offset it hands over from
 function outerButton(p: ViolinFamilyParams, rib: RibArcs, offset: number): { paths: string[]; leaves: Pt; cap: Arc; U0: Arc } | null {
-  let b = p.outerContour!.button;
+  let b = p.plateContour!.button;
   if (p.bouts!.useViolNeck || b.height <= 0) return null;
   const U0 = offsetArcRadius(rib.U0, offset);
   const shape = buttonShape(b, p.body.height, x => lineCircleIntersection(lineFromTwoPoints(new Pt(x, p.body.height), new Pt(x, 0)), U0).sort((a, c) => a.y - c.y).pop() ?? null,
@@ -453,7 +454,7 @@ export function violNeckTopLine(p: ViolinFamilyParams, rib: RibArcs, d: number):
 // and on the back the button. `offset` is the inset for the plates; a later panel takes the same
 // edge further in with a smaller offset, the flats moving in with it
 export function outerPath(p: ViolinFamilyParams, rib: RibArcs, outer: OuterCorners, offset: number, withButton: boolean): { path: string; button: { path: string; cap: Arc } | null } {
-  let o = p.outerContour!;
+  let o = p.plateContour!;
   let b = p.bouts!;
   let arcs = offsetArcs(p, rib, offset, false);
 
@@ -519,9 +520,9 @@ export function outerPath(p: ViolinFamilyParams, rib: RibArcs, outer: OuterCorne
 
 // the button's proportions, read off the params every solve so they can't drift: its width
 // against the lower bout, its height against its width
-export function solveOuterContourRatios(p: ViolinFamilyParams): Partial<ViolinFamilyRatios> {
-  if (!p.outerContour) return {};
-  let b = p.outerContour.button;
+export function solvePlateContourRatios(p: ViolinFamilyParams): Partial<ViolinFamilyRatios> {
+  if (!p.plateContour) return {};
+  let b = p.plateContour.button;
   return { BWtoLBW: b.width / p.body.width, BHtoBW: b.height / b.width };
 }
 
@@ -542,43 +543,43 @@ export function purflingPath(p: ViolinFamilyParams, rib: RibArcs, arcOffset: num
 // rib outline is solved again here, every stage of it, since the edge stands off all of it. The
 // last answer is kept against the params it was solved from (~20ms a solve, and the arching panels
 // ask for it on every cursor move); nothing of it reaches the file
-let last: { key: string; solve: OuterContourSolve } | null = null;
+let last: { key: string; solve: PlateContourSolve } | null = null;
 
-export function solveOuterContour(p: ViolinFamilyParams): OuterContourSolve | null {
-  if (!p.outerContour || !p.corners || !p.bouts) return null;
-  let key = JSON.stringify([p.body, p.bouts, p.corners, p.outerContour]);
+export function solvePlateContour(p: ViolinFamilyParams): PlateContourSolve | null {
+  if (!p.plateContour || !p.corners || !p.bouts) return null;
+  let key = JSON.stringify([p.body, p.bouts, p.corners, p.plateContour]);
   if (last?.key === key) return last.solve;
-  let solve = solveOuterContourUncached(p);
+  let solve = solvePlateContourUncached(p);
   last = { key, solve };
   return solve;
 }
 
-function solveOuterContourUncached(p: ViolinFamilyParams): OuterContourSolve {
+function solvePlateContourUncached(p: ViolinFamilyParams): PlateContourSolve {
   let m = solveMainBouts(p)!;
   let c = solveCorners(p)!;
   let cb = solveCenterBout(p)!;
-  let o = p.outerContour;
+  let o = p.plateContour;
   let k = p.corners;
   let inset = p.body.overhang + p.body.rib;
 
-  let s: OuterContourSolve = { top: null, back: null, purfling: null, outerPurfling: null, corners: {}, button: null, failures: [] };
+  let s: PlateContourSolve = { top: null, back: null, purfling: null, outerPurfling: null, corners: {}, button: null, failures: [] };
 
   let rib = ribArcs(p, m, c, cb);
   if (!rib) {
-    s.failures.push({ message: 'Outer contour: every arc of the rib outline has to solve first.', unsolved: ['top', 'back', 'purfling'], circles: [], segments: [] });
+    s.failures.push({ message: 'Plate contour: every arc of the rib outline has to solve first.', unsolved: ['top', 'back', 'purfling'], circles: [], segments: [] });
     return s;
   }
 
   // a field cleared mid-edit fails its own section rather than drawing NaN
-  let blank = (section: string, unsolved: OuterContourKey[], values: number[]): OuterContourFailure | null =>
+  let blank = (section: string, unsolved: PlateContourKey[], values: number[]): PlateContourFailure | null =>
     values.every(Number.isFinite) ? null : { message: `${section}: every ${section.toLowerCase()} field needs a value.`, unsolved, circles: [], segments: [] };
 
-  solveSection(s.failures, 'Outer contour', ['top', 'back'], () => {
+  solveSection(s.failures, 'Plate contour', ['top', 'back'], () => {
     let cutoffs = [
       ...(k.useViolCornerUC ? [] : [k.U31DoubleArc ? o.U31Cutoff : o.U3Cutoff, k.C21DoubleArc ? o.C21Cutoff : o.C2Cutoff, o.upperRounding]),
       ...(k.useViolCornerLC ? [] : [k.C11DoubleArc ? o.C11Cutoff : o.C1Cutoff, k.L31DoubleArc ? o.L31Cutoff : o.L3Cutoff, o.lowerRounding]),
     ];
-    let missing = blank('Outer contour', ['top', 'back'], [...cutoffs, o.button.width, o.button.height]);
+    let missing = blank('Plate contour', ['top', 'back'], [...cutoffs, o.button.width, o.button.height]);
     if (missing) return missing;
 
     let outer = outerCorners(p, rib, inset);

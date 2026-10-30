@@ -27,7 +27,8 @@ excluded in `angular.json`; only `test:stress` runs it.
 | Path | What lives there |
 |---|---|
 | `src/app/recipes/violin-family/` | The one instrument model. `violin-family-recipe.ts` is a shell owning panel order, seeding, the commit and the view toggles. |
-| `…/violin-family-types.ts` | Every data shape, in three families: `params` (the file), `*Solve` (derived, never saved), `ratios` (stamped on the file, never read). Read its header. |
+| `…/violin-family-types.ts` | The saved shapes: `params` (the file), `ratios` (stamped on the file, never read), view flags, panel ids. Read its header. |
+| `…/violin-family-solves.ts` | Every `*Solve`, its `*Key` and `*Failure`: derived, never saved. |
 | `…/panels/<stage>-panel/` | One folder per drafting stage. The `.ts` holds, top to bottom, the component, its `render*` layers and its `solve*`; a later stage reads an earlier one by calling its solver. Body side profile lives in `long-arching-panel`, the scroll views in `scroll-widths-panel`. |
 | `…/templates/corpus/` | Served instruments, one JSON each, with `source` and image `credit`. `violin-family-templates.spec.ts` is the only spec that reads them. |
 | `src/app/recipes/hello-world/` | A four-circle toy recipe, about 150 lines: the starting point for trying out a new recipe. Recipes are picked in `app.ts`; each extends `recipe-base/`. |
@@ -84,8 +85,8 @@ angle the user authors is a number on params; the arc built from it is on the so
 
 Six edits. Missing one usually fails quietly (a panel that never unlocks):
 
-1. `violin-family-types.ts` → `VIOLIN_FAMILY_PANEL_IDS`, the stage's `<Stage>Params` on
-   `ViolinFamilyParams` and its `<Stage>Solve`. Ids are file-format vocabulary (images scope to them).
+1. `violin-family-types.ts` → `VIOLIN_FAMILY_PANEL_IDS` and the stage's `<Stage>Params` on
+   `ViolinFamilyParams`; `violin-family-solves.ts` → its `<Stage>Solve`. Ids are file-format vocabulary (images scope to them).
 2. `panels/<name>-panel/`: `.ts` + `.html` only, shared stylesheets. `implements ViolinFamilyPanel`,
    declare `static readonly renderToggles` and `static seed(p)`, outputs `drawn` and `edit`. Copy
    `corners-panel/`.

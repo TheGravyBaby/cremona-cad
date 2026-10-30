@@ -54,7 +54,7 @@
       "C11Sweep": 28,
       "C11DoubleArc": true
     },
-    "outerContour": {
+    "plateContour": {
       "button": {
         "width": 20,
         "height": 10.5
@@ -382,7 +382,7 @@
       "width": 231.01,
       "height": 373.4661463419784,
       "rotationDeg": 359.1,
-      "opacity": 0.4,
+      "opacity": 0.75,
       "suppressWhite": true,
       "locked": false,
       "scope": {
@@ -407,7 +407,7 @@
       "width": 120.10853333661512,
       "height": 388.3509033203125,
       "rotationDeg": 0,
-      "opacity": 0.4,
+      "opacity": 0.75,
       "suppressWhite": true,
       "locked": true,
       "scope": {
@@ -437,7 +437,7 @@
       "width": 72.12547028220462,
       "height": 132.6995849609375,
       "rotationDeg": 1.7,
-      "opacity": 0.4,
+      "opacity": 0.75,
       "suppressWhite": true,
       "locked": true,
       "scope": {

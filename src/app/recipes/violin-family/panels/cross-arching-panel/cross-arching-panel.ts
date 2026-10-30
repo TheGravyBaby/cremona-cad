@@ -22,12 +22,30 @@ import { applyRowMove, RowMove, RowReorderDirective, rowsWithMarker } from '../.
 import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
-  ArchTakeoff, CrossArchingFailure, CrossArchingSolve, CrossArchKnot, CrossArchParams, CrossArchRow, CrossArchSection, CrossShapeParams,
-  CrossStationParams, OuterContourSolve, Plate, PlateSurface, RenderLayer, SurfaceGouge, SurfaceRow, ViolinFamilyPanel, ViolinFamilyParams,
-  ViolinFamilyToggleKey, ViolinFamilyViewFlags,
+  CrossArchParams,
+  CrossShapeParams,
+  CrossStationParams,
+  RenderLayer,
+  ViolinFamilyPanel,
+  ViolinFamilyParams,
+  ViolinFamilyToggleKey,
+  ViolinFamilyViewFlags,
 } from '../../violin-family-types';
+import {
+  ArchTakeoff,
+  CrossArchingFailure,
+  CrossArchingSolve,
+  CrossArchKnot,
+  CrossArchRow,
+  CrossArchSection,
+  PlateContourSolve,
+  Plate,
+  PlateSurface,
+  SurfaceGouge,
+  SurfaceRow,
+} from '../../violin-family-solves';
 import { gougeHalfWidth, gougeProfileZ, renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
-import { purflingPath, renderOuterContour, ribArcs, solveOuterContour, PLATE_LAYOUT_GAP } from '../outer-contour-panel/outer-contour-panel';
+import { purflingPath, renderPlateContour, ribArcs, solvePlateContour, PLATE_LAYOUT_GAP } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
@@ -98,8 +116,8 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
 
   view: CrossArchingView = { cursorY: null, overlay: { top: 'none', back: 'none' }, rotX: -30, rotY: -10, rotZ: 0 };
   private sampled: Record<Plate, Sampled | null> = { top: null, back: null };
-  // the rib outline the section's box is cut from, sampled once per outer contour solve
-  private ribOutline: { for: OuterContourSolve; poly: Pt[] | null } | null = null;
+  // the rib outline the section's box is cut from, sampled once per plate contour solve
+  private ribOutline: { for: PlateContourSolve; poly: Pt[] | null } | null = null;
   highlighted: { plate: Plate; index: number } | null = null;
   dragging = false;
   private dragLast = { x: 0, y: 0 };
@@ -130,7 +148,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
   draw(): void {
     safeRun(() => {
       let p = this.params;
-      let o = solveOuterContour(p)!;
+      let o = solvePlateContour(p)!;
       let f = solveFluting(p)!;
       let a = solveLongArching(p)!;
       let sideX = sideViewOffsetX(p);
@@ -149,7 +167,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
 
 
       this.drawn.emit([
-        renderOuterContour(p, o, this.pal, this.flags, false),
+        renderPlateContour(p, o, this.pal, this.flags, false),
         renderFluting(p, f, this.pal, false),
         renderFholes(p, this.pal),
         (g, ui) => side(g.append('g').attr('transform', `translate(${sideX},0)`), ui.append('g').attr('transform', `translate(${sideX},0)`)),
@@ -417,7 +435,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     let a = p.arching!;
     let s = this.s;
     let ribs = solveLongArching(p)!.ribs;
-    let o = solveOuterContour(p)!;
+    let o = solvePlateContour(p)!;
     if (this.ribOutline?.for !== o) {
       let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
       let path = rib ? purflingPath(p, rib, 0) : null;
@@ -1130,7 +1148,7 @@ export function solveCrossArching(p: ViolinFamilyParams): CrossArchingSolve | nu
   if (!p.arching || !p.fluting) return null;
   let s: CrossArchingSolve = { top: null, back: null, failures: [] };
   for (let plate of ['top', 'back'] as const) {
-    let key = JSON.stringify([p.body, p.bouts, p.corners, p.outerContour, p.fluting, p.arching[plate]]);
+    let key = JSON.stringify([p.body, p.bouts, p.corners, p.plateContour, p.fluting, p.arching[plate]]);
     if (last[plate]?.key !== key) last[plate] = { key, ...solvePlateSurface(p, plate) };
     s[plate] = last[plate]!.surface;
     s.failures.push(...last[plate]!.failures);
@@ -1150,7 +1168,7 @@ function solvePlateSurface(p: ViolinFamilyParams, plate: Plate): { surface: Plat
     let pa = p.arching![plate];
     let cross = pa.cross;
     let f = solveFluting(p)!;
-    let o = solveOuterContour(p)!;
+    let o = solvePlateContour(p)!;
     let channel = f[plate];
     let outline = plate === 'top' ? o.top : o.back;
     if (!channel || !outline || !f.outerEdge) return fail(`${label}: the fluting channel has to solve first.`);

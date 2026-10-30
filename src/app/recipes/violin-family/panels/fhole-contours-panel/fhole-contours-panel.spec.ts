@@ -5,10 +5,11 @@ import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { Arc, Pt } from '../../../../models/types';
 import { FHoleContoursPanel, fholePath, solveFholeContours, solveFholeContoursRatios } from './fhole-contours-panel';
 import { FHolePlacementPanel, fholeNotches } from '../fhole-placement-panel/fhole-placement-panel';
-import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
+import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { FholeContoursSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { ViolinFamilyParams } from '../../violin-family-types';
+import { FholeContoursSolve } from '../../violin-family-solves';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS, FHOLE_SEED_RATIOS } from '../../violin-family-seed';
 
 // The property tests say what the drawing is: every joint is tangent-continuous, the shoulder
@@ -21,7 +22,7 @@ const placed = (): ViolinFamilyParams => {
   const p = blank();
   MainBoutsPanel.seed(p);
   CornersPanel.seed(p);
-  OuterContourPanel.seed(p);
+  PlateContourPanel.seed(p);
   FHolePlacementPanel.seed(p);
   return p;
 };

@@ -1,13 +1,12 @@
-import { APP_VERSION, Arc, Circle, Pt, Rectangle, RecipeInterface } from '../../models/types';
-import { SolveFailure } from '../../helpers/validators';
-import { PolylineIndex } from '../../helpers/math/vibeMath';
+import { APP_VERSION, Arc, Circle, Pt, RecipeInterface } from '../../models/types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS, FholeRatios, ViolinFamilyRatios } from './violin-family-seed';
 
-// Every data shape the Violin Family recipe passes around, in one place. Three families:
+// The data shapes the Violin Family recipe saves and passes around. Three families:
 //
 //   params  what the user typed, or a seed wrote in their place. The file. Solvers only read it.
 //   solved  what each panel's solver derives from the params: arcs, points, failures. Rebuilt,
-//           never saved. A later panel reads an earlier one's by calling its solver.
+//           never saved. A later panel reads an earlier one's by calling its solver. They live in
+//           violin-family-solves.ts.
 //   ratios  the proportions the drawing reads at, for study. Derived like the solved stages, and
 //           stamped onto the file as a record; nothing reads them back.
 //
@@ -18,11 +17,12 @@ export interface ViolinFamilyParams {
   body: BodyParams;
   bouts?: MainBoutsParams;
   corners?: CornersParams;
-  outerContour?: OuterContourParams;
+  plateContour?: PlateContourParams;
   fluting?: FlutingParams;
   fHoles?: FholePlacementParams;
   fHoleContours?: FholeContourParams;
   arching?: ArchingParams;
+  graduation?: GraduationParams;
   neck?: NeckParams;
   scroll?: ScrollParams;
   stringSetup?: StringSetupParams;
@@ -109,7 +109,7 @@ export interface CornersParams {
 // edge. A cutoff is how far a corner arc runs on past the rib outline's corner, in degrees along
 // its own direction of travel, so an inverted corner's follows it round; the Ceruti recipe typed
 // the arc's whole span instead. Rounding (0 to 1) swaps the flat for a curve
-export interface OuterContourParams {
+export interface PlateContourParams {
   button: ButtonParams;
   purflingOffset: number;
   purflingChannelDepth: number;
@@ -150,6 +150,61 @@ export interface ChannelParams {
   depth: number;
   cBoutWidth: number;
   useCBoutGouge: boolean;
+}
+
+// where the two f-holes sit on the top plate: the eyes first, everything else hung off them. Each
+// eye is a typed circle on the treble side; the bass side mirrors it. The rise is how far the hole
+// runs on past its eye, and the stem's lean is in degrees past upright, positive toward the upper eye
+export interface FholePlacementParams {
+  UEye: Circle;
+  LEye: Circle;
+  URise: number;
+  LRise: number;
+  stem: FholeStemParams;
+  // the nicks in the stem's edges, drawn and cut, or left off the hole altogether
+  notches: boolean;
+}
+
+export interface FholeStemParams {
+  center: Pt;
+  width: number;
+  angle: number;
+}
+
+// what bends between the eyes and the stem: each end's shoulder (U1/L1, with the bearing it ends
+// on, so a new radius still hands over in the same place), arm (U2/L2, or a compound pair, with how far the first sweeps before the second
+// takes over), wing (U3/L3) and the cut that sets the wing's tip, and the four arcs that land the
+// outline on the stem, one radius for all four. Radii in mm, angles in degrees as
+// the fields show them
+export interface FholeContourParams {
+  U1R: number;
+  U1End: number;
+  U2R: number;
+  U21DoubleArc: boolean;
+  U21R: number;
+  U2Sweep: number;
+  U3R: number;
+  // the angle the wing meets its cut at, read at the tip
+  U3Angle: number;
+  UCut: FholeCutParams;
+  L1R: number;
+  L1End: number;
+  L2R: number;
+  L21DoubleArc: boolean;
+  L21R: number;
+  L2Sweep: number;
+  L3R: number;
+  L3Angle: number;
+  LCut: FholeCutParams;
+  stemArcR: number;
+}
+
+// the notch cut from the eye to the wing's tip: where on the eye it starts (degrees round the eye),
+// the direction it runs (degrees) and how far
+export interface FholeCutParams {
+  angleOnEye: number;
+  slope: number;
+  length: number;
 }
 
 // the plates' arching: the ribs the top plate stands on, and for each plate its edge thickness, the
@@ -221,6 +276,37 @@ export interface CrossArchPoint {
   x: number;
   z: number;
   mirror: boolean;
+}
+
+// the plates' thicknesses. The glue platform is shared: `lining` and `edgeInset` are read in from
+// the rib line (the ribs' inner face), the lining being the strip glued inside the ribs, so the
+// platform ends that far in, and the edge inset where the gouge may start; `blockMargin` is read
+// from the neck and end blocks' inner faces, positive holding the gouge short of a block, negative
+// trimming the block back as blocks are once off the mould. The lining sits here only until the
+// linings have a stage of their own. The f-holes are the top's own: each hole's outline reads
+// `fHoleThickness`, what its wings carry. Inside the boundary each plate's thickness is its
+// readings, no mirroring: the two halves are read apart. A template carries no readings unless
+// they were read off a real instrument
+export interface GraduationParams {
+  lining: number;
+  edgeInset: number;
+  blockMargin: number;
+  fHoleThickness: number;
+  top: PlateGraduationParams;
+  back: PlateGraduationParams;
+}
+
+export interface PlateGraduationParams {
+  points: GraduationPoint[];
+}
+
+// one caliper reading in the plate's own frame: x across from the joint, y up the body. A zone
+// point keeps its name
+export interface GraduationPoint {
+  x: number;
+  y: number;
+  thickness: number;
+  label?: string;
 }
 
 // the neck set in the side elevation and its widths in plan. Length runs along the fingerboard
@@ -351,433 +437,6 @@ export interface ScrollWidths {
   eye: number;
 }
 
-export type BodyKey = 'height' | 'width' | 'overhang' | 'rib';
-export type BodyFailure = SolveFailure<BodyKey>;
-
-// the boxes are null while a measurement is missing or out of range
-export interface BodySolve {
-  inset: number;
-  outer: Rectangle | null;
-  ribBox: Rectangle | null;
-  failures: BodyFailure[];
-}
-
-export type MainBoutKey = 'U0' | 'U1' | 'L0' | 'L1';
-export type MainBoutFailure = SolveFailure<MainBoutKey>;
-
-// the right half of the rib outline; renders mirror it. A bout whose section failed is null
-export interface MainBoutsSolve {
-  U0: Arc | null;
-  U1: Arc | null;
-  L0: Arc | null;
-  L1: Arc | null;
-  V0: Arc | null;
-  // the neck's top face and join, at the rib line and at the plate edge
-  violCap: ViolNeckCap | null;
-  violOuterCap: ViolNeckCap | null;
-  violJoin: ViolNeckJoin | null;
-  failures: MainBoutFailure[];
-}
-
-export interface ViolNeckCap {
-  v0Start: number;
-  fillet: Arc | null;
-  topX: number;
-  topY: number;
-}
-
-// how far the neck reaches across against how far the upper bout can receive it
-export interface ViolNeckJoin {
-  reach: number;
-  limit: number;
-  headroom: number;
-}
-
-export type CornerKey = 'U2' | 'U3' | 'U31' | 'U4' | 'L2' | 'L3' | 'L31' | 'L4';
-export type CornerFailure = SolveFailure<CornerKey>;
-
-// the right-hand corners; renders mirror them. U1 and L1 are the main bouts' arcs with their ends
-// moved to where U2 and L2 take over: a render under or after this stage draws the bouts with
-// these in place of the main bouts' own. A corner whose section failed leaves its arcs null and
-// its bout arc untrimmed
-export interface CornersSolve {
-  U1: Arc | null;
-  U2: Arc | null;
-  U3: Arc | null;
-  U31: Arc | null;
-  U4: Arc | null;
-  L1: Arc | null;
-  L2: Arc | null;
-  L3: Arc | null;
-  L31: Arc | null;
-  L4: Arc | null;
-  failures: CornerFailure[];
-}
-
-export type CenterBoutKey = 'C0' | 'C1' | 'C11' | 'C2' | 'C21';
-export type CenterBoutFailure = SolveFailure<CenterBoutKey>;
-
-// the right-hand C bout; renders mirror it. C0 runs from where C2 takes over down to where C1
-// does, and is null until both corners solve. CBW is the width in use: the typed one, or the one
-// the fit found
-export interface CenterBoutSolve {
-  C0: Arc | null;
-  C2: Arc | null;
-  C21: Arc | null;
-  C1: Arc | null;
-  C11: Arc | null;
-  CBW: number | null;
-  failures: CenterBoutFailure[];
-}
-
-export type OuterContourKey = 'top' | 'back' | 'purfling';
-export type OuterContourFailure = SolveFailure<OuterContourKey>;
-export type OuterCornerKey = 'U3' | 'U31' | 'C2' | 'C21' | 'C1' | 'C11' | 'L3' | 'L31';
-
-// the plates' outlines as closed SVG paths, the corner arcs at the plate edge with their cutoffs
-// (right-hand side; a viol corner has none), and the button the back carries
-export interface OuterContourSolve {
-  top: string | null;
-  back: string | null;
-  purfling: string | null;
-  outerPurfling: string | null;
-  corners: Partial<Record<OuterCornerKey, Arc>>;
-  button: { path: string; cap: Arc } | null;
-  failures: OuterContourFailure[];
-}
-
-// where the two f-holes sit on the top plate: the eyes first, everything else hung off them. Each
-// eye is a typed circle on the treble side; the bass side mirrors it. The rise is how far the hole
-// runs on past its eye, and the stem's lean is in degrees past upright, positive toward the upper eye
-export interface FholePlacementParams {
-  UEye: Circle;
-  LEye: Circle;
-  URise: number;
-  LRise: number;
-  stem: FholeStemParams;
-  // the nicks in the stem's edges, drawn and cut, or left off the hole altogether
-  notches: boolean;
-}
-
-export interface FholeStemParams {
-  center: Pt;
-  width: number;
-  angle: number;
-}
-
-// what bends between the eyes and the stem: each end's shoulder (U1/L1, with the bearing it ends
-// on, so a new radius still hands over in the same place), arm (U2/L2, or a compound pair, with how far the first sweeps before the second
-// takes over), wing (U3/L3) and the cut that sets the wing's tip, and the four arcs that land the
-// outline on the stem, one radius for all four. Radii in mm, angles in degrees as
-// the fields show them
-export interface FholeContourParams {
-  U1R: number;
-  U1End: number;
-  U2R: number;
-  U21DoubleArc: boolean;
-  U21R: number;
-  U2Sweep: number;
-  U3R: number;
-  // the angle the wing meets its cut at, read at the tip
-  U3Angle: number;
-  UCut: FholeCutParams;
-  L1R: number;
-  L1End: number;
-  L2R: number;
-  L21DoubleArc: boolean;
-  L21R: number;
-  L2Sweep: number;
-  L3R: number;
-  L3Angle: number;
-  LCut: FholeCutParams;
-  stemArcR: number;
-}
-
-// the notch cut from the eye to the wing's tip: where on the eye it starts (degrees round the eye),
-// the direction it runs (degrees) and how far
-export interface FholeCutParams {
-  angleOnEye: number;
-  slope: number;
-  length: number;
-}
-
-export type FlutingKey = 'top' | 'back';
-export type FlutingFailure = SolveFailure<FlutingKey>;
-
-// one plate's channel as three closed loops: its outer edge on the fluting edge, its centreline,
-// and its inner edge, each half the channel's width further in, with the inner edge's offset from
-// the plate edge read off for the arching, and the sweep of the gouge that cuts each width. The
-// fluting edge itself is the plate edge that width in, corners followed, which the channel bypasses
-export interface ChannelSolve {
-  outer: string;
-  center: string;
-  inner: string;
-  sweep: number;
-  cBoutSweep: number;
-  innerEdgeOffset: number;
-  innerEdgeOffset_cBout: number;
-}
-
-export interface FlutingSolve {
-  outerEdge: string | null;
-  top: ChannelSolve | null;
-  back: ChannelSolve | null;
-  failures: FlutingFailure[];
-}
-
-export type FholeArcKey = 'U1' | 'U2' | 'U21' | 'U3' | 'L1' | 'L2' | 'L21' | 'L3' | 'S1' | 'S2' | 'S3' | 'S4';
-export type FholeFailure = SolveFailure<FholeArcKey>;
-
-// one f-hole's arcs on the treble side, the two tips its cuts place, and its outline as one closed
-// path; renders mirror them. An arc whose section failed is null, and so is the path
-export interface FholeContoursSolve {
-  U1: Arc | null;
-  U2: Arc | null;
-  U21: Arc | null;
-  U3: Arc | null;
-  L1: Arc | null;
-  L2: Arc | null;
-  L21: Arc | null;
-  L3: Arc | null;
-  S1: Arc | null;
-  S2: Arc | null;
-  S3: Arc | null;
-  S4: Arc | null;
-  UTip: Pt | null;
-  LTip: Pt | null;
-  path: string | null;
-  failures: FholeFailure[];
-}
-
-export type Plate = 'top' | 'back';
-export type LongArchingKey = 'ribs' | Plate;
-export type LongArchingFailure = SolveFailure<LongArchingKey>;
-
-// the tilted plane the top plate glues to, from the two rib heights: those heights as vertical rise
-// above the back plane, the tilt in radians, and the most the pair may differ by on this body
-export interface RibTaper {
-  yLower: number;
-  yUpper: number;
-  zLower: number;
-  zUpper: number;
-  angle: number;
-  max: number;
-}
-
-// where an arch lands on the channel: how far from the channel's centreline (0 the trough,
-// negative on the outer flank), how deep it is there, the channel's slope there, and whether the
-// meeting is a true tangency or the closest the arch could come
-export interface ArchTakeoff {
-  contactS: number;
-  takeoffDepth: number;
-  slope: number;
-  tangent: boolean;
-}
-
-// a long arch in the solver's own terms: fractions of its span, heights in mm
-export interface LongArchCurve {
-  type: 'catenary' | 'spline';
-  archHeight: number;
-  peak: number;
-  points: { t: number; z: number; mirror: boolean }[];
-}
-
-// the long arch terminated where it meets the channel at each end; `lowered` is the arch restated
-// against the start takeoff, `farZ` the far end's height in that frame
-export interface LongArchSolve {
-  span: number;
-  yStart: number;
-  yEnd: number;
-  takeoff: ArchTakeoff;
-  farTakeoff: ArchTakeoff;
-  lowered: LongArchCurve;
-  farZ: number;
-  halfWidth: number;
-  centerY: number;
-}
-
-export interface LongArchingSolve {
-  ribs: RibTaper | null;
-  top: LongArchSolve | null;
-  back: LongArchSolve | null;
-  failures: LongArchingFailure[];
-}
-
-export type CrossArchingKey = Plate;
-export type CrossArchingFailure = SolveFailure<CrossArchingKey>;
-
-// one authored point of a crown, as fractions: x of the way from the joint to the channel's inner
-// edge, z of the arch height
-export interface CrossArchKnot {
-  x: number;
-  z: number;
-}
-
-// a crown shape resolved to one station: its knots each side, still fractional, and where the crown
-// sits (fraction of the chord, 0.5 the joint). A catenary carries no knots; a cycloid's knots are
-// fractions of each side's takeoff rather than of the fixed frame
-export interface CrossArchRow {
-  left: CrossArchKnot[];
-  right: CrossArchKnot[];
-  peak?: number;
-  catenary?: boolean;
-  fromTakeoff?: boolean;
-}
-
-// a plate's transverse surface at one station, the transition solved on both sides. zAt is the
-// height above the plate's outer surface at x across the plate, 0 the joint
-export interface CrossArchSection {
-  centerHalf: number;
-  halfWidth: number;
-  width: number;
-  archH: number;
-  xPeak: number;
-  left: ArchTakeoff | null;
-  right: ArchTakeoff | null;
-  xEndLeft: number;
-  xEndRight: number;
-  innerEdge: number;
-  datumLeft: number;
-  datumRight: number;
-  zAt: (x: number) => number;
-}
-
-// the channel as the surface reads it, with the band between the corners the C bout width takes
-export interface SurfaceGouge {
-  width: number;
-  depth: number;
-  cBoutWidth: number;
-  cornerGouge: boolean;
-  lowerCornerY: number;
-  upperCornerY: number;
-}
-
-// one plate's carved surface: the loops it is measured against, the gouge, the crown resolver and
-// the long arch. Heights come from surfaceZAt, relative to the plate's outer surface
-export interface PlateSurface {
-  outline: Pt[];
-  flutingEdge: Pt[];
-  flutingEdgeIdx: PolylineIndex;
-  centerPoly: Pt[];
-  centerIdx: PolylineIndex;
-  gouge: SurfaceGouge;
-  resolveCross: (y: number) => CrossArchRow;
-  longArch: LongArchSolve | null;
-}
-
-// what one station row of the surface shares between every sample on it: the outline's crossings
-// decide what is wood, the half chord the run the centreline sits in, which a hooked corner's tip
-// lies outside
-export interface SurfaceRow {
-  outerCrossings: number[];
-  outerHalf: number | null;
-  landCrossings: number[];
-  section: CrossArchSection | null;
-  centerCrossings: number[];
-}
-
-export interface CrossArchingSolve {
-  top: PlateSurface | null;
-  back: PlateSurface | null;
-  failures: CrossArchingFailure[];
-}
-
-export type NeckKey = 'neck' | 'heel';
-export type NeckFailure = SolveFailure<NeckKey>;
-
-// the neck in the side elevation, in the body section's frame (x up off the back's inner face, y up
-// the body). `root` is where the fingerboard plane stands off the plate edge, `bottomFront` where it
-// crosses the mortise floor, `neckTop` the nut's foot; `backNut`/`backRoot` the back line's ends,
-// `lowerThickness` the lower thickness square to the fingerboard plane through the button tip,
-// `heelCorner` where the foot off the tip at the heel angle meets the back, the corner the heel
-// rounds. The heel is null where it can't stand,
-// and the back then runs straight to the root; `heelFace` is the flat on to the tip when the arc
-// stops short of it
-export interface NeckSolve {
-  plateEdge: Pt | null;
-  root: Pt | null;
-  bottomFront: Pt | null;
-  neckTop: Pt | null;
-  backNut: Pt | null;
-  backRoot: Pt | null;
-  plateAtMortise: Pt | null;
-  lowerThickness: [Pt, Pt] | null;
-  tip: Pt | null;
-  heelCorner: Pt | null;
-  heel: Arc | null;
-  heelFace: [Pt, Pt] | null;
-  failures: NeckFailure[];
-}
-
-export type StringSetupKey = 'bridge' | 'nut' | 'fingerboard' | 'scoop';
-export type StringSetupFailure = SolveFailure<StringSetupKey>;
-
-// the string setup in the side elevation, over the neck it was solved on: the bridge's foot on the
-// arch, its blank (neck-side foot, tail-side foot, tail-side top, neck-side top) and the string's
-// point on its top, the string's point on the nut, and the board's end on the fingerboard plane
-export interface StringSetupSolve {
-  neck: NeckSolve;
-  bridgeFoot: Pt | null;
-  bridge: [Pt, Pt, Pt, Pt] | null;
-  bridgeTop: Pt | null;
-  nutTop: Pt | null;
-  fingerboardEnd: Pt | null;
-  failures: StringSetupFailure[];
-}
-
-export type ScrollKey = 'spiral' | 'S0' | 'S1' | 'S2' | 'S3' | 'nape' | 'backStraight' | 'F0' | 'F1' | 'flat' | 'frontStraight';
-export type ScrollFailure = SolveFailure<ScrollKey>;
-
-// the scroll's side profile, every arc placed, the spiral outermost first. An arc whose section
-// failed is null, and so is everything solved after it
-export interface ScrollSolve {
-  eye: Circle | null;
-  spiral: Arc[] | null;
-  S0: Arc | null;
-  S1: Arc | null;
-  S2: Arc | null;
-  S3: Arc | null;
-  nape: Arc | null;
-  F0: Arc | null;
-  F1: Arc | null;
-  failures: ScrollFailure[];
-}
-
-export type ScrollWidthsKey = keyof ScrollWidths | 'hipHeight' | 'duckTailStraight' | 'wall';
-export type ScrollWidthsFailure = SolveFailure<ScrollWidthsKey>;
-
-// the side profile the widths hang on, and what the widths themselves say against it
-export interface ScrollWidthsSolve {
-  scroll: ScrollSolve;
-  failures: ScrollWidthsFailure[];
-}
-
-export type MouldKey = 'neckBlock' | 'upperCornerBlock' | 'lowerCornerBlock' | 'endBlock' | 'clampBox';
-export type MouldFailure = SolveFailure<MouldKey>;
-
-// the blocks placed (the corner blocks on the right; renders mirror them), the rib outline they are
-// cut from, the mould that leaves, and the clamp box's windows. A window that can't be cut between
-// its blocks is left out and said so
-export interface MouldSolve {
-  blocks: Record<'neck' | 'upperCorner' | 'lowerCorner' | 'end', Rectangle> | null;
-  ribOutline: string | null;
-  outline: string | null;
-  // the outline with the notches alone, before the bit's relief is cut into their corners
-  notchOutline: string | null;
-  reliefs: MouldRelief[];
-  clampBox: string[];
-  failures: MouldFailure[];
-}
-
-// a notch's inner corner relieved for the bit: the way into the notch along the corner's diagonal,
-// and how far past the corner the relief reaches
-export interface MouldRelief {
-  corner: Pt;
-  inward: Pt;
-  reach: number;
-}
-
-
 export interface ViolinFamilyViewFlags {
   showModuleArcs: boolean;
   // the other outline stages' arcs drawn as module arcs too, in their own inks
@@ -803,10 +462,6 @@ export interface ViolinFamilyViewFlags {
   showRibOutline: boolean;
   // the graduation points themselves, dots and readings; off, the thickness map stands alone
   showGraduationPoints: boolean;
-  // every graduation point's reach ring on the plate being worked; off, only the picked points'
-  showPointReaches: boolean;
-  // where the edge thickness and the f-hole thickness give way, the reach loops inside the boundary and round each hole
-  showEdgeReach: boolean;
 }
 
 export type ViolinFamilyToggleKey = keyof ViolinFamilyViewFlags;
@@ -828,8 +483,6 @@ export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
   showBlocks: true,
   showRibOutline: false,
   showGraduationPoints: true,
-  showPointReaches: true,
-  showEdgeReach: true,
 };
 
 export interface HighlightedArc {
@@ -851,7 +504,7 @@ export const VIOLIN_FAMILY_RECIPE_NAME = 'violin-family-recipe';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'outerContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'scroll', 'scrollWidths', 'stringSetup', 'mould', 'export', 'devFingerboard', 'devGraduation', 'devExport'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'plateContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'scroll', 'scrollWidths', 'stringSetup', 'mould', 'export', 'devFingerboard', 'devGraduation', 'devExport'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface<ViolinFamilyParams> {

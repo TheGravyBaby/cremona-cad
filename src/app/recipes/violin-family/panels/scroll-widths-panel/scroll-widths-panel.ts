@@ -14,18 +14,21 @@ import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
-  RenderLayer, ScrollSolve, ScrollWidths, ScrollWidthsFailure, ScrollWidthsKey, ScrollWidthsSolve, ViolinFamilyPanel, ViolinFamilyParams,
-  ViolinFamilyToggleKey, ViolinFamilyViewFlags,
+  RenderLayer,
+  ScrollWidths,
+  ViolinFamilyPanel,
+  ViolinFamilyParams,
+  ViolinFamilyToggleKey,
+  ViolinFamilyViewFlags,
 } from '../../violin-family-types';
+import {
+  ScrollSolve,
+  ScrollWidthsFailure,
+  ScrollWidthsKey,
+  ScrollWidthsSolve,
+} from '../../violin-family-solves';
 import { nutThickness, renderScrollNeck, scrollNeckStub } from '../volute-panel/volute-panel';
 import { defineSideScrollPath, scrollExtent, scrollLines, solveScroll } from '../scroll-panel/scroll-panel';
-
-// The scroll's widths, cheek to cheek, set on the side profile: the front's up the pegbox, sawn
-// straight through the blank by height, and the back's along its path from the duck tail's round
-// over the crown and round the spiral in to the eye. The back and front views are drawn as a
-// draughtsman would, not projected: the turns stand out further the nearer the eye, so each stretch
-// of the path is drawn as far as the next turn nearer the viewer lets it be seen. Panel and render,
-// then the views, then the widths along the path, then the solve.
 
 export type ScrollStationKey = 'nut' | 'neck' | keyof ScrollWidths;
 export type ScrollStation = { key: ScrollStationKey; at: Pt; width: number };

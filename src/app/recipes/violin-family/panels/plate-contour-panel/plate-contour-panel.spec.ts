@@ -4,7 +4,7 @@ import { dist, pointInPolygon, pointOnCircle, signedRadianDelta, TURN } from '..
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Arc, Pt } from '../../../../models/types';
-import { OuterContourPanel, solveOuterContour } from './outer-contour-panel';
+import { PlateContourPanel, solvePlateContour } from './plate-contour-panel';
 import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
 import { cornerTurn, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
@@ -22,7 +22,7 @@ const withCenterBout = (): ViolinFamilyParams => {
 
 const seeded = (): ViolinFamilyParams => {
   const p = withCenterBout();
-  OuterContourPanel.seed(p);
+  PlateContourPanel.seed(p);
   return p;
 };
 
@@ -39,36 +39,36 @@ const offTheLine = (q: Pt[], line: Pt[]) => {
   return Math.max(...q.map(pt => distPointToPolylineIndexed(pt, idx)));
 };
 
-describe('the outer contour solve', () => {
+describe('the plate contour solve', () => {
   it('never writes to the params', () => {
     const p = seeded();
     const snapshot = JSON.stringify(p);
-    solveOuterContour(p);
+    solvePlateContour(p);
     expect(JSON.stringify(p)).toBe(snapshot);
   });
 
   it('has no plates until the stage is seeded', () => {
-    expect(solveOuterContour(blank())).toBeNull();
-    expect(solveOuterContour(withCenterBout())).toBeNull();
+    expect(solvePlateContour(blank())).toBeNull();
+    expect(solvePlateContour(withCenterBout())).toBeNull();
   });
 
   it('seeds nothing until the C bout has solved, and once only', () => {
     const q = withCenterBout();
     q.bouts!.C0R = 5;
     q.bouts!.useKellyC0 = true;
-    OuterContourPanel.seed(q);
-    expect(q.outerContour).toBeUndefined();
+    PlateContourPanel.seed(q);
+    expect(q.plateContour).toBeUndefined();
 
     const p = seeded();
-    p.outerContour!.U3Cutoff += 3;
+    p.plateContour!.U3Cutoff += 3;
     const edited = JSON.stringify(p);
-    OuterContourPanel.seed(p);
+    PlateContourPanel.seed(p);
     expect(JSON.stringify(p)).toBe(edited);
   });
 
   it('seeds every cutoff running the corner on, never back, and the compound ones to the same run along the edge', () => {
     const p = seeded();
-    const o = p.outerContour!;
+    const o = p.plateContour!;
     const inset = p.body.overhang + p.body.rib;
     const k = p.corners!;
     for (const key of ['U3Cutoff', 'C2Cutoff', 'C1Cutoff', 'L3Cutoff'] as const) expect(o[key]).toBeGreaterThan(0);
@@ -79,8 +79,8 @@ describe('the outer contour solve', () => {
 
 describe('the plates', () => {
   const p = seeded();
-  const o = p.outerContour!;
-  const s = solveOuterContour(p)!;
+  const o = p.plateContour!;
+  const s = solvePlateContour(p)!;
   const inset = p.body.overhang + p.body.rib;
   const edge = points(s.top!);
 
@@ -130,16 +130,16 @@ describe('the plates', () => {
     expect(s.top).toMatch(/ L /);
     expect(s.top).not.toMatch(/ C /);
     const q = seeded();
-    q.outerContour!.upperRounding = 0.3;
-    const rounded = solveOuterContour(q)!;
+    q.plateContour!.upperRounding = 0.3;
+    const rounded = solvePlateContour(q)!;
     expect(rounded.top).toMatch(/ C /);
     expect(subpaths(rounded.top!)).toBe(1);
   });
 
   it('move the corner tip out when a cutoff grows', () => {
     const q = seeded();
-    q.outerContour!.U3Cutoff += 20;
-    const longer = solveOuterContour(q)!;
+    q.plateContour!.U3Cutoff += 20;
+    const longer = solvePlateContour(q)!;
     const tip = (arc: Arc) => pointOnCircle(arc, arc.end);
     expect(dist(tip(longer.corners.U3!), q.corners!.UCr)).toBeGreaterThan(dist(tip(s.corners.U3!), p.corners!.UCr));
     expect(subpaths(longer.top!)).toBe(1);
@@ -149,8 +149,8 @@ describe('the plates', () => {
     const q = seeded();
     q.corners!.useViolCornerUC = true;
     q.corners!.useViolCornerLC = true;
-    (q.outerContour as any).U3Cutoff = null;
-    const viol = solveOuterContour(q)!;
+    (q.plateContour as any).U3Cutoff = null;
+    const viol = solvePlateContour(q)!;
     expect(viol.failures).toEqual([]);
     expect(viol.corners).toEqual({});
     for (const d of [viol.top!, viol.back!, viol.purfling!]) {
@@ -162,7 +162,7 @@ describe('the plates', () => {
   it('close with every corner compound', () => {
     const q = seeded();
     for (const key of ['U31DoubleArc', 'C21DoubleArc', 'C11DoubleArc', 'L31DoubleArc'] as const) q.corners![key] = true;
-    const compound = solveOuterContour(q)!;
+    const compound = solvePlateContour(q)!;
     expect(compound.failures).toEqual([]);
     for (const key of ['U31', 'C21', 'C11', 'L31'] as const) expect(compound.corners[key]).toBeDefined();
     for (const d of [compound.top!, compound.back!, compound.purfling!]) expect(subpaths(d)).toBe(1);
@@ -173,8 +173,8 @@ describe('the back and its button', () => {
   it('stands the button its height beyond the plate, whether it has walls or is only a segment', () => {
     const p = seeded();
     for (const height of [0.5, 2, 6, 10, 14, 20]) {
-      p.outerContour!.button.height = height;
-      const s = solveOuterContour(p)!;
+      p.plateContour!.button.height = height;
+      const s = solvePlateContour(p)!;
       expect(subpaths(s.back!), `one loop at height ${height}`).toBe(1);
       expect(top(points(s.back!)), `tip at height ${height}`).toBeCloseTo(p.body.height + height, 1);
       expect(top(points(s.top!)), `the top plate has no button`).toBeCloseTo(p.body.height, 1);
@@ -185,16 +185,16 @@ describe('the back and its button', () => {
   it('drops straight walls from the cap only while the height clears the cap radius', () => {
     const p = seeded();
     const onWall = (q: Pt[]) => q.filter(pt => Math.abs(pt.x - 10) < 1e-6 && pt.y > p.body.height - 3);
-    p.outerContour!.button = { width: 20, height: 14 };
-    expect(onWall(points(solveOuterContour(p)!.back!)).length).toBeGreaterThan(8);
-    p.outerContour!.button = { width: 20, height: 6 };
-    expect(onWall(points(solveOuterContour(p)!.back!)).length).toBeLessThanOrEqual(1);
+    p.plateContour!.button = { width: 20, height: 14 };
+    expect(onWall(points(solvePlateContour(p)!.back!)).length).toBeGreaterThan(8);
+    p.plateContour!.button = { width: 20, height: 6 };
+    expect(onWall(points(solvePlateContour(p)!.back!)).length).toBeLessThanOrEqual(1);
   });
 
   it('draws no button at zero height', () => {
     const p = seeded();
-    p.outerContour!.button.height = 0;
-    const s = solveOuterContour(p)!;
+    p.plateContour!.button.height = 0;
+    const s = solvePlateContour(p)!;
     expect(s.button).toBeNull();
     expect(subpaths(s.back!)).toBe(1);
     expect(top(points(s.back!))).toBeCloseTo(p.body.height, 1);
@@ -203,8 +203,8 @@ describe('the back and its button', () => {
 
 describe('the purfling', () => {
   const p = seeded();
-  const o = p.outerContour!;
-  const s = solveOuterContour(p)!;
+  const o = p.plateContour!;
+  const s = solvePlateContour(p)!;
   const edge = points(s.top!);
 
   it('runs as one closed loop inside the plate, and a second a channel\'s width outside it', () => {
@@ -228,7 +228,7 @@ describe('the purfling', () => {
     const q = seeded();
     const outside = (p: ViolinFamilyParams) => {
       const cb = solveCenterBout(p)!;
-      return !!cb.C2 && !!cb.C0 && cornerTurn(cb.C2, cb.C0) === 1 && solveOuterContour(p)!.failures.length === 0;
+      return !!cb.C2 && !!cb.C0 && cornerTurn(cb.C2, cb.C0) === 1 && solvePlateContour(p)!.failures.length === 0;
     };
     const seedC0R = q.bouts!.C0R;
     for (const fraction of [0.5, 0.4, 0.3, 0.25, 0.2, 0.15]) {
@@ -236,8 +236,8 @@ describe('the purfling', () => {
       if (outside(q)) break;
     }
     expect(outside(q), 'no C0 this seed takes puts the lower corner outside it').toBe(true);
-    q.outerContour!.purflingOffset = q.corners!.C2R + q.body.overhang + q.body.rib + 1;
-    const far = solveOuterContour(q)!;
+    q.plateContour!.purflingOffset = q.corners!.C2R + q.body.overhang + q.body.rib + 1;
+    const far = solvePlateContour(q)!;
     expect(far.failures.map(f => f.unsolved)).toEqual([['purfling']]);
     expect(far.failures[0].message).toContain('Purfling');
     expect(far.purfling).toBeNull();
@@ -248,8 +248,8 @@ describe('the purfling', () => {
 describe('what cannot be drawn', () => {
   it('fails the plates while a cutoff is cleared, keeps the purfling, and draws no NaN', () => {
     const p = seeded();
-    (p.outerContour as any).C2Cutoff = null;
-    const s = solveOuterContour(p)!;
+    (p.plateContour as any).C2Cutoff = null;
+    const s = solvePlateContour(p)!;
     expect(s.failures.map(f => f.unsolved)).toEqual([['top', 'back']]);
     expect(s.failures[0].message).toContain('needs a value');
     expect(s.top).toBeNull();
@@ -259,16 +259,16 @@ describe('what cannot be drawn', () => {
 
   it('asks only for the cutoffs the corners use', () => {
     const p = seeded();
-    (p.outerContour as any).U31Cutoff = null;
-    expect(solveOuterContour(p)!.failures).toEqual([]);
+    (p.plateContour as any).U31Cutoff = null;
+    expect(solvePlateContour(p)!.failures).toEqual([]);
     p.corners!.U31DoubleArc = true;
-    expect(solveOuterContour(p)!.failures.map(f => f.unsolved)).toEqual([['top', 'back']]);
+    expect(solvePlateContour(p)!.failures.map(f => f.unsolved)).toEqual([['top', 'back']]);
   });
 
   it('fails everything, once, while an arc of the rib outline has not solved', () => {
     const p = seeded();
     p.corners!.U3R = 1;
-    const s = solveOuterContour(p)!;
+    const s = solvePlateContour(p)!;
     expect(s.failures).toHaveLength(1);
     expect(s.failures[0].message).toContain('rib outline');
     expect(s.top).toBeNull();

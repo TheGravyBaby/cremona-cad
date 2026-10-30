@@ -549,7 +549,7 @@
       "width": 237.01,
       "height": 366.78862095780113,
       "rotationDeg": 0,
-      "opacity": 0.4,
+      "opacity": 0.75,
       "suppressWhite": true,
       "locked": true,
       "excludePanels": [
@@ -576,7 +576,7 @@
       "width": 131.07949105747767,
       "height": 390.7015075683594,
       "rotationDeg": 0.3,
-      "opacity": 0.4,
+      "opacity": 0.75,
       "suppressWhite": true,
       "locked": true,
       "panels": [

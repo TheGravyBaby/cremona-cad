@@ -15,7 +15,7 @@ import { BaseMeasurementsPanel, solveBodyRatios } from './panels/base-measuremen
 import { MainBoutsPanel, solveMainBouts, solveMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel, solveCornersRatios } from './panels/corners-panel/corners-panel';
 import { CenterBoutPanel, solveCenterBout, solveCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
-import { OuterContourPanel, solveOuterContour, solveOuterContourRatios } from './panels/outer-contour-panel/outer-contour-panel';
+import { PlateContourPanel, solvePlateContour, solvePlateContourRatios } from './panels/plate-contour-panel/plate-contour-panel';
 import { FlutingPanel, solveFluting } from './panels/fluting-panel/fluting-panel';
 import { FHolePlacementPanel, solveFholePlacementRatios } from './panels/fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel, solveFholeContoursRatios } from './panels/fhole-contours-panel/fhole-contours-panel';
@@ -44,7 +44,7 @@ import { IconDirective } from '../../icons/icon.directive';
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, ScrollPanel, ScrollWidthsPanel, StringSetupPanel, MouldPanel, ExportPanel, DevFingerboardPanel, DevGraduationPanel, DevExportPanel, IconDirective],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, PlateContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, ScrollPanel, ScrollWidthsPanel, StringSetupPanel, MouldPanel, ExportPanel, DevFingerboardPanel, DevGraduationPanel, DevExportPanel, IconDirective],
   templateUrl: './violin-family.html',
   styleUrls: ['../../sidebar.css', './violin-family.css'],
 })
@@ -58,7 +58,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
     { id: 'centerBout', label: 'Center Bout', toggles: CenterBoutPanel.renderToggles },
     { id: 'mould', label: 'Mould', toggles: MouldPanel.renderToggles, seed: MouldPanel.seed },
 
-    { id: 'outerContour', label: 'Outer Contour', toggles: OuterContourPanel.renderToggles, seed: OuterContourPanel.seed },
+    { id: 'plateContour', label: 'Plate Contour', toggles: PlateContourPanel.renderToggles, seed: PlateContourPanel.seed },
     { id: 'fluting', label: 'Fluting Channel', toggles: FlutingPanel.renderToggles, seed: FlutingPanel.seed },
     { id: 'longArching', label: 'Long Arching', toggles: LongArchingPanel.renderToggles, seed: LongArchingPanel.seed },
     // no seed: its shape is seeded with the long arch
@@ -77,7 +77,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
     { id: 'export', label: 'Export', toggles: ExportPanel.renderToggles },
     // features on trial, never offered off localhost
     ...(isLocalHost() ? [{ id: 'devFingerboard', label: 'Dev Fingerboard', toggles: DevFingerboardPanel.renderToggles, seed: StringSetupPanel.seed } as const] : []),
-    ...(isLocalHost() ? [{ id: 'devGraduation', label: 'Dev Graduation', toggles: DevGraduationPanel.renderToggles } as const] : []),
+    ...(isLocalHost() ? [{ id: 'devGraduation', label: 'Dev Graduation', toggles: DevGraduationPanel.renderToggles, seed: DevGraduationPanel.seed } as const] : []),
     // drives the maker's own CNC, so it is never offered off localhost; its component is only named
     // inside @defer, so its planner is a separate chunk that is fetched only when the tab opens
     ...(isLocalHost() ? [{ id: 'devExport', label: 'Dev Export', toggles: [] } as const] : []),
@@ -182,14 +182,14 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
         return !!(m?.U0 && m.U1 && m.L0 && m.L1);
       }
       case 'centerBout': return !!p.corners;
-      case 'outerContour':
+      case 'plateContour':
       case 'mould':
       case 'export': {
         let cb = solveCenterBout(p);
         return !!(cb?.C0 && cb.C2 && cb.C1);
       }
-      case 'fluting': return !!solveOuterContour(p)?.top;
-      case 'fHolePlacement': return !!solveOuterContour(p)?.top;
+      case 'fluting': return !!solvePlateContour(p)?.top;
+      case 'fHolePlacement': return !!solvePlateContour(p)?.top;
       case 'fHoleContours': return !!p.fHoles;
       case 'longArching': {
         let f = solveFluting(p);
@@ -205,7 +205,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
       }
       case 'stringSetup': return !!p.neck;
       case 'devFingerboard': return isLocalHost() && !!p.neck;
-      case 'devGraduation': return isLocalHost() && !!p.fHoleContours;
+      case 'devGraduation': return isLocalHost() && !!p.arching;
       case 'devExport': return isLocalHost() && !!p.mould;
       default: return false;
     }
@@ -254,7 +254,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
       ...solveMainBoutsRatios(p),
       ...solveCornersRatios(p),
       ...solveCenterBoutRatios(p),
-      ...solveOuterContourRatios(p),
+      ...solvePlateContourRatios(p),
       ...solveFholePlacementRatios(p),
       ...solveFholeContoursRatios(p),
     };

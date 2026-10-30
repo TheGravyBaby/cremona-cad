@@ -13,23 +13,26 @@ import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
-  OuterContourSolve, RenderLayer, ScrollSolve, StringSetupFailure, StringSetupSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
+  RenderLayer,
+  ViolinFamilyPanel,
+  ViolinFamilyParams,
+  ViolinFamilyToggleKey,
+  ViolinFamilyViewFlags,
 } from '../../violin-family-types';
+import {
+  PlateContourSolve,
+  ScrollSolve,
+  StringSetupFailure,
+  StringSetupSolve,
+} from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
-import { solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
+import { solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
   channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, sideViewOffsetX, solveLongArching, topPlatePlacement,
 } from '../long-arching-panel/long-arching-panel';
 import { neckHalfWidthAt, neckInPlan, renderNeck, scrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
 import { scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
-
-// The string setup over the finished neck: the bridge on the top's arch, the nut, the fingerboard and
-// the string between them. Reference geometry, read off the neck and never shaping it; only the
-// neck's length is set here too, since it places the nut. The scroll, once its panels have solved it
-// whole, stands on the neck's end in both views. The panel keeps to a plain setup: one crown radius
-// and no scoop fields. The board still carries both radii and its scoop, set in the dev fingerboard
-// panel, which draws through renderStringSetupViews too. Panel and renders, then the solve.
 
 export type StringSetupHighlightKey =
   'length' | 'bodyStop' | 'bridgeHeight' | 'nutThickness' | 'fbLength' | 'fbThickness' | 'fbRadius' | 'fbNutRadius' | 'fbEndRadius' | 'scoopAt' | 'scoopBass' | 'scoopTreble';
@@ -110,7 +113,7 @@ export function renderStringSetupViews(
   opts: { fingerboard: boolean; scoopGuide?: boolean; highlighted?: { key: StringSetupHighlightKey; color: string } | null; front?: RenderLayer[]; side?: RenderLayer[] },
 ): RenderLayer[] {
   let a = solveLongArching(p)!;
-  let o = solveOuterContour(p)!;
+  let o = solvePlateContour(p)!;
   let w = p.scroll ? solveScrollWidths(p) : null;
   let scroll = w && !w.scroll.failures.length ? w.scroll : undefined;
   let scrollInPlan = scroll && !w!.failures.some(f => f.unsolved.length) ? scroll : null;
@@ -331,7 +334,7 @@ export function fingerboardInPlan(p: ViolinFamilyParams, s: StringSetupSolve): s
 const renderStringSetupFrontView = (
   p: ViolinFamilyParams,
   s: StringSetupSolve,
-  o: OuterContourSolve,
+  o: PlateContourSolve,
   scroll: ScrollSolve | null,
   pal: PanelPalette,
   opts: { fingerboard: boolean; scoopStation: boolean },
