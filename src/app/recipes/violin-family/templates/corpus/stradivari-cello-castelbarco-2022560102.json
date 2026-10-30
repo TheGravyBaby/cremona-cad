@@ -55,7 +55,7 @@
       "C11Sweep": 25.938,
       "C11DoubleArc": true
     },
-    "outerContour": {
+    "plateContour": {
       "button": {
         "width": 20,
         "height": 22
@@ -254,7 +254,7 @@
       "angle": 9.5,
       "upperThickness": 17.5,
       "lowerThickness": 20,
-      "topWidth": 33.5,
+      "topWidth": 30.2,
       "rootWidth": 46,
       "heelRadius": 18,
       "mortiseDepth": 3.5,
@@ -316,7 +316,7 @@
       "backHipHeight": 0,
       "wall": 11,
       "napeAngle": 10.5,
-      "duckTailStraight": 7
+      "duckTailStraight": 7.5
     },
     "stringSetup": {
       "bodyStop": 400,
@@ -386,9 +386,9 @@
       "width": 466.7875,
       "height": 786.45,
       "rotationDeg": 0,
-      "opacity": 0.4,
+      "opacity": 0.75,
       "suppressWhite": true,
-      "locked": false,
+      "locked": true,
       "scope": {
         "except": [
           "fluting",
@@ -411,7 +411,7 @@
       "width": 273.61602464612105,
       "height": 830.5946899414063,
       "rotationDeg": 0.2,
-      "opacity": 0.4,
+      "opacity": 0.75,
       "suppressWhite": false,
       "locked": true,
       "scope": {
@@ -442,8 +442,9 @@
       "width": 128.1228845755014,
       "height": 324.81153159961093,
       "rotationDeg": 0,
+      "opacity": 0.75, 
       "suppressWhite": false,
-      "locked": false,
+      "locked": true,
       "scope": {
         "only": [
           "scroll",
@@ -467,8 +468,8 @@
       "width": 142.40870001746586,
       "height": 274.42399978637695,
       "rotationDeg": 0,
-      "opacity": 0.65,
-      "locked": false,
+      "opacity": 0.75,
+      "locked": true,
       "scope": {
         "only": [
           "scrollWidths"
@@ -489,8 +490,9 @@
       "y": -65.69125289916991,
       "width": 190.75349390608983,
       "height": 279.06972885131836,
-      "rotationDeg": 0,
-      "locked": false,
+      "rotationDeg": 0,      
+      "opacity": 0.75,
+      "locked": true,
       "scope": {
         "only": [
           "scrollWidths"

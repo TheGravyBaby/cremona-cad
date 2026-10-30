@@ -5,10 +5,11 @@ import { Pt } from '../../../../models/types';
 import { mortiseFloorY, NeckPanel, neckHalfWidthAt, solveNeck } from './neck-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
-import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
+import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { NeckSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { ViolinFamilyParams } from '../../violin-family-types';
+import { NeckSolve } from '../../violin-family-solves';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 // the properties a maker would check with a ruler on the finished neck: its length places the
@@ -19,7 +20,7 @@ const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN
 const arched = (p = blank()): ViolinFamilyParams => {
   MainBoutsPanel.seed(p);
   CornersPanel.seed(p);
-  OuterContourPanel.seed(p);
+  PlateContourPanel.seed(p);
   FlutingPanel.seed(p);
   LongArchingPanel.seed(p);
   return p;
@@ -79,7 +80,7 @@ describe('the neck solve', () => {
     for (const edit of [
       (p: ViolinFamilyParams) => { (p.neck as any).length = null; },
       (p: ViolinFamilyParams) => { p.neck!.mortiseDepth = -1; },
-      (p: ViolinFamilyParams) => { (p.outerContour!.button as any).height = null; },
+      (p: ViolinFamilyParams) => { (p.plateContour!.button as any).height = null; },
     ]) {
       const p = seeded();
       edit(p);
@@ -120,7 +121,7 @@ describe('the nut', () => {
 describe('the root', () => {
   it('ends the foot at the button tip, the button height beyond the plate', () => {
     const p = seeded();
-    p.outerContour!.button.height = 13;
+    p.plateContour!.button.height = 13;
     const s = solved(p);
     expect(s.tip!.y).toBeCloseTo(p.body.height + 13, 9);
     expect(s.tip!.x).toBe(0);

@@ -14,13 +14,14 @@ import { MmInchField } from '../../../../shared/mm-inch-field';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { MouldFailure, MouldKey, MouldSolve, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { MouldFailure, MouldKey, MouldSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import { channelPath } from '../fluting-panel/fluting-panel';
-import { purflingPath, ribArcs } from '../outer-contour-panel/outer-contour-panel';
+import { purflingPath, ribArcs } from '../plate-contour-panel/plate-contour-panel';
 
 // The inside mould the ribs are bent round: the rib outline with the blocks cut out of it, and the
 // clamp box's windows behind them. Panel and render, then the solve and the blocks' cutting layout.

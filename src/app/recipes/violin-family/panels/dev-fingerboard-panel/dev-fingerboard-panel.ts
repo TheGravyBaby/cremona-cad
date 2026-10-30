@@ -9,7 +9,8 @@ import { readWorkingState, writeWorkingState } from '../../../../helpers/working
 import { Circle, Pt, Vect2D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { RenderLayer, StringSetupSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { StringSetupSolve } from '../../violin-family-solves';
 import { familyStandards, FamilyStandards } from '../../violin-family-seed';
 import { neckHalfWidthAt } from '../neck-panel/neck-panel';
 import {

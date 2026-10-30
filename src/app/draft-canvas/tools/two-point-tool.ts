@@ -80,11 +80,11 @@ export const CLICK_MOVE_THRESHOLD_PX = 3;
 export function drawTypedLabel(gUI: RootGroup, pt: Pt, text: string, pxPerMm: number): void {
   gUI.append('text')
     .attr('x', pt.x)
-    .attr('y', -pt.y - 12 / pxPerMm)
+    .attr('y', -pt.y - 18 / pxPerMm)
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'central')
     .attr('fill', PREVIEW_COLOR)
-    .attr('font-size', 12 / pxPerMm)
+    .attr('font-size', 16 / pxPerMm)
     .style('pointer-events', 'none')
     .style('user-select', 'none')
     .text(text);
@@ -266,6 +266,7 @@ export class ThreePointTool implements DraftTool {
   private currentPt: Pt | null = null;
   private awaitingSecondClick = false;
   private startTangent: number | undefined;
+  private typed = '';
 
   constructor(
     readonly id: string,
@@ -321,9 +322,35 @@ export class ThreePointTool implements DraftTool {
     return angleLockModifier(this.startPt, pt, host, this.startTangent);
   }
 
-  onKeyDown(event: KeyboardEvent): boolean {
-    if (event.key === 'Escape' && this.startPt) {
-      this.reset();
+  private typedPoint(): Pt | null {
+    if (!this.startPt || this.endPt || !this.typed) return null;
+    const values = this.typed.split(',').map(v => v.trim() === '' ? NaN : Number(v));
+    if (values.some(v => !Number.isFinite(v))) return null;
+    return typedAlongPointer(this.startPt, this.currentPt ?? this.startPt, values);
+  }
+
+  onKeyDown(event: KeyboardEvent, host: DraftToolHost): boolean {
+    if (!this.startPt) return false;
+    if (event.key === 'Escape') {
+      if (this.typed) this.typed = '';
+      else this.reset();
+      host.requestDraw();
+      return true;
+    }
+    if (this.endPt) return false;
+    const typed = typedKey(this.typed, event.key, /^[0-9.,]$/);
+    if (typed !== null) {
+      this.typed = typed;
+      host.requestDraw();
+      return true;
+    }
+    if (event.key === 'Enter' && this.typed) {
+      const end = this.typedPoint();
+      if (end) {
+        this.typed = '';
+        this.fixEnd(end, host);
+      }
+      host.requestDraw();
       return true;
     }
     return false;
@@ -331,7 +358,9 @@ export class ThreePointTool implements DraftTool {
 
   renderPreview(gRoot: RootGroup, gUI: RootGroup, pxPerMm: number): void {
     if (!this.startPt || !this.currentPt) return;
-    this.renderPreviewShape(gRoot, gUI, pxPerMm, this.startPt, this.endPt ?? this.currentPt, this.endPt ? this.currentPt : null);
+    const typedEnd = this.typedPoint();
+    this.renderPreviewShape(gRoot, gUI, pxPerMm, this.startPt, this.endPt ?? typedEnd ?? this.currentPt, this.endPt ? this.currentPt : null);
+    if (this.typed) drawTypedLabel(gUI, this.currentPt, this.typed, pxPerMm);
   }
 
   reset(): void {
@@ -340,5 +369,6 @@ export class ThreePointTool implements DraftTool {
     this.currentPt = null;
     this.startTangent = undefined;
     this.awaitingSecondClick = false;
+    this.typed = '';
   }
 }

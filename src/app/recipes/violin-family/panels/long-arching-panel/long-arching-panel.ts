@@ -14,10 +14,11 @@ import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { applyRowMove, RowMove, RowReorderDirective, rowsWithMarker } from '../../../../shared/row-reorder';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { ArchTakeoff, ChannelParams, LongArchCurve, LongArchingFailure, LongArchingSolve, LongArchParams, LongArchSolve, OuterContourSolve, Plate, RenderLayer, RibTaper, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { ChannelParams, LongArchParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { ArchTakeoff, LongArchCurve, LongArchingFailure, LongArchingSolve, LongArchSolve, PlateContourSolve, Plate, RibTaper } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { gougeHalfWidth, gougeProfileSlope, gougeProfileZ, renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
-import { renderOuterContour, solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
+import { renderPlateContour, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 
 // The arch along the body. The channel is cut first, at the gouge's own section; the arch is then
@@ -85,13 +86,13 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
   draw(): void {
     safeRun(() => {
       let p = this.params;
-      let o = solveOuterContour(p)!;
+      let o = solvePlateContour(p)!;
       let f = solveFluting(p)!;
       let a = this.a = solveLongArching(p)!;
       let sideX = sideViewOffsetX(p);
       let side = renderBodySideProfile(p, a, o, this.pal, true, { highlight: this.highlighted, showGuides: this.flags.showModuleGuides });
       this.drawn.emit([
-        renderOuterContour(p, o, this.pal, this.flags, false, true),
+        renderPlateContour(p, o, this.pal, this.flags, false, true),
         renderFluting(p, f, this.pal, false, true),
         renderFholes(p, this.pal),
         (g, ui) => side(g.append('g').attr('transform', `translate(${sideX},0)`), ui.append('g').attr('transform', `translate(${sideX},0)`)),
@@ -186,7 +187,7 @@ export function sideViewOffsetX(p: ViolinFamilyParams): number {
 export const renderBodySideProfile = (
   p: ViolinFamilyParams,
   a: LongArchingSolve,
-  o: OuterContourSolve,
+  o: PlateContourSolve,
   pal: PanelPalette,
   currentModule: boolean,
   opts: { highlight?: { plate: Plate; source: number } | null; showGuides?: boolean; ground?: boolean; fluting?: boolean },

@@ -10,7 +10,8 @@ import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt } from '../../..
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { CornerFailure, CornerKey, CornersSolve, MainBoutsSolve, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { CornerFailure, CornerKey, CornersSolve, MainBoutsSolve } from '../../violin-family-solves';
 import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
 import { renderBoutBounds, renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCenterBout, solveCenterBout } from '../center-bout-panel/center-bout-panel';

@@ -20,7 +20,7 @@ import { FHOLE_SEED_RATIOS, FholeRatios } from '../../violin-family-seed';
 import { renderBoutBounds, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
-import { purflingPath, ribArcs, RibArcs, solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
+import { purflingPath, ribArcs, RibArcs, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFlutingInnerEdge, solveFluting } from '../fluting-panel/fluting-panel';
 import { renderFholes, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { showFieldHelp } from '../../../../docs/field-help';
@@ -44,9 +44,9 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
   // by the fractions in FHOLE_SEED_RATIOS: the lower eye in from the lower corner, the upper eye
   // where two guide circles meet, and the stem seated in the frame the eyes and rises carve out
   static seed(p: ViolinFamilyParams): void {
-    if (p.fHoles || !p.corners || !p.outerContour) return;
+    if (p.fHoles || !p.corners || !p.plateContour) return;
     let waist = solveWaist(p);
-    if (!waist || !solveOuterContour(p)?.top) return;
+    if (!waist || !solvePlateContour(p)?.top) return;
     let r = FHOLE_SEED_RATIOS;
     let lowerCorner = p.corners.LCr;
     // eyes to the quarter millimetre, as they are measured
@@ -178,7 +178,7 @@ export const fholeBounds = (f: FholePlacementParams): Rectangle => {
 // contours as placed, where those have been drafted. With `purfling` the purfling lines instead
 // of the rib outline, as the contours panel shows them
 export const renderFholePlate = (p: ViolinFamilyParams, pal: PanelPalette, rib: RibArcs | null, purfling: boolean) => (g: any, ui: any): void => {
-  let o = solveOuterContour(p);
+  let o = solvePlateContour(p);
   if (o?.top) renderPath(o.top, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
   if (purfling) {
     for (let d of [o?.purfling, o?.outerPurfling]) if (d) renderPath(d, pal.neutral, STROKE_WEIGHT.guide)(g, ui);

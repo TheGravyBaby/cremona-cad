@@ -3,7 +3,7 @@ import { normalizeRadians, signedArcSweep, signedRadianDelta, TURN } from '../..
 import { cycloidZAt } from '../../../helpers/math/vibeMath';
 import {
   ArchingParams, ChannelParams, CornersParams, CrossArchParams, CrossShapeParams, FholeContourParams, FholePlacementParams,
-  FlutingParams, LongArchParams, MainBoutsParams, MouldParams, OuterContourParams, VIOLIN_FAMILY_RECIPE_NAME,
+  FlutingParams, LongArchParams, MainBoutsParams, MouldParams, PlateContourParams, VIOLIN_FAMILY_RECIPE_NAME,
   ViolinFamilyParams, ViolinFamilyRecipe,
 } from '../violin-family-types';
 
@@ -122,9 +122,9 @@ function legacyParams(c: any): ViolinFamilyParams {
   p.corners = corners;
   let mould = legacyMould(c);
   if (mould) p.mould = mould;
-  let outer = legacyOuterContour(c);
+  let outer = legacyPlateContour(c);
   if (!outer) return p;
-  p.outerContour = outer;
+  p.plateContour = outer;
   let fHoles = legacyPlacement(c.fHoles);
   let fHoleContours = fHoles && legacyContours(c);
   if (fHoles) p.fHoles = fHoles;
@@ -193,7 +193,7 @@ function cutoff(inner: LegacyArc | null, outer: LegacyArc | null): number {
   return deg(Math.sign(signedRadianDelta(inner.end - inner.start)) * signedRadianDelta(outer.end - inner.end));
 }
 
-function legacyOuterContour(c: any): OuterContourParams | undefined {
+function legacyPlateContour(c: any): PlateContourParams | undefined {
   let oc = c.outerCorners;
   if (!oc || ![oc.U3, oc.C2, oc.C1, oc.L3].every(isArc)) return undefined;
   let b = c.bouts;
@@ -332,7 +332,7 @@ function legacyMould(c: any): MouldParams | undefined {
   };
 }
 
-const panelId = (id: string) => id === 'outerTrace' ? 'outerContour' : id;
+const panelId = (id: string) => id === 'outerTrace' ? 'plateContour' : id;
 
 // Ceruti scoped an image by lists: hidden hid it, `panels` named where it showed, `excludePanels`
 // where it didn't, and a default image filled the panels no other image named. An image without

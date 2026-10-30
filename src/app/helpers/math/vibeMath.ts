@@ -1062,31 +1062,95 @@ export function minCostAssignment(cost: number[][]): number[] {
   return out;
 }
 
-// a value spoken for out to a radius: a reading at a point, or a line read along its length, whose
-// value may change with where along it the spot is nearest (then a function of the spot)
-export interface RadialSource { value: number | ((x: number, y: number) => number); reach: number; dist: (x: number, y: number) => number }
+// a reading of some value at a spot on the plane
+export interface Reading { x: number; y: number; v: number }
 
-// the blend of what reaches a spot, each source weighted by ((reach − d) / (reach · d))²: exact on a
-// source, flat where one reaches alone, and fading to nothing at its reach. Where none reaches, every
-// source weighted by the inverse square of how far beyond its reach the spot lies, softened by
-// half its reach, so the gaps shade smoothly toward whatever is nearest rather than breaking into
-// patches or cells
-export function radialBlend(sources: RadialSource[], x: number, y: number): number {
-  let sum = 0, weighted = 0;
-  let farSum = 0, farWeighted = 0;
-  for (const s of sources) {
-    const d = s.dist(x, y);
-    const v = typeof s.value === 'function' ? s.value(x, y) : s.value;
-    if (d < 1e-9) return v;
-    if (d >= s.reach) {
-      const w = 1 / (d - s.reach + s.reach / 2 + 1) ** 2;
-      farSum += w;
-      farWeighted += w * v;
-      continue;
-    }
-    const w = ((s.reach - d) / (s.reach * d)) ** 2;
-    sum += w;
-    weighted += w * v;
+// the thin-plate spline through scattered readings: the surface of least bending that passes
+// through every one, a plane plus an r² log r bump at each reading, as a contour map is drawn
+// between survey points. Exact on each reading and smooth between them, with no bullseyes; it can
+// rise past the readings between them, which a caller can hold. Null when there is nothing to fit:
+// fewer than three readings, or two at one spot
+export function makeThinPlateSpline(readings: Reading[]): ((x: number, y: number) => number) | null {
+  return thinPlateSplineFitter(readings)?.(readings.map(r => r.v)) ?? null;
+}
+
+// the same spline for a set of sites whose values are still to come: the system depends on the sites
+// alone, so it is factored once and each set of values is then fitted in O(n²), as a survey is
+// refitted while its stations stand and their readings change. Null for fewer than three sites or
+// two at one spot
+export function thinPlateSplineFitter(sites: Pt[]): ((values: number[]) => (x: number, y: number) => number) | null {
+  const n = sites.length;
+  if (n < 3) return null;
+  // the spline is the same at any scale, so it is fitted over a unit box to keep the solve well conditioned
+  const xs = sites.map(s => s.x), ys = sites.map(s => s.y);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const scale = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 1e-9);
+  const px = Float64Array.from(xs, x => (x - cx) / scale), py = Float64Array.from(ys, y => (y - cy) / scale);
+  const bump = (r2: number): number => r2 > 0 ? 0.5 * r2 * Math.log(r2) : 0;
+  // n bump rows and three plane rows: the bumps carry no plane between them, so their weights sum
+  // to nothing and have no moment
+  const m = n + 3;
+  const a = new Float64Array(m * m);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) a[i * m + j] = bump((px[i] - px[j]) ** 2 + (py[i] - py[j]) ** 2);
+    a[i * m + n] = a[n * m + i] = 1;
+    a[i * m + n + 1] = a[(n + 1) * m + i] = px[i];
+    a[i * m + n + 2] = a[(n + 2) * m + i] = py[i];
   }
-  return sum > 0 ? weighted / sum : farSum > 0 ? farWeighted / farSum : NaN;
+  const lu = luDecompose(a, m);
+  if (!lu) return null;
+  return values => {
+    const rhs = new Float64Array(m);
+    for (let i = 0; i < n; i++) rhs[i] = values[i];
+    const w = luSolve(lu, rhs);
+    return (x, y) => {
+      const qx = (x - cx) / scale, qy = (y - cy) / scale;
+      let v = w[n] + w[n + 1] * qx + w[n + 2] * qy;
+      for (let i = 0; i < n; i++) {
+        const dx = qx - px[i], dy = qy - py[i], r2 = dx * dx + dy * dy;
+        if (r2 > 0) v += w[i] * 0.5 * r2 * Math.log(r2);
+      }
+      return v;
+    };
+  };
+}
+
+// LU factors of a dense n×n matrix (row-major, overwritten) with partial pivoting; null when singular
+interface LU { lu: Float64Array; perm: Int32Array; n: number }
+
+function luDecompose(a: Float64Array, n: number): LU | null {
+  const perm = new Int32Array(n);
+  for (let i = 0; i < n; i++) perm[i] = i;
+  for (let k = 0; k < n; k++) {
+    let pivot = k;
+    for (let i = k + 1; i < n; i++) if (Math.abs(a[i * n + k]) > Math.abs(a[pivot * n + k])) pivot = i;
+    if (Math.abs(a[pivot * n + k]) < 1e-12) return null;
+    if (pivot !== k) {
+      for (let j = 0; j < n; j++) { const t = a[k * n + j]; a[k * n + j] = a[pivot * n + j]; a[pivot * n + j] = t; }
+      const t = perm[k]; perm[k] = perm[pivot]; perm[pivot] = t;
+    }
+    const d = a[k * n + k];
+    for (let i = k + 1; i < n; i++) {
+      const f = a[i * n + k] / d;
+      if (f === 0) continue;
+      a[i * n + k] = f;
+      for (let j = k + 1; j < n; j++) a[i * n + j] -= f * a[k * n + j];
+    }
+  }
+  return { lu: a, perm, n };
+}
+
+function luSolve({ lu, perm, n }: LU, b: Float64Array): Float64Array {
+  const x = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    let s = b[perm[i]];
+    for (let j = 0; j < i; j++) s -= lu[i * n + j] * x[j];
+    x[i] = s;
+  }
+  for (let i = n - 1; i >= 0; i--) {
+    let s = x[i];
+    for (let j = i + 1; j < n; j++) s -= lu[i * n + j] * x[j];
+    x[i] = s / lu[i * n + i];
+  }
+  return x;
 }

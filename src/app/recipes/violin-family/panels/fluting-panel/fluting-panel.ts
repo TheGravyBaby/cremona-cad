@@ -14,16 +14,17 @@ import { Arc, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { ChannelParams, ChannelSolve, FlutingFailure, FlutingSolve, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { ChannelParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { ChannelSolve, FlutingFailure, FlutingSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import {
-  offsetArcs, outerCorners, outerPath, PLATE_LAYOUT_GAP, renderOuterContour, ribArcs, RibArcs, solveOuterContour,
+  offsetArcs, outerCorners, outerPath, PLATE_LAYOUT_GAP, renderPlateContour, ribArcs, RibArcs, solvePlateContour,
   violNeckTopLine,
-} from '../outer-contour-panel/outer-contour-panel';
+} from '../plate-contour-panel/plate-contour-panel';
 
 // The fluting channel: the hollow each plate is gouged with inside the flat left round its edge. The
 // channel follows the rib outline round the bouts and bypasses the corners, the C bout's run joined
@@ -44,7 +45,7 @@ export class FlutingPanel implements ViolinFamilyPanel, OnInit {
   // the first channels, sized by instrument family, with a narrower one through the waist, and the
   // flat at the edge half the overhang wide
   static seed(p: ViolinFamilyParams): void {
-    if (p.fluting || !p.outerContour) return;
+    if (p.fluting || !p.plateContour) return;
     let [width, depth, cBoutWidth] =
       { violin: [11, 1, 7.5], viola: [14.5, 1.5, 10], cello: [21, 2, 14.5], bass: [27, 2.5, 19] }[familyStandards(p.body.height).family];
     let channel = (): ChannelParams => ({ width, depth, cBoutWidth, useCBoutGouge: true });
@@ -84,10 +85,10 @@ export class FlutingPanel implements ViolinFamilyPanel, OnInit {
   draw(): void {
     safeRun(() => {
       let p = this.params;
-      let o = solveOuterContour(p)!;
+      let o = solvePlateContour(p)!;
       let f = this.f = solveFluting(p)!;
       this.drawn.emit([
-        renderOuterContour(p, o, this.pal, this.flags, false),
+        renderPlateContour(p, o, this.pal, this.flags, false),
         renderFholes(p, this.pal),
         renderFluting(p, f, this.pal, true),
         renderSolveFailures(f.failures, this.pal.alert, true),
@@ -398,8 +399,8 @@ export function channelPath(p: ViolinFamilyParams, rib: RibArcs, offset: number,
 let last: { key: string; solve: FlutingSolve } | null = null;
 
 export function solveFluting(p: ViolinFamilyParams): FlutingSolve | null {
-  if (!p.fluting || !p.outerContour || !p.corners || !p.bouts) return null;
-  let key = JSON.stringify([p.body, p.bouts, p.corners, p.outerContour, p.fluting]);
+  if (!p.fluting || !p.plateContour || !p.corners || !p.bouts) return null;
+  let key = JSON.stringify([p.body, p.bouts, p.corners, p.plateContour, p.fluting]);
   if (last?.key === key) return last.solve;
   let solve = solveFlutingUncached(p);
   last = { key, solve };
@@ -411,7 +412,7 @@ function solveFlutingUncached(p: ViolinFamilyParams): FlutingSolve {
   let s: FlutingSolve = { outerEdge: null, top: null, back: null, failures: [] };
 
   let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
-  if (!rib || !solveOuterContour(p)!.top) {
+  if (!rib || !solvePlateContour(p)!.top) {
     s.failures.push({ message: 'Fluting: the plate edge has to solve first.', unsolved: ['top', 'back'], circles: [], segments: [] });
     return s;
   }

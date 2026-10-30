@@ -14,17 +14,20 @@ import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
-  RenderLayer, ScrollFailure, ScrollKey, ScrollSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
+  RenderLayer,
+  ViolinFamilyPanel,
+  ViolinFamilyParams,
+  ViolinFamilyToggleKey,
+  ViolinFamilyViewFlags,
 } from '../../violin-family-types';
+import {
+  ScrollFailure,
+  ScrollKey,
+  ScrollSolve,
+} from '../../violin-family-solves';
 import { badArc, longArc, renderScrollNeck, renderVolute, scrollArc, solveVolute } from '../volute-panel/volute-panel';
 import { neckTaper } from '../neck-panel/neck-panel';
 
-// The scroll's side: the back on from the crown, S2 then a straight, S3 turning back down to hang
-// below the nut, and the nape into the neck's back; the front up from the nut, a flat, F0, a
-// straight, and F1 curving back until it first meets the spiral. Panel and render, then the solve.
-
-// the arcs take an arc halo; the straights, the flat and the neck's thickness a segment halo on the
-// line their length makes
 export type ScrollHighlightKey = 'S2' | 'S3' | 'nape' | 'napeAngle' | 'F0' | 'F1' | 'backStraight' | 'flat' | 'frontStraight' | 'upperThickness';
 export type ScrollLine = 'napeLine' | 'backStraight' | 'flat' | 'frontStraight';
 

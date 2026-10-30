@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { OuterContourPanel, solveOuterContourRatios } from '../outer-contour-panel/outer-contour-panel';
+import { PlateContourPanel, solvePlateContourRatios } from '../plate-contour-panel/plate-contour-panel';
 import { FHolePlacementPanel, solveFholePlacementRatios } from '../fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel, solveFholeContoursRatios } from '../fhole-contours-panel/fhole-contours-panel';
 import { dist, pointOnCircle, signedArcSweep, TURN } from '../../../../helpers/math/simpleGeometry';
@@ -279,11 +279,11 @@ describe('ratios', () => {
 
   it('names every seed fraction a ratio some panel reports', () => {
     const p = seeded();
-    OuterContourPanel.seed(p);
+    PlateContourPanel.seed(p);
     FHolePlacementPanel.seed(p);
     FHoleContoursPanel.seed(p);
     const keys = Object.keys({
-      ...solveBodyRatios(p), ...solveMainBoutsRatios(p), ...solveCornersRatios(p), ...solveCenterBoutRatios(p), ...solveOuterContourRatios(p),
+      ...solveBodyRatios(p), ...solveMainBoutsRatios(p), ...solveCornersRatios(p), ...solveCenterBoutRatios(p), ...solvePlateContourRatios(p),
     }).sort();
     // the seed also carries the height the ratios are drawn from; that is not read back
     expect(keys).toEqual(Object.keys(SEED_RATIOS).filter(k => k !== 'height').sort());
@@ -291,7 +291,7 @@ describe('ratios', () => {
 
   it('names every f-hole seed fraction a ratio some panel reports', () => {
     const p = seeded();
-    OuterContourPanel.seed(p);
+    PlateContourPanel.seed(p);
     FHolePlacementPanel.seed(p);
     FHoleContoursPanel.seed(p);
     const keys = Object.keys({ ...solveFholePlacementRatios(p), ...solveFholeContoursRatios(p) }).sort();

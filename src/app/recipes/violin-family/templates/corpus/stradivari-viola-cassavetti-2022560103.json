@@ -21,18 +21,18 @@
       "useViolNeck": false,
       "viol": null,
       "CBW": 122,
-      "C0R": 94,
-      "C0Y": 233,
+      "C0R": 99,
+      "C0Y": 232.5,
       "useKellyC0": false
     },
     "corners": {
       "UCr": {
-        "x": 85.25,
-        "y": 272.25
+        "x": 87.15,
+        "y": 270.35
       },
       "LCr": {
-        "x": 102.5,
-        "y": 175.75
+        "x": 103.3,
+        "y": 176.55
       },
       "U2R": 120,
       "U3R": 56,
@@ -46,31 +46,31 @@
       "L31Sweep": 20.333,
       "L31DoubleArc": false,
       "useViolCornerLC": false,
-      "C2R": 24,
-      "C21R": 16,
-      "C21Sweep": 33.506,
-      "C21DoubleArc": true,
-      "C1R": 31,
-      "C11R": 22,
-      "C11Sweep": 20.37,
-      "C11DoubleArc": true
+      "C2R": 20,
+      "C21R": 18,
+      "C21Sweep": 43,
+      "C21DoubleArc": false,
+      "C1R": 30,
+      "C11R": 26,
+      "C11Sweep": 28,
+      "C11DoubleArc": false
     },
     "outerContour": {
       "button": {
         "width": 20,
-        "height": 14.72
+        "height": 13.2
       },
-      "purflingOffset": 5.45,
+      "purflingOffset": 5.8,
       "purflingChannelDepth": 1.2,
       "U3Cutoff": 0,
-      "U31Cutoff": 2.001971617,
-      "C2Cutoff": 0,
+      "U31Cutoff": -3,
+      "C2Cutoff": 4,
       "C21Cutoff": 16.666651653,
-      "C1Cutoff": 0,
+      "C1Cutoff": 3,
       "C11Cutoff": 8.630199026,
-      "L3Cutoff": -4.030206814,
+      "L3Cutoff": -8,
       "L31Cutoff": 0,
-      "upperRounding": 0.06,
+      "upperRounding": 0.09,
       "lowerRounding": 0.23
     },
     "fluting": {
@@ -105,7 +105,7 @@
       "stem": {
         "center": {
           "x": 46.25,
-          "y": 195
+          "y": 193.1
         },
         "width": 5.5,
         "angle": 94
@@ -132,14 +132,14 @@
       "L21DoubleArc": false,
       "L21R": 18,
       "L2Sweep": 16.31,
-      "L3R": 19,
-      "L3Angle": 95,
+      "L3R": 18,
+      "L3Angle": 94,
       "LCut": {
         "angleOnEye": 263.392584324,
         "slope": -130,
-        "length": 8.25
+        "length": 8.65
       },
-      "stemArcR": 43
+      "stemArcR": 36
     },
     "arching": {
       "ribHeightLower": 35,
@@ -148,17 +148,17 @@
         "thickness": 4,
         "long": {
           "type": "spline",
-          "height": 17,
+          "height": 16.1,
           "peak": 50,
           "points": [
             {
               "t": 91,
-              "z": 6,
+              "z": 6.7,
               "mirror": false
             },
             {
               "t": 75,
-              "z": 14.4,
+              "z": 14.5,
               "mirror": false
             },
             {
@@ -167,11 +167,12 @@
               "mirror": false
             },
             {
-              "t": 12.5,
-              "z": 9.4,
+              "t": 8,
+              "z": 6.1,
               "mirror": false
             }
-          ]
+          ],
+          "peakRow": 2
         },
         "cross": {
           "type": "cycloid",
@@ -186,7 +187,7 @@
         "thickness": 4,
         "long": {
           "type": "spline",
-          "height": 13,
+          "height": 12.5,
           "peak": 50,
           "points": [
             {
@@ -201,15 +202,16 @@
             },
             {
               "t": 25,
-              "z": 10.5,
+              "z": 9.8,
               "mirror": false
             },
             {
               "t": 12.5,
-              "z": 5,
+              "z": 4.2,
               "mirror": false
             }
-          ]
+          ],
+          "peakRow": 2
         },
         "cross": {
           "type": "cycloid",
@@ -220,54 +222,372 @@
           "stations": []
         }
       }
+    },
+    "mould": {
+      "neckBlock": {
+        "width": 75,
+        "height": 25
+      },
+      "upperCornerBlock": {
+        "width": 24,
+        "height": 30,
+        "pad": {
+          "x": 4,
+          "y": -4
+        }
+      },
+      "lowerCornerBlock": {
+        "width": 24,
+        "height": 30,
+        "pad": {
+          "x": 4,
+          "y": 4
+        }
+      },
+      "endBlock": {
+        "width": 75,
+        "height": 25
+      },
+      "bitDiameter": 6.35,
+      "clampBox": true
+    },
+    "neck": {
+      "length": 160,
+      "angle": 7.5,
+      "upperThickness": 11,
+      "lowerThickness": 12.5,
+      "topWidth": 26.8,
+      "rootWidth": 32,
+      "heelRadius": 13,
+      "mortiseDepth": 6.5,
+      "overstand": 7.5,
+      "nutHeight": 13,
+      "nutWidth": 33.3,
+      "heelAngle": 6.5
+    },
+    "scroll": {
+      "style": "fourPoint",
+      "eye": {
+        "x": -20.33,
+        "y": 100.25,
+        "r": 4.6
+      },
+      "fitToNeck": false,
+      "pitch": 7.6,
+      "seedLength": 4,
+      "arcRadii": [
+        5.75,
+        7.5,
+        8.75,
+        10.5,
+        12.5,
+        14.75,
+        17,
+        19.25
+      ],
+      "S0R": 25,
+      "S0Sweep": 80,
+      "S1R": 32,
+      "S1Sweep": 85,
+      "S2R": 44,
+      "S2Sweep": 48.4,
+      "backStraight": 30,
+      "S3R": 42,
+      "hang": 5.6,
+      "napeR": 12,
+      "napeAngle": 12,
+      "flat": 7,
+      "F0R": 62,
+      "F0Sweep": 43,
+      "frontStraight": 28,
+      "F1R": 6,
+      "widths": {
+        "hip": 33,
+        "throat": 22.5,
+        "duckTail": 27.5,
+        "foot": 34.2,
+        "poll": 23,
+        "crown": 13.2,
+        "turn1Bottom": 27.6,
+        "turn2Top": 24.1,
+        "turn2Bottom": 38,
+        "eye": 46.6
+      },
+      "hipHeight": 9,
+      "duckTailStraight": 0,
+      "wall": 6
+    },
+    "stringSetup": {
+      "bodyStop": 219,
+      "bridgeHeight": 38,
+      "nutThickness": 8.5,
+      "fingerboardLength": 305,
+      "fingerboardThickness": 5,
+      "fingerboardNutRadius": 37,
+      "fingerboardEndRadius": 39,
+      "scoopAt": 152.5,
+      "scoopBass": 1,
+      "scoopTreble": 0.75
+    },
+    "graduation": {
+      "lining": 2.5,
+      "edgeInset": 4.5,
+      "blockMargin": 0,
+      "fHoleThickness": 5.3,
+      "top": {
+        "points": [
+          {
+            "x": -90.2,
+            "y": 90,
+            "thickness": 4,
+            "label": "Lower channel bass"
+          },
+          {
+            "x": 0,
+            "y": 113,
+            "thickness": 4.4,
+            "label": "Lower dome"
+          },
+          {
+            "x": 90.2,
+            "y": 90,
+            "thickness": 4,
+            "label": "Lower channel treble"
+          },
+          {
+            "x": -56.1,
+            "y": 133.5,
+            "thickness": 4,
+            "label": "Lower flank bass"
+          },
+          {
+            "x": 56.1,
+            "y": 133.5,
+            "thickness": 4,
+            "label": "Lower flank treble"
+          },
+          {
+            "x": 0,
+            "y": 177,
+            "thickness": 5.3,
+            "label": "Island lower"
+          },
+          {
+            "x": 0,
+            "y": 223.5,
+            "thickness": 5.3,
+            "label": "Island"
+          },
+          {
+            "x": 0,
+            "y": 270,
+            "thickness": 5.3,
+            "label": "Island upper"
+          },
+          {
+            "x": -42.6,
+            "y": 304,
+            "thickness": 4,
+            "label": "Upper flank bass"
+          },
+          {
+            "x": 42.6,
+            "y": 304,
+            "thickness": 4,
+            "label": "Upper flank treble"
+          },
+          {
+            "x": -67.6,
+            "y": 338,
+            "thickness": 4,
+            "label": "Upper channel bass"
+          },
+          {
+            "x": 0,
+            "y": 338,
+            "thickness": 4,
+            "label": "Upper dome"
+          },
+          {
+            "x": 67.6,
+            "y": 338,
+            "thickness": 4,
+            "label": "Upper channel treble"
+          },
+          {
+            "x": 0,
+            "y": 80.3,
+            "thickness": 4
+          }
+        ]
+      },
+      "back": {
+        "points": [
+          {
+            "x": -90.2,
+            "y": 90,
+            "thickness": 4,
+            "label": "Lower channel bass"
+          },
+          {
+            "x": 0,
+            "y": 90,
+            "thickness": 4,
+            "label": "Lower dome"
+          },
+          {
+            "x": 90.2,
+            "y": 90,
+            "thickness": 4,
+            "label": "Lower channel treble"
+          },
+          {
+            "x": -56.1,
+            "y": 133.5,
+            "thickness": 4,
+            "label": "Lower flank bass"
+          },
+          {
+            "x": 56.1,
+            "y": 133.5,
+            "thickness": 4,
+            "label": "Lower flank treble"
+          },
+          {
+            "x": 0,
+            "y": 177,
+            "thickness": 4,
+            "label": "Island lower"
+          },
+          {
+            "x": 0,
+            "y": 223.5,
+            "thickness": 4,
+            "label": "Island"
+          },
+          {
+            "x": 0,
+            "y": 270,
+            "thickness": 4,
+            "label": "Island upper"
+          },
+          {
+            "x": -42.6,
+            "y": 306,
+            "thickness": 4,
+            "label": "Upper flank bass"
+          },
+          {
+            "x": 42.6,
+            "y": 304,
+            "thickness": 4,
+            "label": "Upper flank treble"
+          },
+          {
+            "x": -67.6,
+            "y": 340,
+            "thickness": 4,
+            "label": "Upper channel bass"
+          },
+          {
+            "x": 0,
+            "y": 338,
+            "thickness": 4,
+            "label": "Upper dome"
+          },
+          {
+            "x": 67.6,
+            "y": 338,
+            "thickness": 4,
+            "label": "Upper channel treble"
+          }
+        ]
+      }
+    },
+    "plateContour": {
+      "button": {
+        "width": 24,
+        "height": 13
+      },
+      "purflingOffset": 5.2,
+      "purflingChannelDepth": 1.2,
+      "U3Cutoff": 2.5,
+      "U31Cutoff": 6.5,
+      "C2Cutoff": 10,
+      "C21Cutoff": 11.428571428571429,
+      "C1Cutoff": 5,
+      "C11Cutoff": 5.909090909090909,
+      "L3Cutoff": 2.5,
+      "L31Cutoff": 4.25,
+      "upperRounding": 0,
+      "lowerRounding": 0
     }
   },
   "ratios": {
-    "HtoW": 1.732489451,
-    "UBtoLB": 0.767932489,
-    "U0toUBW": 1.011494253,
-    "U1toUBW": 0.385057471,
-    "LBtoH": 0.577204092,
-    "L0toLBW": 1.008733624,
-    "L1toLBW": 0.362445415,
-    "U2toUBW": 0.689655172,
-    "U3toLBW": 0.244541485,
-    "U31toLBW": 0.104803493,
-    "L2toLBW": 0.545851528,
-    "L3toLBW": 0.165938865,
-    "L31toLBW": 0.104803493,
-    "UCYtoH": 0.663054067,
-    "LCYtoH": 0.428032148,
-    "CBWtoLBW": 0.514767932,
-    "C0toLBW": 0.410480349,
-    "C0YtoH": 0.56746225,
-    "C2toLBW": 0.104803493,
-    "C21toLBW": 0.069868996,
-    "C1toLBW": 0.135371179,
-    "C11toLBW": 0.096069869,
-    "FLtoW": 0.017932489,
-    "FUtoL": 0.941176471
+    "HtoW": 1.7324894514767935,
+    "UBtoLB": 0.7679324894514767,
+    "U0toUBW": 1.0114942528735633,
+    "U1toUBW": 0.3850574712643678,
+    "LBtoH": 0.5772040915733073,
+    "L0toLBW": 1.0087336244541485,
+    "L1toLBW": 0.3624454148471616,
+    "U2toUBW": 0.6896551724137931,
+    "U3toLBW": 0.2445414847161572,
+    "U31toLBW": 0.10480349344978165,
+    "L2toLBW": 0.5458515283842795,
+    "L3toLBW": 0.16593886462882096,
+    "L31toLBW": 0.10480349344978165,
+    "UCYtoH": 0.6584266926449099,
+    "LCYtoH": 0.42998051631758405,
+    "CBWtoLBW": 0.5147679324894515,
+    "C0toLBW": 0.43231441048034935,
+    "C2toLBW": 0.08733624454148471,
+    "C21toLBW": 0.07860262008733625,
+    "C1toLBW": 0.13100436681222707,
+    "C11toLBW": 0.11353711790393013,
+    "BWtoLBW": 0.10126582278481013,
+    "BHtoBW": 0.5416666666666666,
+    "LEyetoW": 0.017932489451476793,
+    "UEyetoLEye": 0.9411764705882353,
+    "URisetoUEye": 1.375,
+    "LRisetoLEye": 1.8235294117647058,
+    "StemXtoFrame": 0.46111111111111114,
+    "StemYtoFrame": 0.4802588996763753,
+    "StemWtoUEye": 1.375,
+    "LEyeXtoLCX": 0.6413359148112294,
+    "LEyeYtoLCY": 0.951571792693288,
+    "UEyeGuidetoWaist": 0.506289314939263,
+    "EyeSpantoWaist": 1.024755051329485,
+    "UCuttoUEye": 1.625,
+    "LCuttoLEye": 2.0352941176470587,
+    "StoEyeSpan": 0.539140587251914,
+    "U1toS": 0.25,
+    "U2toS": 0.25,
+    "U3toS": 0.5,
+    "L1toS": 0.2777777777777778,
+    "L2toS": 0.5,
+    "L3toS": 0.5
   },
   "referenceImages": [
     {
       "id": "stradivari-viola-cassavetti-top",
       "label": "Top (sp=2)",
-      "scope": {
-        "except": [
-          "fluting",
-          "longArching",
-          "crossArching"
-        ]
-      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154830:musihas-200154830.0002/full/pct:100.0/0/default.jpg",
       "x": -123.58262698406119,
       "y": -2.2049999999999725,
       "width": 251.32538275230212,
       "height": 421.01,
       "rotationDeg": 359.7,
-      "opacity": 0.4,
-      "suppressWhite": true,
+      "opacity": 0.75,
+      "suppressWhite": false,
       "locked": true,
+      "scope": {
+        "except": [
+          "volute",
+          "scroll",
+          "scrollWidths"
+        ]
+      },
       "credit": {
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
         "url": "https://www.loc.gov/resource/music.musihas-200154830/?sp=2&st=image"
@@ -276,20 +596,23 @@
     {
       "id": "stradivari-viola-cassavetti-profiles",
       "label": "Profiles, both sides (sp=3)",
-      "scope": {
-        "only": [
-          "longArching"
-        ]
-      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154830:musihas-200154830.0003/full/pct:100.0/0/default.jpg",
-      "x": -59.47749999999998,
+      "x": 112.22249999999998,
       "y": -2.465000000000001,
       "width": 160.01473477051314,
       "height": 449.852646484375,
       "rotationDeg": 359.6,
-      "opacity": 0.4,
+      "opacity": 0.75,
       "suppressWhite": true,
-      "locked": false,
+      "locked": true,
+      "scope": {
+        "only": [
+          "longArching",
+          "crossArching",
+          "neck",
+          "stringSetup"
+        ]
+      },
       "crop": {
         "left": 0,
         "top": 0,
@@ -299,6 +622,65 @@
       "credit": {
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
         "url": "https://www.loc.gov/resource/music.musihas-200154830/?sp=3&st=image"
+      }
+    },
+    {
+      "id": "shape-mvtpfj6y-2",
+      "label": "Img 3",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154830:musihas-200154830.0014/45,2155,1687,2461/1024,/0/default.jpg",
+      "x": -67.71841915130611,
+      "y": -65.68161091674122,
+      "width": 94.22913257598876,
+      "height": 236.8738128636033,
+      "rotationDeg": 0,
+      "opacity": 0.75,
+      "locked": true,
+      "scope": {
+        "only": [
+          "scroll",
+          "volute",
+          "scrollWidths"
+        ]
+      },
+      "crop": {
+        "left": 0.38,
+        "top": 0,
+        "right": 0.04,
+        "bottom": 0
+      }
+    },
+    {
+      "id": "shape-mvtpw4gj-3",
+      "label": "Img 4",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154830:musihas-200154830.0014/242,246,1708,1948/1024,/0/default.jpg",
+      "x": -12.93044853047009,
+      "y": -29.762887954711914,
+      "width": 156.95354842812768,
+      "height": 178.8718662261963,
+      "rotationDeg": 0.9,
+      "opacity": 0.75,
+      "locked": true,
+      "scope": {
+        "only": [
+          "scrollWidths"
+        ]
+      }
+    },
+    {
+      "id": "shape-mvtq33mj-4",
+      "label": "Img 5",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154830:musihas-200154830.0014/1929,368,1350,1776/1024,/0/default.jpg",
+      "x": -180.28349240082858,
+      "y": -20.696359634399414,
+      "width": 119.91255364931327,
+      "height": 157.73653297424315,
+      "rotationDeg": 0,      
+      "opacity": 0.75,
+      "locked": true,
+      "scope": {
+        "only": [
+          "scrollWidths"
+        ]
       }
     }
   ]

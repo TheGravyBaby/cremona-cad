@@ -12,20 +12,24 @@ import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
-  RenderLayer, ScrollFailure, ScrollKey, ScrollParams, ScrollSolve, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey,
-  ViolinFamilyViewFlags, VoluteStyle,
+  RenderLayer,
+  ScrollParams,
+  ViolinFamilyPanel,
+  ViolinFamilyParams,
+  ViolinFamilyToggleKey,
+  ViolinFamilyViewFlags,
+  VoluteStyle,
 } from '../../violin-family-types';
+import {
+  ScrollFailure,
+  ScrollKey,
+  ScrollSolve,
+} from '../../violin-family-solves';
 import { defineSideScrollPath, solveScroll } from '../scroll-panel/scroll-panel';
 import { duckTailRoundTop } from '../scroll-widths-panel/scroll-widths-panel';
 import { neckTaper } from '../neck-panel/neck-panel';
 import { showFieldHelp } from '../../../../docs/field-help';
 
-// The volute: a style's spiral about the eye, two turns out to its front, and the crown (S0, S1)
-// running on from it. The scroll is drawn in its own side view, the nut at the origin on the neck's
-// front, up the neck +y and toward the back -x, with a stub of the neck below. Panel and renders,
-// then the styles, then the solve. The rest of the scroll's side is the Scroll panel's.
-
-// a four point arc by its index innermost first, or a crown arc by name
 export type VoluteHighlightKey = number | 'S0' | 'S1';
 
 @Component({

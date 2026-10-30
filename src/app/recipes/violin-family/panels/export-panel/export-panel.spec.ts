@@ -7,7 +7,7 @@ import { ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
-import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
+import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { FHolePlacementPanel } from '../fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel } from '../fhole-contours-panel/fhole-contours-panel';
@@ -45,7 +45,7 @@ const outlined = (): ViolinFamilyParams => {
 };
 const plated = (): ViolinFamilyParams => {
   const p = outlined();
-  OuterContourPanel.seed(p);
+  PlateContourPanel.seed(p);
   return p;
 };
 const holed = (): ViolinFamilyParams => {
@@ -500,7 +500,7 @@ describe('the plate solids', () => {
   it('carry the back\'s button as a flat top at the edge thickness, not a hollow ring', () => {
     const p = arched();
     const surface = solveCrossArching(p).back!;
-    const button = p.outerContour!.button;
+    const button = p.plateContour!.button;
     const tris = stlTriangles(plateStl(p, surface, 'back', 2));
     // a top face lying wholly past the body's end is the button's
     const buttonTops = tris.filter(t => t.n[2] > 0.5 && t.v.every(v => v[1] > p.body.height + 1));

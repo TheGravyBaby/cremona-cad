@@ -7,10 +7,11 @@ import {
 } from './cross-arching-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel, gougeHalfWidth, gougeProfileSlope } from '../fluting-panel/fluting-panel';
-import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
+import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { CrossArchParams, PlateSurface, ViolinFamilyParams } from '../../violin-family-types';
+import { CrossArchParams, ViolinFamilyParams } from '../../violin-family-types';
+import { PlateSurface } from '../../violin-family-solves';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
@@ -18,7 +19,7 @@ const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN
 const seeded = (p = blank()): ViolinFamilyParams => {
   MainBoutsPanel.seed(p);
   CornersPanel.seed(p);
-  OuterContourPanel.seed(p);
+  PlateContourPanel.seed(p);
   FlutingPanel.seed(p);
   LongArchingPanel.seed(p);
   return p;
@@ -50,7 +51,7 @@ describe('the cross arching solve', () => {
     const p = blank();
     MainBoutsPanel.seed(p);
     CornersPanel.seed(p);
-    OuterContourPanel.seed(p);
+    PlateContourPanel.seed(p);
     FlutingPanel.seed(p);
     expect(solveCrossArching(p)).toBeNull();
   });

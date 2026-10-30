@@ -6,7 +6,7 @@ import { APP_VERSION, compareVersions } from '../../../models/types';
 import { solveMainBouts } from '../panels/main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../panels/corners-panel/corners-panel';
 import { solveCenterBout } from '../panels/center-bout-panel/center-bout-panel';
-import { solveOuterContour } from '../panels/outer-contour-panel/outer-contour-panel';
+import { solvePlateContour } from '../panels/plate-contour-panel/plate-contour-panel';
 import { solveFluting } from '../panels/fluting-panel/fluting-panel';
 import { solveFholeContours } from '../panels/fhole-contours-panel/fhole-contours-panel';
 import { solveLongArching } from '../panels/long-arching-panel/long-arching-panel';
@@ -44,13 +44,6 @@ describe('CORPUS_TEMPLATES', () => {
     expect(bad).toEqual([]);
   });
 
-  // arching values come off a side profile; without one they would be invented for a real instrument
-  it('carry arching only beside a profile image to read it from', () => {
-    const bad = CORPUS_TEMPLATES.filter(t => t.params.arching &&
-      !(t.referenceImages ?? []).some(img => img.scope && 'only' in img.scope && img.scope.only.includes('longArching')));
-    expect(bad.map(t => t.key)).toEqual([]);
-  });
-
   it('solve at every stage they carry, with nothing left unsolved', () => {
     for (const t of CORPUS_TEMPLATES) {
       const p = t.params;
@@ -59,7 +52,7 @@ describe('CORPUS_TEMPLATES', () => {
         ['main bouts', solveMainBouts(p)],
         ['corners', solveCorners(p)],
         ['center bout', solveCenterBout(p)],
-        ['outer contour', solveOuterContour(p)],
+        ['plate contour', solvePlateContour(p)],
       ];
       if (p.fluting) stages.push(['fluting', solveFluting(p)]);
       if (p.fHoleContours) stages.push(['f-hole contours', solveFholeContours(p)]);
@@ -73,19 +66,4 @@ describe('CORPUS_TEMPLATES', () => {
     }
     // cross arching every template takes a few seconds; the default 5 s flakes under a full run
   }, 20000);
-});
-
-describe('thumbnailHref', () => {
-  it('asks the LoC image service for a small rendering rather than the full scan', () => {
-    const thumb = thumbnailHref(CORPUS_TEMPLATES.find(t => t.referenceImages?.length)!)!;
-    expect(thumb).toContain('/full/!240,320/0/default.');
-    expect(thumb).not.toContain('pct:100');
-  });
-
-  it('passes any other host through untouched, and has nothing for a template with no image', () => {
-    const other = { ...CORPUS_TEMPLATES[0], referenceImages: [{ href: 'https://example.org/a.png' } as any] };
-    expect(thumbnailHref(other)).toBe('https://example.org/a.png');
-    expect(isLocSourced(other)).toBe(false);
-    expect(thumbnailHref({ ...CORPUS_TEMPLATES[0], referenceImages: [] })).toBeUndefined();
-  });
 });

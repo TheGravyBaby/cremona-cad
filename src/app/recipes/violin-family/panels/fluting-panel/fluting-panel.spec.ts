@@ -5,11 +5,12 @@ import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
 import { FlutingPanel, gougeHalfWidth, solveFluting } from './fluting-panel';
-import { OuterContourPanel, solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
+import { PlateContourPanel, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
-import { ChannelSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { ViolinFamilyParams } from '../../violin-family-types';
+import { ChannelSolve } from '../../violin-family-solves';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
@@ -17,7 +18,7 @@ const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN
 const withPlates = (p = blank()): ViolinFamilyParams => {
   MainBoutsPanel.seed(p);
   CornersPanel.seed(p);
-  OuterContourPanel.seed(p);
+  PlateContourPanel.seed(p);
   return p;
 };
 
@@ -94,7 +95,7 @@ describe('the channel', () => {
   const p = seeded();
   const f = p.fluting!;
   const s = solveFluting(p)!;
-  const edge = points(solveOuterContour(p)!.top!, 0.1);
+  const edge = points(solvePlateContour(p)!.top!, 0.1);
 
   it('closes each of its three edges into one loop, on both plates', () => {
     expect(s.failures).toEqual([]);

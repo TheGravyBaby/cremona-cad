@@ -4,30 +4,23 @@
         <label class="field-cell">
             <span class="field-title">Lining <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="settings.lining" (input)="stateEdited()" />
+                [(ngModel)]="gr.lining" (input)="edited()" />
+        </label>
+         <label class="field-cell">
+            <span class="field-title">Edge Inset <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(1)"
+                [(ngModel)]="gr.edgeInset" (input)="edited()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Block Margin <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" [style.border-color]="pal.ink(2)"
-                [(ngModel)]="settings.blockMargin" (input)="stateEdited()" />
-        </label>
-    </div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Edge Inset <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(1)"
-                [(ngModel)]="settings.edgeInset" (input)="stateEdited()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Edge Reach <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3)"
-                [(ngModel)]="settings.edgeReach" (input)="stateEdited()" />
+                [(ngModel)]="gr.blockMargin" (input)="edited()" />
         </label>
     </div>
 </section>
 
 @for (plate of plates; track plate) {
-@let g = settings.plates[plate];
+@let g = gr[plate];
 @let open = plate === active;
 @let map = maps[plate];
 <section class="ui-group graduation-plate">
@@ -46,39 +39,21 @@
         }
     </div>
     @if (open) {
-    <div class="input-group basic-row field-row" role="group">
-        <div class="toggle">
-            <input type="radio" [name]="plate + '-graduation-layout'" value="zones" [(ngModel)]="g.style" (change)="relayout(plate)" />
-            <span>Zones</span>
-        </div>
-        <div class="toggle">
-            <input type="radio" [name]="plate + '-graduation-layout'" value="grid" [(ngModel)]="g.style" (change)="relayout(plate)" />
-            <span>Grid</span>
-        </div>
-        <div class="toggle">
-            <input type="radio" [name]="plate + '-graduation-layout'" value="blank" [(ngModel)]="g.style" (change)="relayout(plate)" />
-            <span>Blank</span>
-        </div>
-    </div>
-    @if (g.style === 'grid') {
-    <div class="input-group basic-row field-row" role="group">
+    <div class="input-group basic-row field-row" role="group" aria-label="Lay the points out afresh">
+        <button type="button" class="panel-nav-btn" (click)="layout(plate, 'zones')" title="Lay the zones a luthier graduates by, replacing the points">Lay Zones</button>
+        <button type="button" class="panel-nav-btn" (click)="layout(plate, 'grid')" title="Lay a grid at the spacing, replacing the points">Lay Grid</button>
         <label class="field-cell">
             <span class="field-title">Spacing <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="5" min="5" [(ngModel)]="g.spacing" (change)="relayout(plate)" />
+            <input type="number" class="basic-input" step="5" min="5" [(ngModel)]="spacing[plate]" (change)="layout(plate, 'grid')" />
         </label>
+        <button type="button" class="panel-nav-btn" (click)="layout(plate, 'blank')" title="Remove every point on this plate">Clear</button>
     </div>
-    }
     @if (plate === 'top') {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">F-hole Thick <span class="unit-label">mm</span></span>
+            <span class="field-title">F-hole Thickness <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.1" min="0"
-                [(ngModel)]="settings.fHoleThickness" (input)="stateEdited()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">F-hole Reach <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3)"
-                [(ngModel)]="settings.fHoleReach" (input)="stateEdited()" />
+                [(ngModel)]="gr.fHoleThickness" (input)="edited()" />
         </label>
     </div>
     }
@@ -109,27 +84,13 @@
         </div>
         } @empty {
         <div class="station-note">
-            @if (g.style === 'blank') { No points yet. } @else { No points: the boundary has to solve first. }
+            No points: lay some out, add them, or check the boundary solves.
         </div>
         }
     </div>
 
     @if (picked.length) {
     <div class="station-note">{{ pickNote() }}</div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Thick <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0" placeholder="mixed"
-                [ngModel]="shared('thickness')" (ngModelChange)="setAll('thickness', $event)"
-                (keydown.arrowup)="nudge('thickness', 0.1, $event)" (keydown.arrowdown)="nudge('thickness', -0.1, $event)" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Reach <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="5" min="1" placeholder="mixed"
-                [ngModel]="shared('reach')" (ngModelChange)="setAll('reach', $event)"
-                (keydown.arrowup)="nudge('reach', 5, $event)" (keydown.arrowdown)="nudge('reach', -5, $event)" />
-        </label>
-    </div>
     <div class="input-group basic-row field-row" role="group">
         @if (picked.length === 1) {
         <div class="field-cell field-cell--xy">
@@ -139,12 +100,18 @@
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Point position" title="Arrow keys move the point from either box">
                 <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Point X"
-                    [(ngModel)]="picked[0].x" (input)="stateEdited()" />
+                    [(ngModel)]="picked[0].x" (input)="edited()" />
                 <input type="number" class="basic-input" step="1" data-xy="y" aria-label="Point Y"
-                    [(ngModel)]="picked[0].y" (input)="stateEdited()" />
+                    [(ngModel)]="picked[0].y" (input)="edited()" />
             </div>
         </div>
         }
+        <label class="field-cell">
+            <span class="field-title">Thickness <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" placeholder="mixed"
+                [ngModel]="shared()" (ngModelChange)="setAll($event)"
+                (keydown.arrowup)="nudge(0.1, $event)" (keydown.arrowdown)="nudge(-0.1, $event)" />
+        </label>
         <button type="button" class="panel-nav-btn" (click)="removeSelected()">Remove</button>
     </div>
     }

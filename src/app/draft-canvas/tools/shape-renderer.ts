@@ -438,7 +438,7 @@ const DIM_ARROW_HALF_WIDTH_PX = 3;
 const DIM_EXT_OVERSHOOT_PX = 5;
 /** How far the number floats off the dimension line, on the side away from the measurement —
  * clear of both the line and an arrowhead's width. */
-const DIM_TEXT_GAP_PX = 14;
+const DIM_TEXT_GAP_PX = 18;
 
 /**
  * A measured distance: a dimension line carrying the number, arrowheads at its ends, and — once
@@ -534,7 +534,7 @@ export function drawDimension(
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'central')
     .attr('fill', color)
-    .attr('font-size', 12 / pxPerMm)
+    .attr('font-size', 16 / pxPerMm)
     .style('user-select', 'none')
     .text(`${length.toFixed(1)} mm`);
   if (preview) text.style('pointer-events', 'none');
@@ -553,7 +553,7 @@ export function drawAngle(
     arrowHalfWidth: DIM_ARROW_HALF_WIDTH_PX / pxPerMm,
     overshoot: DIM_EXT_OVERSHOOT_PX / pxPerMm,
     textGap: DIM_TEXT_GAP_PX / pxPerMm,
-    fontSize: 12 / pxPerMm,
+    fontSize: 16 / pxPerMm,
   }, preview)(gRoot, gUI);
 }
 

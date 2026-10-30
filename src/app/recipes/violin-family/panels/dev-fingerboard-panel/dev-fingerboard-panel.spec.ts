@@ -7,10 +7,11 @@ import { semitoneStop, solveStringSetup, StringSetupPanel } from '../string-setu
 import { NeckPanel, neckHalfWidthAt } from '../neck-panel/neck-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
-import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
+import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { StringSetupSolve, ViolinFamilyParams } from '../../violin-family-types';
+import { ViolinFamilyParams } from '../../violin-family-types';
+import { StringSetupSolve } from '../../violin-family-solves';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 // the position marks, laid out as a maker would with a ruler: each interval its equal-tempered share
@@ -20,7 +21,7 @@ const seeded = (): ViolinFamilyParams => {
   const p: ViolinFamilyParams = JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
   MainBoutsPanel.seed(p);
   CornersPanel.seed(p);
-  OuterContourPanel.seed(p);
+  PlateContourPanel.seed(p);
   FlutingPanel.seed(p);
   LongArchingPanel.seed(p);
   NeckPanel.seed(p);

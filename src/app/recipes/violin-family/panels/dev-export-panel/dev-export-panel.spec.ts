@@ -9,13 +9,13 @@ import { ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
-import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
+import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { FHolePlacementPanel } from '../fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel, fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
-import { solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
+import { solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { MOULD_EXPORT_STEP, MouldPanel, solveMould } from '../mould-panel/mould-panel';
 import { NeckPanel, solveNeck } from '../neck-panel/neck-panel';
 import { VolutePanel } from '../volute-panel/volute-panel';
@@ -34,7 +34,7 @@ const seeded = (): ViolinFamilyParams => {
   const p: ViolinFamilyParams = JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
   MainBoutsPanel.seed(p);
   CornersPanel.seed(p);
-  OuterContourPanel.seed(p);
+  PlateContourPanel.seed(p);
   FHolePlacementPanel.seed(p);
   FHoleContoursPanel.seed(p);
   FlutingPanel.seed(p);
@@ -412,9 +412,9 @@ describe('the arching toolpaths', () => {
 describe('the purfling channel toolpaths', () => {
   const p = seeded();
   const surface = solveCrossArching(p)!.top!;
-  const o = solveOuterContour(p)!;
+  const o = solvePlateContour(p)!;
   const thickness = p.arching!.top.thickness;
-  const width = p.outerContour!.purflingChannelDepth;
+  const width = p.plateContour!.purflingChannelDepth;
   const purfling = (over: Partial<PlateSettings> = {}): PlateSettings => ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.plate)), ...over });
   const cutter = (diameter: number): Bit => ({ diameter, shape: 'flat', feeds: { cutFeed: 1016, plungeFeed: 508, stepDown: 0.6 } });
   const edges = [o.purfling!, o.outerPurfling!].map(d => buildPolylineIndex(samplePathToPolyline(d, 0.25)));
@@ -496,7 +496,7 @@ describe('the purfling channel toolpaths', () => {
 
 describe('the contour toolpaths', () => {
   const p = seeded();
-  const o = solveOuterContour(p)!;
+  const o = solvePlateContour(p)!;
   const g: PlateSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.plate));
   const r = flat.diameter / 2;
 
@@ -563,7 +563,7 @@ describe('the contour toolpaths', () => {
 
 describe('the cradle toolpaths', () => {
   const p = seeded();
-  const o = solveOuterContour(p)!;
+  const o = solvePlateContour(p)!;
   const cradle = (over: Partial<CradleSettings> = {}): CradleSettings => ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.cradle)), ...over });
   const top = DEFAULT_SETTINGS.cradle.stock.thickness;
   const lip = top - CRADLE.wall;
@@ -647,7 +647,7 @@ describe('the cradle toolpaths', () => {
 
 describe('the f-hole toolpaths', () => {
   const p = seeded();
-  const o = solveOuterContour(p)!;
+  const o = solvePlateContour(p)!;
   const s = solveFholeContours(p)!;
   const arching = solveCrossArching(p)!;
   const surface = arching.top!;

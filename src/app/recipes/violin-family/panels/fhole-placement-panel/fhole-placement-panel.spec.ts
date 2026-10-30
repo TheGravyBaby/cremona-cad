@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { dist, TURN } from '../../../../helpers/math/simpleGeometry';
 import { FHolePlacementPanel, fholeBounds, fholeNotches, solveFholePlacementRatios, stemEdgeAt, stemEdgePoints, stemRun } from './fhole-placement-panel';
-import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
+import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
@@ -15,7 +15,7 @@ const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN
 const withPlates = (p = blank()): ViolinFamilyParams => {
   MainBoutsPanel.seed(p);
   CornersPanel.seed(p);
-  OuterContourPanel.seed(p);
+  PlateContourPanel.seed(p);
   return p;
 };
 

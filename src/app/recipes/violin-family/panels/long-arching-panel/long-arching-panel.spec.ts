@@ -7,7 +7,7 @@ import {
   topPlatePlacement,
 } from './long-arching-panel';
 import { FlutingPanel, gougeProfileSlope, gougeProfileZ } from '../fluting-panel/fluting-panel';
-import { OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
+import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
@@ -18,7 +18,7 @@ const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN
 const fluted = (p = blank()): ViolinFamilyParams => {
   MainBoutsPanel.seed(p);
   CornersPanel.seed(p);
-  OuterContourPanel.seed(p);
+  PlateContourPanel.seed(p);
   FlutingPanel.seed(p);
   return p;
 };

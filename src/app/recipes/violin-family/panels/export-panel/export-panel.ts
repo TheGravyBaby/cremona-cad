@@ -19,12 +19,23 @@ import { Arc, Circle, Pt, Rectangle } from '../../../../models/types';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
-  NeckSolve, Plate, PlateSurface, RenderLayer, ScrollSolve, StringSetupSolve, SurfaceRow, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey,
+  RenderLayer,
+  ViolinFamilyPanel,
+  ViolinFamilyParams,
+  ViolinFamilyToggleKey,
 } from '../../violin-family-types';
+import {
+  NeckSolve,
+  Plate,
+  PlateSurface,
+  ScrollSolve,
+  StringSetupSolve,
+  SurfaceRow,
+} from '../../violin-family-solves';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
-import { purflingPath, ribArcs, solveOuterContour } from '../outer-contour-panel/outer-contour-panel';
+import { purflingPath, ribArcs, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { buildArchPathFor, solveLongArching } from '../long-arching-panel/long-arching-panel';
 import { bodyLandmarks, rowAt, sectionRuns, solveCrossArching, STATION_MERGE_EPS_MM, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
@@ -240,7 +251,7 @@ export function exportReady(p: ViolinFamilyParams): Set<ExportReady> {
   let ready = new Set<ExportReady>();
   if (!ribOutline(p)) return ready;
   ready.add('innerContour');
-  let o = solveOuterContour(p);
+  let o = solvePlateContour(p);
   if (o?.top) ready.add('topPlate');
   if (o?.back) ready.add('backPlate');
   if (p.fHoleContours && solveFholeContours(p)?.path) {
@@ -282,7 +293,7 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
     case 'backPlate': {
       // outline, holes and purfling. The channel is not drawn here in any form: in plan it is only
       // two rims with nothing between them to say how deep, and the arch templates carry that whole
-      let o = solveOuterContour(p);
+      let o = solvePlateContour(p);
       let plate = type === 'topPlate' ? o?.top : o?.back;
       if (!o || !plate) return null;
       let holes = type === 'topPlate' ? fholes(p) : [];
@@ -350,7 +361,7 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
 function sheetSize(p: ViolinFamilyParams, type: ExportType, sheet: ExportSheet): { width: number; height: number } {
   let b = pathsBounds(sheet.paths.map(s => s.d));
   if (!PLAN_SHEETS.includes(type)) return { width: b.width + TEMPLATE_SHEET_PAD, height: b.height + TEMPLATE_SHEET_PAD };
-  let button = p.outerContour?.button.height ?? 0;
+  let button = p.plateContour?.button.height ?? 0;
   return { width: Math.max(p.body.width, b.width), height: Math.max(p.body.height + 2 * button, b.maxY) };
 }
 

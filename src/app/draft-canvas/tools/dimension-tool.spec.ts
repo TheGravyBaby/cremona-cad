@@ -81,7 +81,7 @@ describe('DimensionTool', () => {
 
     click(tool, host, at(0, 0));
     click(tool, host, at(100, 0));
-    expect(tool.onKeyDown(new KeyboardEvent('keydown', { key: 'Escape' }))).toBe(true);
+    expect(tool.onKeyDown(new KeyboardEvent('keydown', { key: 'Escape' }), host)).toBe(true);
 
     // Nothing planted any more: the next click starts a fresh measurement rather than placing a
     // line for the abandoned one.

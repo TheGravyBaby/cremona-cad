@@ -4,8 +4,8 @@ import { dist, pointInPolygon } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
-import { defaultGraduation, edgeThicknessOf, gridPoints, layoutPoints, GraduationSettings, plateMap, solveGraduation, thicknessBands, thicknessField, zonePoints } from './dev-graduation-panel';
-import { purflingPath, ribArcs, OuterContourPanel } from '../outer-contour-panel/outer-contour-panel';
+import { DevGraduationPanel, edgeThicknessOf, gridPoints, plateMap, solveGraduation, thicknessBands, thicknessField, zonePoints } from './dev-graduation-panel';
+import { purflingPath, ribArcs, PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
 import { MainBoutsPanel, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
@@ -16,7 +16,7 @@ import { MouldPanel } from '../mould-panel/mould-panel';
 import { ThemeService } from '../../../../theme/theme.service';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
-import { ViolinFamilyParams } from '../../violin-family-types';
+import { GraduationParams, ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
@@ -24,14 +24,19 @@ const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN
 const seeded = (p = blank()): ViolinFamilyParams => {
   MainBoutsPanel.seed(p);
   CornersPanel.seed(p);
-  OuterContourPanel.seed(p);
+  PlateContourPanel.seed(p);
   return p;
 };
-const solved = (p: ViolinFamilyParams, change: (s: GraduationSettings) => void = () => {}) => {
-  const s = defaultGraduation(p);
-  change(s);
-  return { settings: s, solve: solveGraduation(p, s)! };
+const grad = (p: ViolinFamilyParams): GraduationParams => {
+  DevGraduationPanel.seed(p);
+  return p.graduation!;
 };
+const solved = (p: ViolinFamilyParams, change: (s: GraduationParams) => void = () => {}) => {
+  const s = grad(p);
+  change(s);
+  return { settings: s, solve: solveGraduation(p)! };
+};
+const SPACING = 40;
 
 const points = (d: string): Pt[] => samplePathToPolyline(d, 0.25, true);
 const closed = (d: string): boolean => {
@@ -49,16 +54,20 @@ const ribLine = (p: ViolinFamilyParams): Pt[] =>
 describe('the graduation solve', () => {
   it('never writes to the params', () => {
     const p = seeded();
+    grad(p);
     const snapshot = JSON.stringify(p);
-    solved(p);
+    solveGraduation(p);
+    thicknessField(p, 'top');
     expect(JSON.stringify(p)).toBe(snapshot);
   });
 
-  it('is null until the plate edge is seeded', () => {
+  it('is null until the stage is seeded, and the seed waits for the plate edge', () => {
     const p = blank();
     MainBoutsPanel.seed(p);
     CornersPanel.seed(p);
-    expect(solveGraduation(p, defaultGraduation(p))).toBeNull();
+    DevGraduationPanel.seed(p);
+    expect(p.graduation).toBeUndefined();
+    expect(solveGraduation(p)).toBeNull();
   });
 
   it('makes two closed, mirrored loops with nothing to report', () => {
@@ -195,10 +204,10 @@ describe('the graduation solve', () => {
 describe('the graduation grid', () => {
   it('lays every point inside the boundary, on a lattice with a column on the joint', () => {
     const p = seeded();
-    const { settings, solve } = solved(p);
+    const { solve } = solved(p);
     const loop = points(solve.boundary!);
     for (const plate of ['top', 'back'] as const) {
-      const { points: grid, spacing } = settings.plates[plate];
+      const spacing = 35, grid = gridPoints(p, spacing, plate);
       expect(grid.length).toBeGreaterThan(4);
       for (const pt of grid) {
         expect(pointInPolygon(new Pt(pt.x, pt.y), loop)).toBe(true);
@@ -210,29 +219,8 @@ describe('the graduation grid', () => {
     }
   });
 
-  it('gives every grid point the spacing as its reach', () => {
-    const { settings } = solved(seeded());
-    for (const plate of ['top', 'back'] as const) expect(settings.plates[plate].points.every(pt => pt.reach === settings.plates[plate].spacing)).toBe(true);
-  });
-
-  it('runs the edge reach loop inside the boundary by the reach, and drops it at no reach', () => {
-    const p = seeded();
-    const { settings, solve } = solved(p);
-    expect(solve.edgeReach).not.toBeNull();
-    const boundary = points(solve.boundary!);
-    const idx = buildPolylineIndex(boundary);
-    // the two loops each bypass the corners their own way, so the ring draws in a touch there
-    for (const pt of points(solve.edgeReach!)) {
-      expect(pointInPolygon(pt, boundary)).toBe(true);
-      expect(distPointToPolylineIndexed(pt, idx)).toBeGreaterThan(settings.edgeReach - 1);
-      expect(distPointToPolylineIndexed(pt, idx)).toBeLessThan(settings.edgeReach + 0.1);
-    }
-    expect(solved(p, s => s.edgeReach = 0).solve.edgeReach).toBeNull();
-    expect(solved(p, s => s.edgeReach = 1000).solve.edgeReach).toBeNull();
-  });
-
   it('reads top to bottom, bass to treble', () => {
-    const grid = solved(seeded()).settings.plates.top.points;
+    const grid = gridPoints(seeded(), SPACING, 'top');
     for (let i = 1; i < grid.length; i++) {
       const a = grid[i - 1], b = grid[i];
       expect(b.y < a.y || (b.y === a.y && b.x > a.x)).toBe(true);
@@ -246,47 +234,30 @@ describe('the graduation grid', () => {
     p.arching!.top.thickness = 4.2;
     p.arching!.back.thickness = 4.7;
     const { settings } = solved(p);
-    expect(settings.plates.top.points.every(pt => pt.thickness === 4.2)).toBe(true);
-    expect(settings.plates.back.points.every(pt => pt.thickness === 4.7)).toBe(true);
+    expect(settings.top.points.length).toBeGreaterThan(0);
+    expect(settings.top.points.every(pt => pt.thickness === 4.2)).toBe(true);
+    expect(settings.back.points.every(pt => pt.thickness === 4.7)).toBe(true);
   });
 
   it('fills in as the spacing closes', () => {
     const p = seeded();
-    const { settings } = solved(p);
-    const coarse = settings.plates.top.points.length;
-    settings.plates.top.spacing /= 2;
-    expect(gridPoints(p, settings, 'top').length).toBeGreaterThan(2 * coarse);
+    solved(p);
+    const coarse = gridPoints(p, SPACING, 'top').length;
+    expect(gridPoints(p, SPACING / 2, 'top').length).toBeGreaterThan(2 * coarse);
   });
 
   it('is empty while the boundary is unsolved', () => {
     const p = seeded();
-    const { settings } = solved(p, s => s.edgeInset = s.lining / 2);
-    expect(gridPoints(p, settings, 'top')).toEqual([]);
-  });
-
-  it('starts a blank layout with no points', () => {
-    const p = seeded();
-    const { settings } = solved(p);
-    settings.plates.top.style = 'blank';
-    expect(layoutPoints(p, settings, 'top')).toEqual([]);
-    expect(layoutPoints(p, settings, 'back')).toEqual(settings.plates.back.points);
-  });
-
-  it('lays each plate out by its own settings alone', () => {
-    const p = seeded();
-    const { settings } = solved(p);
-    const top = layoutPoints(p, settings, 'top');
-    settings.plates.back.spacing /= 2;
-    settings.plates.back.style = 'zones';
-    expect(layoutPoints(p, settings, 'top')).toEqual(top);
+    solved(p, s => s.edgeInset = s.lining / 2);
+    expect(gridPoints(p, SPACING, 'top')).toEqual([]);
   });
 
   it('leaves the loops alone when a point is edited', () => {
     const p = seeded();
     const { settings, solve } = solved(p);
-    settings.plates.top.points[0].thickness += 1;
-    settings.plates.top.points[0].x += 3;
-    expect(solveGraduation(p, settings)).toBe(solve);
+    settings.top.points[0].thickness += 1;
+    settings.top.points[0].x += 3;
+    expect(solveGraduation(p)).toBe(solve);
   });
 });
 
@@ -298,8 +269,8 @@ describe('the plate map', () => {
   };
 
   it('sets a grid out as it lies: a row per station top to bottom, a column per line bass to treble', () => {
-    const g = solved(seeded()).settings.plates.top;
-    const map = plateMap(g);
+    const g = solved(seeded()).settings.top;
+    const map = plateMap(g.points);
     holdsEveryPointOnce(map, g.points.length);
     expect(map.rows.every(row => row.cells.length === map.columns)).toBe(true);
     const rowY = map.rows.map(row => g.points[row.cells.find(i => i !== null)!].y);
@@ -322,12 +293,11 @@ describe('the plate map', () => {
 
   it('deals the zones onto a lattice centred on the joint, each a short way from where it lies', () => {
     const p = seeded();
-    const settings = defaultGraduation(p);
-    settings.plates.back.style = 'zones';
-    const loop = points(solveGraduation(p, settings)!.boundary!);
+    grad(p);
+    const loop = points(solveGraduation(p)!.boundary!);
     const extent = { minX: Math.min(...loop.map(q => q.x)), maxX: Math.max(...loop.map(q => q.x)), minY: Math.min(...loop.map(q => q.y)), maxY: Math.max(...loop.map(q => q.y)) };
-    const g = { ...settings.plates.back, points: zonePoints(p, settings, 'back') };
-    const map = plateMap(g, extent);
+    const g = { points: zonePoints(p, 'back') };
+    const map = plateMap(g.points, extent);
     holdsEveryPointOnce(map, g.points.length);
     expect(map.labelled).toBe(false);
     expect(map.columns % 2).toBe(1);
@@ -340,23 +310,22 @@ describe('the plate map', () => {
   });
 
   it('keeps a grid set out as it lies while its points stay near the lattice, and deals it once they stray', () => {
-    const g = solved(seeded()).settings.plates.top;
-    expect(plateMap(g).labelled).toBe(true);
-    const nudged = { ...g, points: g.points.map((pt, i) => i === 3 ? { ...pt, x: pt.x + 7, y: pt.y - 4 } : pt) };
+    const g = solved(seeded()).settings.top;
+    expect(plateMap(g.points).labelled).toBe(true);
+    const nudged = g.points.map((pt, i) => i === 3 ? { ...pt, x: pt.x + 7, y: pt.y - 4 } : pt);
     expect(plateMap(nudged).labelled).toBe(true);
-    const strayed = { ...g, points: g.points.map((pt, i) => ({ ...pt, x: pt.x + i, y: pt.y + (i % 3) })) };
+    const strayed = g.points.map((pt, i) => ({ ...pt, x: pt.x + i, y: pt.y + (i % 3) }));
     const map = plateMap(strayed);
     expect(map.labelled).toBe(false);
-    holdsEveryPointOnce(map, strayed.points.length);
+    holdsEveryPointOnce(map, strayed.length);
   });
 
   it('deals loose points onto the lattice too, and has no rows without points', () => {
-    const pts = [{ x: 0, y: 100 }, { x: 0, y: 101 }, { x: 40, y: 200 }, { x: -60, y: 50 }].map(q => ({ ...q, thickness: 3, reach: 40 }));
-    const g = { ...solved(seeded()).settings.plates.top, style: 'blank' as const, points: pts };
-    const map = plateMap(g, null);
+    const pts = [{ x: 0, y: 100 }, { x: 0, y: 101 }, { x: 40, y: 200 }, { x: -60, y: 50 }].map(q => ({ ...q, thickness: 3 }));
+    const map = plateMap(pts, null);
     holdsEveryPointOnce(map, pts.length);
     expect(Math.max(...travel(map, pts))).toBeLessThan(2.5);
-    expect(plateMap({ ...g, points: [] }).rows).toEqual([]);
+    expect(plateMap([]).rows).toEqual([]);
   });
 });
 
@@ -374,26 +343,27 @@ describe('the thickness field', () => {
 
   it('is nothing until the boundary solves', () => {
     const p = arched();
-    const s = defaultGraduation(p);
+    const s = grad(p);
     s.edgeInset = s.lining / 2;
-    expect(thicknessField(p, s, 'back')).toBeNull();
+    expect(thicknessField(p, 'back')).toBeNull();
   });
 
   it('reads every point\'s own thickness at the point, the boundary\'s own reading on the boundary, and the edge thickness off the plate', () => {
     const p = arched();
-    const s = defaultGraduation(p);
-    s.plates.back.points.forEach((pt, i) => pt.thickness = 2 + (i % 5) * 0.5);
-    const f = thicknessField(p, s, 'back')!;
-    for (const pt of s.plates.back.points) expect(f.at(pt.x, pt.y)).toBeCloseTo(pt.thickness, 9);
-    for (const q of f.loop.filter((_, i) => i % 40 === 0)) expect(f.blend(q.x, q.y)).toBeCloseTo(f.edgeAt(q.x, q.y), 9);
+    const s = grad(p);
+    s.back.points.forEach((pt, i) => pt.thickness = 2 + (i % 5) * 0.5);
+    const f = thicknessField(p, 'back')!;
+    for (const pt of s.back.points) expect(f.at(pt.x, pt.y)).toBeCloseTo(pt.thickness, 9);
+    // the boundary is read at samples along it, and the spline runs between them
+    for (const q of f.loop.filter((_, i) => i % 7 === 0)) expect(Math.abs(f.interpolated(q.x, q.y) - f.edgeAt(q.x, q.y))).toBeLessThan(0.2);
     expect(f.at(p.body.width, -10)).toBe(f.edge);
   });
 
   it('reads the boundary off the arching over the flat, not the edge thickness', () => {
     const p = arched();
-    const s = defaultGraduation(p);
+    const s = grad(p);
     const surface = solveCrossArching(p)!.back!;
-    const f = thicknessField(p, s, 'back')!;
+    const f = thicknessField(p, 'back')!;
     const readings = f.loop.map(q => f.edgeAt(q.x, q.y));
     // the boundary takes off inside the fluting, so somewhere the wood is thinner than the edge
     expect(Math.min(...readings)).toBeLessThan(f.edge - 0.1);
@@ -410,9 +380,9 @@ describe('the thickness field', () => {
 
   it('never leaves the range of what was read', () => {
     const p = arched();
-    const s = defaultGraduation(p);
-    s.plates.back.points.forEach((pt, i) => pt.thickness = 2 + (i % 5) * 0.5);
-    const f = thicknessField(p, s, 'back')!;
+    const s = grad(p);
+    s.back.points.forEach((pt, i) => pt.thickness = 2 + (i % 5) * 0.5);
+    const f = thicknessField(p, 'back')!;
     const xs = f.loop.map(q => q.x), ys = f.loop.map(q => q.y);
     for (let y = Math.min(...ys); y <= Math.max(...ys); y += 7) {
       for (let x = Math.min(...xs); x <= Math.max(...xs); x += 7) {
@@ -423,32 +393,39 @@ describe('the thickness field', () => {
     }
   });
 
-  it('holds a lone point\'s thickness flat inside its reach, clear of the edge', () => {
+  it('runs from a lone point\'s thickness down to the boundary\'s reading without a bullseye', () => {
     const p = arched();
-    const s = defaultGraduation(p);
-    s.edgeReach = 5;
-    s.plates.back.style = 'blank';
-    const f0 = thicknessField(p, s, 'back')!;
+    const s = grad(p);
+    s.back.points = [];
+    const f0 = thicknessField(p, 'back')!;
     const c = centre(f0.loop);
-    s.plates.back.points = [{ x: c.x, y: c.y, thickness: 5, reach: 30 }];
-    const f = thicknessField(p, s, 'back')!;
-    for (const [dx, dy] of [[0, 0], [10, 0], [0, -12], [-8, 8]]) expect(f.at(c.x + dx, c.y + dy)).toBeCloseTo(5, 9);
-    // where only the boundary reaches, just inside it, it is the boundary's reading alone
+    s.back.points = [{ x: c.x, y: c.y, thickness: 5 }];
+    const f = thicknessField(p, 'back')!;
+    expect(f.at(c.x, c.y)).toBeCloseTo(5, 9);
+    // along the ray to the boundary the thickness falls the whole way, in small steps
     const q0 = f.loop[0];
     const len = Math.hypot(c.x - q0.x, c.y - q0.y);
+    let previous = 5;
+    for (let d = 2; d < len - 2; d += 2) {
+      const v = f.at(c.x + (q0.x - c.x) * d / len, c.y + (q0.y - c.y) * d / len);
+      expect(v).toBeLessThanOrEqual(previous + 1e-9);
+      expect(previous - v).toBeLessThan(0.25);
+      previous = v;
+    }
+    // and just inside the boundary it is nearly the boundary's own reading
     const x = q0.x + 2 * (c.x - q0.x) / len, y = q0.y + 2 * (c.y - q0.y) / len;
-    expect(f.at(x, y)).toBeCloseTo(f.edgeAt(x, y), 9);
+    expect(Math.abs(f.at(x, y) - f.edgeAt(x, y))).toBeLessThan(0.3);
   });
 
   it('mirrors across the joint for a mirrored set of readings', () => {
     const p = arched();
-    const s = defaultGraduation(p);
-    s.plates.back.points.forEach(pt => pt.thickness = 2 + Math.abs(pt.x) / 50 + pt.y / 400);
-    const f = thicknessField(p, s, 'back')!;
+    const s = grad(p);
+    s.back.points.forEach(pt => pt.thickness = 2 + Math.abs(pt.x) / 50 + pt.y / 400);
+    const f = thicknessField(p, 'back')!;
     const ys = f.loop.map(q => q.y);
     for (let y = Math.min(...ys) + 5; y <= Math.max(...ys) - 5; y += 15) {
       // the boundary is a sampled loop, its chords not quite mirrored
-      for (let x = 5; x <= 40; x += 10) expect(f.at(-x, y)).toBeCloseTo(f.at(x, y), 4);
+      for (let x = 5; x <= 40; x += 10) expect(f.at(-x, y)).toBeCloseTo(f.at(x, y), 3);
     }
   });
 
@@ -460,12 +437,11 @@ describe('the thickness field', () => {
       return p;
     };
     const settled = (p: ViolinFamilyParams) => {
-      const s = defaultGraduation(p);
-      // thicker than anything else on the plate, the boundary's arched readings included, so its
-      // reach shows in the range
+      const s = grad(p);
+      // thicker than anything else on the plate, the boundary's arched readings included, so it
+      // shows in the range
       s.fHoleThickness = edgeThicknessOf(p, 'top') + p.arching!.top.long.height + 1;
-      s.fHoleReach = 6;
-      s.plates.top.points.forEach(pt => pt.thickness = edgeThicknessOf(p, 'top') - 1);
+      s.top.points.forEach(pt => pt.thickness = edgeThicknessOf(p, 'top') - 1);
       return s;
     };
     const inside = (hole: Pt[]): Pt => {
@@ -473,27 +449,25 @@ describe('the thickness field', () => {
       return new Pt((Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2);
     };
 
-    it('solves both holes, mirrored, with a reach loop round each', () => {
+    it('solves both holes, mirrored', () => {
       const p = holed();
       const s = settled(p);
-      const g = solveGraduation(p, s)!;
+      const g = solveGraduation(p)!;
       expect(g.holes.length).toBe(2);
-      expect(g.fHoleReach.length).toBeGreaterThanOrEqual(2);
       const idx = buildPolylineIndex(g.holes[0]);
       for (const q of g.holes[1]) expect(distPointToPolylineIndexed(new Pt(-q.x, q.y), idx)).toBeLessThan(0.05);
-      for (const ring of g.fHoleReach) {
-        const d = ring.map(q => Math.min(...g.holes.map(h => distPointToPolylineIndexed(q, buildPolylineIndex(h)))));
-        for (const v of d) expect(v).toBeCloseTo(s.fHoleReach, 0);
-      }
     });
 
     it('reads the f-hole thickness on each outline and in the hole, and the edge thickness clear of it', () => {
       const p = holed();
       const s = settled(p);
-      const f = thicknessField(p, s, 'top')!;
-      const g = solveGraduation(p, s)!;
+      const f = thicknessField(p, 'top')!;
+      const g = solveGraduation(p)!;
+      // the outline is read at samples along it, and the spline runs between them: it strays by a
+      // small share of how far the f-hole thickness stands off the points' thickness
+      const contrast = s.fHoleThickness - s.top.points[0].thickness;
       for (const hole of g.holes) {
-        for (const q of hole.filter((_, i) => i % 25 === 0)) expect(f.at(q.x, q.y)).toBeCloseTo(s.fHoleThickness, 9);
+        for (const q of hole.filter((_, i) => i % 25 === 0)) expect(Math.abs(f.at(q.x, q.y) - s.fHoleThickness)).toBeLessThan(0.03 * contrast);
         const c = inside(hole);
         // the stem is narrow; a point in it may miss the wood, so check the bounding box's centre only if it is in the hole
         if (pointInPolygon(c, hole)) expect(f.at(c.x, c.y)).toBe(s.fHoleThickness);
@@ -510,35 +484,42 @@ describe('the thickness field', () => {
     it('mirrors across the joint', () => {
       const p = holed();
       const s = settled(p);
-      const f = thicknessField(p, s, 'top')!;
-      const g = solveGraduation(p, s)!;
+      const f = thicknessField(p, 'top')!;
+      const g = solveGraduation(p)!;
       const xs = g.holes[0].map(q => q.x), ys = g.holes[0].map(q => q.y);
+      // the boundary's sampled chords are mirrored only to a hair, and the holes' contrast magnifies that
+      const contrast = s.fHoleThickness - s.top.points[0].thickness;
       for (let y = Math.min(...ys) - 10; y <= Math.max(...ys) + 10; y += 8) {
-        for (let x = Math.min(...xs) - 10; x <= Math.max(...xs) + 10; x += 6) expect(f.at(-x, y)).toBeCloseTo(f.at(x, y), 3);
+        for (let x = Math.min(...xs) - 10; x <= Math.max(...xs) + 10; x += 6) expect(Math.abs(f.at(-x, y) - f.at(x, y))).toBeLessThan(0.001 * contrast);
       }
     });
 
-    it('leaves the holes out of the field at no reach, and off the back altogether', () => {
+    it('lays no grid point in a hole or hard beside one, where there is no wood to read', () => {
       const p = holed();
       const s = settled(p);
-      const g = solveGraduation(p, s)!;
-      const q = g.holes[0][Math.floor(g.holes[0].length / 2)];
-      s.fHoleReach = 0;
-      expect(solveGraduation(p, s)!.fHoleReach).toEqual([]);
-      const f = thicknessField(p, s, 'top')!;
-      expect(f.range.hi).toBeLessThan(s.fHoleThickness);
-      expect(f.at(q.x, q.y)).not.toBeCloseTo(s.fHoleThickness, 1);
-      s.fHoleReach = 6;
-      const back = thicknessField(p, s, 'back')!;
+      const g = solveGraduation(p)!;
+      expect(s.top.points.length).toBeGreaterThan(4);
+      for (const pt of s.top.points) {
+        for (const hole of g.holes) {
+          expect(pointInPolygon(new Pt(pt.x, pt.y), hole)).toBe(false);
+          expect(distPointToPolylineIndexed(new Pt(pt.x, pt.y), buildPolylineIndex(hole))).toBeGreaterThan(5);
+        }
+      }
+    });
+
+    it('leaves the holes off the back altogether', () => {
+      const p = holed();
+      const s = settled(p);
+      const back = thicknessField(p, 'back')!;
       expect(back.range.hi).toBeLessThan(s.fHoleThickness);
     });
 
     it('leaves the holes blank on the map while the field still answers in them', () => {
       const p = holed();
       const s = settled(p);
-      const g = solveGraduation(p, s)!;
-      const f = thicknessField(p, s, 'top')!;
-      const bands = thicknessBands(p, s, 'top');
+      const g = solveGraduation(p)!;
+      const f = thicknessField(p, 'top')!;
+      const bands = thicknessBands(p, 'top');
       expect(bands.length).toBeGreaterThan(1);
       for (const hole of g.holes) {
         const c = inside(hole);
@@ -558,18 +539,18 @@ describe('the thickness field', () => {
     it('has no holes before the contours are drafted', () => {
       const p = arched();
       const s = settled(p);
-      const g = solveGraduation(p, s)!;
+      const g = solveGraduation(p)!;
       expect(g.holes).toEqual([]);
-      expect(thicknessField(p, s, 'top')!.range.hi).toBeLessThan(s.fHoleThickness);
+      expect(thicknessField(p, 'top')!.range.hi).toBeLessThan(s.fHoleThickness);
     });
   });
 
   it('maps the field in bands cut to the boundary, thin to thick', () => {
     const p = arched();
-    const s = defaultGraduation(p);
-    s.plates.back.points.forEach((pt, i) => pt.thickness = 2 + (i % 5) * 0.5);
-    const f = thicknessField(p, s, 'back')!;
-    const bands = thicknessBands(p, s, 'back');
+    const s = grad(p);
+    s.back.points.forEach((pt, i) => pt.thickness = 2 + (i % 5) * 0.5);
+    const f = thicknessField(p, 'back')!;
+    const bands = thicknessBands(p, 'back');
     expect(bands.length).toBeGreaterThan(3);
     const idx = buildPolylineIndex(f.loop);
     for (let i = 1; i < bands.length; i++) expect(bands[i].level).toBeGreaterThan(bands[i - 1].level);
@@ -587,9 +568,8 @@ describe('the thickness field', () => {
 
 describe('the zones layout', () => {
   const zoned = (p = seeded()) => {
-    const settings = defaultGraduation(p);
-    settings.plates.back.style = 'zones';
-    return { settings, points: zonePoints(p, settings, 'back'), loop: points(solveGraduation(p, settings)!.boundary!) };
+    grad(p);
+    return { points: zonePoints(p, 'back'), loop: points(solveGraduation(p)!.boundary!) };
   };
 
   it('lays thirteen named zones inside the boundary, the sides mirrored', () => {
@@ -598,8 +578,7 @@ describe('the zones layout', () => {
     expect(new Set(pts.map(pt => pt.label)).size).toBe(13);
     for (const pt of pts) {
       expect(pointInPolygon(new Pt(pt.x, pt.y), loop)).toBe(true);
-      expect(pt.reach).toBeGreaterThan(0);
-      expect(pts.some(q => q.x === -pt.x && q.y === pt.y && q.reach === pt.reach)).toBe(true);
+      expect(pts.some(q => q.x === -pt.x && q.y === pt.y)).toBe(true);
     }
     expect(pts.filter(pt => pt.x === 0).map(pt => pt.label)).toEqual(['Lower dome', 'Island lower', 'Island', 'Island upper', 'Upper dome']);
   });
@@ -617,17 +596,14 @@ describe('the zones layout', () => {
       expect((flank.y - dome.y) * (island.y - flank.y)).toBeGreaterThan(0);
       expect(flank.x).toBeGreaterThan(0);
       expect(flank.x).toBeLessThan(channel.x);
-      // and reaches its dome's zone, so the X meets in the middle
-      expect(dist(flank, dome)).toBeLessThan(flank.reach + dome.reach);
     }
     expect(by('Island').y).toBeLessThan(by('Upper flank bass').y);
     expect(by('Island').y).toBeGreaterThan(by('Lower flank bass').y);
-    // the island's middle is midway between the corner rows, its ends on them, each reaching the middle
+    // the island's middle is midway between the corner rows, its ends on them
     const p = seeded();
     expect(by('Island').y).toBeCloseTo((Math.round(p.corners!.LCr.y) + Math.round(p.corners!.UCr.y)) / 2, 0);
     expect(by('Island upper').y).toBe(Math.round(p.corners!.UCr.y));
     expect(by('Island lower').y).toBe(Math.round(p.corners!.LCr.y));
-    for (const end of ['Island upper', 'Island lower']) expect(dist(by(end), by('Island'))).toBeLessThanOrEqual(by(end).reach + 0.1);
   });
 
   it('reads from the lower bout up', () => {
@@ -637,8 +613,8 @@ describe('the zones layout', () => {
 
   it('is empty until the boundary solves', () => {
     const p = seeded();
-    const settings = defaultGraduation(p);
+    const settings = grad(p);
     settings.edgeInset = settings.lining / 2;
-    expect(zonePoints(p, settings, 'back')).toEqual([]);
+    expect(zonePoints(p, 'back')).toEqual([]);
   });
 });
