@@ -1,12 +1,12 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  angleFromCenter, angleWithinSweep, arcReach, dist, moveInVectorSpace, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, TURN,
+  angleFromCenter, angleWithinSweep, dist, moveInVectorSpace, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, TURN,
   vectorFromSlope,
 } from '../../../../helpers/math/simpleGeometry';
 import { circleCircleIntersections } from '../../../../helpers/math/draftMath';
 import { arcPathData, combinePathStrings, pathFromLine } from '../../../../helpers/math/pathMath';
-import { renderArcHalo, renderDashLine, renderPath, renderSegment, renderSegmentHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
+import { renderArcHalo, renderPath, renderSegment, renderSegmentHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { Arc, Pt } from '../../../../models/types';
@@ -25,19 +25,19 @@ import {
   ScrollKey,
   ScrollSolve,
 } from '../../violin-family-solves';
-import { badArc, longArc, renderScrollNeck, renderVolute, scrollArc, solveVolute } from '../volute-panel/volute-panel';
+import { badArc, longArc, renderScrollNeck, renderVolute, scrollArc, scrollExtent, solveVolute } from '../volute-panel/volute-panel';
 import { neckTaper } from '../neck-panel/neck-panel';
 
-export type ScrollHighlightKey = 'S2' | 'S3' | 'nape' | 'napeAngle' | 'F0' | 'F1' | 'backStraight' | 'flat' | 'frontStraight' | 'upperThickness';
+export type PegboxHighlightKey = 'S3' | 'nape' | 'napeAngle' | 'F0' | 'F1' | 'backStraight' | 'flat' | 'frontStraight' | 'upperThickness';
 export type ScrollLine = 'napeLine' | 'backStraight' | 'flat' | 'frontStraight';
 
 @Component({
-  selector: 'app-vf-scroll-panel',
+  selector: 'app-vf-pegbox-panel',
   imports: [FormsModule, NumberStepperDirective],
-  templateUrl: './scroll-panel.html',
+  templateUrl: './pegbox-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class ScrollPanel implements ViolinFamilyPanel, OnInit {
+export class PegboxPanel implements ViolinFamilyPanel, OnInit {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('stones');
   protected readonly nearestFraction = nearestFraction;
@@ -50,7 +50,7 @@ export class ScrollPanel implements ViolinFamilyPanel, OnInit {
   // what the last draw solved; the readouts and report() read it
   s!: ScrollSolve;
   extent: { height: number; width: number } | null = null;
-  highlighted: { key: ScrollHighlightKey; color: string } | null = null;
+  highlighted: { key: PegboxHighlightKey; color: string } | null = null;
 
   ngOnInit(): void {
     this.draw();
@@ -62,10 +62,10 @@ export class ScrollPanel implements ViolinFamilyPanel, OnInit {
   }
 
   report(): void {
-    reportFailures(this.s.failures, 'Scroll');
+    reportFailures(this.s.failures, 'Pegbox');
   }
 
-  focus(key: ScrollHighlightKey, color: string): void {
+  focus(key: PegboxHighlightKey, color: string): void {
     this.highlighted = { key, color };
     this.draw();
   }
@@ -86,15 +86,15 @@ export class ScrollPanel implements ViolinFamilyPanel, OnInit {
         : key === 'napeAngle' && s.nape ? scrollLines(p, s).napeLine
         : key === 'upperThickness' ? [new Pt(0, 0), new Pt(-p.neck!.upperThickness, 0)] as [Pt, Pt]
         : null;
-      let arc = key === 'S2' || key === 'S3' || key === 'nape' || key === 'F0' || key === 'F1' ? s[key] : null;
+      let arc = key === 'S3' || key === 'nape' || key === 'F0' || key === 'F1' ? s[key] : null;
       // the volute as plain profile, so only what this panel edits is in colour. The profile needs
       // the whole scroll solved, so a miss falls back to the volute's own render
       this.drawn.emit([
-        renderScrollNeck(p, s, this.pal, false),
+        renderScrollNeck(p, s, this.pal, this.flags.showModuleGuides),
         s.failures.length
           ? renderVolute(p, s, this.pal, this.flags, false, null)
           : renderPath(defineSideScrollPath(p, s), this.pal.neutral, STROKE_WEIGHT.trace),
-        renderScroll(p, s, this.pal, this.flags, true, arc ? { arc, color } : null, line ? { line, color } : null),
+        renderPegbox(p, s, this.pal, this.flags, true, arc ? { arc, color } : null, line ? { line, color } : null),
         renderSolveFailures(s.failures, this.pal.alert),
       ]);
     });
@@ -103,13 +103,13 @@ export class ScrollPanel implements ViolinFamilyPanel, OnInit {
 
 const unsolved = (s: ScrollSolve, key: ScrollKey) => s.failures.some(f => f.unsolved.includes(key));
 
-// the back from S2 down to the nape, and the front up from the nut. A straight takes its arc's
-// colour, the nape's line the nape's; module guides box the head
-export const renderScroll = (
+// the back from S2's end down to the nape, and the front up from the nut. The back's straight takes
+// S2's colour, the others their arc's, the nape's line the nape's
+export const renderPegbox = (
   p: ViolinFamilyParams,
   s: ScrollSolve,
   pal: PanelPalette,
-  flags: Pick<ViolinFamilyViewFlags, 'showModuleArcs' | 'showModuleGuides'>,
+  flags: Pick<ViolinFamilyViewFlags, 'showModuleArcs'>,
   currentModule: boolean,
   highlighted: { arc: Arc; color: string } | null,
   highlightedLine: { line: [Pt, Pt]; color: string } | null,
@@ -118,13 +118,6 @@ export const renderScroll = (
   if (highlighted) renderArcHalo(highlighted.arc, highlighted.color, undefined, undefined, longArc(highlighted.arc))(g, ui);
   if (highlightedLine) renderSegmentHalo(...highlightedLine.line, highlightedLine.color)(g, ui);
 
-  if (currentModule && flags.showModuleGuides && s.S3) {
-    let { height, width } = scrollExtent(s);
-    let corners = [new Pt(0, 0), new Pt(0, height), new Pt(-width, height), new Pt(-width, 0)];
-    for (let i = 0; i < 4; i++) renderDashLine(corners[i], corners[(i + 1) % 4], pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-  }
-
-  if (s.S2) scrollArc(s.S2, pal.ink(1).faint(-3), fancy)(g, ui);
   if (s.S3) scrollArc(s.S3, pal.ink(1).faint(-1), fancy)(g, ui);
   if (s.nape) scrollArc(s.nape, pal.ink(1).faint(5), fancy)(g, ui);
   if (s.F0) scrollArc(s.F0, pal.ink(3), fancy)(g, ui);
@@ -153,16 +146,6 @@ export function scrollLines(p: ViolinFamilyParams, s: ScrollSolve): Record<Scrol
     backStraight: [backTop, moveInVectorSpace(backTop, [{ ...vectorFromSlope(S2End + TURN.quarter), mag: v.backStraight }])],
     flat: [nutTop, new Pt(nutTop.x, nutTop.y + v.flat)],
     frontStraight: [frontTop, moveInVectorSpace(frontTop, [{ ...vectorFromSlope(F0End + TURN.quarter), mag: v.frontStraight }])],
-  };
-}
-
-// the readouts, off a back solved through S3: the nut up to the crown's top, and the neck's front
-// back to the scroll's furthest reach
-export function scrollExtent(s: ScrollSolve): { height: number; width: number } {
-  let back = [s.S0!, s.S1!, s.S2!, s.S3!];
-  return {
-    height: Math.max(...back.flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y)),
-    width: -Math.min(...back.flatMap(a => arcReach(a, TURN.half)).map(pt => pt.x)),
   };
 }
 
@@ -200,7 +183,7 @@ export function defineSideScrollPath(p: ViolinFamilyParams, s: ScrollSolve): str
   return combinePathStrings([...back, ...front]);
 }
 
-// the scroll's side solved whole, the volute's solve run on: the back from S2 down to the nape, the
+// the scroll's side solved whole, the volute's solve run on: the back from S2's end down to the nape, the
 // front up from the nut. A run stops at the first bad part, everything after it unsolved. A later
 // panel reads the scroll by calling this; it returns and never writes to the params
 export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
@@ -215,19 +198,13 @@ export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
   let badLength = (section: string, key: ScrollKey, unsolved: ScrollKey[]): ScrollFailure =>
     ({ message: `${section}: ${key} needs a length, or 0.`, unsolved, circles: [], segments: [] });
 
-  if (s.S1) solveSection(s.failures, 'Back', ['S2', 'S3', 'nape', 'backStraight'], () => {
-    let S1 = s.S1!;
-    let joint = pointOnCircle(S1, S1.end);
-    let S2Sweep = v.S2Sweep * TURN.degree;
-    if (!(v.S2R > 0) || !(S2Sweep > 0) || S2Sweep > TURN.full) return badArc('Back', 'S2', v.S2R, ['S2', 'S3', 'nape', 'backStraight']);
-    let S2 = placeCircleOnPointAtAngle(v.S2R, joint, S1.end);
-    s.S2 = new Arc(S2.x, S2.y, S2.r, S1.end, S1.end + S2Sweep);
-
+  if (s.S2) solveSection(s.failures, 'Back', ['S3', 'nape', 'backStraight'], () => {
+    let S2 = s.S2!;
     if (!Number.isFinite(v.backStraight) || v.backStraight < 0) return badLength('Back', 'backStraight', ['S3', 'nape', 'backStraight']);
-    let foot = moveInVectorSpace(pointOnCircle(s.S2, s.S2.end), [{ ...vectorFromSlope(s.S2.end + TURN.quarter), mag: v.backStraight }]);
+    let foot = moveInVectorSpace(pointOnCircle(S2, S2.end), [{ ...vectorFromSlope(S2.end + TURN.quarter), mag: v.backStraight }]);
 
     // S3 turns back clockwise, so as a counterclockwise sweep it runs from the duck tail to the foot
-    let S3end = s.S2.end - TURN.half;
+    let S3end = S2.end - TURN.half;
     if (!(v.S3R > 0)) return badArc('Back', 'S3', v.S3R, ['S3', 'nape']);
     // negative lifts the duck tail above the nut; only a missing number is refused
     if (!Number.isFinite(v.hang))

@@ -393,7 +393,7 @@
         "except": [
           "fluting",
           "volute",
-          "scroll",
+          "pegbox",
           "scrollWidths"
         ]
       },
@@ -447,7 +447,7 @@
       "locked": true,
       "scope": {
         "only": [
-          "scroll",
+          "pegbox",
           "scrollWidths",
           "volute"
         ]

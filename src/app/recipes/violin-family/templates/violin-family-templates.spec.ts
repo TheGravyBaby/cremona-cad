@@ -13,7 +13,7 @@ import { solveLongArching } from '../panels/long-arching-panel/long-arching-pane
 import { solveCrossArching } from '../panels/cross-arching-panel/cross-arching-panel';
 import { solveNeck } from '../panels/neck-panel/neck-panel';
 import { solveStringSetup } from '../panels/string-setup-panel/string-setup-panel';
-import { solveScroll } from '../panels/scroll-panel/scroll-panel';
+import { solveScroll } from '../panels/pegbox-panel/pegbox-panel';
 import { solveScrollWidths } from '../panels/scroll-widths-panel/scroll-widths-panel';
 
 // the served set, and the only spec that reads it: a file here is re-saved from the app whenever an

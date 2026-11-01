@@ -23,7 +23,7 @@ import { LongArchingPanel, solveLongArching } from './panels/long-arching-panel/
 import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
 import { NeckPanel } from './panels/neck-panel/neck-panel';
 import { VolutePanel } from './panels/volute-panel/volute-panel';
-import { ScrollPanel, solveScroll } from './panels/scroll-panel/scroll-panel';
+import { PegboxPanel, solveScroll } from './panels/pegbox-panel/pegbox-panel';
 import { ScrollWidthsPanel } from './panels/scroll-widths-panel/scroll-widths-panel';
 import { StringSetupPanel } from './panels/string-setup-panel/string-setup-panel';
 import { MouldPanel } from './panels/mould-panel/mould-panel';
@@ -44,7 +44,7 @@ import { IconDirective } from '../../icons/icon.directive';
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, PlateContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, ScrollPanel, ScrollWidthsPanel, StringSetupPanel, MouldPanel, ExportPanel, DevFingerboardPanel, DevGraduationPanel, DevExportPanel, IconDirective],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, PlateContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, PegboxPanel, ScrollWidthsPanel, StringSetupPanel, MouldPanel, ExportPanel, DevFingerboardPanel, DevGraduationPanel, DevExportPanel, IconDirective],
   templateUrl: './violin-family.html',
   styleUrls: ['../../sidebar.css', './violin-family.css'],
 })
@@ -70,7 +70,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
     { id: 'neck', label: 'Neck', toggles: NeckPanel.renderToggles, seed: NeckPanel.seed },
     { id: 'volute', label: 'Volute', toggles: VolutePanel.renderToggles, seed: VolutePanel.seed },
     // no seed: the scroll is seeded whole with the volute
-    { id: 'scroll', label: 'Scroll', toggles: ScrollPanel.renderToggles },
+    { id: 'pegbox', label: 'Pegbox', toggles: PegboxPanel.renderToggles },
     { id: 'scrollWidths', label: 'Scroll Widths', toggles: ScrollWidthsPanel.renderToggles },
     
     { id: 'stringSetup', label: 'String Setup', toggles: StringSetupPanel.renderToggles, seed: StringSetupPanel.seed },
@@ -198,7 +198,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
       case 'crossArching': return !!p.arching;
       case 'neck': return !!p.arching && !!solveLongArching(p)?.ribs;
       case 'volute': return !!p.neck;
-      case 'scroll': return !!p.scroll;
+      case 'pegbox': return !!p.scroll;
       case 'scrollWidths': {
         let s = solveScroll(p);
         return !!s && !s.failures.length;

@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { angleFromCenter, angleWithinSweep, dist, pointOnCircle } from '../../../../helpers/math/simpleGeometry';
 import { Arc, Pt } from '../../../../models/types';
-import { defineSideScrollPath, scrollExtent, scrollLines, solveScroll } from './scroll-panel';
-import { VolutePanel } from '../volute-panel/volute-panel';
+import { defineSideScrollPath, scrollLines, solveScroll } from './pegbox-panel';
+import { scrollExtent, VolutePanel } from '../volute-panel/volute-panel';
 import { NeckPanel, neckTaper } from '../neck-panel/neck-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
@@ -71,9 +71,7 @@ describe('the back', () => {
   const v = p.scroll!;
   const s = solved(p);
 
-  it('runs S2 on tangent from S1 through its own sweep, then the straight on along S2\'s heading', () => {
-    meets(start(s.S2!), end(s.S1!));
-    expect(s.S2!.end - s.S2!.start).toBeCloseTo(v.S2Sweep * Math.PI / 180, 12);
+  it('runs the straight on from S2\'s end along its heading', () => {
     const [a, b] = scrollLines(p, s).backStraight;
     meets(a, end(s.S2!));
     expect(dist(a, b)).toBeCloseTo(v.backStraight, 9);

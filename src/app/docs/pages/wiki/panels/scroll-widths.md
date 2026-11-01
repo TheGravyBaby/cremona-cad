@@ -5,11 +5,8 @@ kind: panel
 panel: scrollWidths
 status: unreviewed
 image: wiki/scroll-widths.svg
-caption: The scroll's front, side and back views.
 ---
-TODO: write this article.
-
-## What this stage draws
+This panel allows you to define the width of the scroll and pegbox system. The widths 
 
 
 ## Fields
@@ -30,6 +27,3 @@ TODO: write this article.
 | Eye | TODO |
 | Width | TODO |
 | Nut | TODO |
-
-## What it feeds
-

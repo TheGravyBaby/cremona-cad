@@ -36,6 +36,8 @@ Most reference images of scrolls do not come with a reliable way of scaling them
 | S0 Sweep | TODO |
 | S1 R | TODO |
 | S1 Sweep | TODO |
+| S2 R | TODO |
+| S2 Sweep | TODO |
 
 ## What it feeds
 

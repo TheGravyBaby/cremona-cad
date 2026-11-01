@@ -398,7 +398,7 @@
         "except": [
           "fluting",
           "volute",
-          "scroll",
+          "pegbox",
           "scrollWidths"
         ]
       },
@@ -453,7 +453,7 @@
         "only": [
           "scrollWidths",
           "volute",
-          "scroll"
+          "pegbox"
         ]
       }
     },

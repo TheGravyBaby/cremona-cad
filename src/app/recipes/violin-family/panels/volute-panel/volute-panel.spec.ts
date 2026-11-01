@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { angleFromCenter, arcReach, pointOnCircle } from '../../../../helpers/math/simpleGeometry';
 import { Arc } from '../../../../models/types';
 import { solveVolute, spiralArcs, TO_FRONT, VolutePanel, voluteConstruction } from './volute-panel';
+import { solveScroll } from '../pegbox-panel/pegbox-panel';
 import { NeckPanel } from '../neck-panel/neck-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
@@ -103,12 +104,14 @@ describe.each(STYLES)('the %s volute', style => {
     expect(furthest).toBeLessThan(front.x + 1e-9);
   });
 
-  it('runs the crown on from the front, S0 then S1, each tangent to the last and turning through its own sweep', () => {
+  it('runs the back on from the front, S0 to S2, each tangent to the last and turning through its own sweep', () => {
     const joint = end(spiral[0]);
     expect(Math.hypot(start(s.S0!).x - joint.x, start(s.S0!).y - joint.y)).toBeLessThan(1e-9);
     expect(Math.hypot(start(s.S1!).x - end(s.S0!).x, start(s.S1!).y - end(s.S0!).y)).toBeLessThan(1e-9);
+    expect(Math.hypot(start(s.S2!).x - end(s.S1!).x, start(s.S2!).y - end(s.S1!).y)).toBeLessThan(1e-9);
     expect(s.S0!.end - s.S0!.start).toBeCloseTo(p.scroll!.S0Sweep * Math.PI / 180, 12);
     expect(s.S1!.end - s.S1!.start).toBeCloseTo(p.scroll!.S1Sweep * Math.PI / 180, 12);
+    expect(s.S2!.end - s.S2!.start).toBeCloseTo(p.scroll!.S2Sweep * Math.PI / 180, 12);
   });
 
   it('marks the figure its centres are found on', () => {
@@ -147,6 +150,16 @@ describe('the volute\'s failures', () => {
     expect(s.S0).not.toBeNull();
     expect(s.S1).toBeNull();
     expect(s.failures.map(f => f.unsolved[0])).toEqual(['S1']);
+  });
+
+  it('stops the back at S2 when it doesn\'t sweep on past S1, and leaves the pegbox unsolved', () => {
+    const p = seeded();
+    p.scroll!.S2Sweep = -5;
+    const s = solveVolute(p)!;
+    expect(s.S1).not.toBeNull();
+    expect(s.S2).toBeNull();
+    expect(s.failures.map(f => f.unsolved[0])).toEqual(['S2']);
+    expect(solveScroll(p)!.S3).toBeNull();
   });
 
   it('draws the same spiral whatever the four point\'s radii, for every other style', () => {

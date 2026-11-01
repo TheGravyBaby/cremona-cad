@@ -4,17 +4,17 @@
         <label class="field-cell">
             <span class="field-title">Lining <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="gr.lining" (input)="edited()" />
+                [(ngModel)]="gr.lining" (input)="editedSoon()" />
         </label>
          <label class="field-cell">
             <span class="field-title">Edge Inset <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(1)"
-                [(ngModel)]="gr.edgeInset" (input)="edited()" />
+                [(ngModel)]="gr.edgeInset" (input)="editedSoon()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Block Margin <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" [style.border-color]="pal.ink(2)"
-                [(ngModel)]="gr.blockMargin" (input)="edited()" />
+                [(ngModel)]="gr.blockMargin" (input)="editedSoon()" />
         </label>
     </div>
 </section>
@@ -53,7 +53,7 @@
         <label class="field-cell">
             <span class="field-title">F-hole Thickness <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.1" min="0"
-                [(ngModel)]="gr.fHoleThickness" (input)="edited()" />
+                [(ngModel)]="gr.fHoleThickness" (input)="editedSoon()" />
         </label>
     </div>
     }
@@ -100,16 +100,16 @@
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Point position" title="Arrow keys move the point from either box">
                 <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Point X"
-                    [(ngModel)]="picked[0].x" (input)="edited()" />
+                    [(ngModel)]="picked[0].x" (input)="editedSoon()" />
                 <input type="number" class="basic-input" step="1" data-xy="y" aria-label="Point Y"
-                    [(ngModel)]="picked[0].y" (input)="edited()" />
+                    [(ngModel)]="picked[0].y" (input)="editedSoon()" />
             </div>
         </div>
         }
         <label class="field-cell">
             <span class="field-title">Thickness <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.1" min="0" placeholder="mixed"
-                [ngModel]="shared()" (ngModelChange)="setAll($event)"
+                [ngModel]="shared()" (ngModelChange)="setAllSoon($event)"
                 (keydown.arrowup)="nudge(0.1, $event)" (keydown.arrowdown)="nudge(-0.1, $event)" />
         </label>
         <button type="button" class="panel-nav-btn" (click)="removeSelected()">Remove</button>

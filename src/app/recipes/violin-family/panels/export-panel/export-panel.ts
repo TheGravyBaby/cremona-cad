@@ -42,7 +42,7 @@ import { bodyLandmarks, rowAt, sectionRuns, solveCrossArching, STATION_MERGE_EPS
 import { mortiseFloorY, neckHalfWidthAt, scrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
 import { fingerboardRadiusAt, fingerboardScoopAt, solveStringSetup } from '../string-setup-panel/string-setup-panel';
 import type { PositionMarkSolve } from '../dev-fingerboard-panel/dev-fingerboard-panel';
-import { defineSideScrollPath } from '../scroll-panel/scroll-panel';
+import { defineSideScrollPath } from '../pegbox-panel/pegbox-panel';
 import { scrollBackStrip, scrollBackViewStrokes, scrollCompassWalk, scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
 import { blockLayout, MOULD_EXPORT_STEP, solveMould } from '../mould-panel/mould-panel';
 

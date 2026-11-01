@@ -24,7 +24,7 @@ import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { scrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
-import { solveScroll } from '../scroll-panel/scroll-panel';
+import { solveScroll } from '../pegbox-panel/pegbox-panel';
 
 // G-code for the maker's own machine, offered on localhost only: the files drive a CNC, and nobody
 // else's machine is ours to answer for. The recipe names this panel only inside @defer, so a

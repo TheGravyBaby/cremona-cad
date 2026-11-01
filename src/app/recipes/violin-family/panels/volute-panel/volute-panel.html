@@ -83,6 +83,10 @@
             <input type="number" class="basic-input" step="1" min="0" max="360"
                 [(ngModel)]="v.S0Sweep" (input)="edited()" (focus)="focus('S0', pal.ink(1).faint(3))" (blur)="blur()" />
         </label>
+          <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Scroll height">{{ extent.height.toFixed(1) }}</div>
+        </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -94,6 +98,26 @@
             <span class="field-title">Sweep <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" min="0" max="360"
                 [(ngModel)]="v.S1Sweep" (input)="edited()" (focus)="focus('S1', pal.ink(1))" (blur)="blur()" />
+        </label>
+         <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Scroll width">{{ extent.width.toFixed(1) }}</div>
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pal.ink(1).faint(-3)">S2 R <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(-3)"
+                [(ngModel)]="v.S2R" (input)="edited()" (focus)="focus('S2', pal.ink(1).faint(-3))" (blur)="blur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Sweep <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1" min="0" max="360"
+                [(ngModel)]="v.S2Sweep" (input)="edited()" (focus)="focus('S2', pal.ink(1).faint(-3))" (blur)="blur()" />
+        </label>
+          <label class="field-cell">
+            <span class="field-title">H to W</span>
+            <div class="basic-display" aria-label="Scroll height to width">{{ nearestFraction(extent.height / extent.width) }}</div>
         </label>
     </div>
 </section>

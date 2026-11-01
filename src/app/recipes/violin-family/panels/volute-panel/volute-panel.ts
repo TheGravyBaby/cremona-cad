@@ -7,6 +7,7 @@ import {
   renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashLine, renderPolygon, renderSegment, renderSolveFailures, renderPath,
 } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { Arc, Circle, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
@@ -25,12 +26,12 @@ import {
   ScrollKey,
   ScrollSolve,
 } from '../../violin-family-solves';
-import { defineSideScrollPath, solveScroll } from '../scroll-panel/scroll-panel';
+import { defineSideScrollPath, solveScroll } from '../pegbox-panel/pegbox-panel';
 import { duckTailRoundTop } from '../scroll-widths-panel/scroll-widths-panel';
 import { neckTaper } from '../neck-panel/neck-panel';
 import { showFieldHelp } from '../../../../docs/field-help';
 
-export type VoluteHighlightKey = number | 'S0' | 'S1';
+export type VoluteHighlightKey = number | 'S0' | 'S1' | 'S2';
 
 @Component({
   selector: 'app-vf-volute-panel',
@@ -44,6 +45,7 @@ export class VolutePanel implements ViolinFamilyPanel, OnInit {
   protected readonly styles = Object.entries(VOLUTE_STYLE_LABELS).map(([id, label]) => ({ id, label }));
   protected readonly arcEnd = (i: number) => turnsLabel((i + 1) / 4);
   protected readonly help = showFieldHelp;
+  protected readonly nearestFraction = nearestFraction;
   
   // after Stradivari's Betts on a 350 mm body, scaled by body length. The whole scroll is seeded
   // here, its widths too, so the later scroll panels only reveal. F0 shares S3's centre, as on the
@@ -96,8 +98,9 @@ export class VolutePanel implements ViolinFamilyPanel, OnInit {
   @Output() drawn = new EventEmitter<RenderLayer[]>();
   @Output() edit = new EventEmitter<void>();
 
-  // what the last draw solved; the template's eye readout and report() read it
+  // what the last draw solved; the template's readouts and report() read it
   s!: ScrollSolve;
+  extent: { height: number; width: number } | null = null;
   highlighted: { key: VoluteHighlightKey; color: string } | null = null;
 
   // the four point's fields four to a row, a turn of the spiral each
@@ -145,7 +148,8 @@ export class VolutePanel implements ViolinFamilyPanel, OnInit {
     safeRun(() => {
       let p = this.params;
       let s = solveScroll(p)!;
-      this.s = { ...s, failures: s.failures.filter(f => f.unsolved.some(k => k === 'spiral' || k === 'S0' || k === 'S1')) };
+      this.s = { ...s, failures: s.failures.filter(f => f.unsolved.some(k => k === 'spiral' || k === 'S0' || k === 'S1' || k === 'S2')) };
+      this.extent = s.S2 ? scrollExtent(s) : null;
       let key = this.highlighted?.key ?? null;
       let arc = key === null ? null : typeof key === 'number' ? s.spiral?.[s.spiral.length - 1 - key] ?? null : s[key];
       // the rest of the scroll for context, under the volute's own arcs, once it all solves
@@ -184,8 +188,8 @@ export const nutThickness = (p: ViolinFamilyParams) => {
 };
 
 // the nut on its seat and the neck's end below the scroll, for context: the neck's front up to the
-// nut and its back up to where the nape meets it. Module guides run the neck's front up to the
-// crown's top, then back to S1's furthest reach
+// nut and its back up to where the nape meets it. Module guides box the head once S2 has solved: the
+// nut up to the crown's top, and the neck's front back to the scroll's furthest reach
 export const renderScrollNeck = (p: ViolinFamilyParams, s: ScrollSolve, pal: PanelPalette, showGuides: boolean) => (g: any, ui: any): void => {
   let { upperThickness: thickness, nutHeight } = p.neck!;
   let stub = scrollNeckStub(p);
@@ -198,15 +202,13 @@ export const renderScrollNeck = (p: ViolinFamilyParams, s: ScrollSolve, pal: Pan
   let backFoot = new Pt(-thickness - neckTaper(p) * stub, -stub);
   if (backTop.y > -stub) renderSegment(backFoot, backTop, pal.neutral.faint(5), STROKE_WEIGHT.section)(g, ui);
 
-  if (!showGuides || !s.S0 || !s.S1) return;
-  let crownTop = Math.max(...[s.S0, s.S1].flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y));
-  let S1Back = Math.min(...arcReach(s.S1, TURN.half).map(pt => pt.x));
-  if (!Number.isFinite(crownTop) || !Number.isFinite(S1Back)) return;
-  renderDashLine(new Pt(0, 0), new Pt(0, crownTop), pal.ink(1).faint(4), STROKE_WEIGHT.guide)(g, ui);
-  renderDashLine(new Pt(0, crownTop), new Pt(S1Back, crownTop), pal.ink(1).faint(4), STROKE_WEIGHT.guide)(g, ui);
+  if (!showGuides || !s.S2) return;
+  let { height, width } = scrollExtent(s);
+  let corners = [new Pt(0, 0), new Pt(0, height), new Pt(-width, height), new Pt(-width, 0)];
+  for (let i = 0; i < 4; i++) renderDashLine(corners[i], corners[(i + 1) % 4], pal.ink(1).faint(4), STROKE_WEIGHT.guide)(g, ui);
 };
 
-// the eye, the spiral and the crown (S0, S1). The construction toggle adds the figure the spiral's
+// the eye, the spiral and the back as far as the head reaches (S0 to S2). The construction toggle adds the figure the spiral's
 // centres are found on
 export const renderVolute = (
   p: ViolinFamilyParams,
@@ -224,7 +226,7 @@ export const renderVolute = (
   if (currentModule && flags.showVoluteConstruction) {
     for (let line of voluteConstruction(p, s)) {
       let placed = line.map(pt => new Pt(eye.x + pt.x, eye.y + pt.y));
-      for (let i = 1; i < placed.length; i++) renderSegment(placed[i - 1], placed[i], pal.ink(2).faint(3), STROKE_WEIGHT.guide, true)(g, ui);
+      for (let i = 1; i < placed.length; i++) renderSegment(placed[i - 1], placed[i], pal.ink(2).faint(2), STROKE_WEIGHT.guide, true)(g, ui);
     }
   }
   // innermost first, two tones alternating arc by arc, the same as the four point's fields
@@ -232,7 +234,18 @@ export const renderVolute = (
   for (let i = 0; i < inward.length; i++) scrollArc(inward[i], i % 2 ? pal.ink(2).faint(1) : pal.ink(2).faint(-3), fancy)(g, ui);
   if (s.S0) scrollArc(s.S0, pal.ink(1).faint(3), fancy)(g, ui);
   if (s.S1) scrollArc(s.S1, pal.ink(1), fancy)(g, ui);
+  if (s.S2) scrollArc(s.S2, pal.ink(1).faint(-3), fancy)(g, ui);
 };
+
+// the readouts, off the back as far as it solved: the nut up to the crown's top, and the neck's
+// front back to the scroll's furthest reach
+export function scrollExtent(s: ScrollSolve): { height: number; width: number } {
+  let back = [s.S0, s.S1, s.S2, s.S3].filter((a): a is Arc => !!a);
+  return {
+    height: Math.max(...back.flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y)),
+    width: -Math.min(...back.flatMap(a => arcReach(a, TURN.half)).map(pt => pt.x)),
+  };
+}
 
 export const VOLUTE_STYLE_LABELS: Record<VoluteStyle, string> = {
   fourPoint: 'Four Point (custom)',
@@ -471,7 +484,7 @@ export const badArc = (section: string, key: ScrollKey, r: number, unsolved: Scr
   unsolved, circles: [], segments: [],
 });
 
-// the volute and the crown, which the Scroll panel's solve runs on from. The eye's x, while the fit
+// the volute and the back from S0 to S2, which the Pegbox panel's solve runs on from. The eye's x, while the fit
 // is on, is solved to bring the spiral's front flush with the neck's front, held to a hundredth as
 // the field shows it. Returns and never writes to the params
 export function solveVolute(p: ViolinFamilyParams): ScrollSolve | null {
@@ -500,7 +513,7 @@ export function solveVolute(p: ViolinFamilyParams): ScrollSolve | null {
   });
   if (!s.spiral) return s;
 
-  // S0 and S1 run on tangent from the spiral's front, each through its own sweep
+  // S0 to S2 run on tangent from the spiral's front, each through its own sweep
   solveSection(s.failures, 'Back', BACK_KEYS, () => {
     let outer = s.spiral![0];
     let joint = pointOnCircle(outer, outer.end);
@@ -514,6 +527,12 @@ export function solveVolute(p: ViolinFamilyParams): ScrollSolve | null {
     if (!(v.S1R > 0) || !(S1Sweep > 0) || S1Sweep > TURN.full) return badArc('Back', 'S1', v.S1R, BACK_KEYS.slice(1));
     let S1 = placeCircleOnPointAtAngle(v.S1R, joint, S0End);
     s.S1 = new Arc(S1.x, S1.y, S1.r, S0End, S0End + S1Sweep);
+    joint = pointOnCircle(s.S1, s.S1.end);
+
+    let S2Sweep = v.S2Sweep * TURN.degree;
+    if (!(v.S2R > 0) || !(S2Sweep > 0) || S2Sweep > TURN.full) return badArc('Back', 'S2', v.S2R, BACK_KEYS.slice(2));
+    let S2 = placeCircleOnPointAtAngle(v.S2R, joint, s.S1.end);
+    s.S2 = new Arc(S2.x, S2.y, S2.r, s.S1.end, s.S1.end + S2Sweep);
     return null;
   });
   return s;

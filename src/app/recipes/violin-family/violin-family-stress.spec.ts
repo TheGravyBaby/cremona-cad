@@ -14,7 +14,7 @@ import { LongArchingPanel, solveLongArching } from './panels/long-arching-panel/
 import { solveCrossArching } from './panels/cross-arching-panel/cross-arching-panel';
 import { NeckPanel, solveNeck } from './panels/neck-panel/neck-panel';
 import { VolutePanel } from './panels/volute-panel/volute-panel';
-import { solveScroll } from './panels/scroll-panel/scroll-panel';
+import { solveScroll } from './panels/pegbox-panel/pegbox-panel';
 import { solveScrollWidths } from './panels/scroll-widths-panel/scroll-widths-panel';
 import { StringSetupPanel, solveStringSetup } from './panels/string-setup-panel/string-setup-panel';
 import { MouldPanel, solveMould } from './panels/mould-panel/mould-panel';
@@ -44,7 +44,7 @@ const CHAIN: Stage[] = [
   { id: 'crossArching', solve: solveCrossArching },
   { id: 'neck', solve: solveNeck },
   { id: 'stringSetup', solve: solveStringSetup },
-  { id: 'scroll', solve: solveScroll },
+  { id: 'pegbox', solve: solveScroll },
   { id: 'scrollWidths', solve: solveScrollWidths },
   { id: 'mould', solve: p => solveMould(p) },
 ];
@@ -59,7 +59,7 @@ const FIRST_READER: Record<keyof ViolinFamilyParams, string> = {
   fHoleContours: 'fHoleContours',
   arching: 'longArching',
   neck: 'neck',
-  scroll: 'scroll',
+  scroll: 'pegbox',
   stringSetup: 'stringSetup',
   mould: 'mould',
   graduation: 'devGraduation',

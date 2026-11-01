@@ -17,7 +17,7 @@ import { VolutePanel } from '../volute-panel/volute-panel';
 import { solveStringSetup, StringSetupPanel } from '../string-setup-panel/string-setup-panel';
 import { neckHalfWidthAt } from '../neck-panel/neck-panel';
 import { MouldPanel } from '../mould-panel/mould-panel';
-import { solveScroll } from '../scroll-panel/scroll-panel';
+import { solveScroll } from '../pegbox-panel/pegbox-panel';
 import { scrollBackStrip, scrollCompassWalk } from '../scroll-widths-panel/scroll-widths-panel';
 import { solveCrossArching } from '../cross-arching-panel/cross-arching-panel';
 import { solvePositionMarks } from '../dev-fingerboard-panel/dev-fingerboard-panel';

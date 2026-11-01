@@ -389,7 +389,7 @@
         "except": [
           "crossArching",
           "volute",
-          "scroll",
+          "pegbox",
           "scrollWidths"
         ]
       },
@@ -443,7 +443,7 @@
       "scope": {
         "only": [
           "volute",
-          "scroll",
+          "pegbox",
           "scrollWidths"
         ]
       },

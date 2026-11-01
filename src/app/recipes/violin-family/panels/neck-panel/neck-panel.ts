@@ -22,7 +22,7 @@ import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-con
 import {
   channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, ribHeightAt, sideViewOffsetX, solveLongArching, topPlatePlacement,
 } from '../long-arching-panel/long-arching-panel';
-import { defineSideScrollPath } from '../scroll-panel/scroll-panel';
+import { defineSideScrollPath } from '../pegbox-panel/pegbox-panel';
 import { ScrollView, scrollBackViewStrokes, scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
 
 // The neck set in the side elevation, and its widths in plan. Everything hangs off the top plate's

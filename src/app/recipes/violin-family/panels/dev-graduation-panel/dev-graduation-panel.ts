@@ -42,6 +42,7 @@ export const GRADUATION_PLATES = ['top', 'back'] as const;
 export type GraduationPlate = typeof GRADUATION_PLATES[number];
 
 const DEFAULT_SPACING = 40;
+const EDIT_DEBOUNCE_MS = 300;
 // where each plate is drawn: the top at the origin, the back beside it as the plate contour lays them
 const PLATE_DX: Record<GraduationPlate, (p: ViolinFamilyParams) => number> = { top: () => 0, back: p => -p.body.width * PLATE_LAYOUT_GAP };
 const round = (v: number): number => Math.round(v * 10) / 10;
@@ -83,7 +84,8 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
   private pickTool: PickPointTool | null = null;
   // whether the held pick places a twin across the joint as well
   pickMirror = false;
-  private unwatchTools = this.tools.onChange(() => {
+  private pending: ReturnType<typeof setTimeout> | undefined;
+  private unwatchTools =this.tools.onChange(() => {
     if (this.pickTool && this.tools.activeTool !== this.pickTool) this.pickTool = null;
   });
 
@@ -109,6 +111,7 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
   }
 
   ngOnDestroy(): void {
+    if (this.pending !== undefined) this.edited();
     this.unwatchTools();
     if (this.pickTool) this.tools.selectTool(null);
   }
@@ -147,8 +150,22 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
   }
 
   edited(): void {
+    clearTimeout(this.pending);
+    this.pending = undefined;
     this.edit.emit();
     this.draw();
+  }
+
+  // typed and stepped fields settle before the solve runs, since it is slow
+  editedSoon(): void {
+    clearTimeout(this.pending);
+    this.pending = setTimeout(() => this.edited(), EDIT_DEBOUNCE_MS);
+  }
+
+  setAllSoon(value: number | null): void {
+    if (value === null || !Number.isFinite(value)) return;
+    for (let pt of this.picked) pt.thickness = value;
+    this.editedSoon();
   }
 
   // lays that plate's points out afresh, the zones, a grid at its spacing, or none, and leaves the other's alone

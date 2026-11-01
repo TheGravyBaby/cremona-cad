@@ -19,7 +19,7 @@ import { solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { MOULD_EXPORT_STEP, MouldPanel, solveMould } from '../mould-panel/mould-panel';
 import { NeckPanel, solveNeck } from '../neck-panel/neck-panel';
 import { VolutePanel } from '../volute-panel/volute-panel';
-import { solveScroll } from '../scroll-panel/scroll-panel';
+import { solveScroll } from '../pegbox-panel/pegbox-panel';
 import { archingToolpaths, Bit, contourToolpaths, CRADLE, CradleSettings, cradleToolpaths, cutPlan, DEFAULT_SETTINGS, EXPORTS, ExportId, FHOLE, FholeSettings, fholeToolpaths, gcodeJob, jobNotes, MACHINE, MOULD_TABS, mouldToolpaths, planExport, PLATE_TABS, PlateSettings, purflingToolpaths, SCROLL, ScrollSettings, scrollToolpaths, sideOutline, SURFACE, Tab, TOOLS } from './dev-export-panel';
 import { ThemeService } from '../../../../theme/theme.service';
 

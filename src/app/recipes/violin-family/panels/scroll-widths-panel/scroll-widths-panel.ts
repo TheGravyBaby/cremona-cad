@@ -27,8 +27,8 @@ import {
   ScrollWidthsKey,
   ScrollWidthsSolve,
 } from '../../violin-family-solves';
-import { nutThickness, renderScrollNeck, scrollNeckStub } from '../volute-panel/volute-panel';
-import { defineSideScrollPath, scrollExtent, scrollLines, solveScroll } from '../scroll-panel/scroll-panel';
+import { nutThickness, renderScrollNeck, scrollExtent, scrollNeckStub } from '../volute-panel/volute-panel';
+import { defineSideScrollPath, scrollLines, solveScroll } from '../pegbox-panel/pegbox-panel';
 
 export type ScrollStationKey = 'nut' | 'neck' | keyof ScrollWidths;
 export type ScrollStation = { key: ScrollStationKey; at: Pt; width: number };

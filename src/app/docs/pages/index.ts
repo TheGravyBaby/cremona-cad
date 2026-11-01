@@ -34,7 +34,7 @@ import wikiPanelsLongArching from './wiki/panels/long-arching.md';
 import wikiPanelsCrossArching from './wiki/panels/cross-arching.md';
 import wikiPanelsNeck from './wiki/panels/neck.md';
 import wikiPanelsVolute from './wiki/panels/volute.md';
-import wikiPanelsScroll from './wiki/panels/scroll.md';
+import wikiPanelsPegbox from './wiki/panels/pegbox.md';
 import wikiPanelsScrollWidths from './wiki/panels/scroll-widths.md';
 import wikiPanelsStringSetup from './wiki/panels/string-setup.md';
 import wikiPanelsMould from './wiki/panels/mould.md';
@@ -83,7 +83,7 @@ export const WIKI: WikiCategory[] = [
       page('wiki/panels/f-hole-contours.md', wikiPanelsFHoleContours),
       page('wiki/panels/neck.md', wikiPanelsNeck),
       page('wiki/panels/volute.md', wikiPanelsVolute),
-      page('wiki/panels/scroll.md', wikiPanelsScroll),
+      page('wiki/panels/pegbox.md', wikiPanelsPegbox),
       page('wiki/panels/scroll-widths.md', wikiPanelsScrollWidths),
       page('wiki/panels/string-setup.md', wikiPanelsStringSetup),
       page('wiki/panels/mould.md', wikiPanelsMould),

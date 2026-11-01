@@ -195,13 +195,13 @@
         </app-vf-volute-panel>
         }
 
-        @if (openPanel === 'scroll') {
-        <app-vf-scroll-panel #panelRef
+        @if (openPanel === 'pegbox') {
+        <app-vf-pegbox-panel #panelRef
             [params]="d.params"
             [flags]="viewFlags"
             (drawn)="draftChange.emit($event)"
             (edit)="onPanelEdit()">
-        </app-vf-scroll-panel>
+        </app-vf-pegbox-panel>
         }
 
         @if (openPanel === 'scrollWidths') {
