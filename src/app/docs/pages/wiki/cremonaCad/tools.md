@@ -18,7 +18,7 @@ The draw tools identify and snap to edges of existing geometry. When snapped to 
 ## Lines — L
 
 |---|---|
-| :line: Line | This draws a simple line between two points. Hold *Shift* to snap the angle. Hold *Ctrl* to draw tangent to a snapped object. You can edit the distance of a line on selection, or type a distance in and hit *Enter* at draw time.|
+| :line: Line | This draws a simple line between two points. Hold *Shift* to snap the angle. Hold *Ctrl* to draw tangent to a snapped object. You can edit the distance of a line on selection, or type a distance in and hit *Enter* at draw time. |
 | :polyline: Polyline | Connects multiple lines together. |
 | :line-tangent: Tangent Line | Select a path and pick a point; a tangent line will be drawn between them. |
 | :line-perpendicular: Perpendicular Line | Select a path and pick a point; a perpendicular line will be drawn between them. |
@@ -30,7 +30,7 @@ The draw tools identify and snap to edges of existing geometry. When snapped to 
 | :dimension: Distance | Operates similarly to the line tool. Displays the distance between two XY points. You can offset the display above or below the line.  |
 | :section: Section | The section tool displays a rectangle that is split into parts. The parts can be set by simple fractions, or a comma-separated list of numbers. The list will split the tool into parts equal to the relative weight of its sections. For example, a list of "1,2,1" splits the distance into 3 parts with weights of "-/--/-". |
 | :ticks: Ticks | Functions similarly to the section tool but uses small ticks.  |
-| :angle: Angle | A simple protractor tool, displays an angle in degrees. |
+| :angle: Angle | A simple protractor tool that displays an angle in degrees. |
 | :curve-length: Curve Length | Displays the distance traveled along a curved path. |
 | :curve-ticks: Curve Ticks | Works similarly to the ticks tool, but works along a curved path. |
 
@@ -49,7 +49,7 @@ The draw tools identify and snap to edges of existing geometry. When snapped to 
 
 |---|---|
 | :circle: Circle | Select a center, then a radius, then a circle is drawn. |
-| :polygon-3: Triangle | Same as the circle tool except we draw an equilateral triangle. You may hold *Shift* to snap the radius to a standard angle.|
+| :polygon-3: Triangle | Same as the circle tool except we draw an equilateral triangle. You may hold *Shift* to snap the radius to a standard angle. |
 | :polygon-4: Square | - |
 | :polygon-5: Pentagon | - |
 | :polygon-6: Hexagon | - |
@@ -58,7 +58,7 @@ The draw tools identify and snap to edges of existing geometry. When snapped to 
 ## Boxed Shapes — R
 
 |---|---|
-| :rect: Rectangle | Draws a rectangle between two points. Holding *Shift* will draw a square.|
+| :rect: Rectangle | Draws a rectangle between two points. Holding *Shift* will draw a square. |
 | :right-triangle: Right Triangle | Draws a right triangle between two points. |
 
 ## Mathematical Curves — H

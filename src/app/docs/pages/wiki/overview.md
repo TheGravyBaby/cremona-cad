@@ -5,7 +5,7 @@ kind: overview
 image: wiki/c-hole.svg
 caption: Ironically, you cannot (yet) make this style of soundhole in CremonaCad. Still, it makes for a good logo.
 ---
-Welcome to CremonaCad, a one of a kind tool for designing violins! This article will provide a high-level overview of the UI and a guide on how to get started. 
+Welcome to CremonaCad, a one-of-a-kind tool for designing violins! This article will provide a high-level overview of the UI and a guide on how to get started. 
 
 
 ## Getting your bearings
@@ -28,7 +28,7 @@ Once you have your reference image, you can paste it onto the canvas, or upload 
 ### Scaling the image
 The **base measurements** panel will allow you to enter the total height and width of your instrument, and will then render a bounding box of this size on the canvas. Use this bounding box to scale your reference image. Select the image and use the handles on the corners and sides to scale it. 
 
-You may also scale a reference image by drawing measurement lines over known distances, which may help with some images. To do this, go into the toolbox and select the distance tool. Then draw a line across a known distance, which will be reported above the line. You may also edit the distance manually, select the line and edit the distance text box on the bottom bar. Once you have the known length, the reference image can be scaled using its handles.
+You may also scale a reference image by drawing measurement lines over known distances, which may help with some images. To do this, go into the toolbox and select the distance tool. Then draw a line across a known distance, which will be reported above the line. You may also edit the distance manually: select the line and edit the distance text box on the bottom bar. Once you have the known length, the reference image can be scaled using its handles.
 
 Do keep in mind [[perspective]] when scaling images. 
 

@@ -2,7 +2,7 @@
 id: vesica
 title: Vesica
 kind: concept
-aliases: [vesecai, vesica piscis]
+aliases: [vesica, vesica piscis]
 status: unreviewed
 ---
 

@@ -75,6 +75,7 @@ export const WIKI: WikiCategory[] = [
       page('wiki/panels/bouts.md', wikiPanelsBouts),
       page('wiki/panels/corners.md', wikiPanelsCorners),
       page('wiki/panels/center-bout.md', wikiPanelsCenterBout),
+      page('wiki/panels/mould.md', wikiPanelsMould),
       page('wiki/panels/plate-contour.md', wikiPanelsPlateContour),
       page('wiki/panels/fluting.md', wikiPanelsFluting),
       page('wiki/panels/long-arching.md', wikiPanelsLongArching),
@@ -86,19 +87,18 @@ export const WIKI: WikiCategory[] = [
       page('wiki/panels/pegbox.md', wikiPanelsPegbox),
       page('wiki/panels/scroll-widths.md', wikiPanelsScrollWidths),
       page('wiki/panels/string-setup.md', wikiPanelsStringSetup),
-      page('wiki/panels/mould.md', wikiPanelsMould),
       page('wiki/panels/export.md', wikiPanelsExport),
     ],
   },
-  {
-    label: 'Concepts',
-    pages: [
-      page('wiki/concepts/parametric-models.md', wikiConceptsParametric),
-      page('wiki/concepts/perspective.md', wikiConceptsPerspective),
-      page('wiki/concepts/vesica.md', wikiConceptsVesica),
-      page('wiki/concepts/viol-neck.md', wikiConceptsViolNeck),
-    ],
-  },
+  // {
+  //   label: 'Concepts',
+  //   pages: [
+  //     page('wiki/concepts/parametric-models.md', wikiConceptsParametric),
+  //     page('wiki/concepts/perspective.md', wikiConceptsPerspective),
+  //     page('wiki/concepts/vesica.md', wikiConceptsVesica),
+  //     page('wiki/concepts/viol-neck.md', wikiConceptsViolNeck),
+  //   ],
+  // },
 ];
 
 const BOOTH: PageFile[] = [

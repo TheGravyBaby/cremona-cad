@@ -13,7 +13,7 @@ On a Mac, *Cmd* works wherever *Ctrl* is listed.
 |---|---|
 | *F* | Fit everything in view |
 | *Scroll wheel* | Zoom |
-| *Touchpad Pinch* | Zoom |
+| *Touchpad pinch* | Zoom |
 | *Double-click* | Zoom in at the pointer |
 | *Shift + double-click* | Zoom out at the pointer |
 | *+ / −* | Zoom in / out |
@@ -38,7 +38,7 @@ On a Mac, *Cmd* works wherever *Ctrl* is listed.
 |---|---|
 | *Click* | Select an object |
 | *Shift + click* | Add to or remove from the selection |
-| *Click + Drag* on empty canvas | Select by area |
+| *Click + drag* on empty canvas | Select by area |
 | *Shift + drag* on empty canvas | Add to the selection by area |
 | *Drag* a selected shape | Move it |
 | *Drag* an endpoint handle | Reshape it. Endpoint handles are indicated by small triangles on the shape when selected. |
@@ -66,8 +66,8 @@ On a Mac, *Cmd* works wherever *Ctrl* is listed.
 
 |---|---|
 | Line: *Shift* (held) | Lock to common angles: multiples of 30° and 45° |
-| Line: Type a number, then *Enter* | Set the length exactly. Angle and starting point are preserved.|
-| Line: *Ctrl* (held, while dragging) | If the line was started on an edge, holding *Ctrl* locks the line angle to the tangent of that edge.  |
+| Line: Type a number, then *Enter* | Set the length exactly. Angle and starting point are preserved. |
+| Line: *Ctrl* (held, while dragging) | If the line was started on an edge, holding *Ctrl* locks the line angle to the tangent of that edge. |
 
 | Arc: *Shift* | Use the longer arc length between the two points |
 | Join Arc: *Shift* | Cycle through the possible joins |
