@@ -34,22 +34,6 @@
                 [(ngModel)]="v.napeAngle" (input)="edited()" (focus)="focus('napeAngle', pal.ink(1).faint(5))" (blur)="blur()" />
         </label>
     </div>
-    @if (extent; as e) {
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Height <span class="unit-label">mm</span></span>
-            <div class="basic-display" aria-label="Scroll height">{{ e.height.toFixed(1) }}</div>
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Width <span class="unit-label">mm</span></span>
-            <div class="basic-display" aria-label="Scroll width">{{ e.width.toFixed(1) }}</div>
-        </label>
-        <label class="field-cell">
-            <span class="field-title">H to W</span>
-            <div class="basic-display" aria-label="Scroll height to width">{{ nearestFraction(e.height / e.width) }}</div>
-        </label>
-    </div>
-    }
 </section>
 
 <section class="ui-group">

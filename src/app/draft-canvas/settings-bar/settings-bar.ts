@@ -320,6 +320,26 @@ export class SettingsBarComponent {
     this.patchPointField(this.selectedRectShape, which, axis, value);
   }
 
+  public get rectWidth(): number {
+    const s = this.selectedRectShape;
+    return s ? this.round2(Math.abs(s.p2.x - s.p1.x)) : 0;
+  }
+
+  public get rectHeight(): number {
+    const s = this.selectedRectShape;
+    return s ? this.round2(Math.abs(s.p2.y - s.p1.y)) : 0;
+  }
+
+  // p1 stays put and p2 keeps the side it was dragged to, like setLineLength keeps the angle
+  setRectSize(axis: 'x' | 'y', value: number): void {
+    const shape = this.selectedRectShape;
+    if (!shape) return;
+    const v = Number(value);
+    if (!Number.isFinite(v) || v <= 0) return;
+    const sign = shape.p2[axis] < shape.p1[axis] ? -1 : 1;
+    this.toolbox.updateShape(shape.id, { p2: { ...shape.p2, [axis]: shape.p1[axis] + sign * v } });
+  }
+
   private get selectedTextShape(): TextShape | undefined {
     return this.selectedShapeOfType('text');
   }

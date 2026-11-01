@@ -5,7 +5,6 @@ kind: panel
 panel: plateContour
 status: unreviewed
 image: wiki/outer-contour.svg
-caption: The plate contour of the default violin.
 ---
 This panel allows you to complete the outer paths for the top and back plate as well as the purfling. In real making, the ribs are pinned to a billet of spruce or maple, and traced at an offset, with some additional offsets around the corner area. The maker then cuts the traced path by hand. 
 

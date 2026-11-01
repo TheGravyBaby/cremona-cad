@@ -26,7 +26,7 @@
     </label>
   }
   @if (showStrokeWidth) {
-    <span class="field"><span class="f-lbl">Width</span>
+    <span class="field"><span class="f-lbl">Stroke width</span>
       <input type="number" min="0.5" max="20" step="0.5" [value]="strokeWidth"
         (change)="setStrokeWidth($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
         docTip="settings.strokeWidth" />
@@ -99,6 +99,16 @@
       </span>
       <span class="field"><span class="f-lbl">Y2</span>
         <input type="number" [value]="rectP2Y" (change)="setRectPoint('p2', 'y', $any($event.target).valueAsNumber)"
+          (keydown.enter)="$any($event.target).blur()" />
+      </span>
+    </span>
+    <span class="point-group">
+      <span class="field"><span class="f-lbl">W</span>
+        <input type="number" min="0.01" step="any" [value]="rectWidth" (change)="setRectSize('x', $any($event.target).valueAsNumber)"
+          (keydown.enter)="$any($event.target).blur()" />
+      </span>
+      <span class="field"><span class="f-lbl">H</span>
+        <input type="number" min="0.01" step="any" [value]="rectHeight" (change)="setRectSize('y', $any($event.target).valueAsNumber)"
           (keydown.enter)="$any($event.target).blur()" />
       </span>
     </span>

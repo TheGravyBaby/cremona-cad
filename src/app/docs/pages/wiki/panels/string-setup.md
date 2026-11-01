@@ -7,10 +7,9 @@ status: unreviewed
 image: wiki/string-setup.svg
 caption: The string setup, in side profile.
 ---
-TODO: write this article.
+This panel allows you to model the setup of the strings against the bridge and fingerboard. These values do not really impact the final construction of an instrument, as the bridge can be located in many different places, and the curves of the fingerboard cause trouble for accurate modeling. Still, it is important to know that your design will work within the tolerances of modern string lengths, and that the final setup will be amenable to player expections. The panel allows you to once again adjust the neck length, and reports an approximate string length between the nut and the bridge. 
 
-## What this stage draws
-
+It is generally considered important that the fifth of the open string line up with the heel of the neck, as this stop is used by players as a reference position on the body. 
 
 ## Fields
 
@@ -23,6 +22,3 @@ TODO: write this article.
 | Radius | TODO |
 | Stop | TODO |
 | Height | TODO |
-
-## What it feeds
-

@@ -4,7 +4,6 @@ title: Center bout
 kind: panel
 panel: centerBout
 image: wiki/center-bout.svg
-caption: The center bout stage on the default violin.
 ---
 This panel allows you to define the center bout of the instrument, as well as the corner arcs of the center bout. The center bout is relatively simple, it is a single arc that smoothly joins to its own corner arcs. 
 

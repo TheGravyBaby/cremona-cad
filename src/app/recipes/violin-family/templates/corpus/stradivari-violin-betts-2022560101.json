@@ -2,7 +2,7 @@
   "key": "stradivari-violin-betts",
   "recipeName": "violin-family-recipe",
   "fileName": "Violin - Antonio Stradivari - Betts",
-  "description": "Cremona, 1704. LoC catalogue dimensions; no arching published.",
+  "description": "Cremona, 1704. LoC catalogue dimensions.",
   "source": "https://www.loc.gov/item/2022560101/",
   "version": "0.9.0",
   "params": {
@@ -230,7 +230,7 @@
       }
     },
     "neck": {
-      "length": 134,
+      "length": 136,
       "angle": 6.9,
       "upperThickness": 12,
       "lowerThickness": 14.2,
@@ -244,7 +244,7 @@
       "nutWidth": 25
     },
     "stringSetup": {
-      "bodyStop": 196.5,
+      "bodyStop": 196.9,
       "bridgeHeight": 33,
       "nutThickness": 6.5,
       "fingerboardLength": 270,
@@ -277,7 +277,7 @@
       ],
       "S0R": 21.1,
       "S0Sweep": 74,
-      "S1R": 27.8,
+      "S1R": 27.4,
       "S1Sweep": 100,
       "S2R": 38,
       "S2Sweep": 39,
@@ -286,11 +286,11 @@
       "hang": 0,
       "napeR": 13,
       "napeAngle": 0,
-      "flat": 8,
-      "F0R": 57,
-      "F0Sweep": 44,
-      "frontStraight": 22,
-      "F1R": 6,
+      "flat": 9.7,
+      "F0R": 58.5,
+      "F0Sweep": 43.5,
+      "frontStraight": 21,
+      "F1R": 5.5,
       "widths": {
         "hip": 25,
         "throat": 18,
@@ -444,13 +444,13 @@
       "id": "shape-mvfo54tj-3",
       "label": "Img 3",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0018/34,3117,2375,2870/1024,/0/default.jpg",
-      "x": -108.43112277221385,
-      "y": -15.324226760864258,
-      "width": 121.50127024176436,
-      "height": 146.7744836807251,
+      "x": -107.36732482910156,
+      "y": -14.87026019622566,
+      "width": 120.71420405895934,
+      "height": 145.82370158294208,
       "rotationDeg": 0,
       "opacity": 0.75,
-      "locked": false,
+      "locked": true,
       "scope": {
         "only": [
           "pegbox",
@@ -467,7 +467,7 @@
       "id": "shape-mvfotjfz-5",
       "label": "Img 4",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0018/739,558,1702,2527/1024,/0/default.jpg",
-      "x": -8.106748293759239,
+      "x": 4.893251706240761,
       "y": -48.52893200663952,
       "width": 107.73441924068855,
       "height": 159.91827856039708,
@@ -487,13 +487,13 @@
       "id": "shape-mvfpsqo2-6",
       "label": "Img 5",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0018/2885,507,1568,2464/969,/0/default.jpg",
-      "x": -132.5489001716484,
+      "x": -145.14890017164836,
       "y": -24.327804565429688,
       "width": 86.53451604153888,
       "height": 135.9190231323242,
       "rotationDeg": 0,
       "opacity": 0.75,
-      "locked": false,
+      "locked": true,
       "scope": {
         "only": [
           "scrollWidths"

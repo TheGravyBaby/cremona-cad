@@ -5,7 +5,6 @@ kind: panel
 panel: fHolePlacement
 status: unreviewed
 image: wiki/f-hole-placement.svg
-caption: The f-hole placement marks on the default violin.
 ---
 This panel allows you to set the placement of the f-hole eyes and its central stem. F-hole geometry can become quite complex. The community is full of theories regarding how to position the eyes relative to the body, there seems to be no commonly agreed on method. 
 

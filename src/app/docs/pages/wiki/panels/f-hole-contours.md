@@ -5,7 +5,6 @@ kind: panel
 panel: fHoleContours
 status: unreviewed
 image: wiki/f-hole-contours.svg
-caption: The f-hole contours on the default violin.
 ---
 This panel allows you to set the shape of the f-holes contours. Much like the body of the instrument, f-holes were classically drawn by smoothly joining compass arc sections. 
 

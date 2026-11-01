@@ -4,7 +4,6 @@ title: Corners
 kind: panel
 panel: corners
 image: wiki/corners.svg
-caption: The corners stage on the default violin.
 ---
 This panel defines the positions of the corners as well as the arcs that join them to the upper and lower bouts.
 

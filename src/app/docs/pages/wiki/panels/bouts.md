@@ -5,7 +5,6 @@ kind: panel
 panel: mainBouts
 aliases: [upper bout, lower bout]
 image: wiki/bout-widths.svg
-caption: The three widths, each measured outside the ribs.
 ---
 This panel defines the size and profile of the upper and lower bouts. The bouts are made up of a very simple system where a large central arc intersects either the upper and lower edge of the bounding box you made on the previous panel. 
 

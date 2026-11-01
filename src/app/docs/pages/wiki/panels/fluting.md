@@ -5,7 +5,6 @@ kind: panel
 panel: fluting
 status: unreviewed
 image: wiki/fluting.svg
-caption: The fluting channel of the default violin.
 ---
 This panel allows you to define the properties of the fluting channels. Once the contour for the top and back plate are cut, the maker begins the arching process by carving the fluting channel. This is a small channel which travels around the instrument, carved with a gouge. The arching will later be carved to smoothly meet this channel. 
 

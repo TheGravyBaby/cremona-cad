@@ -5,7 +5,6 @@ kind: panel
 panel: neck
 status: unreviewed
 image: wiki/neck.svg
-caption: The neck of the default violin, in side profile.
 ---
 This panel allows you to define the shape of the neck. Unlike some of the other panels, the neck for violin based instruments is fairly a straightfoward system mostly composed of straight edges. 
 

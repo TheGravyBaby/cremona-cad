@@ -2,7 +2,7 @@
   "key": "guarneri-violin-kreisler",
   "recipeName": "violin-family-recipe",
   "fileName": "Violin - Giuseppe Guarneri - Kreisler",
-  "description": "Cremona, c.1730. LoC catalogue dimensions; no arching published.",
+  "description": "Cremona, c.1730. LoC catalogue dimensions.",
   "source": "https://www.loc.gov/item/2022560099/",
   "version": "0.9.0",
   "params": {

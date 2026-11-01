@@ -5,7 +5,6 @@ kind: panel
 panel: volute
 status: unreviewed
 image: wiki/volute.svg
-caption: The volute of the default violin.
 ---
 This panel allows you to define the volute (spiral) which gives the scroll its signature shape. There are architectural techniques for drawing spirals using arc segments which date back thousands of years. Along with a custom four point arc system, CremonaCad pays homage to many of these historical techniques, many of which would have been available and known to Cremonese makers in the 17th century. 
 

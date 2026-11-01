@@ -6,7 +6,10 @@ panel: scrollWidths
 status: unreviewed
 image: wiki/scroll-widths.svg
 ---
-This panel allows you to define the width of the scroll and pegbox system. The widths 
+This panel allows you to define the width of the scroll and pegbox system. The widths are divided into sections for the front and back of the pegbox, and a section for the volute turns. Due to the large number of parameters, I have elected to use names for various sections corelating to body parts. The "foot" sits low on the pegbox, while the "hips" and "poll" sit higher. 
+
+Note that for most violins, the duck tail smoothly joints the width of the back, where as for some violas and for most cellos, the duck tail is notably smaller than the width of the pegbox system. 
+
 
 
 ## Fields
