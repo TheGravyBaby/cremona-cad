@@ -18,15 +18,31 @@ Given the number of f-hole placement theories available, this panel comes with a
 
 
 ## Fields
+The treble side f-hole is the one you set. The bass side mirrors it.
+
+**Upper Eye**
 
 | Field | Description |
 |---|---|
-| Eye XY | TODO |
-| Eye Radius | TODO |
-| Rise | TODO |
+| Radius | The radius of the upper eye. |
+| X, Y | The position of the upper eye's center. |
+| Rise | How far the hole runs on past the eye toward the upper bout. |
+| Eye Distance, Eye Angle | Read-only. The distance between the two eyes' centers and the angle of the line between them. |
 
-| Stem XY | TODO |
-| Stem Width | TODO |
-| Stem Angle | TODO |
+**Stem**
 
-| Notches | TODO |
+| Field | Description |
+|---|---|
+| Width | The width of the stem, between its two parallel edges. |
+| Angle | The stem's lean, in degrees past upright. Positive leans toward the upper eye. |
+| X, Y | The position of the stem's center. |
+| Notches | Draws the notches on the stem's edges. |
+| Notch Stop | Read-only. The distance from the top edge of the plate down to the notch line. On most instruments this is where the bridge stands. |
+
+**Lower Eye**
+
+| Field | Description |
+|---|---|
+| Radius | The radius of the lower eye. |
+| X, Y | The position of the lower eye's center. |
+| Rise | How far the hole runs on past the eye toward the lower bout. |

@@ -18,12 +18,18 @@ Creating a smooth fluting channel around the instrument is fairly straightforwar
 
 
 ## Fields
+**Channel**
 
 | Field | Description |
 |---|---|
-| Fluting Edge | TODO |
-| Gouge Corners | TODO |
+| Fluting Edge | The width of the flat left around the plate's edge before the channel begins, measured in from the outer edge. One value for both plates. |
+| Gouge Corners | Smooths the corners down to the channel in the STL export. Has no effect on the drawn arching. |
 
-| Width | TODO |
-| Depth | TODO |
-| C Bout Width | TODO |
+**Top Plate** and **Back Plate**
+
+| Field | Description |
+|---|---|
+| Width | The channel's width, from where the gouge enters the plate to where it comes back out. |
+| Depth | The channel's depth at its trough. |
+| C Bout | Uses a second, narrower channel around the center bout. |
+| Width | The width of that narrower channel. |

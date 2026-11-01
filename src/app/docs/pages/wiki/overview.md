@@ -30,7 +30,5 @@ The **base measurements** panel will allow you to enter the total height and wid
 
 You may also scale a reference image by drawing measurement lines over known distances, which may help with some images. To do this, go into the toolbox and select the distance tool. Then draw a line across a known distance, which will be reported above the line. You may also edit the distance manually: select the line and edit the distance text box on the bottom bar. Once you have the known length, the reference image can be scaled using its handles.
 
-Do keep in mind [[perspective]] when scaling images. 
-
 ### Drafting
 With the scaled reference image, you can begin creating your new instrument. On the recipe panel, select the next button to go through the various recipe steps. You can find more details about each panel in the recipe [[panel]] section. 

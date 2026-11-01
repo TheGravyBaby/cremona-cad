@@ -21,20 +21,38 @@ To simulate this, simply compound the corner, and set the primary arc radii to a
 Many viols and double basses do not feature small arcs which flare out their corners. Rather, they simply smoothly join the bout to a corner point using a single arc. You may toggle this simple geometry on and off.
 
 ## Fields
+**Upper Bout**
 
 | Field | Description |
 |---|---|
-| Upper Corner Pt | |
-| U2 | TODO |
-| U3 | TODO |
-| U31 | TODO |
-| U31 Sweep | TODO |
+| U2 Join Radius | The arc that leaves the upper bout and turns in toward the corner. |
 
-| Lower Corner Pt | |
-| L3  | TODO |
-| L31 | TODO |
-| L31 Sweep | TODO |
-| L2  | TODO |
+**Upper Corner**
 
-| Compound | TODO |
-| Use Viol Corner | TODO |
+| Field | Description |
+|---|---|
+| X, Y | The position of the upper corner tip on the rib line. Arrow keys move it from either box. |
+| Default | Puts the corner back on its guide circle, a good starting point if the values get out of bounds. |
+| U3 Corner Radius | The arc that runs from U2 into the corner tip. |
+| Compound | Splits U3 into two arcs for a more pronounced corner. |
+| U31 Radius | The second, smaller arc of a compound corner, which finishes at the tip. |
+| U31 Sweep | How far U31 turns, in degrees, from where it takes over to the tip. |
+| Use Viol Corner | Draws a single arc from the bout straight to the corner tip, replacing U2 and U3. |
+
+**Lower Corner**
+
+| Field | Description |
+|---|---|
+| X, Y | The position of the lower corner tip on the rib line. |
+| Default | Puts the corner back on its guide circle. |
+| L3 Corner Radius | The arc that runs from L2 into the corner tip. |
+| Compound | Splits L3 into two arcs. |
+| L31 Radius | The second, smaller arc of a compound corner, which finishes at the tip. |
+| L31 Sweep | How far L31 turns, in degrees, from where it takes over to the tip. |
+| Use Viol Corner | Draws a single arc from the bout straight to the corner tip, replacing L2 and L3. |
+
+**Lower Bout**
+
+| Field | Description |
+|---|---|
+| L2 Join Radius | The arc that leaves the lower bout and turns in toward the corner. |

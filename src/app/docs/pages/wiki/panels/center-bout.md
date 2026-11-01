@@ -17,20 +17,33 @@ Almost all Cremonese instruments feature a variety of corner positions. This met
 
 
 ## Fields
+**Upper Corner**
 
 | Field | Description |
 |---|---|
-| Upper Corner Pt | |
-| C2  | TODO |
-| C21 | TODO |
-| C21 Sweep | TODO |
-| Total Width | TODO |
+| X, Y | The upper corner tip, the same point set on the corners panel. |
+| Default | Puts the corner back on its guide circle. |
+| C2 Corner Radius | The arc that leaves the upper corner tip on the center bout side. |
+| Compound | Splits C2 into two arcs. |
+| C21 Radius | The second arc of a compound corner, which finishes at the tip. |
+| C21 Sweep | How far C21 turns, in degrees, from where it takes over to the tip. |
 
-| C0 Radius | TODO |
-| C0 Y | TODO |
-| Fit C0 to Bouts | TODO |
+**Center Bout**
 
-| Lower Corner Pt | |
-| C1 | TODO |
-| C11 | TODO |
-| C11 Sweep | TODO |
+| Field | Description |
+|---|---|
+| Total Width | The outer width at the narrowest point of the body. Like the other bout widths, this includes the ribs and overhang. |
+| C0 Radius | The single arc of the center bout. |
+| C0 Y | The height of C0's center. |
+| Fit C0 to Bouts | Places C0 so it touches both the upper and lower join arcs. The width and Y are then read off the fit rather than typed. |
+
+**Lower Corner**
+
+| Field | Description |
+|---|---|
+| X, Y | The lower corner tip, the same point set on the corners panel. |
+| Default | Puts the corner back on its guide circle. |
+| C1 Corner Radius | The arc that leaves the lower corner tip on the center bout side. |
+| Compound | Splits C1 into two arcs. |
+| C11 Radius | The second arc of a compound corner, which finishes at the tip. |
+| C11 Sweep | How far C11 turns, in degrees, from where it takes over to the tip. |

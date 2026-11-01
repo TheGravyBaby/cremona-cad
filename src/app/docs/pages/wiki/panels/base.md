@@ -20,9 +20,16 @@ Use the bounding box to scale your reference image. Select the image and use the
 
 You may also scale a reference image by drawing measurement lines over known distances, which may help with some images. To do this, go into the toolbox and select the distance tool. Then draw a line across a known distance, which will be reported above the line. You may also edit the distance manually: select the line and edit the distance text box on the bottom bar. Once you have the known length, the reference image can be scaled using its handles.
 
-Do keep in mind [[perspective]] when scaling images.
-
 ## Fields
+**File Properties**
+
+| Field | Description |
+|---|---|
+| Name | The name of the design, used as the file name when saving and exporting. |
+| Description | Free notes about the design. |
+| Source | Where the design came from, such as the instrument it was traced from or the image's origin. |
+
+**Primary Dimensions**
 
 | Field | Description |
 |---|---|
@@ -30,4 +37,4 @@ Do keep in mind [[perspective]] when scaling images.
 | Width | The total width of the instrument, almost always the width of the lower bout. |
 | Overhang | The amount the top and back plate project over the ribs. |
 | Ribs | The thickness of the ribs. |
-
+| Inset | Read-only. Overhang plus rib thickness: the distance from the outer edge in to the mould line that the first panels draw. |

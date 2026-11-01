@@ -25,17 +25,21 @@ Natural splines can be obtained by bending wood through a series of control poin
 The fluting channel travels along the entire outer edge of the plate, and the long arch must intercept the height you have given it while also smoothly joining the fluting channel. CremonaCad solves this by iteratively running through possible solutions until a takeoff point is found. If none exists, the arching will take off from the inner fluting edge. 
 
 ## Fields
+**Rib Heights**
 
 | Field | Description |
 |---|---|
-| Upper Rib Height | TODO |
-| Lower Rib Height | TODO |
-| Plate Thickness | TODO |
+| Upper Rib | The rib height at the upper block, square to the rib edge. |
+| Lower Rib | The rib height at the lower bout. Equal values give an untapered rib. |
 
-| Curve type (Catenary, Spline) | TODO |
-| Arch Height | TODO |
+**Top Plate** and **Back Plate**
 
-| Spline point position | TODO |
-| Spline point height | TODO |
-| Spline point Mirror | TODO |
-| Peak | TODO |
+| Field | Description |
+|---|---|
+| Thickness | The plate's thickness at its outer edge. |
+| Catenary, Spline | Which curve draws the long arch. |
+| Arch Height | The height of the arch above the plate's edge at the peak. |
+| Position | For a spline point: where it sits along the body, as a percent of the length from the lower end. |
+| Height | For a spline point: how high it sits above the plate's edge, in mm. |
+| Mirror | Repeats the point at the same distance from the other end of the body. |
+| Peak | The spline's highest point: its position along the body and the arch height. Drag the rows to reorder them, or use Sort by Position. |

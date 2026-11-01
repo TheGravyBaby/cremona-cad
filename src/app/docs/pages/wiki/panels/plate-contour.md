@@ -15,17 +15,32 @@ The purfling is also defined here, with a width and an offset amount from the ou
 The button, a semicircle which is eventually used to secure the neck, can also be defined here. 
 
 ## Fields
+**Button**
 
 | Field | Description |
 |---|---|
-| Button Width | TODO |
-| Button Height | TODO |
+| Width | The diameter of the button's cap. |
+| Height | How far the button's tip stands beyond the end of the plate. |
 
-| Upper Top Cutoff | TODO |
-| Upper Bottom Cutoff | TODO |
-| Lower Top Cutoff | TODO |
-| Lower Bottom Cutoff | TODO |
-| Rounding | TODO |
+**Upper Corner**
 
-| Purfling Offset | TODO |
-| Purfling Width | TODO |
+| Field | Description |
+|---|---|
+| Top Cutoff | How far the upper bout's corner arc runs on past the rib corner, in degrees. |
+| Bottom Cutoff | How far the center bout's corner arc runs on past the rib corner, in degrees. |
+| Rounding | From 0 to 1. Swaps the flat cut between the two arcs for a curve. |
+
+**Lower Corner**
+
+| Field | Description |
+|---|---|
+| Top Cutoff | How far the center bout's corner arc runs on past the rib corner, in degrees. |
+| Bottom Cutoff | How far the lower bout's corner arc runs on past the rib corner, in degrees. |
+| Rounding | From 0 to 1. Swaps the flat cut between the two arcs for a curve. |
+
+**Purfling**
+
+| Field | Description |
+|---|---|
+| Offset | The distance from the outer edge in to the purfling. |
+| Width | The width of the purfling channel. |

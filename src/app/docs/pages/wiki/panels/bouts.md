@@ -18,19 +18,29 @@ When using the viol neck geometry, the upper large arc U0 is split on either sid
 Some viols and basses feature a long straight section before the bout curves upwards. To simulate this, set U0 to a very high value, as a large radius approximates a straight line in this system. 
 
 ## Fields
+**Upper Bout**
 
 | Field | Description |
 |---|---|
-| Upper Width | The outer width of the upper bout, often published online. |
-| U0 | The large central circle of the upper bout. |
-| U1 | The upper vesica, one on either side of the instrument. |
+| Total Width | The outer width of the upper bout, often published online. |
+| U0 Join Radius | The large central arc of the upper bout. |
+| U1 Vesica Radius | The small arc that joins U0 to the side of the bounding box, one on either side of the instrument. |
 
-| Lower Width | The outer width of the lower bout, often published online. |
-| L0 | The large central circle of the lower bout. |
-| L1 | The lower vesica, one on either side of the instrument. |
+**Lower Bout**
 
-| V0 | The primary arc for the viol neck, sweeping in the opposite direction to U0, which will now be drawn on either side of the instrument. |
-| Join Turn | The end angle for U0 when the viol neck is used.  |
-| V0 Sweep | - |
+| Field | Description |
+|---|---|
+| Total Width | The outer width of the lower bout, often published online. This is the same number as the width on the base measurements panel. |
+| L0 Join Radius | The large central arc of the lower bout. |
+| L1 Vesica Radius | The small arc that joins L0 to the side of the bounding box, one on either side of the instrument. |
+
+**Viol Neck**
+
+| Field | Description |
+|---|---|
+| Use Viol Neck | Replaces the single upper arc with the viol geometry below. The values are kept when toggled off. |
+| V0 Radius | The primary arc for the viol neck, sweeping in the opposite direction to U0, drawn on either side of the instrument. |
+| Join Turn | How far the join turns the outline down from the level top face, in degrees, before V0 takes over. |
+| V0 Sweep | How far V0 sweeps on from that heading, in degrees, before U0 takes over. |
 | Width | The distance between the end segments of V0, the width of the neck. |
 | Join Radius | Necks feature varying degrees of rounding at their top. Use this to set the rounding to your liking. |

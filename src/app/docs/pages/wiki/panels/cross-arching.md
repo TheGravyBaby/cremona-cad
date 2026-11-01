@@ -27,10 +27,22 @@ One nice quality about cycloids is that they can approximate arc segments of cir
 By clicking the wireframe or contour button, you can render a 3D surface of your top and back plates. You can rotate this system by dragging on the rendered area with your mouse. 
 
 ## Fields
+**Station**
+
 | Field | Description |
 |---|---|
-| Station | TODO |
-| Curve type (Catenary, Cycloid, Spline) | TODO |
+| Station | The height along the body of the cross section shown on the canvas. Type a value or drag the slider. |
+| Set Station at | Sets a curve of its own at the current station. The table above the plate lists the stations set, and clicking a station's height jumps to it. |
 
-| Curtate | TODO |
-| Percent | TODO |
+**Top Plate** and **Back Plate**
+
+| Field | Description |
+|---|---|
+| Catenary, Cycloid, Spline | Which curve draws the cross arch. Stations must use the same type as the plate. |
+| Curtate | For a cycloid: how far out on the rolling circle the drawing point sits, as a percent. 100 is a true cycloid and 0 is a plain cosine hump. |
+| Percent | For a cycloid: how much of the full cycloid spans the section. Below 100 trims the flat ends. |
+| Position | For a spline point: where it sits across the plate, as a percent. 0 is the bass edge, 50 the joint and 100 the treble edge. |
+| Height | For a spline point: its height as a percent of the arch height at that station. |
+| Mirror | Repeats the point on the other side of the joint. |
+| Peak | The spline's highest point, always at full height. Its position is a percent across the plate. |
+| Contours, Wireframe | Renders the whole plate surface as a contour map or a wireframe mesh. Drag the rendered area to rotate it. |

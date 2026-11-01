@@ -12,13 +12,25 @@ This panel allows you to model the setup of the strings against the bridge and f
 It is generally considered important that the fifth of the open string lines up with the heel of the neck, as this stop is used by players as a reference position on the body. 
 
 ## Fields
+**Neck**
 
 | Field | Description |
 |---|---|
-| Length | TODO |
-| Nut Thickness | TODO |
-| Length | TODO |
-| Thickness | TODO |
-| Radius | TODO |
-| Stop | TODO |
-| Height | TODO |
+| Length | The neck length, the same value as on the neck panel. Adjust it here to tune the string length. |
+| Nut Thickness | How far the nut stands off the neck's front. |
+
+**Fingerboard**
+
+| Field | Description |
+|---|---|
+| Length | How far the fingerboard runs down the neck from the nut. |
+| Thickness | The fingerboard's thickness at its edges. |
+| Radius | The radius of the fingerboard's crown. |
+
+**Bridge**
+
+| Field | Description |
+|---|---|
+| Stop | The body stop: the distance from the neck end down to the bridge. |
+| Height | The bridge's height from its feet to the string notches. |
+| String Length | Read-only. The approximate string length from the nut to the bridge. |
