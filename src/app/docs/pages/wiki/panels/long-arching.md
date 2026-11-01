@@ -39,6 +39,3 @@ The fluting channel travels along the entire outer edge of the plate, the long a
 | Spline point height | TODO |
 | Spline point Mirror | TODO |
 | Peak | TODO |
-
-## What it feeds
-

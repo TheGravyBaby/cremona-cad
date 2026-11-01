@@ -7,10 +7,10 @@ status: unreviewed
 image: wiki/scroll.svg
 caption: The scroll of the default violin.
 ---
-TODO: write this article.
+This panel allows you to design the full side profile of the scroll pegbox system. The system here is fairly straightforward, more smooth intersections between arcs and lines. 
 
-## What this stage draws
-
+### The Nape
+The nape is a semicircular area where the neck transitions to the scroll. On many late 17th and early 18th century violins, the tip of the nape is flush with the nut. On cellos and large instruments, it is common for the nape to "hang" below the nut. On these large instruments, it is also common for the nape to "point" down, a feature you can adjust with the nape angle parameter. 
 
 ## Fields
 
@@ -30,6 +30,4 @@ TODO: write this article.
 | F1 R | TODO |
 | Thickness | TODO |
 | Nut Height | TODO |
-
-## What it feeds
 

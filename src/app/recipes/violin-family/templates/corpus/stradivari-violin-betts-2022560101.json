@@ -413,7 +413,7 @@
       "id": "stradivari-violin-betts-profiles",
       "label": "Profiles, both sides (sp=3)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0003/full/pct:100.0/0/default.jpg",
-      "x": 121.1203749302151,
+      "x": 127.1203749302151,
       "y": 0.07971193217501316,
       "width": 99.77633542574846,
       "height": 416.84982519130637,
@@ -448,8 +448,8 @@
       "y": -15.324226760864258,
       "width": 121.50127024176436,
       "height": 146.7744836807251,
+      "rotationDeg": 0,
       "opacity": 0.75,
-      "opacity": 0.4,
       "locked": false,
       "scope": {
         "only": [
@@ -491,6 +491,7 @@
       "y": -24.327804565429688,
       "width": 86.53451604153888,
       "height": 135.9190231323242,
+      "rotationDeg": 0,
       "opacity": 0.75,
       "locked": false,
       "scope": {

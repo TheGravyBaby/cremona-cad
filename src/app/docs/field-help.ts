@@ -129,7 +129,7 @@ export const FIELD_HELP = {
     title: "Cross-Section Station",
     text:
       "By sliding the station height bar you can adjust which section of the cross arch you view on the canvas.\n\n" +
-      "It is possible that Cremonese makers used different cross arch curves at different heights along the instrument. In order to simulate this, you may use the 'Set Station at' to set unique curves at different heights along the body. CremonaCad will do its best to smoothly join these defined sections.",
+      "The cross arching on historical instruments rarely follows the same curve pattern all long the body. In order to accurately represent this, CremonaCad allows to you set the cross arching differently at different stations (heights) of the instrument. Click the 'Set Station at' to set unique curves at different heights along the body. CremonaCad will do its best to smoothly join these defined sections.",
   },
   gougeCBout: {
     title: "C-Bout Channel",
