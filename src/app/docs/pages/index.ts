@@ -40,12 +40,8 @@ import wikiPanelsStringSetup from './wiki/panels/string-setup.md';
 import wikiPanelsMould from './wiki/panels/mould.md';
 import wikiPanelsExport from './wiki/panels/export.md';
 import wikiCanvasFiles from './wiki/cremonaCad/files.md';
-import wikiConceptsParametric from './wiki/concepts/parametric-models.md';
 import wikiPanelsPanel from './wiki/panels/panel.md';
 import wikiPanelsBouts from './wiki/panels/bouts.md';
-import wikiConceptsPerspective from './wiki/concepts/perspective.md';
-import wikiConceptsVesica from './wiki/concepts/vesica.md';
-import wikiConceptsViolNeck from './wiki/concepts/viol-neck.md';
 
 export interface PageFile { path: string; source: string }
 const page = (path: string, source: string): PageFile => ({ path, source });
@@ -90,15 +86,6 @@ export const WIKI: WikiCategory[] = [
       page('wiki/panels/export.md', wikiPanelsExport),
     ],
   },
-  // {
-  //   label: 'Concepts',
-  //   pages: [
-  //     page('wiki/concepts/parametric-models.md', wikiConceptsParametric),
-  //     page('wiki/concepts/perspective.md', wikiConceptsPerspective),
-  //     page('wiki/concepts/vesica.md', wikiConceptsVesica),
-  //     page('wiki/concepts/viol-neck.md', wikiConceptsViolNeck),
-  //   ],
-  // },
 ];
 
 const BOOTH: PageFile[] = [
