@@ -3,7 +3,7 @@ id: fluting
 title: Fluting channel
 kind: panel
 panel: fluting
-status: unreviewed
+
 image: wiki/fluting.svg
 ---
 This panel allows you to define the properties of the fluting channels. Once the contours for the top and back plates are cut, the maker begins the arching process by carving the fluting channel. This is a small channel which travels around the instrument, carved with a gouge. The arching will later be carved to smoothly meet this channel.

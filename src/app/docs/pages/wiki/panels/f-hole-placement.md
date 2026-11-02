@@ -3,7 +3,7 @@ id: f-hole-placement
 title: F-hole placement
 kind: panel
 panel: fHolePlacement
-status: unreviewed
+
 image: wiki/f-hole-placement.svg
 ---
 This panel allows you to set the placement of the f-hole eyes and the central stem. F-hole geometry can become quite complex. The community is full of theories regarding how to position the eyes relative to the body, and there seems to be no commonly agreed-upon method. 

@@ -3,7 +3,7 @@ id: neck
 title: Neck
 kind: panel
 panel: neck
-status: unreviewed
+
 image: wiki/neck.svg
 ---
 This panel allows you to define the shape of the neck. Unlike some of the other panels, the neck for violin-based instruments is a fairly straightforward system mostly composed of straight edges. 

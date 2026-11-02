@@ -3,7 +3,7 @@ id: mould
 title: Mould
 kind: panel
 panel: mould
-status: unreviewed
+
 image: wiki/mould.svg
 ---
 This panel draws the inside mould the ribs are bent around. Its outline is the rib line from the first panels, with pockets cut for the six blocks. 

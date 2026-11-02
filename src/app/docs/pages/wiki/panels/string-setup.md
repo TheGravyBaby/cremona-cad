@@ -3,7 +3,7 @@ id: string-setup
 title: String setup
 kind: panel
 panel: stringSetup
-status: unreviewed
+
 image: wiki/string-setup.svg
 caption: The string setup, in side profile.
 ---

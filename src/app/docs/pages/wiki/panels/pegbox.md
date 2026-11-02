@@ -3,7 +3,7 @@ id: pegbox
 title: Pegbox
 kind: panel
 panel: pegbox
-status: unreviewed
+
 image: wiki/scroll.svg
 ---
 This panel allows you to design the full side profile of the scroll pegbox system. The system here is fairly straightforward: more smooth intersections between arcs and lines. One minor complexity comes from the duck tail.

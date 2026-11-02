@@ -3,7 +3,7 @@ id: long-arching
 title: Long arching
 kind: panel
 panel: longArching
-status: unreviewed
+
 image: wiki/long-arching.svg
 caption: The long arch, in side profile.
 ---

@@ -3,7 +3,7 @@ id: f-hole-contours
 title: F-hole contours
 kind: panel
 panel: fHoleContours
-status: unreviewed
+
 image: wiki/f-hole-contours.svg
 ---
 This panel allows you to set the shape of the f-hole contours. Much like the body of the instrument, f-holes were classically drawn by smoothly joining compass arc sections. 

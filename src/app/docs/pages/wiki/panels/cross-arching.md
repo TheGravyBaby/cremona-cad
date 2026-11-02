@@ -3,7 +3,7 @@ id: cross-arching
 title: Cross arching
 kind: panel
 panel: crossArching
-status: unreviewed
+
 image: wiki/cross-arching.svg
 caption: A cross section of the plates.
 ---

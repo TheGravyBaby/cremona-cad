@@ -3,7 +3,7 @@ id: export
 title: Export
 kind: panel
 panel: export
-status: unreviewed
+
 ---
 This panel is where you can export your design as usable files. You can export various components of your instrument as PDF, SVG, DXF, and in some cases STL files. 
 
