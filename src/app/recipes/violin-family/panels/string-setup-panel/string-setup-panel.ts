@@ -5,7 +5,7 @@ import { dist, moveInVectorSpace, pointAtDistanceToward, TURN, vectorFromSlope }
 import { applyMatrix, pathFromPolygon } from '../../../../helpers/math/pathMath';
 import { occludePath } from '../../../../helpers/math/pathVibes';
 import {
-  renderDashedLine, renderGuideBaseline, renderGuideKnot, renderPath, renderPolygon, renderSegment, renderSegmentHalo, renderSolveFailures, renderStroke, renderText,
+  renderDashedLine, renderGuideBaseline, renderGuideKnot, renderPath, renderPolygon, renderSegment, renderSegmentHalo, renderSolveFailures, renderStroke, renderText, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { Pt, Vect2D } from '../../../../models/types';
@@ -27,11 +27,11 @@ import {
 } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
-import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
+import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
   channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, sideViewOffsetX, solveLongArching, topPlatePlacement,
 } from '../long-arching-panel/long-arching-panel';
-import { neckHalfWidthAt, neckInPlan, renderNeck, scrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
+import { neckHalfWidthAt, defineNeckInPlan, renderNeck, calcScrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
 import { scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
 
 export type StringSetupHighlightKey =
@@ -129,10 +129,7 @@ export function renderStringSetupViews(
   return [
     renderStringSetupFrontView(p, s, o, scrollInPlan, pal, { fingerboard: opts.fingerboard, scoopStation: !!opts.scoopGuide }),
     ...(opts.front ?? []),
-    (g, ui) => {
-      let frame = { g: g.append('g').attr('transform', `translate(${sideX},0)`), ui: ui.append('g').attr('transform', `translate(${sideX},0)`) };
-      for (let layer of side) layer(frame.g, frame.ui);
-    },
+    renderTranslatedLayers(side, sideX),
   ];
 }
 
@@ -343,8 +340,8 @@ const renderStringSetupFrontView = (
   if (!n.neckTop) return () => {};
   let nk = p.neck!;
   let topY = n.neckTop.y;
-  let onNeck = scrollOnNeck(p, n);
-  let neck = neckInPlan(p, n);
+  let onNeck = calcScrollOnNeck(p, n);
+  let neck = defineNeckInPlan(p, n);
   let board = opts.fingerboard ? fingerboardInPlan(p, s) : null;
   // the scoop's deepest station across the board
   let station: [Pt, Pt] | null = null;
@@ -360,7 +357,7 @@ const renderStringSetupFrontView = (
   let cover = board ? [neck, board] : [neck];
   let cut = (d: string | null) => d ? occludePath(d, cover).visible : '';
   let holes = p.fHoleContours ? solveFholeContours(p)! : null;
-  let fHoles = holes?.path ? [holes.path, fholePath(p, holes, true)!] : [];
+  let fHoles = holes?.path ? [holes.path, defineFholePath(p, holes, true)!] : [];
   let plate = cut(o.top);
   let lines = [o.purfling, o.outerPurfling, ...fHoles].map(cut);
 

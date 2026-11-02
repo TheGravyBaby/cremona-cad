@@ -11,16 +11,21 @@ boundary: read it before adding to a file.
 
 ```bash
 ng serve        # dev server, localhost:4200
-ng test         # vitest, full suite (~20s). Run before considering work done.
+ng test         # vitest, full suite (~80s). Run once before considering work done.
 ng build
 ```
 
 While iterating, run only the area you touched (see `package.json` for the globs):
 `test:outline` (2D panels, neck and scroll, templates), `test:arching` (fluting, long and cross
-arching), `test:export`, `test:violin-family` (the whole recipe), `test:draft-canvas`,
-`test:helpers`, `test:shell`, `test:fast` (all but arching and export). A new spec file outside
-these globs only runs under the full `ng test`. `violin-family-stress.spec.ts` is work in progress,
-excluded in `angular.json`; only `test:stress` runs it.
+arching), `test:export` (export and dev export), `test:violin-family` (the whole recipe),
+`test:draft-canvas`, `test:helpers`, `test:shell`, `test:fast` (~35s, all but the export, dev export
+and graduation specs). A new spec file outside these globs only runs under the full `ng test`.
+`violin-family-stress.spec.ts` is work in progress, excluded in `angular.json`; only `test:stress`
+runs it.
+
+Development happens on an 8 GB machine with several agents running suites at once, so
+`vitest-base.config.ts` caps each run at 2 workers; don't raise it. A timeout here points to load or
+a sleeping machine, not the test: don't rerun in a loop or raise the test's limit.
 
 ## Layout
 

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { dist, normalizeRadians, pointOnCircle, signedArcSweep, travelAtArcStart, TURN } from '../../../../helpers/math/simpleGeometry';
-import { MainBoutsPanel, solveMainBoutsRatios, solveMainBouts, violNeckJoinLimit } from './main-bouts-panel';
+import { MainBoutsPanel, calcMainBoutsRatios, solveMainBouts, calcViolNeckJoinLimit } from './main-bouts-panel';
 import { solveBodyRatios } from '../base-measurements-panel/base-measurements-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS, SEED_RATIOS } from '../../violin-family-seed';
@@ -33,7 +33,7 @@ describe('the main bouts solve', () => {
     const p = seeded();
     const snapshot = JSON.stringify(p);
     solveMainBouts(p);
-    solveMainBoutsRatios(p);
+    calcMainBoutsRatios(p);
     expect(JSON.stringify(p)).toBe(snapshot);
   });
 
@@ -183,28 +183,28 @@ describe('the viol neck', () => {
       q.bouts!.viol!.width = width;
       q.bouts!.viol!.neckRadius = neckRadius;
       const V0 = solveMainBouts(q)!.V0!;
-      expect(violNeckJoinLimit(q)!.reach).toBeCloseTo(pointOnCircle(V0, V0.end).x, 9);
+      expect(calcViolNeckJoinLimit(q)!.reach).toBeCloseTo(pointOnCircle(V0, V0.end).x, 9);
     }
   });
 
   it('has no limit to report with the neck off', () => {
     const q = withViol();
     q.bouts!.useViolNeck = false;
-    expect(violNeckJoinLimit(q)).toBeNull();
+    expect(calcViolNeckJoinLimit(q)).toBeNull();
     expect(solveMainBouts(q)!.V0).toBeNull();
   });
 });
 
 describe('ratios', () => {
   it('reads nothing before the bouts are drafted', () => {
-    expect(solveMainBoutsRatios(blank())).toEqual({});
+    expect(calcMainBoutsRatios(blank())).toEqual({});
   });
 
   // the seed rounds UBW to the millimetre and each radius to a tenth, so a fresh draft reads back
   // its seed fractions to within that rounding and no further
   it('reads a fresh draft back at its seed fractions', () => {
     const p = seeded();
-    const r = solveMainBoutsRatios(p);
+    const r = calcMainBoutsRatios(p);
     const inset = p.body.overhang + p.body.rib;
     const UBWI = p.bouts!.UBW - 2 * inset;
     const LBWI = p.body.width - 2 * inset;
@@ -218,14 +218,14 @@ describe('ratios', () => {
 
   it('follows an edit, with nothing to refresh', () => {
     const p = seeded();
-    const before = solveMainBoutsRatios(p).L0toLBW!;
+    const before = calcMainBoutsRatios(p).L0toLBW!;
     p.bouts!.L0R *= 1.1;
-    expect(solveMainBoutsRatios(p).L0toLBW).toBeCloseTo(before * 1.1, 9);
+    expect(calcMainBoutsRatios(p).L0toLBW).toBeCloseTo(before * 1.1, 9);
   });
 
   it('agrees with the geometry it describes', () => {
     const p = seeded();
-    const r = solveMainBoutsRatios(p);
+    const r = calcMainBoutsRatios(p);
     const m = solveMainBouts(p)!;
     const inset = p.body.overhang + p.body.rib;
     expect(r.LBtoH).toBeCloseTo(p.body.width / p.body.height, 12);
@@ -234,7 +234,7 @@ describe('ratios', () => {
   });
 
   it('reports only ratios that have a seed fraction', () => {
-    const keys = Object.keys({ ...solveBodyRatios(seeded()), ...solveMainBoutsRatios(seeded()) });
+    const keys = Object.keys({ ...solveBodyRatios(seeded()), ...calcMainBoutsRatios(seeded()) });
     for (const key of keys) expect(key in SEED_RATIOS, key).toBe(true);
   });
 });

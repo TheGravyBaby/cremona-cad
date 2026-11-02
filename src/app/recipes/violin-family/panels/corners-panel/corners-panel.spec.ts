@@ -4,7 +4,7 @@ import { dist, pointOnCircle, signedArcSweep, TURN } from '../../../../helpers/m
 import { recordLayers } from '../../../../helpers/layer-recorder';
 import { Arc } from '../../../../models/types';
 import { ThemeService } from '../../../../theme/theme.service';
-import { CornersPanel, defaultCornerTips, renderCorners, solveCorners, solveCornersRatios } from './corners-panel';
+import { CornersPanel, calcDefaultCornerTips, renderCorners, solveCorners, calcCornersRatios } from './corners-panel';
 import { MainBoutsPanel, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS, SEED_RATIOS } from '../../violin-family-seed';
@@ -41,8 +41,8 @@ describe('the corners solve', () => {
     const p = seeded();
     const snapshot = JSON.stringify(p);
     solveCorners(p);
-    solveCornersRatios(p);
-    defaultCornerTips(p);
+    calcCornersRatios(p);
+    calcDefaultCornerTips(p);
     expect(JSON.stringify(p)).toBe(snapshot);
   });
 
@@ -303,7 +303,7 @@ describe('seeding', () => {
 
 describe('the default tips', () => {
   const p = withBouts();
-  const tips = defaultCornerTips(p)!;
+  const tips = calcDefaultCornerTips(p)!;
   const m = solveMainBouts(p)!;
 
   // how the seed places a tip is the seed's business and changes often; what every placement
@@ -329,27 +329,27 @@ describe('the default tips', () => {
     const seededTip = { ...q.corners!.UCr };
     q.corners!.UCr.x += 7;
     q.corners!.UCr.y -= 4;
-    q.corners!.UCr = defaultCornerTips(q)!.UCr;
+    q.corners!.UCr = calcDefaultCornerTips(q)!.UCr;
     expect(q.corners!.UCr).toEqual(seededTip);
   });
 
   it('are nothing to go back to until the main bouts have solved', () => {
     const q = withBouts();
     breakLowerBout(q);
-    expect(defaultCornerTips(q)).toBeNull();
+    expect(calcDefaultCornerTips(q)).toBeNull();
   });
 });
 
 describe('ratios', () => {
   it('reads nothing before the corners are drafted', () => {
-    expect(solveCornersRatios(withBouts())).toEqual({});
+    expect(calcCornersRatios(withBouts())).toEqual({});
   });
 
   // the seed rounds each radius to the millimetre and each tip to a tenth, so a fresh draft reads
   // back its seed fractions to within that rounding and no further
   it('reads a fresh draft back at its seed fractions', () => {
     const p = seeded();
-    const r = solveCornersRatios(p);
+    const r = calcCornersRatios(p);
     const inset = p.body.overhang + p.body.rib;
     const UBWI = p.bouts!.UBW - 2 * inset;
     const LBWI = p.body.width - 2 * inset;
@@ -364,14 +364,14 @@ describe('ratios', () => {
 
   it('follows an edit, with nothing to refresh', () => {
     const p = seeded();
-    const before = solveCornersRatios(p).U3toLBW!;
+    const before = calcCornersRatios(p).U3toLBW!;
     p.corners!.U3R *= 1.5;
-    expect(solveCornersRatios(p).U3toLBW).toBeCloseTo(before * 1.5, 9);
+    expect(calcCornersRatios(p).U3toLBW).toBeCloseTo(before * 1.5, 9);
   });
 
   it('agrees with the geometry it describes', () => {
     const p = seeded();
-    const r = solveCornersRatios(p);
+    const r = calcCornersRatios(p);
     const c = solveCorners(p)!;
     const inset = p.body.overhang + p.body.rib;
     expect(r.U2toUBW).toBeCloseTo(c.U2!.r / (p.bouts!.UBW - 2 * inset), 12);

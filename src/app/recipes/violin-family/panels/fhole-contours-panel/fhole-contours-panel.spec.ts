@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { dist, normalizeRadians, pointOnCircle, signedArcSweep, signedRadianDelta, travelAtArcEnd, travelAtArcStart, TURN } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { Arc, Pt } from '../../../../models/types';
-import { FHoleContoursPanel, fholePath, solveFholeContours, solveFholeContoursRatios } from './fhole-contours-panel';
-import { FHolePlacementPanel, fholeNotches } from '../fhole-placement-panel/fhole-placement-panel';
+import { FHoleContoursPanel, defineFholePath, solveFholeContours, calcFholeContoursRatios } from './fhole-contours-panel';
+import { FHolePlacementPanel, calcFholeNotches } from '../fhole-placement-panel/fhole-placement-panel';
 import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
@@ -141,13 +141,13 @@ describe('the f-hole contours solve', () => {
 
 describe('the contour ratios', () => {
   it('read nothing before the contours are seeded', () => {
-    expect(solveFholeContoursRatios(placed())).toEqual({});
+    expect(calcFholeContoursRatios(placed())).toEqual({});
   });
 
   // every radius is seeded a whole millimetre, so it reads back within half a millimetre of its eye
   it('read a fresh draft back at its seed fractions', () => {
     const p = seeded();
-    const r = solveFholeContoursRatios(p);
+    const r = calcFholeContoursRatios(p);
     const { UEye, LEye } = p.fHoles!;
     const stem = p.fHoleContours!.stemArcR;
     expect(Math.abs(r.StoEyeSpan! - FHOLE_SEED_RATIOS.StoEyeSpan)).toBeLessThanOrEqual(0.5 / dist(UEye, LEye));
@@ -177,7 +177,7 @@ describe('f-hole contour properties', () => {
       expect(s.path).not.toBeNull();
       expect(closed(s.path!)).toBe(true);
       expect(s.path).not.toMatch(/NaN/);
-      const mirrored = fholePath(p, s, true)!;
+      const mirrored = defineFholePath(p, s, true)!;
       expect(closed(mirrored)).toBe(true);
       // the bass hole is the treble hole flipped
       const q = points(s.path!);
@@ -187,17 +187,17 @@ describe('f-hole contour properties', () => {
     });
 
     it(`cuts both notches into the stem's runs, and closes without them when they are off, ${label}`, () => {
-      const { inner, outer } = fholeNotches(f, s.LTip);
+      const { inner, outer } = calcFholeNotches(f, s.LTip);
       expect(outer).not.toBeNull();
       const nearest = (d: string, pt: Pt) => Math.min(...points(d).map(q => dist(q, pt)));
-      const plain = fholePath({ ...p, fHoles: { ...f, notches: false } }, s, false)!;
-      const plainMirrored = fholePath({ ...p, fHoles: { ...f, notches: false } }, s, true)!;
+      const plain = defineFholePath({ ...p, fHoles: { ...f, notches: false } }, s, false)!;
+      const plainMirrored = defineFholePath({ ...p, fHoles: { ...f, notches: false } }, s, true)!;
       expect(closed(plain)).toBe(true);
       // a notch too wide for its run shrinks about its mouth, so its apex is only reached toward
       for (const n of [inner, outer!]) {
         const mirroredApex = new Pt(-n.apex.x, n.apex.y);
         expect(nearest(s.path!, n.apex)).toBeLessThan(nearest(plain, n.apex));
-        expect(nearest(fholePath(p, s, true)!, mirroredApex)).toBeLessThan(nearest(plainMirrored, mirroredApex));
+        expect(nearest(defineFholePath(p, s, true)!, mirroredApex)).toBeLessThan(nearest(plainMirrored, mirroredApex));
       }
     });
 

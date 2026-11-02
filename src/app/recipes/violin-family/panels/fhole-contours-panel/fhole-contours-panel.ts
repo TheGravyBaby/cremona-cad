@@ -8,10 +8,10 @@ import {
 import { pathFromArc, pathFromArcLongWay, pathFromLine, pathFromPolyline } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
 import {
-  AngleMarkSize, renderAngle, renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderPath, renderPointHalo, renderSegment,
+  AngleMarkSize, renderAngle, renderArcHalo, renderCircle, renderMirroredArc, renderMirroredArcFancy, renderMirroredSegment, renderPath, renderPointHalo,
   renderSolveFailures,
 } from '../../../../helpers/renderFuncs';
-import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { buildBlankMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { Arc, Circle, Line, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
@@ -21,7 +21,7 @@ import { FholeCutParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, Vio
 import { FholeArcKey, FholeContoursSolve, FholeFailure } from '../../violin-family-solves';
 import { FHOLE_SEED_RATIOS, FholeRatios } from '../../violin-family-seed';
 import { renderBoutBounds } from '../main-bouts-panel/main-bouts-panel';
-import { FholeNotch, fholeNotches, renderFholeBounds, renderFholeNotches, renderFholePlate, renderFlutingEdgeGuide, stemEdgePoints } from '../fhole-placement-panel/fhole-placement-panel';
+import { FholeNotch, calcFholeNotches, renderFholeBounds, roundToQuarter, renderFholeNotches, renderFholePlate, renderFlutingEdgeGuide, calcStemEdgePoints } from '../fhole-placement-panel/fhole-placement-panel';
 
 // The f-hole contours: what bends between the eyes and the stem. From each eye a shoulder (U1/L1)
 // springs tangent and turns up to the hole's bound, an arm (U2/L2, or a compound pair) carries on
@@ -31,6 +31,10 @@ import { FholeNotch, fholeNotches, renderFholeBounds, renderFholeNotches, render
 
 // UCut/LCut take a point halo; the rest take an arc halo
 export type FholeHighlightKey = FholeArcKey | 'UCut' | 'LCut';
+
+function calcHalfSweep(arm: Arc | null): number {
+  return arm ? Math.round(Math.abs(signedArcSweep(arm)) / 2 / TURN.degree * 100) / 100 : 0;
+}
 
 @Component({
   selector: 'app-vf-f-hole-contours-panel',
@@ -50,8 +54,6 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
     if (p.fHoleContours || !p.fHoles) return;
     let f = p.fHoles;
     let r = FHOLE_SEED_RATIOS;
-    // the cuts to the quarter millimetre, as the field steps them
-    let quarter = (v: number) => Math.round(v * 4) / 4;
     let stemArcR = Math.round(dist(f.UEye, f.LEye) * r.StoEyeSpan);
     p.fHoleContours = {
       U1R: Math.round(stemArcR * r.U1toS),
@@ -62,7 +64,7 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
       U2Sweep: 0,
       U3R: Math.round(stemArcR * r.U3toS),
       U3Angle: r.U3Angle,
-      UCut: { angleOnEye: r.UCutAt, slope: r.UCutSlope, length: quarter(f.UEye.r * r.UCuttoUEye) },
+      UCut: { angleOnEye: r.UCutAt, slope: r.UCutSlope, length: roundToQuarter(f.UEye.r * r.UCuttoUEye) },
       L1R: Math.round(stemArcR * r.L1toS),
       L1End: r.L1End,
       L2R: Math.round(stemArcR * r.L2toS),
@@ -71,13 +73,12 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
       L2Sweep: 0,
       L3R: Math.round(stemArcR * r.L3toS),
       L3Angle: r.L3Angle,
-      LCut: { angleOnEye: r.LCutAt, slope: r.LCutSlope, length: quarter(f.LEye.r * r.LCuttoLEye) },
+      LCut: { angleOnEye: r.LCutAt, slope: r.LCutSlope, length: roundToQuarter(f.LEye.r * r.LCuttoLEye) },
       stemArcR,
     };
     let s = solveFholeContours(p)!;
-    let halfway = (arm: Arc | null) => arm ? Math.round(Math.abs(signedArcSweep(arm)) / 2 / TURN.degree * 100) / 100 : 0;
-    p.fHoleContours.U2Sweep = halfway(s.U2);
-    p.fHoleContours.L2Sweep = halfway(s.L2);
+    p.fHoleContours.U2Sweep = calcHalfSweep(s.U2);
+    p.fHoleContours.L2Sweep = calcHalfSweep(s.L2);
   }
 
   @Input({ required: true }) params!: ViolinFamilyParams;
@@ -126,7 +127,7 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
     safeRun(() => {
       let p = this.params;
       let s = this.s = solveFholeContours(p)!;
-      this.ratios = solveFholeContoursRatios(p);
+      this.ratios = calcFholeContoursRatios(p);
       let highlighted = this.highlightedKey ? { key: this.highlightedKey, color: this.highlightedColor } : null;
       let layers: RenderLayer[] = [renderFholePlate(p, this.pal, null, true)];
       if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
@@ -142,33 +143,43 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
   }
 }
 
+const FHOLE_ANGLE_MARK: AngleMarkSize = { strokeWidth: 1, arrowLen: 1, arrowHalfWidth: 0.35, overshoot: 0.5, textGap: 1.5, fontSize: 2 };
+
+const renderHoleAngleGuides = (eye: Circle, cut: FholeCutParams, tip: Pt | null, wing: Arc | null, up: 1 | -1, wingInk: string, pal: PanelPalette) => (g: any, ui: any): void => {
+  let cutStart = pointOnCircle(eye, cut.angleOnEye * TURN.degree);
+  renderAngle(eye, new Pt(eye.x + eye.r, eye.y), cutStart, eye.r * 1.6, pal.ink(3), FHOLE_ANGLE_MARK)(g, ui);
+  if (!tip) return;
+  // the slope reads clockwise below level, so the sweep runs from the cut up to level there
+  let level = new Pt(cutStart.x + cut.length, cutStart.y);
+  if (cut.slope >= 0) renderAngle(cutStart, level, tip, cut.length * 0.5, pal.ink(3), FHOLE_ANGLE_MARK)(g, ui);
+  else renderAngle(cutStart, tip, level, cut.length * 0.5, pal.ink(3), FHOLE_ANGLE_MARK)(g, ui);
+  if (!wing) return;
+  // the wing's tangent at the tip, heading back along the wing toward the stem
+  let heading = wing.end + up * TURN.quarter;
+  let along = new Pt(tip.x + Math.cos(heading) * cut.length, tip.y + Math.sin(heading) * cut.length);
+  if (up > 0) renderAngle(tip, along, cutStart, cut.length * 0.6, wingInk, FHOLE_ANGLE_MARK)(g, ui);
+  else renderAngle(tip, cutStart, along, cut.length * 0.6, wingInk, FHOLE_ANGLE_MARK)(g, ui);
+};
+
 // how the angle fields read, marked on the treble hole as the toolbox's angle tool would mark
 // them: at each eye the cut's seat from the eye's level ray and its slope from level at the
 // cut's start, and at each tip the wing against the cut. Sized in mm so they zoom with the hole
 export const renderFholeAngleGuides = (p: ViolinFamilyParams, s: FholeContoursSolve, pal: PanelPalette) => (g: any, ui: any): void => {
   let f = p.fHoles!;
   let k = p.fHoleContours!;
-  let deg = TURN.degree;
-  let size: AngleMarkSize = { strokeWidth: 1, arrowLen: 1, arrowHalfWidth: 0.35, overshoot: 0.5, textGap: 1.5, fontSize: 2 };
-  let mark = (vertex: Pt, start: Pt, end: Pt, radius: number, color: string) => renderAngle(vertex, start, end, radius, color, size)(g, ui);
+  renderHoleAngleGuides(f.UEye, k.UCut, s.UTip, s.U3, 1, pal.ink(1).faint(-3), pal)(g, ui);
+  renderHoleAngleGuides(f.LEye, k.LCut, s.LTip, s.L3, -1, pal.ink(0).faint(-3), pal)(g, ui);
+};
 
-  let hole = (eye: Circle, cut: FholeCutParams, tip: Pt | null, wing: Arc | null, up: 1 | -1, wingInk: string) => {
-    let cutStart = pointOnCircle(eye, cut.angleOnEye * deg);
-    mark(eye, new Pt(eye.x + eye.r, eye.y), cutStart, eye.r * 1.6, pal.ink(3));
-    if (!tip) return;
-    // the slope reads clockwise below level, so the sweep runs from the cut up to level there
-    let level = new Pt(cutStart.x + cut.length, cutStart.y);
-    if (cut.slope >= 0) mark(cutStart, level, tip, cut.length * 0.5, pal.ink(3));
-    else mark(cutStart, tip, level, cut.length * 0.5, pal.ink(3));
-    if (!wing) return;
-    // the wing's tangent at the tip, heading back along the wing toward the stem
-    let heading = wing.end + up * TURN.quarter;
-    let along = new Pt(tip.x + Math.cos(heading) * cut.length, tip.y + Math.sin(heading) * cut.length);
-    if (up > 0) mark(tip, along, cutStart, cut.length * 0.6, wingInk);
-    else mark(tip, cutStart, along, cut.length * 0.6, wingInk);
-  };
-  hole(f.UEye, k.UCut, s.UTip, s.U3, 1, pal.ink(1).faint(-3));
-  hole(f.LEye, k.LCut, s.LTip, s.L3, -1, pal.ink(0).faint(-3));
+// the eye as the arc that is left of it, a whole circle until its shoulder has solved
+const renderFholeEye = (circle: Circle, shoulder: Arc | null, angleOnEye: number, color: string) => (g: any, ui: any): void => {
+  if (!shoulder) {
+    renderCircle(circle, color, true)(g, ui);
+    return;
+  }
+  let joinPt = circleCircleIntersections(circle, shoulder)[0];
+  let eyeArc = new Arc(circle.x, circle.y, circle.r, angleFromCenter(circle, joinPt), angleOnEye * TURN.degree);
+  renderMirroredArc(eyeArc, color, STROKE_WEIGHT.trace, true)(g, ui);
 };
 
 // the hole's arcs in their own inks on this panel, each eye drawn as the arc that is left of it
@@ -186,7 +197,13 @@ export const renderFholeContours = (
   let f = p.fHoles!;
   let k = p.fHoleContours!;
   let showArcs = currentModule && flags.showModuleArcs;
-  let ink = (color: string) => currentModule ? color : pal.neutral;
+  let upper = pal.ink(1);
+  let upperFaint = pal.ink(1).faint(3);
+  let upperWing = pal.ink(1).faint(-3);
+  let lower = pal.ink(0);
+  let lowerFaint = pal.ink(0).faint(3);
+  let lowerWing = pal.ink(0).faint(-3);
+  let stem = pal.ink(2);
 
   if (highlighted) {
     if (highlighted.key === 'UCut' || highlighted.key === 'LCut') {
@@ -205,59 +222,53 @@ export const renderFholeContours = (
     }
   }
 
-  let arc = (key: FholeArcKey, color: string) => {
-    let a = s[key];
-    if (!a) return;
-    renderArcFromArc(a, ink(color), STROKE_WEIGHT.trace)(g, ui);
-    renderArcFromArc(flipArcAboutY(a), ink(color), STROKE_WEIGHT.trace)(g, ui);
-    if (!showArcs) return;
-    renderArcFromArcFancy(a, color)(g, ui);
-    renderArcFromArcFancy(flipArcAboutY(a), color)(g, ui);
-  };
+  if (showArcs) {
+    if (s.U1) renderMirroredArcFancy(s.U1, upperFaint)(g, ui);
+    if (s.U2) renderMirroredArcFancy(s.U2, upper)(g, ui);
+    if (k.U21DoubleArc && s.U21) renderMirroredArcFancy(s.U21, upperFaint)(g, ui);
+    if (s.U3) renderMirroredArcFancy(s.U3, upperWing)(g, ui);
+    if (s.S2) renderMirroredArcFancy(s.S2, stem)(g, ui);
+    if (s.S1) renderMirroredArcFancy(s.S1, stem)(g, ui);
+    if (s.L1) renderMirroredArcFancy(s.L1, lowerFaint)(g, ui);
+    if (s.L2) renderMirroredArcFancy(s.L2, lower)(g, ui);
+    if (k.L21DoubleArc && s.L21) renderMirroredArcFancy(s.L21, lowerFaint)(g, ui);
+    if (s.L3) renderMirroredArcFancy(s.L3, lowerWing)(g, ui);
+    if (s.S4) renderMirroredArcFancy(s.S4, stem)(g, ui);
+    if (s.S3) renderMirroredArcFancy(s.S3, stem)(g, ui);
+  }
 
-  arc('U1', pal.ink(1).faint(3));
-  arc('U2', pal.ink(1));
-  if (k.U21DoubleArc) arc('U21', pal.ink(1).faint(3));
-  arc('U3', pal.ink(1).faint(-3));
-  arc('S2', pal.ink(2));
-  arc('S1', pal.ink(2));
-  arc('L1', pal.ink(0).faint(3));
-  arc('L2', pal.ink(0));
-  if (k.L21DoubleArc) arc('L21', pal.ink(0).faint(3));
-  arc('L3', pal.ink(0).faint(-3));
-  arc('S4', pal.ink(2));
-  arc('S3', pal.ink(2));
-
-  let cut = (eye: Circle, angleOnEye: number, tip: Pt | null) => {
-    if (!tip) return;
-    let cutStart = pointOnCircle(eye, angleOnEye * TURN.degree);
-    renderSegment(cutStart, tip, ink(pal.ink(3)), STROKE_WEIGHT.trace)(g, ui);
-    renderSegment(flipPointAboutY(cutStart), flipPointAboutY(tip), ink(pal.ink(3)), STROKE_WEIGHT.trace)(g, ui);
-  };
-  cut(f.UEye, k.UCut.angleOnEye, s.UTip);
-  cut(f.LEye, k.LCut.angleOnEye, s.LTip);
-
+  let upperTrace = currentModule ? upper : pal.neutral;
+  let upperFaintTrace = currentModule ? upperFaint : pal.neutral;
+  let upperWingTrace = currentModule ? upperWing : pal.neutral;
+  let lowerTrace = currentModule ? lower : pal.neutral;
+  let lowerFaintTrace = currentModule ? lowerFaint : pal.neutral;
+  let lowerWingTrace = currentModule ? lowerWing : pal.neutral;
+  let stemTrace = currentModule ? stem : pal.neutral;
+  let cutTrace = currentModule ? pal.ink(3) : pal.neutral;
   // the straight runs between the stem arcs, fainter than the arcs they join
-  let run = (from: Pt, to: Pt) => {
-    renderSegment(from, to, ink(pal.ink(2).faint(3)), STROKE_WEIGHT.trace)(g, ui);
-    renderSegment(flipPointAboutY(from), flipPointAboutY(to), ink(pal.ink(2).faint(3)), STROKE_WEIGHT.trace)(g, ui);
-  };
-  if (s.S2 && s.S4) run(pointOnCircle(s.S2, s.S2.end), pointOnCircle(s.S4, s.S4.start));
-  if (s.S1 && s.S3) run(pointOnCircle(s.S1, s.S1.start), pointOnCircle(s.S3, s.S3.end));
+  let runTrace = currentModule ? pal.ink(2).faint(3) : pal.neutral;
 
-  // now we render the eyes as arcs, not just circles
-  let eye = (circle: Circle, shoulder: Arc | null, angleOnEye: number, color: string) => {
-    if (!shoulder) {
-      renderCircle(circle, ink(color), true)(g, ui);
-      return;
-    }
-    let joinPt = circleCircleIntersections(circle, shoulder)[0];
-    let eyeArc = new Arc(circle.x, circle.y, circle.r, angleFromCenter(circle, joinPt), angleOnEye * TURN.degree);
-    renderArcFromArc(eyeArc, ink(color), STROKE_WEIGHT.trace, true)(g, ui);
-    renderArcFromArc(flipArcAboutY(eyeArc), ink(color), STROKE_WEIGHT.trace, true)(g, ui);
-  };
-  eye(f.UEye, s.U1, k.UCut.angleOnEye, pal.ink(1));
-  eye(f.LEye, s.L1, k.LCut.angleOnEye, pal.ink(0));
+  if (s.U1) renderMirroredArc(s.U1, upperFaintTrace, STROKE_WEIGHT.trace)(g, ui);
+  if (s.U2) renderMirroredArc(s.U2, upperTrace, STROKE_WEIGHT.trace)(g, ui);
+  if (k.U21DoubleArc && s.U21) renderMirroredArc(s.U21, upperFaintTrace, STROKE_WEIGHT.trace)(g, ui);
+  if (s.U3) renderMirroredArc(s.U3, upperWingTrace, STROKE_WEIGHT.trace)(g, ui);
+  if (s.S2) renderMirroredArc(s.S2, stemTrace, STROKE_WEIGHT.trace)(g, ui);
+  if (s.S1) renderMirroredArc(s.S1, stemTrace, STROKE_WEIGHT.trace)(g, ui);
+  if (s.L1) renderMirroredArc(s.L1, lowerFaintTrace, STROKE_WEIGHT.trace)(g, ui);
+  if (s.L2) renderMirroredArc(s.L2, lowerTrace, STROKE_WEIGHT.trace)(g, ui);
+  if (k.L21DoubleArc && s.L21) renderMirroredArc(s.L21, lowerFaintTrace, STROKE_WEIGHT.trace)(g, ui);
+  if (s.L3) renderMirroredArc(s.L3, lowerWingTrace, STROKE_WEIGHT.trace)(g, ui);
+  if (s.S4) renderMirroredArc(s.S4, stemTrace, STROKE_WEIGHT.trace)(g, ui);
+  if (s.S3) renderMirroredArc(s.S3, stemTrace, STROKE_WEIGHT.trace)(g, ui);
+
+  if (s.UTip) renderMirroredSegment(pointOnCircle(f.UEye, k.UCut.angleOnEye * TURN.degree), s.UTip, cutTrace, STROKE_WEIGHT.trace)(g, ui);
+  if (s.LTip) renderMirroredSegment(pointOnCircle(f.LEye, k.LCut.angleOnEye * TURN.degree), s.LTip, cutTrace, STROKE_WEIGHT.trace)(g, ui);
+
+  if (s.S2 && s.S4) renderMirroredSegment(pointOnCircle(s.S2, s.S2.end), pointOnCircle(s.S4, s.S4.start), runTrace, STROKE_WEIGHT.trace)(g, ui);
+  if (s.S1 && s.S3) renderMirroredSegment(pointOnCircle(s.S1, s.S1.start), pointOnCircle(s.S3, s.S3.end), runTrace, STROKE_WEIGHT.trace)(g, ui);
+
+  renderFholeEye(f.UEye, s.U1, k.UCut.angleOnEye, upperTrace)(g, ui);
+  renderFholeEye(f.LEye, s.L1, k.LCut.angleOnEye, lowerTrace)(g, ui);
 };
 
 // both holes cut into the top plate, grey, for the panels that draw the plate under or after
@@ -266,7 +277,8 @@ export const renderFholes = (p: ViolinFamilyParams, pal: PanelPalette) => (g: an
   if (!p.fHoleContours) return;
   let s = solveFholeContours(p)!;
   if (!s.path) return;
-  for (let d of [s.path, fholePath(p, s, true)!]) renderPath(d, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
+  renderPath(s.path, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
+  renderPath(defineFholePath(p, s, true)!, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
 };
 
 // where a shoulder sits: tangent inside its eye, so its centre rides a circle about the eye, and
@@ -276,7 +288,7 @@ export const renderFholes = (p: ViolinFamilyParams, pal: PanelPalette) => (g: an
 // shoulder's and only the shoulder's height moves with the angle round the eye: each case is a sine
 // to solve, checked after against which arc its answer puts at the apex. `up` is where the bound
 // lies, `side` which side of the eye the centre sits
-function placeShoulder(
+function solveShoulder(
   eye: Circle,
   r: number,
   end: number,
@@ -317,7 +329,7 @@ function placeShoulder(
 // a notch cut into the straight run from `from` to `to`, as the points the run passes through in
 // its own direction. The run is the stem's edge, so the mouth lies on it; a notch wider than the
 // run has left for it shrinks about its mouth to fit, and one whose centre is off the run isn't cut
-function notchOnRun(n: FholeNotch, from: Pt, to: Pt): Pt[] {
+function calcNotchOnRun(n: FholeNotch, from: Pt, to: Pt): Pt[] {
   const lo = Math.min(from.y, to.y), hi = Math.max(from.y, to.y);
   if (n.apex.y < lo || n.apex.y > hi) return [];
   const k = Math.min(1, (hi - n.apex.y) / (n.top.y - n.apex.y), (n.apex.y - lo) / (n.apex.y - n.bottom.y));
@@ -326,17 +338,27 @@ function notchOnRun(n: FholeNotch, from: Pt, to: Pt): Pt[] {
   return from.y > to.y ? v : v.reverse();
 }
 
+function flipArcIf(arc: Arc, flip: boolean): Arc {
+  return flip ? flipArcAboutY(arc) : arc;
+}
+
+function flipPointIf(pt: Pt, flip: boolean): Pt {
+  return flip ? flipPointAboutY(pt) : pt;
+}
+
+function defineStemRun(from: Pt, to: Pt, notch: FholeNotch | null, flip: boolean): string {
+  return pathFromPolyline([from, ...(notch ? calcNotchOnRun(notch, from, to) : []), to].map(pt => flipPointIf(pt, flip)));
+}
+
 // one f-hole's solved arcs stitched into a single closed outline, the way the render draws them
 // but as one path; `flip` mirrors it to the bass side. The eye arcs aren't on the solve: they are
 // cheap to re-derive from what is. The notches are cut into the stem's runs while the placement
 // has them on. Null while any arc of the outline is missing
-export function fholePath(p: ViolinFamilyParams, s: FholeContoursSolve, flip: boolean, renderEyes = true): string | null {
+export function defineFholePath(p: ViolinFamilyParams, s: FholeContoursSolve, flip: boolean, renderEyes = true): string | null {
   const f = p.fHoles!;
   const k = p.fHoleContours!;
   const needed = [s.U1, s.U2, s.U3, s.L1, s.L2, s.L3, s.S1, s.S2, s.S3, s.S4, ...(k.U21DoubleArc ? [s.U21] : []), ...(k.L21DoubleArc ? [s.L21] : [])];
   if (needed.some(arc => !arc) || !s.UTip || !s.LTip) return null;
-  const xf = flip ? flipArcAboutY : (arc: Arc) => arc;
-  const pxf = flip ? flipPointAboutY : (pt: Pt) => pt;
   const upperCutAngle = k.UCut.angleOnEye * TURN.degree;
   const lowerCutAngle = k.LCut.angleOnEye * TURN.degree;
 
@@ -352,31 +374,89 @@ export function fholePath(p: ViolinFamilyParams, s: FholeContoursSolve, flip: bo
   const outerStemBottom = pointOnCircle(s.S4!, s.S4!.start);
   const innerStemTop = pointOnCircle(s.S1!, s.S1!.start);
   const innerStemBottom = pointOnCircle(s.S3!, s.S3!.end);
-  const notches = f.notches ? fholeNotches(f, s.LTip) : null;
-  const run = (from: Pt, to: Pt, notch: FholeNotch | null) => pathFromPolyline([from, ...(notch ? notchOnRun(notch, from, to) : []), to].map(pxf));
+  const notches = f.notches ? calcFholeNotches(f, s.LTip) : null;
 
   const paths = [
-    renderEyes ? pathFromArcLongWay(xf(upperEyeArc)) : pathFromArc(xf(upperEyeArc)),
-    pathFromArc(xf(s.U1!)),
-    pathFromArc(xf(s.U2!)),
-    ...(k.U21DoubleArc ? [pathFromArc(xf(s.U21!))] : []),
-    pathFromArc(xf(s.S2!)),
-    run(outerStemTop, outerStemBottom, notches && notches.outer),
-    pathFromArc(xf(s.S4!)),
-    pathFromArc(xf(s.L3!)),
-    pathFromLine(pxf(s.LTip), pxf(lowerCutPt)),
-    renderEyes ? pathFromArcLongWay(xf(lowerEyeArc)) : pathFromArc(xf(lowerEyeArc)),
-    pathFromArc(xf(s.L1!)),
-    pathFromArc(xf(s.L2!)),
-    ...(k.L21DoubleArc ? [pathFromArc(xf(s.L21!))] : []),
-    pathFromArc(xf(s.S3!)),
-    run(innerStemBottom, innerStemTop, notches && notches.inner),
-    pathFromArc(xf(s.S1!)),
-    pathFromArc(xf(s.U3!)),
-    pathFromLine(pxf(s.UTip), pxf(upperCutPt)),
+    renderEyes ? pathFromArcLongWay(flipArcIf(upperEyeArc, flip)) : pathFromArc(flipArcIf(upperEyeArc, flip)),
+    pathFromArc(flipArcIf(s.U1!, flip)),
+    pathFromArc(flipArcIf(s.U2!, flip)),
+    ...(k.U21DoubleArc ? [pathFromArc(flipArcIf(s.U21!, flip))] : []),
+    pathFromArc(flipArcIf(s.S2!, flip)),
+    defineStemRun(outerStemTop, outerStemBottom, notches && notches.outer, flip),
+    pathFromArc(flipArcIf(s.S4!, flip)),
+    pathFromArc(flipArcIf(s.L3!, flip)),
+    pathFromLine(flipPointIf(s.LTip, flip), flipPointIf(lowerCutPt, flip)),
+    renderEyes ? pathFromArcLongWay(flipArcIf(lowerEyeArc, flip)) : pathFromArc(flipArcIf(lowerEyeArc, flip)),
+    pathFromArc(flipArcIf(s.L1!, flip)),
+    pathFromArc(flipArcIf(s.L2!, flip)),
+    ...(k.L21DoubleArc ? [pathFromArc(flipArcIf(s.L21!, flip))] : []),
+    pathFromArc(flipArcIf(s.S3!, flip)),
+    defineStemRun(innerStemBottom, innerStemTop, notches && notches.inner, flip),
+    pathFromArc(flipArcIf(s.S1!, flip)),
+    pathFromArc(flipArcIf(s.U3!, flip)),
+    pathFromLine(flipPointIf(s.UTip, flip), flipPointIf(upperCutPt, flip)),
   ];
 
   return unifyConnectedSvgPaths(paths);
+}
+
+// where a wing ends on its own circle, from the angle it meets the cut at: its tangent at the
+// tip stands (90° − angle) round from the cut's own direction, the upper wing turning one way
+// round the tip and the lower the other
+function calcWingEnd(cut: FholeCutParams, angle: number, up: 1 | -1): number {
+  return (cut.slope + up * (90 - angle)) * TURN.degree;
+}
+
+function calcStemEdgeSegment(pt: Pt, stemAngle: number, stemHalf: number): [Pt, Pt] {
+  return [
+    new Pt(pt.x - Math.cos(stemAngle) * stemHalf, pt.y - Math.sin(stemAngle) * stemHalf),
+    new Pt(pt.x + Math.cos(stemAngle) * stemHalf, pt.y + Math.sin(stemAngle) * stemHalf),
+  ];
+}
+
+function buildShoulderMiss(
+  section: string,
+  key: 'U1' | 'L1',
+  shoulderR: number,
+  eye: Circle,
+  shoulderY: number,
+  bound: number,
+  up: 1 | -1,
+  unsolved: FholeArcKey[],
+): FholeFailure {
+  return {
+    message: up * (shoulderY - eye.y) > 0
+      ? `${section}: ${key} can't touch the eye and still reach the rise. Reduce Rise, or enlarge ${key}.`
+      : `${section}: the rise is too small for ${key} to touch the eye. Increase Rise.`,
+    unsolved,
+    circles: [new Circle(eye.x, eye.y + up * Math.abs(shoulderR - eye.r), shoulderR)],
+    segments: [[new Pt(eye.x - shoulderR, bound), new Pt(eye.x + shoulderR, bound)]],
+  };
+}
+
+// the stem arc wraps `reach` from `side` of the edge, so it can only fail two ways: `reach`
+// already pokes across the edge, or it sits clear and the stem arc is too small to span the gap
+function buildStemMiss(
+  section: string,
+  reachKey: FholeArcKey,
+  reach: Circle,
+  stemKey: 'S1' | 'S2' | 'S3' | 'S4',
+  edge: Line,
+  edgeSegment: [Pt, Pt],
+  edgeName: string,
+  side: 1 | -1,
+  shrink: string,
+): FholeFailure {
+  let normal = tangentUnitVectorFromLine(edge);
+  let clearance = side * (reach.x * normal.a + (reach.y - edge.y) * normal.b) - reach.r;
+  return {
+    message: clearance < 0
+      ? `${section}: ${reachKey} crosses the ${edgeName} stem edge before it can turn onto it. ${shrink}, or widen the stem.`
+      : `${section}: ${stemKey} can't bridge from ${reachKey} to the ${edgeName} stem edge. Enlarge the stem Arc Radius.`,
+    unsolved: [reachKey, stemKey],
+    circles: [reach],
+    segments: [edgeSegment],
+  };
 }
 
 // a later panel reads the holes by calling this; it returns and never writes to the params. Four
@@ -395,78 +475,24 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
   let stemAngle = f.stem.angle * deg;
   let stemSlope = Math.tan(stemAngle);
   // the edges stand half the width either side of the centre, square across the stem
-  let { inner: innerStemPt, outer: outerStemPt } = stemEdgePoints(f.stem);
+  let { inner: innerStemPt, outer: outerStemPt } = calcStemEdgePoints(f.stem);
   let outerStemLine = lineFromPointAndSlope(outerStemPt, stemSlope);
   let innerStemLine = lineFromPointAndSlope(innerStemPt, stemSlope);
 
-  // where a wing ends on its own circle, from the angle it meets the cut at: its tangent at the
-  // tip stands (90° − angle) round from the cut's own direction, the upper wing turning one way
-  // round the tip and the lower the other
-  let wingEnd = (cut: FholeCutParams, angle: number, up: 1 | -1) => (cut.slope + up * (90 - angle)) * deg;
-
   let stemHalf = dist(f.UEye, f.LEye) / 2;
-  let stemEdge = (pt: Pt): [Pt, Pt] => [
-    new Pt(pt.x - Math.cos(stemAngle) * stemHalf, pt.y - Math.sin(stemAngle) * stemHalf),
-    new Pt(pt.x + Math.cos(stemAngle) * stemHalf, pt.y + Math.sin(stemAngle) * stemHalf),
-  ];
-
-  // a field cleared mid-edit fails its own section rather than drawing NaN
-  let blank = (section: string, unsolved: FholeArcKey[], values: number[]): FholeFailure | null =>
-    values.every(Number.isFinite) ? null : { message: `${section}: every field needs a value.`, unsolved, circles: [], segments: [] };
-
-  let shoulderMiss = (
-    section: string,
-    key: 'U1' | 'L1',
-    shoulderR: number,
-    eye: Circle,
-    shoulderY: number,
-    bound: number,
-    up: 1 | -1,
-    unsolved: FholeArcKey[],
-  ): FholeFailure => ({
-    message: up * (shoulderY - eye.y) > 0
-      ? `${section}: ${key} can't touch the eye and still reach the rise. Reduce Rise, or enlarge ${key}.`
-      : `${section}: the rise is too small for ${key} to touch the eye. Increase Rise.`,
-    unsolved,
-    circles: [new Circle(eye.x, eye.y + up * Math.abs(shoulderR - eye.r), shoulderR)],
-    segments: [[new Pt(eye.x - shoulderR, bound), new Pt(eye.x + shoulderR, bound)]],
-  });
-
-  // the stem arc wraps `reach` from `side` of the edge, so it can only fail two ways: `reach`
-  // already pokes across the edge, or it sits clear and the stem arc is too small to span the gap
-  let stemMiss = (
-    section: string,
-    reachKey: FholeArcKey,
-    reach: Circle,
-    stemKey: 'S1' | 'S2' | 'S3' | 'S4',
-    edge: Line,
-    edgePt: Pt,
-    edgeName: string,
-    side: 1 | -1,
-    shrink: string,
-  ): FholeFailure => {
-    let normal = tangentUnitVectorFromLine(edge);
-    let clearance = side * (reach.x * normal.a + (reach.y - edge.y) * normal.b) - reach.r;
-    return {
-      message: clearance < 0
-        ? `${section}: ${reachKey} crosses the ${edgeName} stem edge before it can turn onto it. ${shrink}, or widen the stem.`
-        : `${section}: ${stemKey} can't bridge from ${reachKey} to the ${edgeName} stem edge. Enlarge the stem Arc Radius.`,
-      unsolved: [reachKey, stemKey],
-      circles: [reach],
-      segments: [stemEdge(edgePt)],
-    };
-  };
+  let outerStemSegment = calcStemEdgeSegment(outerStemPt, stemAngle, stemHalf);
+  let innerStemSegment = calcStemEdgeSegment(innerStemPt, stemAngle, stemHalf);
 
   // first the upper curve that connects to the eye
   solveSection(s.failures, 'Upper arm', ['U1', 'U2', 'U21', 'S2'], () => {
-    let missing = blank('Upper arm', ['U1', 'U2', 'U21', 'S2'], [k.U1R, k.U1End, k.U2R, k.stemArcR, f.URise, ...(k.U21DoubleArc ? [k.U21R, k.U2Sweep] : [])]);
+    let missing = buildBlankMiss('Upper arm', ['U1', 'U2', 'U21', 'S2'], [k.U1R, k.U1End, k.U2R, k.stemArcR, f.URise, ...(k.U21DoubleArc ? [k.U21R, k.U2Sweep] : [])]);
     if (missing) return missing;
     let upperSplit = k.U21DoubleArc ? { r: k.U21R, after: k.U2Sweep * deg } : null;
 
     let upperBound = f.UEye.y + f.UEye.r + f.URise;
-    let upperShoulder = placeShoulder(f.UEye, k.U1R, k.U1End * deg, k.U2R, upperSplit, upperBound, 1, 1);
+    let upperShoulder = solveShoulder(f.UEye, k.U1R, k.U1End * deg, k.U2R, upperSplit, upperBound, 1, 1);
     if (!upperShoulder)
-      return shoulderMiss('Upper arm', 'U1', k.U1R, f.UEye, upperBound - k.U1R, upperBound, 1, ['U1', 'U2', 'U21', 'S2']);
+      return buildShoulderMiss('Upper arm', 'U1', k.U1R, f.UEye, upperBound - k.U1R, upperBound, 1, ['U1', 'U2', 'U21', 'S2']);
     s.U1 = upperShoulder;
 
     // now continue from the shoulder, we will call this the arm
@@ -485,8 +511,8 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
     let S2 = solveTangentCircleAndLine(outerStemLine, upperStemReach, k.stemArcR, true, 1, f.stem.center);
     if (!S2)
       return upperSplit
-        ? stemMiss('Upper arm', 'U21', upperStemReach, 'S2', outerStemLine, outerStemPt, 'outer', 1, 'Shrink U1, U2 or U21')
-        : stemMiss('Upper arm', 'U2', upperStemReach, 'S2', outerStemLine, outerStemPt, 'outer', 1, 'Shrink U1 or U2');
+        ? buildStemMiss('Upper arm', 'U21', upperStemReach, 'S2', outerStemLine, outerStemSegment, 'outer', 1, 'Shrink U1, U2 or U21')
+        : buildStemMiss('Upper arm', 'U2', upperStemReach, 'S2', outerStemLine, outerStemSegment, 'outer', 1, 'Shrink U1 or U2');
 
     let S2StemIntersect = lineCircleIntersectionWithTolerance(outerStemLine, S2); // we are just kissing the line, sometimes we miss due to floating points
     let S2StemEndAngle = angleFromCenter(S2, S2StemIntersect[0]);
@@ -499,19 +525,19 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
 
   // now we do the upper wing
   solveSection(s.failures, 'Upper wing', ['U3', 'S1'], () => {
-    let missing = blank('Upper wing', ['U3', 'S1'], [k.U3R, k.U3Angle, k.UCut.angleOnEye, k.UCut.slope, k.UCut.length, k.stemArcR]);
+    let missing = buildBlankMiss('Upper wing', ['U3', 'S1'], [k.U3R, k.U3Angle, k.UCut.angleOnEye, k.UCut.slope, k.UCut.length, k.stemArcR]);
     if (missing) return missing;
     let cutStart = pointOnCircle(f.UEye, k.UCut.angleOnEye * deg);
     let cutVector = vectorFromSlope(k.UCut.slope * deg);
     cutVector.mag = k.UCut.length;
     let cutEnd = moveInVectorSpace(cutStart, [cutVector]);
     s.UTip = cutEnd;
-    let U3End = wingEnd(k.UCut, k.U3Angle, 1);
+    let U3End = calcWingEnd(k.UCut, k.U3Angle, 1);
     let cutCircle = placeCircleOnPointAtAngle(k.U3R, cutEnd, U3End);
 
     let S1 = solveTangentCircleAndLine(innerStemLine, cutCircle, k.stemArcR, true, 1, f.stem.center);
     if (!S1)
-      return stemMiss('Upper wing', 'U3', cutCircle, 'S1', innerStemLine, innerStemPt, 'inner', 1, 'Shrink U3 or move its tip with Wing and Slope');
+      return buildStemMiss('Upper wing', 'U3', cutCircle, 'S1', innerStemLine, innerStemSegment, 'inner', 1, 'Shrink U3 or move its tip with Wing and Slope');
 
     let S1U3Pt = circleCircleIntersections(S1, cutCircle);
     let S1StemIntersect = lineCircleIntersectionWithTolerance(innerStemLine, S1);
@@ -524,14 +550,14 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
 
   // now the lower arm, upside down: bound drops below the eye, and the arm meets the inner stem
   solveSection(s.failures, 'Lower arm', ['L1', 'L2', 'L21', 'S3'], () => {
-    let missing = blank('Lower arm', ['L1', 'L2', 'L21', 'S3'], [k.L1R, k.L1End, k.L2R, k.stemArcR, f.LRise, ...(k.L21DoubleArc ? [k.L21R, k.L2Sweep] : [])]);
+    let missing = buildBlankMiss('Lower arm', ['L1', 'L2', 'L21', 'S3'], [k.L1R, k.L1End, k.L2R, k.stemArcR, f.LRise, ...(k.L21DoubleArc ? [k.L21R, k.L2Sweep] : [])]);
     if (missing) return missing;
     let lowerSplit = k.L21DoubleArc ? { r: k.L21R, after: k.L2Sweep * deg } : null;
 
     let lowerBound = f.LEye.y - f.LEye.r - f.LRise;
-    let lowerShoulder = placeShoulder(f.LEye, k.L1R, k.L1End * deg, k.L2R, lowerSplit, lowerBound, -1, -1);
+    let lowerShoulder = solveShoulder(f.LEye, k.L1R, k.L1End * deg, k.L2R, lowerSplit, lowerBound, -1, -1);
     if (!lowerShoulder)
-      return shoulderMiss('Lower arm', 'L1', k.L1R, f.LEye, lowerBound + k.L1R, lowerBound, -1, ['L1', 'L2', 'L21', 'S3']);
+      return buildShoulderMiss('Lower arm', 'L1', k.L1R, f.LEye, lowerBound + k.L1R, lowerBound, -1, ['L1', 'L2', 'L21', 'S3']);
     s.L1 = lowerShoulder;
 
     let lowerArm = inscribeCircleWithinCircle(lowerShoulder, k.L2R, lowerShoulder.end);
@@ -548,8 +574,8 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
     let S3 = solveTangentCircleAndLine(innerStemLine, lowerStemReach, k.stemArcR, true, -1, f.stem.center);
     if (!S3)
       return lowerSplit
-        ? stemMiss('Lower arm', 'L21', lowerStemReach, 'S3', innerStemLine, innerStemPt, 'inner', -1, 'Shrink L1, L2 or L21')
-        : stemMiss('Lower arm', 'L2', lowerStemReach, 'S3', innerStemLine, innerStemPt, 'inner', -1, 'Shrink L1 or L2');
+        ? buildStemMiss('Lower arm', 'L21', lowerStemReach, 'S3', innerStemLine, innerStemSegment, 'inner', -1, 'Shrink L1, L2 or L21')
+        : buildStemMiss('Lower arm', 'L2', lowerStemReach, 'S3', innerStemLine, innerStemSegment, 'inner', -1, 'Shrink L1 or L2');
 
     let S3StemIntersect = lineCircleIntersectionWithTolerance(innerStemLine, S3);
     let S3StemEndAngle = angleFromCenter(S3, S3StemIntersect[0]);
@@ -561,19 +587,19 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
 
   // now the lower wing, which connects to the outer stem
   solveSection(s.failures, 'Lower wing', ['L3', 'S4'], () => {
-    let missing = blank('Lower wing', ['L3', 'S4'], [k.L3R, k.L3Angle, k.LCut.angleOnEye, k.LCut.slope, k.LCut.length, k.stemArcR]);
+    let missing = buildBlankMiss('Lower wing', ['L3', 'S4'], [k.L3R, k.L3Angle, k.LCut.angleOnEye, k.LCut.slope, k.LCut.length, k.stemArcR]);
     if (missing) return missing;
     let cutStart = pointOnCircle(f.LEye, k.LCut.angleOnEye * deg);
     let cutVector = vectorFromSlope(k.LCut.slope * deg);
     cutVector.mag = k.LCut.length;
     let cutEnd = moveInVectorSpace(cutStart, [cutVector]);
     s.LTip = cutEnd;
-    let L3End = wingEnd(k.LCut, k.L3Angle, -1);
+    let L3End = calcWingEnd(k.LCut, k.L3Angle, -1);
     let cutCircle = placeCircleOnPointAtAngle(k.L3R, cutEnd, L3End);
 
     let S4 = solveTangentCircleAndLine(outerStemLine, cutCircle, k.stemArcR, true, -1, f.stem.center);
     if (!S4)
-      return stemMiss('Lower wing', 'L3', cutCircle, 'S4', outerStemLine, outerStemPt, 'outer', -1, 'Shrink L3 or move its tip with Wing and Slope');
+      return buildStemMiss('Lower wing', 'L3', cutCircle, 'S4', outerStemLine, outerStemSegment, 'outer', -1, 'Shrink L3 or move its tip with Wing and Slope');
 
     let S4L3Pt = circleCircleIntersections(S4, cutCircle);
     let S4StemIntersect = lineCircleIntersectionWithTolerance(outerStemLine, S4);
@@ -585,13 +611,13 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
   });
 
   // a half-solved hole won't close
-  if (!s.failures.length) s.path = fholePath(p, s, false);
+  if (!s.failures.length) s.path = defineFholePath(p, s, false);
   return s;
 }
 
 // the contours read back as the seed drew them: the stem arc against the eye span and every other
 // arc against the stem arc
-export function solveFholeContoursRatios(p: ViolinFamilyParams): Partial<FholeRatios> {
+export function calcFholeContoursRatios(p: ViolinFamilyParams): Partial<FholeRatios> {
   let f = p.fHoles;
   let k = p.fHoleContours;
   if (!f || !k) return {};

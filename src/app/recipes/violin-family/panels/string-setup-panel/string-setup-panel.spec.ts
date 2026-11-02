@@ -7,7 +7,7 @@ import {
   fingerboardCrown, fingerboardCrownLine, fingerboardEdgeLine, fingerboardRadiusAt, fingerboardScoopAt, scoopGuideGeometry, solveStringSetup,
   StringSetupPanel,
 } from './string-setup-panel';
-import { NeckPanel, neckHalfWidthAt, scrollOnNeck } from '../neck-panel/neck-panel';
+import { NeckPanel, neckHalfWidthAt, calcScrollOnNeck } from '../neck-panel/neck-panel';
 import { nutThickness, VolutePanel } from '../volute-panel/volute-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
@@ -301,7 +301,7 @@ describe('the scroll set on the neck', () => {
   it('stands the nut at the scroll\'s origin, up the neck its +y and the fingerboard\'s normal its +x', () => {
     const p = seeded();
     const n = solved(p).neck;
-    const m = scrollOnNeck(p, n);
+    const m = calcScrollOnNeck(p, n);
     const angle = p.neck!.angle * TURN.degree;
     expect(dist(applyMatrix(m, new Pt(0, 0)), n.neckTop!)).toBeLessThan(1e-9);
     const up = applyMatrix(m, new Pt(0, 1));

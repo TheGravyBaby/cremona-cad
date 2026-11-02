@@ -28,7 +28,7 @@ import {
 } from '../../violin-family-solves';
 import { defineSideScrollPath, solveScroll } from '../pegbox-panel/pegbox-panel';
 import { duckTailRoundTop } from '../scroll-widths-panel/scroll-widths-panel';
-import { neckTaper } from '../neck-panel/neck-panel';
+import { calcNeckTaper } from '../neck-panel/neck-panel';
 import { showFieldHelp } from '../../../../docs/field-help';
 
 export type VoluteHighlightKey = number | 'S0' | 'S1' | 'S2';
@@ -199,7 +199,7 @@ export const renderScrollNeck = (p: ViolinFamilyParams, s: ScrollSolve, pal: Pan
   // the neck's back, leaning with the taper, runs on up to where the nape meets it, or to the nut's
   // level while it's unsolved
   let backTop = s.nape ? pointOnCircle(s.nape, s.nape.start) : new Pt(-thickness, 0);
-  let backFoot = new Pt(-thickness - neckTaper(p) * stub, -stub);
+  let backFoot = new Pt(-thickness - calcNeckTaper(p) * stub, -stub);
   if (backTop.y > -stub) renderSegment(backFoot, backTop, pal.neutral.faint(5), STROKE_WEIGHT.section)(g, ui);
 
   if (!showGuides || !s.S2) return;

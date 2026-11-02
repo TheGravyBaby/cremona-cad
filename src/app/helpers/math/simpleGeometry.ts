@@ -429,6 +429,11 @@ export function redefineArcCircle(arc: Arc, c: Arc, offset?: number): Arc {
   return arcFromCircle(c, c.start, arc.end);
 }
 
+// the arc from its end's mirror to its end, across the y axis
+export function spanArcAboutY(arc: Arc): Arc {
+  return arcFromCircle(arc, flipAngleAboutYAxis(arc.end), arc.end);
+}
+
 export function flipArcAboutY(arc: Arc): Arc {
   const mirroredCircle = flipCircleAboutY(arc);
   return arcFromCircle(mirroredCircle, flipAngleAboutYAxis(arc.start), flipAngleAboutYAxis(arc.end));

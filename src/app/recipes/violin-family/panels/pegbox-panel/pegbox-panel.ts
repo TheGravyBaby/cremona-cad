@@ -26,7 +26,7 @@ import {
   ScrollSolve,
 } from '../../violin-family-solves';
 import { badArc, longArc, renderScrollNeck, renderVolute, scrollArc, scrollExtent, solveVolute } from '../volute-panel/volute-panel';
-import { neckTaper } from '../neck-panel/neck-panel';
+import { calcNeckTaper } from '../neck-panel/neck-panel';
 
 export type PegboxHighlightKey = 'S3' | 'nape' | 'napeAngle' | 'F0' | 'F1' | 'backStraight' | 'flat' | 'frontStraight' | 'upperThickness';
 export type ScrollLine = 'napeLine' | 'backStraight' | 'flat' | 'frontStraight';
@@ -191,7 +191,7 @@ export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
   if (!s || !s.spiral) return s;
   let v = p.scroll!;
   // the neck's back leans off the fingerboard plane with the taper, thinning on up past the nut
-  let taper = neckTaper(p);
+  let taper = calcNeckTaper(p);
   let lean = Math.atan(taper);
   let nutTop = new Pt(0, p.neck!.nutHeight);
   // a cleared field is null, which passes `>= 0`, so it is asked for first

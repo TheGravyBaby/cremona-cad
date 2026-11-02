@@ -119,7 +119,7 @@ export interface ChannelSolve {
 }
 
 export interface FlutingSolve {
-  outerEdge: string | null;
+  flutingEdge: string | null;
   top: ChannelSolve | null;
   back: ChannelSolve | null;
   failures: FlutingFailure[];

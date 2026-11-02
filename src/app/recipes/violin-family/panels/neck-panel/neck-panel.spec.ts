@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { lineFromTwoPoints, pointOnCircle, shortestDistanceFromPtToLine, vectorFromSlope, TURN } from '../../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../../models/types';
-import { mortiseFloorY, NeckPanel, neckHalfWidthAt, solveNeck } from './neck-panel';
+import { calcMortiseFloorY, NeckPanel, neckHalfWidthAt, solveNeck } from './neck-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
@@ -96,7 +96,7 @@ describe('the nut', () => {
     const p = seeded();
     const s = solved(p);
     expect(dist(s.bottomFront!, s.neckTop!)).toBeCloseTo(p.neck!.length, 9);
-    expect(s.bottomFront!.y).toBeCloseTo(mortiseFloorY(p), 9);
+    expect(s.bottomFront!.y).toBeCloseTo(calcMortiseFloorY(p), 9);
     expect(shortestDistanceFromPtToLine(s.bottomFront!, lineFromTwoPoints(s.root!, s.neckTop!))).toBeLessThan(1e-9);
   });
 
@@ -114,7 +114,7 @@ describe('the nut', () => {
     const p = seeded();
     const s = solved(p);
     expect(2 * neckHalfWidthAt(p, s, s.neckTop!.y)).toBeCloseTo(p.neck!.topWidth, 9);
-    expect(2 * neckHalfWidthAt(p, s, mortiseFloorY(p))).toBeCloseTo(p.neck!.rootWidth, 9);
+    expect(2 * neckHalfWidthAt(p, s, calcMortiseFloorY(p))).toBeCloseTo(p.neck!.rootWidth, 9);
   });
 });
 
@@ -130,7 +130,7 @@ describe('the root', () => {
   it('brings the foot out of the plate at the mortise floor, on the arch\'s own surface', () => {
     const p = seeded();
     const s = solved(p);
-    expect(s.plateAtMortise!.y).toBe(mortiseFloorY(p));
+    expect(s.plateAtMortise!.y).toBe(calcMortiseFloorY(p));
     // the plate's surface is under the fingerboard plane there, and over the rib
     expect(s.plateAtMortise!.x).toBeLessThan(s.bottomFront!.x);
     expect(s.plateAtMortise!.x).toBeGreaterThan(p.arching!.ribHeightUpper);

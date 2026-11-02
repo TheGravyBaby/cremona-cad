@@ -4,7 +4,7 @@ import { angleFromCenter, angleWithinSweep, dist, pointOnCircle } from '../../..
 import { Arc, Pt } from '../../../../models/types';
 import { defineSideScrollPath, scrollLines, solveScroll } from './pegbox-panel';
 import { scrollExtent, VolutePanel } from '../volute-panel/volute-panel';
-import { NeckPanel, neckTaper } from '../neck-panel/neck-panel';
+import { NeckPanel, calcNeckTaper } from '../neck-panel/neck-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
@@ -35,7 +35,7 @@ const heading = (angle: number) => new Pt(-Math.sin(angle), Math.cos(angle));
 // the nape leaves the neck's back along it: on the back, which leans off the fingerboard plane with
 // the neck's taper, and heading up it
 const tangentToBack = (p: ViolinFamilyParams, nape: Arc) => {
-  const taper = neckTaper(p);
+  const taper = calcNeckTaper(p);
   const at = start(nape);
   const h = heading(nape.start);
   expect(at.x).toBeCloseTo(-p.neck!.upperThickness + taper * at.y, 9);
@@ -45,7 +45,7 @@ const tangentToBack = (p: ViolinFamilyParams, nape: Arc) => {
 const tapered = () => {
   const q = seeded();
   q.neck!.lowerThickness = q.neck!.upperThickness + 6;
-  expect(neckTaper(q)).toBeGreaterThan(0.02);
+  expect(calcNeckTaper(q)).toBeGreaterThan(0.02);
   return q;
 };
 

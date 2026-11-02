@@ -6,7 +6,7 @@ import {
   sectionRuns, solveCrossArching, solveCrossArchSection, surfaceZAt,
 } from './cross-arching-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
-import { FlutingPanel, gougeHalfWidth, gougeProfileSlope } from '../fluting-panel/fluting-panel';
+import { FlutingPanel, calcChannelHalfWidth, channelProfileSlopeAt } from '../fluting-panel/fluting-panel';
 import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
@@ -99,16 +99,16 @@ describe('a section', () => {
     const s = solveCrossArchSection(ARCH, HALF, W, D, row)!;
     for (const side of [s.left!, s.right!]) {
       expect(side.tangent).toBe(true);
-      expect(gougeProfileSlope(side.contactS, W, D)).toBeCloseTo(side.slope, 9);
+      expect(channelProfileSlopeAt(side.contactS, W, D)).toBeCloseTo(side.slope, 9);
       expect(side.contactS).toBeGreaterThan(0);
-      expect(side.contactS).toBeLessThan(gougeHalfWidth(W, D));
+      expect(side.contactS).toBeLessThan(calcChannelHalfWidth(W, D));
     }
     expect(s.left!.contactS).toBeCloseTo(s.right!.contactS, 9);
     for (const x of [10, 45, 80, 99]) expect(s.zAt(-x)).toBeCloseTo(s.zAt(x), 9);
     // crown at the arch height, the trough a full depth down, plate level past the cut
     expect(s.zAt(0)).toBeCloseTo(ARCH, 9);
     expect(s.zAt(HALF)).toBeCloseTo(-D, 9);
-    expect(s.zAt(HALF + gougeHalfWidth(W, D))).toBeCloseTo(0, 9);
+    expect(s.zAt(HALF + calcChannelHalfWidth(W, D))).toBeCloseTo(0, 9);
     // no seam where the arch hands over to the channel
     const xEnd = HALF - s.right!.contactS;
     expect(s.zAt(xEnd - 1e-6)).toBeCloseTo(s.zAt(xEnd + 1e-6), 6);
@@ -182,7 +182,7 @@ describe('the surface', () => {
     q.fluting!.cornerGouge = false;
     const s = topSurface(q);
     const poly = s.centerPoly;
-    const w = gougeHalfWidth(s.gouge.width, s.gouge.depth);
+    const w = calcChannelHalfWidth(s.gouge.width, s.gouge.depth);
     let checked = 0;
     for (let i = 0; i < poly.length; i += 23) {
       const prev = poly[(i - 1 + poly.length) % poly.length], next = poly[(i + 1) % poly.length];

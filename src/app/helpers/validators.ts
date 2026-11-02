@@ -70,6 +70,12 @@ export function solveSection<K extends string>(
   }
 }
 
+// a field cleared mid-edit fails its own section rather than drawing NaN
+export function buildBlankMiss<K extends string>(section: string, unsolved: K[], values: number[]): SolveFailure<K> | null {
+  if (values.every(Number.isFinite)) return null;
+  return { message: `${section}: every ${section.toLowerCase()} field needs a value.`, unsolved, circles: [], segments: [] };
+}
+
 export function reportFailures(failures: SolveFailure[], title: string): void {
   if (failures.length) error(failures.map(f => f.message).join(' '), title);
 }

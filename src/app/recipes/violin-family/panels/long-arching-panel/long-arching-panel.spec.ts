@@ -6,7 +6,7 @@ import {
   archZAt, LongArchingPanel, longArchCurve, maxRibTaper, placeOnTopPlate, ribHeightAt, solveLongArch, solveLongArching, solveRibTaper,
   topPlatePlacement,
 } from './long-arching-panel';
-import { FlutingPanel, gougeProfileSlope, gougeProfileZ } from '../fluting-panel/fluting-panel';
+import { FlutingPanel, channelProfileSlopeAt, channelProfileZAt } from '../fluting-panel/fluting-panel';
 import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
@@ -143,8 +143,8 @@ describe('the long arch', () => {
         expect(end.contactS).toBeGreaterThan(0);
         expect(end.contactS).toBeLessThan(la.halfWidth);
         expect(end.takeoffDepth).toBeGreaterThan(0);
-        expect(gougeProfileSlope(end.contactS, g.width, g.depth)).toBeCloseTo(end.slope, 9);
-        expect(-gougeProfileZ(end.contactS, g.width, g.depth)).toBeCloseTo(end.takeoffDepth, 9);
+        expect(channelProfileSlopeAt(end.contactS, g.width, g.depth)).toBeCloseTo(end.slope, 9);
+        expect(-channelProfileZAt(end.contactS, g.width, g.depth)).toBeCloseTo(end.takeoffDepth, 9);
       }
       // the arch runs from its takeoff to the far one, the span inside the channel's centrelines
       expect(la.yStart).toBeCloseTo(la.centerY + la.takeoff.contactS, 9);

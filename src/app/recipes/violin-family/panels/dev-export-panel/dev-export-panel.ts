@@ -6,7 +6,7 @@ import { Matrix2D, pathFromPolyline, pathsBounds, samplePathToPolyline, transfor
 import { buildPolylineIndex, distPointToPolylineIndexed, pointAtPolylineLength, polylineCumulativeLengths, polylineSlice, simplifyPolyline3D } from '../../../../helpers/math/vibeMath';
 import { erodePolygon, flattenPath, offsetPath } from '../../../../helpers/math/pathVibes';
 import { inchFraction } from '../../../../helpers/nearestFraction';
-import { renderCrosshair, renderPath, renderRect, renderText } from '../../../../helpers/renderFuncs';
+import { renderCrosshair, renderPath, renderRect, renderText, renderTranslatedLayers } from '../../../../helpers/renderFuncs';
 import { safeRun } from '../../../../helpers/validators';
 import { Arc, Circle, Pt, Pt3D, Rectangle } from '../../../../models/types';
 import { info } from '../../../../shared/message-emitter';
@@ -18,12 +18,12 @@ import { FholeContoursSolve, MouldRelief, MouldSolve, NeckSolve, PlateContourSol
 import { contourRings, contourSampleSteps, rowAt, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { BACK_ARCH_INK, CHANNEL_INK, TOP_ARCH_INK } from '../long-arching-panel/long-arching-panel';
 import { MOULD_EXPORT_STEP, renderMould, solveMould } from '../mould-panel/mould-panel';
-import { purflingPath, ribArcs, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { definePurflingPath, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
-import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
-import { scrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
+import { solveCenterBout, solveRibArcs } from '../center-bout-panel/center-bout-panel';
+import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
+import { calcScrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
 import { solveScroll } from '../pegbox-panel/pegbox-panel';
 
 // G-code for the maker's own machine, offered on localhost only: the files drive a CNC, and nobody
@@ -592,7 +592,7 @@ export function planExport(p: ViolinFamilyParams, settings: DevExportSettings, b
       let s = p.fHoleContours ? solveFholeContours(p) : null;
       if (!surface || !seat || !o || !s?.path) return null;
       let toolpaths = fholeToolpaths(p, s, surface, seat, o, bit, c, settings.fholes, fine);
-      return { toolpaths, layers: [renderOutline(surface, pal), renderHole(o, c.plate, pal), renderLines([s.path, fholePath(p, s, true)], pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, c, pal)] };
+      return { toolpaths, layers: [renderOutline(surface, pal), renderHole(o, c.plate, pal), renderLines([s.path, defineFholePath(p, s, true)], pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, c, pal)] };
     }
     case 'scroll': {
       let n = solveNeck(p), s = solveScroll(p);
@@ -606,14 +606,8 @@ export function planExport(p: ViolinFamilyParams, settings: DevExportSettings, b
 }
 
 // the panel drawn in the machine's coordinates: shifted by the sheet offset, so the canvas origin
-// is the file's XY zero and a point read off the canvas is the X and Y the file sends. The ui
-// group is Y-flipped, so its shift mirrors
-export const inSheet = (tp: Toolpaths, layers: RenderLayer[]): RenderLayer => (g: any, ui: any): void => {
-  let { x, y } = tp.sheetOffset;
-  let gs = g.append('g').attr('transform', `translate(${x},${y})`);
-  let uis = ui.append('g').attr('transform', `translate(${x},${-y})`);
-  for (let layer of layers) layer(gs, uis);
-};
+// is the file's XY zero and a point read off the canvas is the X and Y the file sends
+export const inSheet = (tp: Toolpaths, layers: RenderLayer[]): RenderLayer => renderTranslatedLayers(layers, tp.sheetOffset.x, tp.sheetOffset.y);
 
 // the stock as the machine sees it, drawn round the part: its outline dashed, its size written
 // above it in both units, the XY zero marked; where the stock sits in a harness, the zero is the
@@ -1069,7 +1063,7 @@ export function purflingToolpaths(p: ViolinFamilyParams, surface: PlateSurface, 
   if (!(g.purflingDepth > 0)) fail(out, 'The strip height has to be above 0.');
   if (!bit.feeds) fail(out, 'No feeds for this bit.');
   if (out.failures.length) return out;
-  let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+  let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
   if (!rib) return fail(out, 'The rib outline has to solve first.');
   let thickness = p.arching![g.plate].thickness;
   let inset = p.body.overhang + p.body.rib;
@@ -1084,7 +1078,7 @@ export function purflingToolpaths(p: ViolinFamilyParams, surface: PlateSurface, 
   out.caution = SURFACED_PLATE;
   out.notes.push(`Channel ${width} wide in ${across} pass${across === 1 ? '' : 'es'} across, ${rounds.length} round${rounds.length === 1 ? '' : 's'} down to ${g.purflingDepth} under the edge`);
   for (let [i, off] of offsets.entries()) {
-    let d = purflingPath(p, rib, inset - o.purflingOffset + off);
+    let d = definePurflingPath(p, rib, inset - o.purflingOffset + off);
     if (!d) return fail(out, 'The purfling line would not offset for this pass: the corners no longer meet.');
     let ring = samplePathToPolyline(d, fine ? 0.25 : 1);
     if (signedPolygonArea(ring) < 0) ring.reverse();
@@ -1178,7 +1172,7 @@ export function fholeToolpaths(p: ViolinFamilyParams, s: FholeContoursSolve, sur
   out.passes = 1;
   out.floorZ = Infinity;
   for (let [side, flip] of [['treble', false], ['bass', true]] as const) {
-    let d = fholePath(p, s, flip);
+    let d = defineFholePath(p, s, flip);
     let ring = d ? flattenPath(d, step)[0] ?? [] : [];
     if (ring.length > 1 && dist(ring[0], ring[ring.length - 1]) < 1e-6) ring.pop();
     if (ring.length < 3) return fail(out, 'The f-hole outline has to solve whole first.');
@@ -1290,7 +1284,7 @@ export interface SideOutline {
 }
 
 export function sideOutline(p: ViolinFamilyParams, n: NeckSolve, s: ScrollSolve): SideOutline {
-  let [a, b, c, d, tx, ty] = scrollOnNeck(p, n);
+  let [a, b, c, d, tx, ty] = calcScrollOnNeck(p, n);
   // the frame is turned by the neck's lean and moved to the nut's foot, so undoing it is the
   // transpose on the difference, and an angle loses the lean
   let toScroll = (q: Pt): Pt => new Pt(a * (q.x - tx) + b * (q.y - ty), c * (q.x - tx) + d * (q.y - ty));

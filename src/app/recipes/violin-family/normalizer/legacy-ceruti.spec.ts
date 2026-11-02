@@ -5,7 +5,7 @@ import { solveMainBouts } from '../panels/main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../panels/corners-panel/corners-panel';
 import { solveCenterBout } from '../panels/center-bout-panel/center-bout-panel';
 import { solvePlateContour } from '../panels/plate-contour-panel/plate-contour-panel';
-import { gougeSweep, solveFluting } from '../panels/fluting-panel/fluting-panel';
+import { calcChannelSweep, solveFluting } from '../panels/fluting-panel/fluting-panel';
 import { solveFholeContours } from '../panels/fhole-contours-panel/fhole-contours-panel';
 import { solveLongArching } from '../panels/long-arching-panel/long-arching-panel';
 import { solveMould } from '../panels/mould-panel/mould-panel';
@@ -120,8 +120,8 @@ describe.each(LEGACY)('a legacy Ceruti file: %s', (name, file) => {
   it('cuts each channel with the gouge it typed', () => {
     for (const [ours, theirs] of [[p.fluting?.top, c.arching?.top?.fluting], [p.fluting?.back, c.arching?.bottom?.fluting]]) {
       if (!theirs) continue;
-      expect(Math.abs(gougeSweep(ours!.width, ours!.depth) - theirs.sweepRadius)).toBeLessThan(TOL);
-      if (theirs.sweepRadius_cBout != null) expect(Math.abs(gougeSweep(ours!.cBoutWidth, ours!.depth) - theirs.sweepRadius_cBout)).toBeLessThan(TOL);
+      expect(Math.abs(calcChannelSweep(ours!.width, ours!.depth) - theirs.sweepRadius)).toBeLessThan(TOL);
+      if (theirs.sweepRadius_cBout != null) expect(Math.abs(calcChannelSweep(ours!.cBoutWidth, ours!.depth) - theirs.sweepRadius_cBout)).toBeLessThan(TOL);
     }
     if (p.fluting) expect(unsolved(solveFluting(p))).toEqual([]);
     if (p.arching) expect(unsolved(solveLongArching(p))).toEqual([]);

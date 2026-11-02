@@ -1,5 +1,5 @@
 import { Pt, Circle, Line, Rectangle, Arc } from "../models/types";
-import { angleFromCenter, normalizeRadians, pointOnCircle, TURN } from "./math/simpleGeometry";
+import { angleFromCenter, flipArcAboutY, flipPointAboutY, normalizeRadians, pointOnCircle, TURN } from "./math/simpleGeometry";
 import { arcPathData } from "./math/pathMath";
 import { SolveFailure } from "./validators";
 import { DASH, STROKE_WEIGHT } from "../theme/palettes";
@@ -576,6 +576,13 @@ export const renderRectRoundedCorners = (rect: Rectangle, r: number, color: stri
         .attr("vector-effect", "non-scaling-stroke");
 }   
 
+// the ui layer is Y-flipped, so its shift mirrors
+export const renderTranslatedLayers = (layers: ((g: any, ui: any) => void)[], x: number, y: number = 0) => (g: any, ui: any) => {
+    const shiftedG = g.append("g").attr("transform", `translate(${x},${y})`);
+    const shiftedUi = ui.append("g").attr("transform", `translate(${x},${-y})`);
+    for (const layer of layers) layer(shiftedG, shiftedUi);
+}
+
 export const renderArcFromArc = (arc: Arc, color: string, strokeWidth: number = 1, longArc = false) => (g: any, ui: any) => {
     const cx = arc.x;
     const cy = arc.y;
@@ -609,6 +616,11 @@ export const renderArcFromArc = (arc: Arc, color: string, strokeWidth: number = 
         .attr("vector-effect", "non-scaling-stroke");
 }
 
+export const renderMirroredArc = (arc: Arc, color: string, strokeWidth: number = 1, longArc = false) => (g: any, ui: any) => {
+    renderArcFromArc(arc, color, strokeWidth, longArc)(g, ui);
+    renderArcFromArc(flipArcAboutY(arc), color, strokeWidth, longArc)(g, ui);
+}
+
 // this just has some display features that will help the user understand what is going on
 export const renderArcFromArcFancy = (arc: Arc, color: string, longArc = false) => (g: any, ui: any) => {
     let start: Pt = pointOnCircle(arc, arc.start);
@@ -622,9 +634,19 @@ export const renderArcFromArcFancy = (arc: Arc, color: string, longArc = false) 
 
 }
 
+export const renderMirroredArcFancy = (arc: Arc, color: string, longArc = false) => (g: any, ui: any) => {
+    renderArcFromArcFancy(arc, color, longArc)(g, ui);
+    renderArcFromArcFancy(flipArcAboutY(arc), color, longArc)(g, ui);
+}
+
 export const renderArcHalo = (arc: Arc, color: string, haloWidth = 12, opacity = .33, longArc = false) => (g: any, ui: any) => {
     const group = g.append("g").attr("opacity", opacity).attr("data-decoration", "");
     renderArcFromArc(arc, color, haloWidth, longArc)(group, ui);
+}
+
+export const renderMirroredSegment = (P: Pt, Q: Pt, color: string, strokeWidth: number = 1) => (g: any, ui: any) => {
+    renderSegment(P, Q, color, strokeWidth)(g, ui);
+    renderSegment(flipPointAboutY(P), flipPointAboutY(Q), color, strokeWidth)(g, ui);
 }
 
 export const renderSegmentHalo = (P: Pt, Q: Pt, color: string, haloWidth = 12, opacity = .33) => (g: any, ui: any) => {

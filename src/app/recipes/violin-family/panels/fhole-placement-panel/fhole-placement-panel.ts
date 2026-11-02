@@ -2,13 +2,13 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections } from '../../../../helpers/math/draftMath';
 import {
-  angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, dist, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY,
+  angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, dist, flipCircleAboutY, flipPointAboutY, flipRectAboutY,
   lineCircleIntersection, lineFromPointAndSlope, pointOnCircle, TURN,
 } from '../../../../helpers/math/simpleGeometry';
 import { pathFromPolyline } from '../../../../helpers/math/pathMath';
 import { nearestFraction, nearestSmallFraction } from '../../../../helpers/nearestFraction';
 import {
-  renderArcFromArcFancy, renderCircle, renderDashedLine, renderPath, renderRect, renderSegment, renderSmallCrosshair,
+  renderArcFromArcFancy, renderCircle, renderDashedLine, renderMirroredArcFancy, renderMirroredSegment, renderPath, renderRect, renderSmallCrosshair,
 } from '../../../../helpers/renderFuncs';
 import { safeRun } from '../../../../helpers/validators';
 import { Arc, Circle, Pt, Rectangle } from '../../../../models/types';
@@ -19,8 +19,8 @@ import { FholePlacementParams, FholeStemParams, RenderLayer, ViolinFamilyPanel, 
 import { FHOLE_SEED_RATIOS, FholeRatios } from '../../violin-family-seed';
 import { renderBoutBounds, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
-import { purflingPath, ribArcs, RibArcs, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { solveCenterBout, solveRibArcs, RibArcs } from '../center-bout-panel/center-bout-panel';
+import { definePurflingPath, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFlutingInnerEdge, solveFluting } from '../fluting-panel/fluting-panel';
 import { renderFholes, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { showFieldHelp } from '../../../../docs/field-help';
@@ -28,6 +28,16 @@ import { showFieldHelp } from '../../../../docs/field-help';
 // Where the two f-holes sit on the top plate: the eyes first, everything else hung off them. The
 // stage is all typed values, so there is nothing to solve here beyond the box the eyes and rises
 // carve out; the contours panel bends the outline between them. Panel and renders, then ratios.
+
+// to the quarter millimetre, as the eyes are measured and the cuts' field steps
+export function roundToQuarter(v: number): number {
+  return Math.round(v * 4) / 4;
+}
+
+// to a hundredth, as the fields show them
+function roundToHundredth(v: number): number {
+  return Math.round(v * 100) / 100;
+}
 
 @Component({
   selector: 'app-vf-f-hole-placement-panel',
@@ -45,33 +55,29 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
   // where two guide circles meet, and the stem seated in the frame the eyes and rises carve out
   static seed(p: ViolinFamilyParams): void {
     if (p.fHoles || !p.corners || !p.plateContour) return;
-    let waist = solveWaist(p);
+    let waist = calcWaist(p);
     if (!waist || !solvePlateContour(p)?.top) return;
     let r = FHOLE_SEED_RATIOS;
     let lowerCorner = p.corners.LCr;
-    // eyes to the quarter millimetre, as they are measured
-    let quarter = (v: number) => Math.round(v * 4) / 4;
-    let lowerEyeR = quarter(p.body.width * r.LEyetoW);
+    let lowerEyeR = roundToQuarter(p.body.width * r.LEyetoW);
     let lowerEye = new Circle(lowerCorner.x * r.LEyeXtoLCX, lowerCorner.y * r.LEyeYtoLCY, lowerEyeR);
 
     let eyeSpan = new Circle(lowerEye.x, lowerEye.y, dist(lowerEye, waist) * r.EyeSpantoWaist);
     let waistGuide = new Circle(waist.x, waist.y, waist.x * r.UEyeGuidetoWaist);
     let upperEyeCenter = circleCircleIntersections(eyeSpan, waistGuide)[0];
     if (!upperEyeCenter) return;
-    let upperEye = new Circle(upperEyeCenter.x, upperEyeCenter.y, quarter(lowerEyeR * r.UEyetoLEye));
+    let upperEye = new Circle(upperEyeCenter.x, upperEyeCenter.y, roundToQuarter(lowerEyeR * r.UEyetoLEye));
 
-    // to a hundredth, as the fields show them
-    let tidy = (v: number) => Math.round(v * 100) / 100;
     let f: FholePlacementParams = {
-      UEye: new Circle(tidy(upperEye.x), tidy(upperEye.y), upperEye.r),
-      LEye: new Circle(tidy(lowerEye.x), tidy(lowerEye.y), lowerEyeR),
-      URise: tidy(upperEye.r * r.URisetoUEye),
-      LRise: tidy(lowerEye.r * r.LRisetoLEye),
-      stem: { center: new Pt(0, 0), width: tidy(upperEye.r * r.StemWtoUEye), angle: r.stemAngle },
+      UEye: new Circle(roundToHundredth(upperEye.x), roundToHundredth(upperEye.y), upperEye.r),
+      LEye: new Circle(roundToHundredth(lowerEye.x), roundToHundredth(lowerEye.y), lowerEyeR),
+      URise: roundToHundredth(upperEye.r * r.URisetoUEye),
+      LRise: roundToHundredth(lowerEye.r * r.LRisetoLEye),
+      stem: { center: new Pt(0, 0), width: roundToHundredth(upperEye.r * r.StemWtoUEye), angle: r.stemAngle },
       notches: true,
     };
-    let frame = fholeBounds(f);
-    f.stem.center = new Pt(tidy(frame.Pt1.x + frame.width! * r.StemXtoFrame), tidy(frame.Pt2.y + frame.height! * r.StemYtoFrame));
+    let frame = calcFholeBounds(f);
+    f.stem.center = new Pt(roundToHundredth(frame.Pt1.x + frame.width! * r.StemXtoFrame), roundToHundredth(frame.Pt2.y + frame.height! * r.StemYtoFrame));
     p.fHoles = f;
   }
 
@@ -115,26 +121,25 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
     safeRun(() => {
       let p = this.params;
       let f = p.fHoles!;
-      let bounds = fholeBounds(f);
+      let bounds = calcFholeBounds(f);
       this.boundsHtoW = bounds.width ? nearestFraction(bounds.height! / bounds.width) : '–';
       this.eyeDistance = Math.round(dist(f.UEye, f.LEye) * 100) / 100;
       this.eyeAngle = Math.round(angleFromCenter(f.LEye, f.UEye) / TURN.degree * 10) / 10;
       // across the two stems' inner edges at the stem's height, where the pair is mirrored about x = 0
-      this.stemGap = Math.round(2 * stemEdgeAt(f.stem, stemEdgePoints(f.stem).inner, f.stem.center.y).x * 100) / 100;
+      this.stemGap = Math.round(2 * stemEdgeAt(f.stem, calcStemEdgePoints(f.stem).inner, f.stem.center.y).x * 100) / 100;
       // the top edge down to the notch line, the stop as the trade reads it off a finished top
       this.notchStop = Math.round((p.body.height - f.stem.center.y) * 100) / 100;
-      this.ratios = solveFholePlacementRatios(p);
-      let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+      this.ratios = calcFholePlacementRatios(p);
+      let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
       let layers: RenderLayer[] = [renderFholePlate(p, this.pal, rib, false)];
       if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
       if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, ThemeService.getPalette('classicCremona')));
       if (this.flags.showFholePlacementGuides && rib) layers.push(renderFholeEyePlacementGuides(p, rib, this.pal));
       if (this.flags.showBeardGuides) layers.push(renderBeardBoxes(p, ThemeService.getPalette('classicCremona')));
       if (this.flags.showFholeBounds) layers.push(renderFholeBounds(f, this.pal));
-      layers.push(renderFholeRise(f, this.pal), renderFholeStem(f, this.pal), renderFholeEyes(f, this.pal));
       // the outer notch is struck from the lower wing's tip, so it waits on the contours
       let contours = p.fHoleContours ? solveFholeContours(p) : null;
-      if (f.notches) layers.push(renderFholeNotches(f, contours?.LTip ?? null, this.pal));
+      layers.push(renderFholePlacement(f, contours?.LTip ?? null, this.pal));
       this.drawn.emit(layers);
     });
   }
@@ -147,7 +152,7 @@ const STEM_ANGLE_RANGE = [90, 102];
 
 // the stem's edges where the perpendicular through its centre meets them: the width is measured
 // square across the stem, as calipers read it, and the notches are set from these points
-export const stemEdgePoints = (stem: FholeStemParams): { inner: Pt; outer: Pt } => {
+export const calcStemEdgePoints = (stem: FholeStemParams): { inner: Pt; outer: Pt } => {
   const angle = stem.angle * TURN.degree;
   const across = { x: Math.sin(angle) * stem.width / 2, y: -Math.cos(angle) * stem.width / 2 };
   return {
@@ -156,18 +161,15 @@ export const stemEdgePoints = (stem: FholeStemParams): { inner: Pt; outer: Pt } 
   };
 };
 
-// where the edge through `edge` passes at height y
-export const stemEdgeAt = (stem: FholeStemParams, edge: Pt, y: number): Pt => new Pt(edge.x + (y - edge.y) * stemRun(stem), y);
-
-// the stem's lean as a run per unit of rise, the form every line through the stem is drawn in
-export const stemRun = (stem: FholeStemParams): number => {
+// where the edge through `edge` passes at height y, the stem's lean taken as a run per unit of rise
+export const stemEdgeAt = (stem: FholeStemParams, edge: Pt, y: number): Pt => {
   let angle = stem.angle * TURN.degree;
-  return Math.cos(angle) / Math.sin(angle);
+  return new Pt(edge.x + (y - edge.y) * Math.cos(angle) / Math.sin(angle), y);
 };
 
 // the box each eye's radius and rise carve out: top-left from the upper eye, bottom-right from the
 // lower one. Shared with the H to W readout so the ratio always matches what's drawn
-export const fholeBounds = (f: FholePlacementParams): Rectangle => {
+export const calcFholeBounds = (f: FholePlacementParams): Rectangle => {
   const topLeftPt = new Pt(f.UEye.x - f.UEye.r, f.UEye.y + f.UEye.r + f.URise);
   const lowerRightPt = new Pt(f.LEye.x + f.LEye.r, f.LEye.y - f.LEye.r - f.LRise);
   return new Rectangle(topLeftPt, lowerRightPt);
@@ -184,7 +186,7 @@ export const renderFholePlate = (p: ViolinFamilyParams, pal: PanelPalette, rib: 
     for (let d of [o?.purfling, o?.outerPurfling]) if (d) renderPath(d, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   }
   else if (rib) {
-    let inner = purflingPath(p, rib, 0);
+    let inner = definePurflingPath(p, rib, 0);
     if (inner) renderPath(inner, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   }
   renderFholes(p, pal)(g, ui);
@@ -201,11 +203,11 @@ export const renderFlutingEdgeGuide = (p: ViolinFamilyParams) => (g: any, ui: an
 // showFholeBounds. Anything the user can edit is drawn by the contour pass
 export const renderFholeBounds = (f: FholePlacementParams, pal: PanelPalette) => (g: any, ui: any): void => {
   const stem = f.stem;
-  const rect = fholeBounds(f);
+  const rect = calcFholeBounds(f);
   const topLeftPt = rect.Pt1;
   const lowerRightPt = rect.Pt2;
 
-  const edges = stemEdgePoints(stem);
+  const edges = calcStemEdgePoints(stem);
   for (const edge of [edges.inner, edges.outer]) {
     const edgeTop = stemEdgeAt(stem, edge, topLeftPt.y);
     const edgeBottom = stemEdgeAt(stem, edge, lowerRightPt.y);
@@ -224,43 +226,45 @@ export const renderFholeBounds = (f: FholePlacementParams, pal: PanelPalette) =>
     [new Pt(topLeftPt.x - BOUNDS_TICK_HALF_LENGTH, midY), new Pt(topLeftPt.x + BOUNDS_TICK_HALF_LENGTH, midY)],
     [new Pt(lowerRightPt.x - BOUNDS_TICK_HALF_LENGTH, midY), new Pt(lowerRightPt.x + BOUNDS_TICK_HALF_LENGTH, midY)],
   ];
-  for (const [a, b] of ticks) {
-    renderSegment(a, b, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-    renderSegment(flipPointAboutY(a), flipPointAboutY(b), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-  }
+  for (const [a, b] of ticks) renderMirroredSegment(a, b, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
 };
 
 const BOUNDS_TICK_HALF_LENGTH = 1.5;
 
-export const renderFholeRise = (f: FholePlacementParams, pal: PanelPalette) => (g: any, ui: any): void => {
-  for (const [eye, rise, side, color] of [[f.UEye, f.URise, 1, pal.ink(1)], [f.LEye, f.LRise, -1, pal.ink(0)]] as const) {
-    const boundY = eye.y + side * (eye.r + rise);
-    const boundLeft = new Pt(eye.x - eye.r, boundY);
-    const boundRight = new Pt(eye.x + eye.r, boundY);
-    renderSegment(boundLeft, boundRight, color, STROKE_WEIGHT.guide)(g, ui);
-    renderSegment(flipPointAboutY(boundLeft), flipPointAboutY(boundRight), color, STROKE_WEIGHT.guide)(g, ui);
-    const dropTop = new Pt(eye.x, eye.y + side * eye.r);
-    const dropBottom = new Pt(eye.x, boundY);
-    renderDashedLine(dropTop, dropBottom, color, DASH.fine, STROKE_WEIGHT.guide, 0.9)(g, ui);
-    renderDashedLine(flipPointAboutY(dropTop), flipPointAboutY(dropBottom), color, DASH.fine, STROKE_WEIGHT.guide, 0.9)(g, ui);
-  }
-};
-
-export const renderFholeStem = (f: FholePlacementParams, pal: PanelPalette) => (g: any, ui: any): void => {
+// what the panel always draws: each eye's rise, level at its bound with a drop to it from the eye,
+// the stem's edges about its centre, the eyes, and the notches while they're on
+const renderFholePlacement = (f: FholePlacementParams, lowerTip: Pt | null, pal: PanelPalette) => (g: any, ui: any): void => {
   const stem = f.stem, c = stem.center;
-  const edges = stemEdgePoints(stem);
+  const upperBound = f.UEye.y + f.UEye.r + f.URise;
+  const lowerBound = f.LEye.y - f.LEye.r - f.LRise;
+
+  renderMirroredSegment(new Pt(f.UEye.x - f.UEye.r, upperBound), new Pt(f.UEye.x + f.UEye.r, upperBound), pal.ink(1), STROKE_WEIGHT.guide)(g, ui);
+  const upperDropTop = new Pt(f.UEye.x, f.UEye.y + f.UEye.r);
+  const upperDropBottom = new Pt(f.UEye.x, upperBound);
+  renderDashedLine(upperDropTop, upperDropBottom, pal.ink(1), DASH.fine, STROKE_WEIGHT.guide, 0.9)(g, ui);
+  renderDashedLine(flipPointAboutY(upperDropTop), flipPointAboutY(upperDropBottom), pal.ink(1), DASH.fine, STROKE_WEIGHT.guide, 0.9)(g, ui);
+
+  renderMirroredSegment(new Pt(f.LEye.x - f.LEye.r, lowerBound), new Pt(f.LEye.x + f.LEye.r, lowerBound), pal.ink(0), STROKE_WEIGHT.guide)(g, ui);
+  const lowerDropTop = new Pt(f.LEye.x, f.LEye.y - f.LEye.r);
+  const lowerDropBottom = new Pt(f.LEye.x, lowerBound);
+  renderDashedLine(lowerDropTop, lowerDropBottom, pal.ink(0), DASH.fine, STROKE_WEIGHT.guide, 0.9)(g, ui);
+  renderDashedLine(flipPointAboutY(lowerDropTop), flipPointAboutY(lowerDropBottom), pal.ink(0), DASH.fine, STROKE_WEIGHT.guide, 0.9)(g, ui);
 
   // a twelfth of the height the hole occupies, either way off the centre
-  const reach = Math.abs((f.UEye.y + f.UEye.r + f.URise) - (f.LEye.y - f.LEye.r - f.LRise)) / 12;
-
+  const reach = Math.abs(upperBound - lowerBound) / 12;
+  const edges = calcStemEdgePoints(stem);
   for (const edge of [edges.inner, edges.outer]) {
-    const edgeTop = stemEdgeAt(stem, edge, c.y - reach);
-    const edgeBottom = stemEdgeAt(stem, edge, c.y + reach);
-    renderSegment(edgeTop, edgeBottom, pal.ink(2), STROKE_WEIGHT.section)(g, ui);
-    renderSegment(flipPointAboutY(edgeTop), flipPointAboutY(edgeBottom), pal.ink(2), STROKE_WEIGHT.section)(g, ui);
+    renderMirroredSegment(stemEdgeAt(stem, edge, c.y - reach), stemEdgeAt(stem, edge, c.y + reach), pal.ink(2), STROKE_WEIGHT.section)(g, ui);
   }
   renderSmallCrosshair(c, pal.ink(2).faint(5))(g, ui);
   renderSmallCrosshair(flipPointAboutY(c), pal.ink(2).faint(5))(g, ui);
+
+  renderCircle(f.UEye, pal.ink(1))(g, ui);
+  renderCircle(flipCircleAboutY(f.UEye), pal.ink(1))(g, ui);
+  renderCircle(f.LEye, pal.ink(0))(g, ui);
+  renderCircle(flipCircleAboutY(f.LEye), pal.ink(0))(g, ui);
+
+  if (f.notches) renderFholeNotches(f, lowerTip, pal)(g, ui);
 };
 
 // the nicks cut into both edges of the stem, each a shallow V centred on its mark and cut square
@@ -278,22 +282,25 @@ export interface FholeNotch {
   bottom: Pt;
 }
 
+function calcNotchAtMark(mark: Pt, side: -1 | 1, along: { x: number; y: number }, across: { x: number; y: number }, mouth: number, depth: number): FholeNotch {
+  return {
+    top: new Pt(mark.x + mouth / 2 * along.x, mark.y + mouth / 2 * along.y),
+    apex: new Pt(mark.x + side * depth * across.x, mark.y + side * depth * across.y),
+    bottom: new Pt(mark.x - mouth / 2 * along.x, mark.y - mouth / 2 * along.y),
+  };
+}
+
 // the treble hole's two notches, the inner edge's apex toward the centreline and the outer's away.
 // The outer waits on the lower wing's tip: null without one, or when the arc from it can't reach
 // the outer edge
-export const fholeNotches = (f: FholePlacementParams, lowerTip: Pt | null): { inner: FholeNotch; outer: FholeNotch | null } => {
+export const calcFholeNotches = (f: FholePlacementParams, lowerTip: Pt | null): { inner: FholeNotch; outer: FholeNotch | null } => {
   const stem = f.stem;
   const angle = stem.angle * TURN.degree;
   const along = { x: Math.cos(angle), y: Math.sin(angle) };
   const across = { x: Math.sin(angle), y: -Math.cos(angle) };
   const depth = stem.width * NOTCH_TO_STEM.depth;
   const mouth = stem.width * NOTCH_TO_STEM.mouth;
-  const notch = (mark: Pt, side: -1 | 1): FholeNotch => ({
-    top: new Pt(mark.x + mouth / 2 * along.x, mark.y + mouth / 2 * along.y),
-    apex: new Pt(mark.x + side * depth * across.x, mark.y + side * depth * across.y),
-    bottom: new Pt(mark.x - mouth / 2 * along.x, mark.y - mouth / 2 * along.y),
-  });
-  const edges = stemEdgePoints(stem);
+  const edges = calcStemEdgePoints(stem);
   const innerMark = stemEdgeAt(stem, edges.inner, stem.center.y);
   let outerMark: Pt | null = null;
   if (lowerTip) {
@@ -301,24 +308,17 @@ export const fholeNotches = (f: FholePlacementParams, lowerTip: Pt | null): { in
     // the arc crosses the outer edge twice; the notch is the upper crossing
     outerMark = lineCircleIntersection(lineFromPointAndSlope(edges.outer, Math.tan(angle)), reach).sort((a, b) => b.y - a.y)[0] ?? null;
   }
-  return { inner: notch(innerMark, -1), outer: outerMark && notch(outerMark, 1) };
+  return { inner: calcNotchAtMark(innerMark, -1, along, across, mouth, depth), outer: outerMark && calcNotchAtMark(outerMark, 1, along, across, mouth, depth) };
 };
 
 export const renderFholeNotches = (f: FholePlacementParams, lowerTip: Pt | null, pal: PanelPalette) => (g: any, ui: any): void => {
-  const { inner, outer } = fholeNotches(f, lowerTip);
+  const { inner, outer } = calcFholeNotches(f, lowerTip);
   for (const n of [inner, outer]) {
     if (!n) continue;
     const v = [n.top, n.apex, n.bottom];
     renderPath(pathFromPolyline(v), pal.ink(2), STROKE_WEIGHT.section)(g, ui);
     renderPath(pathFromPolyline(v.map(flipPointAboutY)), pal.ink(2), STROKE_WEIGHT.section)(g, ui);
   }
-};
-
-export const renderFholeEyes = (f: FholePlacementParams, pal: PanelPalette) => (g: any, ui: any): void => {
-  renderCircle(f.UEye, pal.ink(1))(g, ui);
-  renderCircle(flipCircleAboutY(f.UEye), pal.ink(1))(g, ui);
-  renderCircle(f.LEye, pal.ink(0))(g, ui);
-  renderCircle(flipCircleAboutY(f.LEye), pal.ink(0))(g, ui);
 };
 
 // the construction the seed placed the eyes by, laid over the plate: the lower corner's line and
@@ -365,7 +365,7 @@ export const renderFholeEyePlacementGuides = (p: ViolinFamilyParams, rib: RibArc
   }
 
   // now find the midpoint between the corners
-  let waistMidPt = solveWaist(p);
+  let waistMidPt = calcWaist(p);
   if (waistMidPt) {
     let distToUpperEyeFromTangent = dist(f.UEye, waistMidPt);
     let upperEyeGuide = new Arc(waistMidPt.x, waistMidPt.y, distToUpperEyeFromTangent, 150 * TURN.degree, 210 * TURN.degree);
@@ -386,29 +386,29 @@ export const renderBeardBoxes = (p: ViolinFamilyParams, pal: PanelPalette) => (g
   // its foot falls within 1.5 mm of the lower eye centres on the served violins
   renderRect(new Rectangle(new Pt(-h / 9, 7 * h / 18), new Pt(h / 9, 11 * h / 18)), pal.ink(3), 'none', STROKE_WEIGHT.guide, DASH.hidden)(g, ui);
 
-  let waist = solveWaist(p);
+  let waist = calcWaist(p);
   renderDashedLine(new Pt(-waist.x, waist.y), new Pt(waist.x, waist.y), pal.neutral, DASH.guide, STROKE_WEIGHT.guide)(g, ui);
   let long = new Arc(f.LEye.x, f.LEye.y, waist.y - f.LEye.y, TURN.quarter, angleFromCenter(f.LEye, f.UEye) + 10 * TURN.degree);
   let edge = new Pt(waist.x + p.body.overhang + p.body.rib, waist.y);
   let half = new Arc(edge.x, edge.y, long.r / 2, TURN.half, angleFromCenter(edge, f.UEye) + 10 * TURN.degree);
   
-  for (let arc of [long, flipArcAboutY(long)]) renderArcFromArcFancy(arc, pal.ink(0))(g, ui);
+  renderMirroredArcFancy(long, pal.ink(0))(g, ui);
   // this one misses a lot, hard to know where the waist really is
   // for (let arc of [half, flipArcAboutY(half)]) renderArcFromArcFancy(arc, pal.ink(1))(g, ui);
 };
 
 // where the waist meets the centre bout's own arc: the point the upper eye's guides are struck from
-export function solveWaist(p: ViolinFamilyParams): Pt | null {
+export function calcWaist(p: ViolinFamilyParams): Pt | null {
   let C0 = solveCenterBout(p)?.C0;
   return C0 ? new Pt(C0.x - C0.r, C0.y) : null;
 }
 
 // the placement read back as the fractions it was seeded by; the guide ratios only once the
 // corners and the waist are there to measure against
-export function solveFholePlacementRatios(p: ViolinFamilyParams): Partial<FholeRatios> {
+export function calcFholePlacementRatios(p: ViolinFamilyParams): Partial<FholeRatios> {
   let f = p.fHoles;
   if (!f) return {};
-  let frame = fholeBounds(f);
+  let frame = calcFholeBounds(f);
   let r: Partial<FholeRatios> = {
     LEyetoW: f.LEye.r / p.body.width,
     UEyetoLEye: f.UEye.r / f.LEye.r,
@@ -423,7 +423,7 @@ export function solveFholePlacementRatios(p: ViolinFamilyParams): Partial<FholeR
     r.LEyeXtoLCX = f.LEye.x / LCr.x;
     r.LEyeYtoLCY = f.LEye.y / LCr.y;
   }
-  let waist = solveWaist(p);
+  let waist = calcWaist(p);
   if (waist) {
     r.UEyeGuidetoWaist = dist(f.UEye, waist) / waist.x;
     r.EyeSpantoWaist = dist(f.UEye, f.LEye) / dist(f.LEye, waist);

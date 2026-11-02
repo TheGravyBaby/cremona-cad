@@ -4,7 +4,7 @@ import { dist, flipPointAboutY, flipRectAboutY, pointInPolygon } from '../../../
 import { pathsBounds, samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Pt, Rectangle } from '../../../../models/types';
-import { blockLayout, MOULD_EXPORT_STEP, MouldPanel, solveMould } from './mould-panel';
+import { buildBlockLayout, MOULD_EXPORT_STEP, MouldPanel, solveMould } from './mould-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
@@ -168,7 +168,7 @@ describe('the mould solve', () => {
 
 describe('the blocks laid out for cutting', () => {
   it('lays the six blocks out apart, each closed, the upper three marked U and the lower L', () => {
-    const pieces = blockLayout(solved(seeded()));
+    const pieces = buildBlockLayout(solved(seeded()));
     expect(pieces.map(b => b.label).sort()).toEqual(['L', 'L', 'L', 'U', 'U', 'U']);
     for (const piece of pieces) expect(closed(piece.path)).toBe(true);
     const bounds = pieces.map(b => pathsBounds([b.path]));

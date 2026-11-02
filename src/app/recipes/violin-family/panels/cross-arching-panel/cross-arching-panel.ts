@@ -10,7 +10,7 @@ import {
 import { projectedPath, samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import {
   renderCircle, renderDashedLine, renderGuideBaseline, renderGuideKnot, renderGuideMeasure, renderPath, renderPointHalo, renderRect, renderSegment,
-  renderSolveFailures,
+  renderSolveFailures, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { readWorkingState, writeWorkingState } from '../../../../helpers/workingStorage';
@@ -44,12 +44,12 @@ import {
   SurfaceGouge,
   SurfaceRow,
 } from '../../violin-family-solves';
-import { gougeHalfWidth, gougeProfileZ, renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
-import { purflingPath, renderPlateContour, ribArcs, solvePlateContour, PLATE_LAYOUT_GAP } from '../plate-contour-panel/plate-contour-panel';
+import { calcChannelHalfWidth, channelProfileZAt, renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
+import { definePurflingPath, renderPlateContour, solvePlateContour, PLATE_LAYOUT_GAP } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
+import { solveCenterBout, solveRibArcs } from '../center-bout-panel/center-bout-panel';
 import {
   archZAt, BACK_ARCH_INK, CHANNEL_INK, renderBodySideProfile, ribHeightAt, sideViewOffsetX, solveArchTakeoff, solveLongArching, TOP_ARCH_INK,
 } from '../long-arching-panel/long-arching-panel';
@@ -170,7 +170,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
         renderPlateContour(p, o, this.pal, this.flags, false),
         renderFluting(p, f, this.pal, false),
         renderFholes(p, this.pal),
-        (g, ui) => side(g.append('g').attr('transform', `translate(${sideX},0)`), ui.append('g').attr('transform', `translate(${sideX},0)`)),
+        renderTranslatedLayers([side], sideX),
         stationLine,
         this.sectionView(y),
         ...this.overlayLayers(y),
@@ -437,8 +437,8 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     let ribs = solveLongArching(p)!.ribs;
     let o = solvePlateContour(p)!;
     if (this.ribOutline?.for !== o) {
-      let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
-      let path = rib ? purflingPath(p, rib, 0) : null;
+      let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+      let path = rib ? definePurflingPath(p, rib, 0) : null;
       this.ribOutline = { for: o, poly: path ? samplePathToPolyline(path) : null };
     }
     let ribHalf = this.ribOutline.poly ? plateHalfChordAtY(this.ribOutline.poly, y) : null;
@@ -506,10 +506,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
         for (let t of guide.takeoffs) parts.push(renderCircle(new Circle(t.x, zBase + sign * t.y, 0.6), color));
       }
     }
-    return (g: any, ui: any): void => {
-      let frame = { g: g.append('g').attr('transform', `translate(0,${dy})`), ui: ui.append('g').attr('transform', `translate(0,${-dy})`) };
-      for (let part of parts) part(frame.g, frame.ui);
-    };
+    return renderTranslatedLayers(parts, 0, dy);
   }
 }
 
@@ -654,10 +651,10 @@ export function makeCrossArchResolver(cross: CrossArchParams, bodyHeight: number
 // arbitrary station, a seam in the surface exactly at the corner
 export function gougeAtY(g: SurfaceGouge, y: number): { width: number; halfWidth: number } {
   let lo = Math.min(g.lowerCornerY, g.upperCornerY), hi = Math.max(g.lowerCornerY, g.upperCornerY);
-  let band = Math.max(gougeHalfWidth(g.width, g.depth), gougeHalfWidth(g.cBoutWidth, g.depth));
+  let band = Math.max(calcChannelHalfWidth(g.width, g.depth), calcChannelHalfWidth(g.cBoutWidth, g.depth));
   let wC = smoothstep(y, lo - band, lo + band) * (1 - smoothstep(y, hi - band, hi + band));
   let width = g.width + wC * (g.cBoutWidth - g.width);
-  return { width, halfWidth: gougeHalfWidth(width, g.depth) };
+  return { width, halfWidth: calcChannelHalfWidth(width, g.depth) };
 }
 
 // how far up the outer flank a landing must sit, in half widths, before the corner stretch eases out
@@ -671,14 +668,14 @@ const CORNER_EASE_BAND = 0.25;
 // the edge, so the arch's climb runs out flat across the wedge instead of creasing. Never above
 // the flank, so composing by minimum only removes wood
 export function cornerSmoothZ(s: number, edgeDist: number, width: number, depth: number, from = 0): number {
-  let w = gougeHalfWidth(width, depth);
+  let w = calcChannelHalfWidth(width, depth);
   if (w <= 0 || s >= from || edgeDist <= 0) return 0;
   let left = w + from;
   let run = Math.max(edgeDist - s + from, left);
   let u = (from - s) / run;
   let stretch = run / left;
   let ease = 1 + (stretch - 1) * smoothstep(-from, 0, CORNER_EASE_BAND * w);
-  return gougeProfileZ(from - left * (1 - Math.pow(1 - u, ease)), width, depth);
+  return channelProfileZAt(from - left * (1 - Math.pow(1 - u, ease)), width, depth);
 }
 
 interface SideEnd { xEnd: number; zEnd: number }
@@ -783,7 +780,7 @@ const PEAK_TAPER_DEPTHS = 2;
 // the trough, where both sides meet the outer flank. Its offset is tapered by how much crown there
 // is and by how much the chord describes, smoothstepped so the ridge line carries no kink
 export function solveCrossArchSection(archH: number, centerHalf: number, width: number, depth: number, row: CrossArchRow, chordFrac = 1): CrossArchSection | null {
-  let halfWidth = gougeHalfWidth(width, depth);
+  let halfWidth = calcChannelHalfWidth(width, depth);
   if (halfWidth <= 0 || centerHalf <= halfWidth) return null;
   let isCatenary = !!row.catenary;
 
@@ -795,7 +792,7 @@ export function solveCrossArchSection(archH: number, centerHalf: number, width: 
   let peakLimit = 0.9 * Math.max(centerHalf - halfWidth, 0);
   let xPeak = clamp(((row.peak ?? 0.5) - 0.5) * 2 * centerHalf * taper, -peakLimit, peakLimit);
 
-  let endAt = (s: number): SideEnd => ({ xEnd: centerHalf - s, zEnd: gougeProfileZ(s, width, depth) });
+  let endAt = (s: number): SideEnd => ({ xEnd: centerHalf - s, zEnd: channelProfileZAt(s, width, depth) });
   // the seed the sweeps start from; overwritten on the first pass in every case that draws
   let endL = endAt(halfWidth * (1 - 1e-3));
   let endR = endL;
@@ -841,7 +838,7 @@ export function solveCrossArchSection(archH: number, centerHalf: number, width: 
       return isCatenary ? catenarySideZAt(archH, x < 0 ? endL.zEnd : endR.zEnd, x < 0 ? endL.xEnd : endR.xEnd, x) : profile!(x);
     }
     // past the arch's reach the channel is the surface, and past that the flat land
-    return gougeProfileZ(centerHalf - Math.abs(x), width, depth);
+    return channelProfileZAt(centerHalf - Math.abs(x), width, depth);
   };
 
   return {
@@ -1004,10 +1001,10 @@ export function surfaceZAt(surface: PlateSurface, x: number, y: number, row = ro
       let t = (1 - w) * tDist + w * tChord;
       return section.zAt((x < 0 ? -1 : 1) * xEnd * (1 - t));
     }
-    return withCornerPass(surface, row, x, y, s, gougeProfileZ(s, section.width, surface.gouge.depth), Math.min(contact, 0));
+    return withCornerPass(surface, row, x, y, s, channelProfileZAt(s, section.width, surface.gouge.depth), Math.min(contact, 0));
   }
   // past the long arch's reach there is no crown, but the channel still runs through the caps
-  return withCornerPass(surface, row, x, y, s, gougeProfileZ(s, gougeAtY(surface.gouge, y).width, surface.gouge.depth));
+  return withCornerPass(surface, row, x, y, s, channelProfileZAt(s, gougeAtY(surface.gouge, y).width, surface.gouge.depth));
 }
 
 export type SurfacePart = 'arch' | 'channel' | 'land';
@@ -1171,7 +1168,7 @@ function solvePlateSurface(p: ViolinFamilyParams, plate: Plate): { surface: Plat
     let o = solvePlateContour(p)!;
     let channel = f[plate];
     let outline = plate === 'top' ? o.top : o.back;
-    if (!channel || !outline || !f.outerEdge) return fail(`${label}: the fluting channel has to solve first.`);
+    if (!channel || !outline || !f.flutingEdge) return fail(`${label}: the fluting channel has to solve first.`);
     if (!(pa.thickness > 0 && pa.long.height > 0)) return fail(`${label}: the long arch has to solve first.`);
 
     let shapes: CrossShapeParams[] = [cross, ...cross.stations];
@@ -1205,7 +1202,7 @@ function solvePlateSurface(p: ViolinFamilyParams, plate: Plate): { surface: Plat
       width: g.width, depth: g.depth, cBoutWidth: g.useCBoutGouge ? g.cBoutWidth : g.width,
       cornerGouge: p.fluting!.cornerGouge, lowerCornerY: p.corners!.LCr.y, upperCornerY: p.corners!.UCr.y,
     };
-    let flutingEdge = samplePathToPolyline(f.outerEdge);
+    let flutingEdge = samplePathToPolyline(f.flutingEdge);
     let centerPoly = samplePathToPolyline(channel.center, 1);
     surface = {
       outline: samplePathToPolyline(outline),

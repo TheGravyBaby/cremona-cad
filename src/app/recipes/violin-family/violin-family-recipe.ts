@@ -12,13 +12,13 @@ import {
   ViolinFamilyTemplate, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
 } from './violin-family-types';
 import { BaseMeasurementsPanel, solveBodyRatios } from './panels/base-measurements-panel/base-measurements-panel';
-import { MainBoutsPanel, solveMainBouts, solveMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
-import { CornersPanel, solveCornersRatios } from './panels/corners-panel/corners-panel';
-import { CenterBoutPanel, solveCenterBout, solveCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
-import { PlateContourPanel, solvePlateContour, solvePlateContourRatios } from './panels/plate-contour-panel/plate-contour-panel';
+import { MainBoutsPanel, solveMainBouts, calcMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
+import { CornersPanel, calcCornersRatios } from './panels/corners-panel/corners-panel';
+import { CenterBoutPanel, solveCenterBout, calcCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
+import { PlateContourPanel, solvePlateContour, calcPlateContourRatios } from './panels/plate-contour-panel/plate-contour-panel';
 import { FlutingPanel, solveFluting } from './panels/fluting-panel/fluting-panel';
-import { FHolePlacementPanel, solveFholePlacementRatios } from './panels/fhole-placement-panel/fhole-placement-panel';
-import { FHoleContoursPanel, solveFholeContoursRatios } from './panels/fhole-contours-panel/fhole-contours-panel';
+import { FHolePlacementPanel, calcFholePlacementRatios } from './panels/fhole-placement-panel/fhole-placement-panel';
+import { FHoleContoursPanel, calcFholeContoursRatios } from './panels/fhole-contours-panel/fhole-contours-panel';
 import { LongArchingPanel, solveLongArching } from './panels/long-arching-panel/long-arching-panel';
 import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
 import { NeckPanel } from './panels/neck-panel/neck-panel';
@@ -251,12 +251,12 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
     let p = this.d.params;
     this.d.ratios = {
       ...solveBodyRatios(p),
-      ...solveMainBoutsRatios(p),
-      ...solveCornersRatios(p),
-      ...solveCenterBoutRatios(p),
-      ...solvePlateContourRatios(p),
-      ...solveFholePlacementRatios(p),
-      ...solveFholeContoursRatios(p),
+      ...calcMainBoutsRatios(p),
+      ...calcCornersRatios(p),
+      ...calcCenterBoutRatios(p),
+      ...calcPlateContourRatios(p),
+      ...calcFholePlacementRatios(p),
+      ...calcFholeContoursRatios(p),
     };
   }
 

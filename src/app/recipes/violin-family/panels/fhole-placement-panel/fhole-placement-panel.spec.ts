@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { dist, TURN } from '../../../../helpers/math/simpleGeometry';
-import { FHolePlacementPanel, fholeBounds, fholeNotches, solveFholePlacementRatios, stemEdgeAt, stemEdgePoints, stemRun } from './fhole-placement-panel';
+import { FHolePlacementPanel, calcFholeBounds, calcFholeNotches, calcFholePlacementRatios, stemEdgeAt, calcStemEdgePoints } from './fhole-placement-panel';
 import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
@@ -66,7 +66,7 @@ describe('the f-hole placement', () => {
 
   it('carves the box out of the eyes and their rises, taller than it is wide', () => {
     const f = placed().fHoles!;
-    const box = fholeBounds(f);
+    const box = calcFholeBounds(f);
     expect(box.Pt1.x).toBeCloseTo(f.UEye.x - f.UEye.r, 9);
     expect(box.Pt1.y).toBeCloseTo(f.UEye.y + f.UEye.r + f.URise, 9);
     expect(box.Pt2.x).toBeCloseTo(f.LEye.x + f.LEye.r, 9);
@@ -75,13 +75,14 @@ describe('the f-hole placement', () => {
   });
 
   it('leans the stem by its angle: upright runs straight, past upright its top leans toward the upper eye', () => {
-    expect(stemRun({ center: { x: 0, y: 0 }, width: 6, angle: 90 })).toBeCloseTo(0, 9);
-    expect(stemRun({ center: { x: 0, y: 0 }, width: 6, angle: 92 })).toBeLessThan(0);
+    const at = new Pt(0, 0);
+    expect(stemEdgeAt({ center: at, width: 6, angle: 90 }, at, 10).x).toBeCloseTo(0, 9);
+    expect(stemEdgeAt({ center: at, width: 6, angle: 92 }, at, 10).x).toBeLessThan(0);
   });
 
   it('measures the stem square across itself, half the width either side of the centre', () => {
     const stem = { center: new Pt(40, 160), width: 6, angle: 94 };
-    const { inner, outer } = stemEdgePoints(stem);
+    const { inner, outer } = calcStemEdgePoints(stem);
     expect(dist(inner, outer)).toBeCloseTo(stem.width, 9);
     expect((inner.x + outer.x) / 2).toBeCloseTo(stem.center.x, 9);
     expect((inner.y + outer.y) / 2).toBeCloseTo(stem.center.y, 9);
@@ -101,10 +102,10 @@ describe('the f-hole placement', () => {
     const across = (a: Pt, b: Pt) => (b.x - a.x) * Math.sin(angle) - (b.y - a.y) * Math.cos(angle);
     const mid = (n: { top: Pt; bottom: Pt }) => new Pt((n.top.x + n.bottom.x) / 2, (n.top.y + n.bottom.y) / 2);
     const depthOf = (n: { top: Pt; apex: Pt; bottom: Pt }) => across(mid(n), n.apex);
-    const edges = stemEdgePoints(f.stem);
+    const edges = calcStemEdgePoints(f.stem);
     // the lower wing's tip sits below the stem, just outside its outer edge
     const tip = new Pt(stemEdgeAt(f.stem, edges.outer, c.y - 20).x + 3, c.y - 20);
-    const { inner, outer } = fholeNotches(f, tip);
+    const { inner, outer } = calcFholeNotches(f, tip);
     expect(outer).not.toBeNull();
     // the inner notch is centred where the stop line crosses the inner edge
     expect(mid(inner).y).toBeCloseTo(c.y, 9);
@@ -124,27 +125,27 @@ describe('the f-hole placement', () => {
     }
     expect(dist(outer!.top, outer!.bottom)).toBeCloseTo(dist(inner.top, inner.bottom), 9);
     // no tip, no outer notch
-    expect(fholeNotches(f, null).outer).toBeNull();
+    expect(calcFholeNotches(f, null).outer).toBeNull();
 
     const depth = depthOf(inner);
     f.UEye.r *= 2;
-    expect(depthOf(fholeNotches(f, tip).inner)).toBeCloseTo(depth, 9);
+    expect(depthOf(calcFholeNotches(f, tip).inner)).toBeCloseTo(depth, 9);
     f.stem.width *= 2;
-    expect(depthOf(fholeNotches(f, tip).inner)).toBeCloseTo(2 * depth, 9);
+    expect(depthOf(calcFholeNotches(f, tip).inner)).toBeCloseTo(2 * depth, 9);
   });
 
   it('reads the eyes against the body and each other', () => {
     const p = placed();
-    const r = solveFholePlacementRatios(p);
+    const r = calcFholePlacementRatios(p);
     expect(r.LEyetoW).toBeCloseTo(p.fHoles!.LEye.r / p.body.width, 12);
     expect(r.UEyetoLEye).toBeCloseTo(p.fHoles!.UEye.r / p.fHoles!.LEye.r, 12);
-    expect(solveFholePlacementRatios(blank())).toEqual({});
+    expect(calcFholePlacementRatios(blank())).toEqual({});
   });
 
   // the seed rounds each value to a hundredth, so a fresh draft reads back its seed fractions to
   // within that rounding and no further
   it('reads a fresh draft back at its seed fractions', () => {
-    const r = solveFholePlacementRatios(placed());
+    const r = calcFholePlacementRatios(placed());
     for (const key of ['UEyetoLEye', 'URisetoUEye', 'LRisetoLEye', 'StemXtoFrame', 'StemYtoFrame', 'StemWtoUEye', 'LEyeXtoLCX', 'LEyeYtoLCY', 'EyeSpantoWaist'] as const)
       expect(r[key], key).toBeCloseTo(FHOLE_SEED_RATIOS[key], 1);
     expect(r.UEyeGuidetoWaist!).toBeCloseTo(FHOLE_SEED_RATIOS.UEyeGuidetoWaist, 1);

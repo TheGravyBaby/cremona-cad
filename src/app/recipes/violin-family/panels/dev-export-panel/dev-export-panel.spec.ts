@@ -11,7 +11,7 @@ import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { FHolePlacementPanel } from '../fhole-placement-panel/fhole-placement-panel';
-import { FHoleContoursPanel, fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
+import { FHoleContoursPanel, defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
@@ -663,7 +663,7 @@ describe('the f-hole toolpaths', () => {
 
   it('solves whole, with the f-holes seeded', () => {
     expect(s.path).toBeTruthy();
-    expect(fholePath(p, s, true)).toBeTruthy();
+    expect(defineFholePath(p, s, true)).toBeTruthy();
   });
 
   describe('the eyes', () => {
@@ -722,7 +722,7 @@ describe('the f-hole toolpaths', () => {
       expect(tp.surfaces.length).toBe(2);
       expect(tp.passes).toBe(1);
       for (const [i, run] of tp.surfaces.entries()) {
-        const drawn = buildPolylineIndex(samplePathToPolyline(fholePath(p, s, i === 1)!, 0.1));
+        const drawn = buildPolylineIndex(samplePathToPolyline(defineFholePath(p, s, i === 1)!, 0.1));
         expect(run.pts[0]).toEqual(run.pts[run.pts.length - 1]);
         for (const pt of run.pts) {
           expect(distPointToPolylineIndexed(pt, drawn), run.name).toBeLessThan(0.05);

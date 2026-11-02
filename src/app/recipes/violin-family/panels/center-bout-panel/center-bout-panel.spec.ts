@@ -1,13 +1,13 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { PlateContourPanel, solvePlateContourRatios } from '../plate-contour-panel/plate-contour-panel';
-import { FHolePlacementPanel, solveFholePlacementRatios } from '../fhole-placement-panel/fhole-placement-panel';
-import { FHoleContoursPanel, solveFholeContoursRatios } from '../fhole-contours-panel/fhole-contours-panel';
+import { PlateContourPanel, calcPlateContourRatios } from '../plate-contour-panel/plate-contour-panel';
+import { FHolePlacementPanel, calcFholePlacementRatios } from '../fhole-placement-panel/fhole-placement-panel';
+import { FHoleContoursPanel, calcFholeContoursRatios } from '../fhole-contours-panel/fhole-contours-panel';
 import { dist, pointOnCircle, signedArcSweep, TURN } from '../../../../helpers/math/simpleGeometry';
 import { Arc } from '../../../../models/types';
-import { solveCenterBout, solveCenterBoutRatios } from './center-bout-panel';
-import { CornersPanel, solveCorners, solveCornersRatios } from '../corners-panel/corners-panel';
-import { MainBoutsPanel, solveMainBouts, solveMainBoutsRatios } from '../main-bouts-panel/main-bouts-panel';
+import { solveCenterBout, calcCenterBoutRatios } from './center-bout-panel';
+import { CornersPanel, solveCorners, calcCornersRatios } from '../corners-panel/corners-panel';
+import { MainBoutsPanel, solveMainBouts, calcMainBoutsRatios } from '../main-bouts-panel/main-bouts-panel';
 import { solveBodyRatios } from '../base-measurements-panel/base-measurements-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS, FHOLE_SEED_RATIOS, SEED_RATIOS } from '../../violin-family-seed';
@@ -42,7 +42,7 @@ describe('the center bout solve', () => {
     p.bouts!.useKellyC0 = true;
     const snapshot = JSON.stringify(p);
     solveCenterBout(p);
-    solveCenterBoutRatios(p);
+    calcCenterBoutRatios(p);
     expect(JSON.stringify(p)).toBe(snapshot);
   });
 
@@ -129,7 +129,7 @@ describe('C0 fitted to the bouts', () => {
 
   it('reads the width off the fitted C0 rather than the typed one', () => {
     expect(cb.CBW).toBeCloseTo((cb.C0!.x - cb.C0!.r + inset) * 2, 9);
-    expect(solveCenterBoutRatios(p).CBWtoLBW).toBeCloseTo(cb.CBW! / p.body.width, 12);
+    expect(calcCenterBoutRatios(p).CBWtoLBW).toBeCloseTo(cb.CBW! / p.body.width, 12);
   });
 
   it('ignores the typed width and height while on', () => {
@@ -267,14 +267,14 @@ describe('a C bout corner that cannot be reached', () => {
 
 describe('ratios', () => {
   it('reads nothing before the corners are drafted', () => {
-    expect(solveCenterBoutRatios(withBouts())).toEqual({});
+    expect(calcCenterBoutRatios(withBouts())).toEqual({});
   });
 
   it('follows an edit, with nothing to refresh', () => {
     const p = seeded();
-    const before = solveCenterBoutRatios(p).C0toLBW!;
+    const before = calcCenterBoutRatios(p).C0toLBW!;
     p.bouts!.C0R *= 1.5;
-    expect(solveCenterBoutRatios(p).C0toLBW).toBeCloseTo(before * 1.5, 9);
+    expect(calcCenterBoutRatios(p).C0toLBW).toBeCloseTo(before * 1.5, 9);
   });
 
   it('names every seed fraction a ratio some panel reports', () => {
@@ -283,7 +283,7 @@ describe('ratios', () => {
     FHolePlacementPanel.seed(p);
     FHoleContoursPanel.seed(p);
     const keys = Object.keys({
-      ...solveBodyRatios(p), ...solveMainBoutsRatios(p), ...solveCornersRatios(p), ...solveCenterBoutRatios(p), ...solvePlateContourRatios(p),
+      ...solveBodyRatios(p), ...calcMainBoutsRatios(p), ...calcCornersRatios(p), ...calcCenterBoutRatios(p), ...calcPlateContourRatios(p),
     }).sort();
     // the seed also carries the height the ratios are drawn from; that is not read back
     expect(keys).toEqual(Object.keys(SEED_RATIOS).filter(k => k !== 'height').sort());
@@ -294,7 +294,7 @@ describe('ratios', () => {
     PlateContourPanel.seed(p);
     FHolePlacementPanel.seed(p);
     FHoleContoursPanel.seed(p);
-    const keys = Object.keys({ ...solveFholePlacementRatios(p), ...solveFholeContoursRatios(p) }).sort();
+    const keys = Object.keys({ ...calcFholePlacementRatios(p), ...calcFholeContoursRatios(p) }).sort();
     // the angles ride on the seed as well; they are params already, so nothing reads them back
     expect(keys).toEqual(Object.keys(FHOLE_SEED_RATIOS).filter(k => !/End$|Angle$|Cut(At|Slope)$/.test(k)).sort());
   });

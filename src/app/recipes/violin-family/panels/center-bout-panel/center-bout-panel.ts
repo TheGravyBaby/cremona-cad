@@ -1,10 +1,10 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompoundBySweep } from '../../../../helpers/math/draftMath';
-import { dist, flipArcAboutY, offsetArcRadius, TURN } from '../../../../helpers/math/simpleGeometry';
+import { dist, flipArcAboutY, flipPointAboutY, offsetArcRadius, TURN } from '../../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
-import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderMirroredArc, renderMirroredArcFancy, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
+import { buildBlankMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { showFieldHelp } from '../../../../docs/field-help';
 import { Arc, arcFromCircleAndPoints, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
@@ -14,7 +14,7 @@ import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleK
 import { CenterBoutFailure, CenterBoutKey, CenterBoutSolve, CornersSolve, MainBoutsSolve } from '../../violin-family-solves';
 import { ViolinFamilyRatios } from '../../violin-family-seed';
 import { renderBoutBounds, renderMainBoutCircles, renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
-import { cornerMiss, defaultCornerTips, renderCornerCircles, renderCorners, solveCorners } from '../corners-panel/corners-panel';
+import { buildCornerMiss, calcDefaultCornerTips, renderCornerCircles, renderCorners, solveCorners } from '../corners-panel/corners-panel';
 
 // The center bout: C0, the C's own arc, placed by its width and height or fitted to touch both
 // join arcs (Kelly's four circles), and the corner arcs C2 and C1 that turn it onto the corner
@@ -78,7 +78,7 @@ export class CenterBoutPanel implements ViolinFamilyPanel, OnInit {
 
   // the tip goes back onto its guide circle; the arcs keep their radii
   defaultCorner(corner: 'upper' | 'lower'): void {
-    let tips = defaultCornerTips(this.params);
+    let tips = calcDefaultCornerTips(this.params);
     if (!tips) return;
     if (corner === 'upper') this.params.corners!.UCr = tips.UCr;
     else this.params.corners!.LCr = tips.LCr;
@@ -101,7 +101,7 @@ export class CenterBoutPanel implements ViolinFamilyPanel, OnInit {
       let m = this.m = solveMainBouts(p)!;
       let c = this.c = solveCorners(p)!;
       let cb = this.cb = solveCenterBout(p)!;
-      this.ratios = solveCenterBoutRatios(p);
+      this.ratios = calcCenterBoutRatios(p);
       let highlighted = this.highlightedKey ? { key: this.highlightedKey, color: this.highlightedColor } : null;
       let layers: RenderLayer[] = [];
 
@@ -156,7 +156,6 @@ export const renderCenterBout = (
   let k = p.corners!;
   let inset = p.body.overhang + p.body.rib;
   let moduleArcs = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
-  let mirror = (P: Pt): Pt => new Pt(-P.x, P.y);
 
   let upperTip = pal.ink(4);
   let bout = pal.ink(3);
@@ -165,7 +164,7 @@ export const renderCenterBout = (
   if (highlighted) {
     if (highlighted.key === 'UCr' || highlighted.key === 'LCr') {
       let tip = k[highlighted.key];
-      for (let P of [tip, mirror(tip)]) {
+      for (let P of [tip, flipPointAboutY(tip)]) {
         renderPointHalo(P, highlighted.color)(g, ui);
         renderCrosshair(P, highlighted.color)(g, ui);
       }
@@ -179,40 +178,31 @@ export const renderCenterBout = (
   }
 
   if (currentModule && flags.showModuleArcs) {
-    for (let P of [k.UCr, mirror(k.UCr)]) renderCrosshair(P, pal.ink(4).faint(5))(g, ui);
-    for (let P of [k.LCr, mirror(k.LCr)]) renderCrosshair(P, pal.ink(2).faint(5))(g, ui);
+    for (let P of [k.UCr, flipPointAboutY(k.UCr)]) renderCrosshair(P, pal.ink(4).faint(5))(g, ui);
+    for (let P of [k.LCr, flipPointAboutY(k.LCr)]) renderCrosshair(P, pal.ink(2).faint(5))(g, ui);
   }
   if (moduleArcs) {
-    let fancy = (arc: Arc | null, color: string) => {
-      if (!arc) return;
-      renderArcFromArcFancy(arc, color)(g, ui);
-      renderArcFromArcFancy(flipArcAboutY(arc), color)(g, ui);
-    };
-    fancy(cb.C2, upperTip);
-    if (k.C21DoubleArc) fancy(cb.C21, upperTip);
-    fancy(cb.C1, lowerTip);
-    if (k.C11DoubleArc) fancy(cb.C11, lowerTip);
-    fancy(cb.C0, bout);
+    if (cb.C2) renderMirroredArcFancy(cb.C2, upperTip)(g, ui);
+    if (k.C21DoubleArc && cb.C21) renderMirroredArcFancy(cb.C21, upperTip)(g, ui);
+    if (cb.C1) renderMirroredArcFancy(cb.C1, lowerTip)(g, ui);
+    if (k.C11DoubleArc && cb.C11) renderMirroredArcFancy(cb.C11, lowerTip)(g, ui);
+    if (cb.C0) renderMirroredArcFancy(cb.C0, bout)(g, ui);
   }
 
   // the outline at offset d from the rib line: 0 is the rib, unless the module arcs stand in
   // for it, and the inset is the plate's edge
   let offsets = [...(moduleArcs ? [] : [0]), ...(flags.renderOuterPath ? [inset] : [])];
-  let upperOut = cornerTurn(cb.C2, cb.C0);
-  let lowerOut = cornerTurn(cb.C1, cb.C0);
+  let upperOut = calcCornerTurn(cb.C2, cb.C0);
+  let lowerOut = calcCornerTurn(cb.C1, cb.C0);
+  let upperTipTrace = currentModule ? upperTip : pal.neutral;
+  let lowerTipTrace = currentModule ? lowerTip : pal.neutral;
+  let boutTrace = currentModule ? bout : pal.neutral;
   for (let d of offsets) {
-    let trace = (arc: Arc | null, color: string, out: 1 | -1) => {
-      if (!arc) return;
-      let edge = offsetArcRadius(arc, out * d);
-      let ink = currentModule ? color : pal.neutral;
-      renderArcFromArc(edge, ink, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(flipArcAboutY(edge), ink, STROKE_WEIGHT.trace)(g, ui);
-    };
-    trace(cb.C2, upperTip, upperOut);
-    if (k.C21DoubleArc) trace(cb.C21, upperTip, upperOut);
-    trace(cb.C1, lowerTip, lowerOut);
-    if (k.C11DoubleArc) trace(cb.C11, lowerTip, lowerOut);
-    trace(cb.C0, bout, -1);
+    if (cb.C2) renderMirroredArc(offsetArcRadius(cb.C2, upperOut * d), upperTipTrace, STROKE_WEIGHT.trace)(g, ui);
+    if (k.C21DoubleArc && cb.C21) renderMirroredArc(offsetArcRadius(cb.C21, upperOut * d), upperTipTrace, STROKE_WEIGHT.trace)(g, ui);
+    if (cb.C1) renderMirroredArc(offsetArcRadius(cb.C1, lowerOut * d), lowerTipTrace, STROKE_WEIGHT.trace)(g, ui);
+    if (k.C11DoubleArc && cb.C11) renderMirroredArc(offsetArcRadius(cb.C11, lowerOut * d), lowerTipTrace, STROKE_WEIGHT.trace)(g, ui);
+    if (cb.C0) renderMirroredArc(offsetArcRadius(cb.C0, -d), boutTrace, STROKE_WEIGHT.trace)(g, ui);
   }
 };
 
@@ -220,7 +210,38 @@ export const renderCenterBout = (
 // further than C0's radius from C0's centre sits outside it and its plate edge is the larger
 // circle (1); one that has inverted into the C offsets the other way (-1). A compound corner's
 // second arc follows its first
-export const cornerTurn = (arc: Arc | null, C0: Arc | null): 1 | -1 => arc && C0 && dist(arc, C0) > C0.r ? 1 : -1;
+export const calcCornerTurn = (arc: Arc | null, C0: Arc | null): 1 | -1 => arc && C0 && dist(arc, C0) > C0.r ? 1 : -1;
+
+// the rib outline's arcs, gathered from the stages that solve them, the bout arcs as the corners
+// trimmed them. Null unless every arc the options call for has solved.
+// The stages' last, so it lives here: a later panel stands its own lines off this outline
+export type RibArcs = {
+  U0: Arc; U1: Arc; L0: Arc; L1: Arc; C0: Arc; C2: Arc; C1: Arc;
+  U2: Arc | null; U3: Arc | null; U31: Arc | null; U4: Arc | null;
+  L2: Arc | null; L3: Arc | null; L31: Arc | null; L4: Arc | null;
+  C21: Arc | null; C11: Arc | null;
+  V0: Arc | null;
+};
+
+export function solveRibArcs(p: ViolinFamilyParams, m: MainBoutsSolve, c: CornersSolve, cb: CenterBoutSolve): RibArcs | null {
+  let k = p.corners!;
+  let rib = {
+    U0: m.U0, U1: c.U1, L0: m.L0, L1: c.L1, C0: cb.C0, C2: cb.C2, C1: cb.C1,
+    U2: c.U2, U3: c.U3, U31: c.U31, U4: c.U4,
+    L2: c.L2, L3: c.L3, L31: c.L31, L4: c.L4,
+    C21: cb.C21, C11: cb.C11,
+    V0: m.V0,
+  };
+  let needed = [
+    rib.U0, rib.U1, rib.L0, rib.L1, rib.C0, rib.C2, rib.C1,
+    ...(k.useViolCornerUC ? [rib.U4] : [rib.U2, rib.U3, ...(k.U31DoubleArc ? [rib.U31] : [])]),
+    ...(k.useViolCornerLC ? [rib.L4] : [rib.L2, rib.L3, ...(k.L31DoubleArc ? [rib.L31] : [])]),
+    ...(k.C21DoubleArc ? [rib.C21] : []),
+    ...(k.C11DoubleArc ? [rib.C11] : []),
+    ...(p.bouts!.useViolNeck ? [rib.V0] : []),
+  ];
+  return needed.every(arc => !!arc) ? rib as RibArcs : null;
+}
 
 // a later panel reads the C bout by calling this; it returns and never writes to the params. The
 // corners are solved again here for the join arcs the fit touches and the tips the corner arcs
@@ -234,14 +255,10 @@ export function solveCenterBout(p: ViolinFamilyParams): CenterBoutSolve | null {
 
   let s: CenterBoutSolve = { C0: null, C2: null, C21: null, C1: null, C11: null, CBW: null, failures: [] };
 
-  // a field cleared mid-edit fails its own section rather than drawing NaN
-  let blank = (section: string, unsolved: CenterBoutKey[], values: number[]): CenterBoutFailure | null =>
-    values.every(Number.isFinite) ? null : { message: `${section}: every ${section.toLowerCase()} field needs a value.`, unsolved, circles: [], segments: [] };
-
   // C0's circle once it is placed, by hand or by the fit; the corner arcs stand on it
   let placed: Arc | null = null;
   solveSection(s.failures, 'Center bout', ['C0', 'C2', 'C21', 'C1', 'C11'], () => {
-    let missing = blank('Center bout', ['C0', 'C2', 'C21', 'C1', 'C11'], b.useKellyC0 ? [b.C0R] : [b.C0R, b.C0Y, b.CBW]);
+    let missing = buildBlankMiss('Center bout', ['C0', 'C2', 'C21', 'C1', 'C11'], b.useKellyC0 ? [b.C0R] : [b.C0R, b.C0Y, b.CBW]);
     if (missing) return missing;
 
     if (b.useKellyC0) {
@@ -308,7 +325,7 @@ export function solveCenterBout(p: ViolinFamilyParams): CenterBoutSolve | null {
   solveSection(s.failures, 'Upper corner', ['C0', 'C2', 'C21'], () => {
     let C0 = placed;
     if (!C0) return null;
-    let missing = blank('Upper corner', ['C0', 'C2', 'C21'], [k.UCr.x, k.UCr.y, k.C2R, ...(k.C21DoubleArc ? [k.C21R, k.C21Sweep] : [])]);
+    let missing = buildBlankMiss('Upper corner', ['C0', 'C2', 'C21'], [k.UCr.x, k.UCr.y, k.C2R, ...(k.C21DoubleArc ? [k.C21R, k.C21Sweep] : [])]);
     if (missing) return missing;
     if (k.C21DoubleArc) {
       // drawn from C0 out to its tip, the upper corner turns clockwise and the lower
@@ -316,7 +333,7 @@ export function solveCenterBout(p: ViolinFamilyParams): CenterBoutSolve | null {
       let sweep = -k.C21Sweep * TURN.degree;
       let compoundCircles = interceptCirclesAndPointCompoundBySweep(C0, k.UCr, k.C2R, k.C21R, sweep).sort((a, b) => a.C1.y - b.C1.y)[0];
       if (!compoundCircles)
-        return cornerMiss('Upper corner', 'C0', C0, 'C2', k.UCr, true, ['C0', 'C2', 'C21'])
+        return buildCornerMiss('Upper corner', 'C0', C0, 'C2', k.UCr, true, ['C0', 'C2', 'C21'])
       CUIntercept = circleCircleIntersections(compoundCircles.C1, C0)[1]
       let C21start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
 
@@ -326,7 +343,7 @@ export function solveCenterBout(p: ViolinFamilyParams): CenterBoutSolve | null {
     else {
       let CU = interceptCirclesAndPoint(C0, k.UCr, cuRadius).sort((a, b) => b.y - a.y)[1];
       if (!CU)
-        return cornerMiss('Upper corner', 'C0', C0, 'C2', k.UCr, false, ['C0', 'C2', 'C21'])
+        return buildCornerMiss('Upper corner', 'C0', C0, 'C2', k.UCr, false, ['C0', 'C2', 'C21'])
       CUIntercept = circleCircleIntersections(C0, CU).sort((a, b) => b.y - a.y)[0];
       s.C2 = arcFromCircleAndPoints(CU, CUIntercept, k.UCr);
     }
@@ -336,13 +353,13 @@ export function solveCenterBout(p: ViolinFamilyParams): CenterBoutSolve | null {
   solveSection(s.failures, 'Lower corner', ['C0', 'C1', 'C11'], () => {
     let C0 = placed;
     if (!C0) return null;
-    let missing = blank('Lower corner', ['C0', 'C1', 'C11'], [k.LCr.x, k.LCr.y, k.C1R, ...(k.C11DoubleArc ? [k.C11R, k.C11Sweep] : [])]);
+    let missing = buildBlankMiss('Lower corner', ['C0', 'C1', 'C11'], [k.LCr.x, k.LCr.y, k.C1R, ...(k.C11DoubleArc ? [k.C11R, k.C11Sweep] : [])]);
     if (missing) return missing;
     if (k.C11DoubleArc) {
       let sweep = k.C11Sweep * TURN.degree;
       let compoundCircles = interceptCirclesAndPointCompoundBySweep(C0, k.LCr, k.C1R, k.C11R, sweep).sort((a, b) => a.C1.y - b.C1.y)[1];
       if (!compoundCircles)
-        return cornerMiss('Lower corner', 'C0', C0, 'C1', k.LCr, true, ['C0', 'C1', 'C11'])
+        return buildCornerMiss('Lower corner', 'C0', C0, 'C1', k.LCr, true, ['C0', 'C1', 'C11'])
       CLIntercept = circleCircleIntersections(compoundCircles.C1, C0)[1]
       let C11start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
 
@@ -352,7 +369,7 @@ export function solveCenterBout(p: ViolinFamilyParams): CenterBoutSolve | null {
     else {
       let CL = interceptCirclesAndPoint(C0, k.LCr, clRadius).sort((a, b) => a.y - b.y)[1];
       if (!CL)
-        return cornerMiss('Lower corner', 'C0', C0, 'C1', k.LCr, false, ['C0', 'C1', 'C11'])
+        return buildCornerMiss('Lower corner', 'C0', C0, 'C1', k.LCr, false, ['C0', 'C1', 'C11'])
       CLIntercept = circleCircleIntersections(C0, CL).sort((a, b) => a.y - b.y)[1];
       s.C1 = arcFromCircleAndPoints(CL, CLIntercept, k.LCr);
     }
@@ -368,7 +385,7 @@ export function solveCenterBout(p: ViolinFamilyParams): CenterBoutSolve | null {
 // read off the params every solve, so they can't drift from the instrument. The radius ratios are
 // taken against the inner width, the width less the inset both sides. While the fit is on, the
 // width and the height are the fitted ones, since those are what the drawing shows
-export function solveCenterBoutRatios(p: ViolinFamilyParams): Partial<ViolinFamilyRatios> {
+export function calcCenterBoutRatios(p: ViolinFamilyParams): Partial<ViolinFamilyRatios> {
   if (!p.corners || !p.bouts) return {};
   let b = p.bouts;
   let k = p.corners;

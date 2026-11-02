@@ -6,7 +6,7 @@ import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../help
 import { Arc, Pt } from '../../../../models/types';
 import { PlateContourPanel, solvePlateContour } from './plate-contour-panel';
 import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
-import { cornerTurn, solveCenterBout } from '../center-bout-panel/center-bout-panel';
+import { calcCornerTurn, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
@@ -228,7 +228,7 @@ describe('the purfling', () => {
     const q = seeded();
     const outside = (p: ViolinFamilyParams) => {
       const cb = solveCenterBout(p)!;
-      return !!cb.C2 && !!cb.C0 && cornerTurn(cb.C2, cb.C0) === 1 && solvePlateContour(p)!.failures.length === 0;
+      return !!cb.C2 && !!cb.C0 && calcCornerTurn(cb.C2, cb.C0) === 1 && solvePlateContour(p)!.failures.length === 0;
     };
     const seedC0R = q.bouts!.C0R;
     for (const fraction of [0.5, 0.4, 0.3, 0.25, 0.2, 0.15]) {

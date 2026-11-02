@@ -20,11 +20,11 @@ import { GraduationFailure, GraduationSolve, PlateSurface } from '../../violin-f
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
-import { PLATE_LAYOUT_GAP, purflingPath, ribArcs, RibArcs, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { solveCenterBout, solveRibArcs, RibArcs } from '../center-bout-panel/center-bout-panel';
+import { PLATE_LAYOUT_GAP, definePurflingPath, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholePlate } from '../fhole-placement-panel/fhole-placement-panel';
 import { solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
-import { channelLoop } from '../fluting-panel/fluting-panel';
+import { defineChannelLoop } from '../fluting-panel/fluting-panel';
 import { bodyLandmarks, loopHalfChordAtY, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { MouldPanel, solveMould } from '../mould-panel/mould-panel';
 
@@ -330,7 +330,7 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
     let hi = all.length ? Math.ceil(Math.max(...all) * 2) / 2 : 1;
     this.scale = { lo, hi: Math.max(hi, lo + 1) };
     safeRun(() => {
-      let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+      let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
       let solve = this.solve = solveGraduation(p)!;
       this.drawn.emit([
         renderThicknessMap(p, this.scale, this.pal),
@@ -449,7 +449,7 @@ const renderBackPlate = (p: ViolinFamilyParams, pal: PanelPalette, rib: RibArcs 
   let dx = PLATE_DX.back(p);
   if (o?.back) renderPath(translatePath(o.back, dx, 0), pal.neutral, STROKE_WEIGHT.trace)(g, ui);
   if (o?.button) renderPath(translatePath(o.button.path, dx, 0), pal.neutral, STROKE_WEIGHT.trace)(g, ui);
-  let inner = rib ? purflingPath(p, rib, 0) : null;
+  let inner = rib ? definePurflingPath(p, rib, 0) : null;
   if (inner) renderPath(translatePath(inner, dx, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
 };
 
@@ -820,8 +820,8 @@ function solveGraduationUncached(p: ViolinFamilyParams, gr: GraduationParams): G
   let s: GraduationSolve = { blocks: null, lining: null, boundary: null, ground: null, holes: [], failures: [] };
   let fail = (message: string, unsolved: GraduationFailure['unsolved']): GraduationFailure => ({ message, unsolved, circles: [], segments: [] });
 
-  let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
-  let ribLine = rib ? purflingPath(p, rib, 0) : null;
+  let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+  let ribLine = rib ? definePurflingPath(p, rib, 0) : null;
   if (!rib || !ribLine) {
     s.failures.push(fail('Graduation: the rib outline has to solve first.', ['lining', 'edgeInset', 'blockMargin']));
     return s;
@@ -849,7 +849,7 @@ function solveGraduationUncached(p: ViolinFamilyParams, gr: GraduationParams): G
   });
 
   let loop = (inset: number, key: 'lining' | 'edgeInset', label: string): string | null => {
-    let made = channelLoop(p, rib!, -inset, -inset, edge);
+    let made = defineChannelLoop(p, rib!, -inset, -inset, edge);
     if (!made.joined) {
       s.failures.push(fail(`Graduation: the ${label} can't be carried round the C bout at these corners. Bring it in less, or open the corners.`, [key]));
       return null;

@@ -34,17 +34,17 @@ import {
 } from '../../violin-family-solves';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
-import { purflingPath, ribArcs, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
-import { fholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
+import { solveCenterBout, solveRibArcs } from '../center-bout-panel/center-bout-panel';
+import { definePurflingPath, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { buildArchPathFor, solveLongArching } from '../long-arching-panel/long-arching-panel';
 import { bodyLandmarks, rowAt, sectionRuns, solveCrossArching, STATION_MERGE_EPS_MM, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
-import { mortiseFloorY, neckHalfWidthAt, scrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
+import { calcMortiseFloorY, neckHalfWidthAt, calcScrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
 import { fingerboardRadiusAt, fingerboardScoopAt, solveStringSetup } from '../string-setup-panel/string-setup-panel';
 import type { PositionMarkSolve } from '../dev-fingerboard-panel/dev-fingerboard-panel';
 import { defineSideScrollPath } from '../pegbox-panel/pegbox-panel';
 import { scrollBackStrip, scrollBackViewStrokes, scrollCompassWalk, scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
-import { blockLayout, MOULD_EXPORT_STEP, solveMould } from '../mould-panel/mould-panel';
+import { buildBlockLayout, MOULD_EXPORT_STEP, solveMould } from '../mould-panel/mould-panel';
 
 // The export panel: every sheet the drawing leaves the app on. Each is built once, by `exportSheet`,
 // from the earlier panels' solvers, and the preview, the SVG, the PDF and the DXF are all written
@@ -306,7 +306,7 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
     case 'blocks': {
       let m = solveMould(p);
       if (!m?.blocks) return null;
-      let blocks = blockLayout(m);
+      let blocks = buildBlockLayout(m);
       return sheet([black(combinePathStrings(blocks.map(b => b.path)))], blocks.map(b => ({ text: b.label, x: b.x, y: b.y, fontSize: TEMPLATE_LABEL_SIZE })));
     }
     case 'fholeTemplate':
@@ -368,14 +368,14 @@ function sheetSize(p: ViolinFamilyParams, type: ExportType, sheet: ExportSheet):
 // the rib outline as one closed path, or null until every arc of it has solved
 function ribOutline(p: ViolinFamilyParams): string | null {
   if (!p.bouts || !p.corners) return null;
-  let rib = ribArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
-  return rib && purflingPath(p, rib, 0);
+  let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+  return rib && definePurflingPath(p, rib, 0);
 }
 
 // the two holes cut into the top plate, each its own path so either can be picked alone; empty until the contours close
 function fholes(p: ViolinFamilyParams): string[] {
   let s = p.fHoleContours ? solveFholeContours(p) : null;
-  return s?.path ? [s.path, fholePath(p, s, true)!] : [];
+  return s?.path ? [s.path, defineFholePath(p, s, true)!] : [];
 }
 
 // the single-hole cutting template, moved off the plate's real coordinates onto its own sheet: the
@@ -390,7 +390,7 @@ function fholes(p: ViolinFamilyParams): string[] {
 // (see exportReady), kept for if the template comes back
 function fholeTemplate(p: ViolinFamilyParams, renderEyes: boolean, arched = false): { blank: string; hole: string; labelPos: Pt } | null {
   let s = p.fHoleContours ? solveFholeContours(p) : null;
-  let raw = s?.path ? fholePath(p, s, false, renderEyes) : null;
+  let raw = s?.path ? defineFholePath(p, s, false, renderEyes) : null;
   if (!raw) return null;
   if (arched) {
     let surface = p.arching ? solveCrossArching(p)?.top : null;
@@ -729,7 +729,7 @@ function scrollOutline(p: ViolinFamilyParams, s: ScrollSolve, crossing: { index:
 // the neck's own edge in the side elevation: the foot and the fingerboard plane up to the nut, and
 // the back down from where the nape meets it over the heel, closed along the back's face
 function neckOutline(p: ViolinFamilyParams, n: NeckSolve, backTop: Pt): string[] {
-  let floor = new Pt(0, mortiseFloorY(p));
+  let floor = new Pt(0, calcMortiseFloorY(p));
   let segments = [pathFromLine(floor, n.bottomFront!), pathFromLine(n.bottomFront!, n.root!), pathFromLine(n.root!, n.neckTop!)];
   let end: Pt;
   if (n.heel) {
@@ -745,7 +745,7 @@ function neckOutline(p: ViolinFamilyParams, n: NeckSolve, backTop: Pt): string[]
 }
 
 export function defineNeckTemplate(p: ViolinFamilyParams, n: NeckSolve, s: ScrollSolve, spec: NeckTemplateSpec = defaultNeckTemplateSpec(p)): NeckTemplate {
-  let m: Matrix2D = scrollOnNeck(p, n);
+  let m: Matrix2D = calcScrollOnNeck(p, n);
   let { interior, whole, crossing } = interiorSpiral(s);
   let edge = scrollOutline(p, s, crossing);
   let backTop = applyMatrix(m, pointOnCircle(s.nape!, s.nape!.start));

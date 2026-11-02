@@ -4,7 +4,7 @@ import { pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
 import { archSplineKnots, catenaryZAt, splineZAt, SPLINE_PEAK_SOURCE } from '../../../../helpers/math/vibeMath';
 import { buildCatenaryPath, buildSplinePath, occludePath } from '../../../../helpers/math/pathVibes';
 import {
-  renderGuideBaseline, renderGuideKnot, renderGuideMeasure, renderPath, renderPointHalo, renderSegment, renderSolveFailures,
+  renderGuideBaseline, renderGuideKnot, renderGuideMeasure, renderPath, renderPointHalo, renderSegment, renderSolveFailures, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { showFieldHelp } from '../../../../docs/field-help';
@@ -17,7 +17,7 @@ import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { ChannelParams, LongArchParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { ArchTakeoff, LongArchCurve, LongArchingFailure, LongArchingSolve, LongArchSolve, PlateContourSolve, Plate, RibTaper } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
-import { gougeHalfWidth, gougeProfileSlope, gougeProfileZ, renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
+import { calcChannelHalfWidth, channelProfileSlopeAt, channelProfileZAt, renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
 import { renderPlateContour, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 
@@ -95,7 +95,7 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
         renderPlateContour(p, o, this.pal, this.flags, false, true),
         renderFluting(p, f, this.pal, false, true),
         renderFholes(p, this.pal),
-        (g, ui) => side(g.append('g').attr('transform', `translate(${sideX},0)`), ui.append('g').attr('transform', `translate(${sideX},0)`)),
+        renderTranslatedLayers([side], sideX),
         renderSolveFailures(a.failures, this.pal.alert),
       ]);
     });
@@ -284,7 +284,7 @@ export function buildArchPathFor(arch: LongArchCurve, span: number, yStart: numb
 // the channel's own section at a body cap, in the side view (canvas X = Z, canvas Y = body length),
 // stopped at the arch's contact when one is given: past it the arch is the surface
 export function channelCapPath(p: ViolinFamilyParams, g: ChannelParams, xBase: number, sign: 1 | -1, atStart: boolean, sEnd?: number, n = 40): string {
-  let w = gougeHalfWidth(g.width, g.depth);
+  let w = calcChannelHalfWidth(g.width, g.depth);
   if (w <= 0) return '';
   let centerY = p.fluting!.flutingEdge + w;
   let end = Math.min(sEnd ?? w, w);
@@ -292,7 +292,7 @@ export function channelCapPath(p: ViolinFamilyParams, g: ChannelParams, xBase: n
   for (let i = 0; i <= n; i++) {
     let s = -w + ((end + w) * i) / n;
     let y = atStart ? centerY + s : p.body.height - centerY - s;
-    pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * gougeProfileZ(s, g.width, g.depth)} ${y}`);
+    pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * channelProfileZAt(s, g.width, g.depth)} ${y}`);
   }
   return pts.join(' ');
 }
@@ -380,13 +380,13 @@ export function solveArchTakeoff(
   archSlopeAt: (takeoffDepth: number, contactS: number) => number,
   scanSteps = 32,
 ): ArchTakeoff | null {
-  let w = gougeHalfWidth(width, depth);
+  let w = calcChannelHalfWidth(width, depth);
   if (w <= 0) return null;
   // held just inside both ends: at 0 the channel is exactly flat, at w it has left the cut
   let lo = w * 1e-3, hi = w * (1 - 1e-3);
-  let residual = (s: number): number => archSlopeAt(-gougeProfileZ(s, width, depth), s) - gougeProfileSlope(s, width, depth);
+  let residual = (s: number): number => archSlopeAt(-channelProfileZAt(s, width, depth), s) - channelProfileSlopeAt(s, width, depth);
   let takeoffAt = (contactS: number, tangent: boolean): ArchTakeoff =>
-    ({ contactS, takeoffDepth: -gougeProfileZ(contactS, width, depth), slope: gougeProfileSlope(contactS, width, depth), tangent });
+    ({ contactS, takeoffDepth: -channelProfileZAt(contactS, width, depth), slope: channelProfileSlopeAt(contactS, width, depth), tangent });
 
   let nearest = { s: lo, mag: Infinity };
   let bracketOn = (dir: 1 | -1): [number, number, number] | null => {
@@ -447,7 +447,7 @@ function mirrored(arch: LongArchCurve): LongArchCurve {
 // sweeps settle it. The C bout gouge never reaches a cap, so the main sweep governs both. Null
 // when the gouge doesn't cut, the arch has no height, or the two landings leave no span
 export function solveLongArch(p: ViolinFamilyParams, arch: LongArchCurve, g: ChannelParams): LongArchSolve | null {
-  let w = gougeHalfWidth(g.width, g.depth);
+  let w = calcChannelHalfWidth(g.width, g.depth);
   if (w <= 0 || arch.archHeight <= 0) return null;
   let centerY = p.fluting!.flutingEdge + w;
   let height = p.body.height;
@@ -489,11 +489,11 @@ export function solveLongArch(p: ViolinFamilyParams, arch: LongArchCurve, g: Cha
 // meets the channel's flank at the same height and slope. Without an arch the plate is channel and
 // land only
 export function channelCenterlineZAt(p: ViolinFamilyParams, g: ChannelParams, la: LongArchSolve | null, y: number): number {
-  let w = gougeHalfWidth(g.width, g.depth);
+  let w = calcChannelHalfWidth(g.width, g.depth);
   let centerY = p.fluting!.flutingEdge + w;
   let s = Math.min(y, p.body.height - y) - centerY;
   if (la && y > la.yStart && y < la.yEnd) return archZAt(la.lowered, la.span, y - la.yStart, la.farZ) - la.takeoff.takeoffDepth;
-  return s <= -w ? 0 : gougeProfileZ(Math.min(s, w), g.width, g.depth);
+  return s <= -w ? 0 : channelProfileZAt(Math.min(s, w), g.width, g.depth);
 }
 
 // a later panel reads the ribs and the arches by calling this; it returns and never writes to the
