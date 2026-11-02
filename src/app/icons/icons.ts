@@ -268,6 +268,7 @@ export const ICONS = {
     body: '<rect x="3" y="3" width="13" height="13" rx="2" /><path d="M21 8v11a2 2 0 0 1-2 2H8" />',
     attrs: { 'stroke-width': '2.5' },
   },
+  'module-circles': '<circle cx="12" cy="12" r="8" />',
   'module-guides': `<rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2.5" />
     <line x1="12" y1="2" x2="12" y2="22" stroke-dasharray="2 2" />
     <line x1="2" y1="12" x2="22" y2="12" stroke-dasharray="2 2" />`,

@@ -275,6 +275,13 @@
 
 @if (renderToggleButtons.length) {
 <div class="view-toggle-bar">
+    @if (renderToggleButtons.includes('showModuleGuides')) {
+    <button type="button" class="vt-btn" [class.active]="viewFlags.showModuleGuides"
+        (click)="onRenderToggle('showModuleGuides')" title="Show Module Guides" aria-label="Show Module Guides">
+        <svg icon="module-guides" width="18" height="18"></svg>
+    </button>
+    }
+    
     @if (renderToggleButtons.includes('showModuleArcs')) {
     <div class="vt-group">
         <button type="button" class="vt-btn" [class.active]="viewFlags.showModuleArcs" (click)="onRenderToggle('showModuleArcs')"
@@ -290,11 +297,19 @@
     </div>
     }
 
-    @if (renderToggleButtons.includes('showModuleGuides')) {
-    <button type="button" class="vt-btn" [class.active]="viewFlags.showModuleGuides"
-        (click)="onRenderToggle('showModuleGuides')" title="Show Module Guides" aria-label="Show Module Guides">
-        <svg icon="module-guides" width="18" height="18"></svg>
-    </button>
+    @if (renderToggleButtons.includes('showModuleCircles')) {
+    <div class="vt-group">
+        <button type="button" class="vt-btn" [class.active]="viewFlags.showModuleCircles"
+            (click)="onRenderToggle('showModuleCircles')" title="Show Module Circles" aria-label="Show Module Circles">
+            <svg icon="module-circles" width="18" height="18"></svg>
+        </button>
+        @if (renderToggleButtons.includes('showAllCircles')) {
+        <button type="button" class="vt-sub" [class.active]="viewFlags.showAllCircles" (click)="onRenderToggle('showAllCircles')"
+            title="Show All Circles (every outline stage, not just this one)" aria-label="Show All Circles">
+            <svg icon="all-arcs" width="9" height="9"></svg>
+        </button>
+        }
+    </div>
     }
 
     @if (renderToggleButtons.includes('showFholeBounds')) {

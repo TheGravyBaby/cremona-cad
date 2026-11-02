@@ -441,6 +441,9 @@ export interface ViolinFamilyViewFlags {
   showModuleArcs: boolean;
   // the other outline stages' arcs drawn as module arcs too, in their own inks
   showAllArcs: boolean;
+  showModuleCircles: boolean;
+  // the other outline stages' arcs carried round to full circles too
+  showAllCircles: boolean;
   showModuleGuides: boolean;
   renderOuterPath: boolean;
   showFholeBounds: boolean;
@@ -469,6 +472,8 @@ export type ViolinFamilyToggleKey = keyof ViolinFamilyViewFlags;
 export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
   showModuleArcs: true,
   showAllArcs: false,
+  showModuleCircles: false,
+  showAllCircles: false,
   showModuleGuides: false,
   renderOuterPath: true,
   showFholeBounds: true,

@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompoundBySweep } from '../../../../helpers/math/draftMath';
 import { angleFromCenter, dist, flipArcAboutY, lineCircleIntersection, lineFromPointAndSlope, offsetArcRadius, pointOnCircle, signedArcSweep, TURN } from '../../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
-import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCrosshair, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, SolveFailure, solveSection } from '../../../../helpers/validators';
 import { showFieldHelp } from '../../../../docs/field-help';
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt } from '../../../../models/types';
@@ -13,8 +13,8 @@ import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { CornerFailure, CornerKey, CornersSolve, MainBoutsSolve } from '../../violin-family-solves';
 import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
-import { renderBoutBounds, renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
-import { renderCenterBout, solveCenterBout } from '../center-bout-panel/center-bout-panel';
+import { renderBoutBounds, renderMainBoutCircles, renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
+import { renderCenterBout, renderCenterBoutCircles, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 
 // The corners: each bout turns through a join arc (U2, L2) into a corner arc (U3, L3) that ends on
 // the typed corner tip, or through a compound pair (U3 then U31) where one arc can't make the
@@ -28,7 +28,7 @@ type CornerHighlightKey = CornerKey | 'UCr' | 'LCr';
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
 export class CornersPanel implements ViolinFamilyPanel, OnInit {
-  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleGuides', 'renderOuterPath'];
+  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleCircles', 'showAllCircles', 'showModuleGuides', 'renderOuterPath'];
   protected readonly pal = ThemeService.getPalette('classicCremona');
   protected readonly help = showFieldHelp;
 
@@ -132,6 +132,9 @@ export class CornersPanel implements ViolinFamilyPanel, OnInit {
       let layers: RenderLayer[] = [];
 
       if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, this.pal));
+      if (this.flags.showModuleCircles || this.flags.showAllCircles) layers.push(renderCornerCircles(p, c, this.pal));
+      if (this.flags.showAllCircles) layers.push(renderMainBoutCircles(m, this.pal));
+      if (this.flags.showAllCircles && cb) layers.push(renderCenterBoutCircles(p, cb, this.pal));
       // the bouts and the center bout in grey under this panel's corners
       layers.push(
         renderMainBouts(p, { ...m, U1: c.U1, L1: c.L1 }, this.pal, this.flags, false, null),
@@ -147,10 +150,33 @@ export class CornersPanel implements ViolinFamilyPanel, OnInit {
   }
 }
 
+// each corner arc carried round to its full circle, in the arc's own ink
+export const renderCornerCircles = (p: ViolinFamilyParams, c: CornersSolve, pal: PanelPalette) => (g: any, ui: any): void => {
+  let k = p.corners!;
+  let upperSide = pal.ink(1).faint(-2);
+  let upperTip = pal.ink(4);
+  let lowerSide = pal.ink(0).faint(-2);
+  let lowerTip = pal.ink(2);
+
+  if (k.useViolCornerUC) {
+    if (c.U4) renderCircle(c.U4, upperSide, true)(g, ui);
+  } else {
+    if (c.U2) renderCircle(c.U2, upperSide, true)(g, ui);
+    if (c.U3) renderCircle(c.U3, upperTip, true)(g, ui);
+    if (k.U31DoubleArc && c.U31) renderCircle(c.U31, upperTip, true)(g, ui);
+  }
+  if (k.useViolCornerLC) {
+    if (c.L4) renderCircle(c.L4, lowerSide, true)(g, ui);
+  } else {
+    if (c.L2) renderCircle(c.L2, lowerSide, true)(g, ui);
+    if (c.L3) renderCircle(c.L3, lowerTip, true)(g, ui);
+    if (k.L31DoubleArc && c.L31) renderCircle(c.L31, lowerTip, true)(g, ui);
+  }
+};
+
 // the corners in their own colours on this panel, where their fields are; grey under another
-// panel's work unless all arcs are shown. Each corner is listed as its arcs with the way the plate edge offsets from them:
-// out from the bout-side arcs, in from the corner arcs that turn back onto the tip. A corner whose
-// section failed isn't drawn; its failure is
+// panel's work unless all arcs are shown. The plate edge offsets out from the bout-side arcs, in from the
+// corner arcs that turn back onto the tip. A corner whose section failed isn't drawn; its failure is
 export const renderCorners = (
   p: ViolinFamilyParams,
   c: CornersSolve,
@@ -168,15 +194,6 @@ export const renderCorners = (
   let upperTip = pal.ink(4);
   let lowerSide = pal.ink(0).faint(-2);
   let lowerTip = pal.ink(2);
-
-  type Part = [Arc | null, string, 1 | -1];
-  let upper: Part[] = k.useViolCornerUC
-    ? [[c.U4, upperSide, 1]]
-    : [[c.U2, upperSide, 1], [c.U3, upperTip, -1], ...(k.U31DoubleArc ? [[c.U31, upperTip, -1] as Part] : [])];
-  let lower: Part[] = k.useViolCornerLC
-    ? [[c.L4, lowerSide, 1]]
-    : [[c.L2, lowerSide, 1], [c.L3, lowerTip, -1], ...(k.L31DoubleArc ? [[c.L31, lowerTip, -1] as Part] : [])];
-  let parts = [...upper, ...lower].filter((part): part is [Arc, string, 1 | -1] => !!part[0]);
 
   if (highlighted) {
     if (highlighted.key === 'UCr' || highlighted.key === 'LCr') {
@@ -201,9 +218,24 @@ export const renderCorners = (
     for (let P of [k.LCr, mirror(k.LCr)]) renderCrosshair(P, pal.ink(2).faint(5))(g, ui);
   }
   if (moduleArcs) {
-    for (let [arc, color] of parts) {
+    let fancy = (arc: Arc | null, color: string) => {
+      if (!arc) return;
       renderArcFromArcFancy(arc, color)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(arc), color)(g, ui);
+    };
+    if (k.useViolCornerUC) {
+      fancy(c.U4, upperSide);
+    } else {
+      fancy(c.U2, upperSide);
+      fancy(c.U3, upperTip);
+      if (k.U31DoubleArc) fancy(c.U31, upperTip);
+    }
+    if (k.useViolCornerLC) {
+      fancy(c.L4, lowerSide);
+    } else {
+      fancy(c.L2, lowerSide);
+      fancy(c.L3, lowerTip);
+      if (k.L31DoubleArc) fancy(c.L31, lowerTip);
     }
   }
 
@@ -211,11 +243,26 @@ export const renderCorners = (
   // for it, and the inset is the plate's edge
   let offsets = [...(moduleArcs ? [] : [0]), ...(flags.renderOuterPath ? [inset] : [])];
   for (let d of offsets) {
-    for (let [arc, color, out] of parts) {
+    let trace = (arc: Arc | null, color: string, out: 1 | -1) => {
+      if (!arc) return;
       let edge = offsetArcRadius(arc, out * d);
-      let trace = currentModule ? color : pal.neutral;
-      renderArcFromArc(edge, trace, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(flipArcAboutY(edge), trace, STROKE_WEIGHT.trace)(g, ui);
+      let ink = currentModule ? color : pal.neutral;
+      renderArcFromArc(edge, ink, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(flipArcAboutY(edge), ink, STROKE_WEIGHT.trace)(g, ui);
+    };
+    if (k.useViolCornerUC) {
+      trace(c.U4, upperSide, 1);
+    } else {
+      trace(c.U2, upperSide, 1);
+      trace(c.U3, upperTip, -1);
+      if (k.U31DoubleArc) trace(c.U31, upperTip, -1);
+    }
+    if (k.useViolCornerLC) {
+      trace(c.L4, lowerSide, 1);
+    } else {
+      trace(c.L2, lowerSide, 1);
+      trace(c.L3, lowerTip, -1);
+      if (k.L31DoubleArc) trace(c.L31, lowerTip, -1);
     }
   }
 };

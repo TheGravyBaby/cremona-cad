@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections } from '../../../../helpers/math/draftMath';
 import { angleFromCenter, flipAngleAboutYAxis, flipArcAboutY, lineCircleIntersection, offsetArcRadius, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
-import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderRect, renderSegment, renderSolveFailures } from '../../../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderRect, renderSegment, renderSolveFailures } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { violNeckJoinExceeded } from '../../../../docs/conditions';
 import { showFieldHelp } from '../../../../docs/field-help';
@@ -14,8 +14,8 @@ import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { HighlightedArc, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { MainBoutFailure, MainBoutsSolve, ViolNeckCap, ViolNeckJoin } from '../../violin-family-solves';
 import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
-import { renderCorners, solveCorners } from '../corners-panel/corners-panel';
-import { renderCenterBout, solveCenterBout } from '../center-bout-panel/center-bout-panel';
+import { renderCornerCircles, renderCorners, solveCorners } from '../corners-panel/corners-panel';
+import { renderCenterBout, renderCenterBoutCircles, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 
 // The main bouts: the upper and lower bouts' two arcs each, set by their widths and radii, and the
 // viol neck that can take the place of the upper bout's top. Panel and renders, then solve and ratios.
@@ -28,7 +28,7 @@ type MainBoutArcKey = 'U0' | 'U1' | 'L0' | 'L1' | 'V0';
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
 export class MainBoutsPanel implements ViolinFamilyPanel, OnInit {
-  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleGuides', 'renderOuterPath'];
+  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleCircles', 'showAllCircles', 'showModuleGuides', 'renderOuterPath'];
   protected readonly pal = ThemeService.getPalette('classicCremona');
   protected readonly help = showFieldHelp;
 
@@ -128,6 +128,9 @@ export class MainBoutsPanel implements ViolinFamilyPanel, OnInit {
       let layers: RenderLayer[] = [];
 
       if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, this.pal));
+      if (this.flags.showModuleCircles || this.flags.showAllCircles) layers.push(renderMainBoutCircles(m, this.pal));
+      if (this.flags.showAllCircles && c) layers.push(renderCornerCircles(p, c, this.pal));
+      if (this.flags.showAllCircles && cb) layers.push(renderCenterBoutCircles(p, cb, this.pal));
       // the corners and the center bout as far as they've been drafted, in grey under this
       // panel's bouts
       if (c) layers.push(renderCorners(p, c, this.pal, this.flags, false, null));
@@ -160,6 +163,21 @@ export const renderBoutBounds = (p: ViolinFamilyParams, pal: PanelPalette) => (g
     renderSegment(new Pt(-UBW / 2 + inset, h - UBW), new Pt(-UBW / 2 + inset, h), upper),
     renderSegment(new Pt(UBW / 2 - inset, h - UBW), new Pt(UBW / 2 - inset, h), upper),
   ]) layer(g, ui);
+};
+
+// each bout arc carried round to its full circle, in the arc's own ink
+export const renderMainBoutCircles = (m: MainBoutsSolve, pal: PanelPalette) => (g: any, ui: any): void => {
+  if (m.V0) renderCircle(m.V0, pal.ink(1), true)(g, ui);
+  if (m.violCap?.fillet) renderCircle(m.violCap.fillet, pal.ink(1), true)(g, ui);
+  if (m.U0 && m.U1) {
+    // U0 only leaves the centreline to follow a viol neck
+    renderCircle(m.U0, pal.ink(1), !!m.V0)(g, ui);
+    renderCircle(m.U1, pal.ink(1).faint(-2), true)(g, ui);
+  }
+  if (m.L0 && m.L1) {
+    renderCircle(m.L0, pal.ink(0))(g, ui);
+    renderCircle(m.L1, pal.ink(0).faint(-2), true)(g, ui);
+  }
 };
 
 // the main bouts in their own colours on this panel, where their fields are; grey under another

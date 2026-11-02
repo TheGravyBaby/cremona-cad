@@ -71,7 +71,7 @@ export const SEED_RATIOS: ViolinFamilyRatios & { height: number } = {
   U0toUBW: 8 / 9,
   U1toUBW: 2 / 5,
   LBtoH: 4 / 7,
-  L0toLBW: 2 / 1,
+  L0toLBW: 3 / 2,
   L1toLBW: 1 / 3,
   U2toUBW: 3 / 5,
   U3toLBW: 1 / 8,

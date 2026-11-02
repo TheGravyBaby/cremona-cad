@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompoundBySweep } from '../../../../helpers/math/draftMath';
 import { dist, flipArcAboutY, offsetArcRadius, TURN } from '../../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
-import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCrosshair, renderDashedLine, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { showFieldHelp } from '../../../../docs/field-help';
 import { Arc, arcFromCircleAndPoints, Pt } from '../../../../models/types';
@@ -13,8 +13,8 @@ import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { CenterBoutFailure, CenterBoutKey, CenterBoutSolve, CornersSolve, MainBoutsSolve } from '../../violin-family-solves';
 import { ViolinFamilyRatios } from '../../violin-family-seed';
-import { renderBoutBounds, renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
-import { cornerMiss, defaultCornerTips, renderCorners, solveCorners } from '../corners-panel/corners-panel';
+import { renderBoutBounds, renderMainBoutCircles, renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
+import { cornerMiss, defaultCornerTips, renderCornerCircles, renderCorners, solveCorners } from '../corners-panel/corners-panel';
 
 // The center bout: C0, the C's own arc, placed by its width and height or fitted to touch both
 // join arcs (Kelly's four circles), and the corner arcs C2 and C1 that turn it onto the corner
@@ -29,7 +29,7 @@ type CenterBoutHighlightKey = CenterBoutKey | 'UCr' | 'LCr';
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
 export class CenterBoutPanel implements ViolinFamilyPanel, OnInit {
-  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleGuides', 'renderOuterPath'];
+  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleCircles', 'showAllCircles', 'showModuleGuides', 'renderOuterPath'];
   protected readonly pal = ThemeService.getPalette('classicCremona');
   protected readonly help = showFieldHelp;
 
@@ -112,6 +112,9 @@ export class CenterBoutPanel implements ViolinFamilyPanel, OnInit {
         if (cb.C0) layers.push(renderDashedLine(new Pt(-hw, cb.C0.y), new Pt(hw, cb.C0.y), this.pal.ink(3)));
       }
 
+      if (this.flags.showModuleCircles || this.flags.showAllCircles) layers.push(renderCenterBoutCircles(p, cb, this.pal));
+      if (this.flags.showAllCircles) layers.push(renderMainBoutCircles(m, this.pal), renderCornerCircles(p, c, this.pal));
+
       // the bouts and the corners in grey under this panel's C bout
       layers.push(
         renderMainBouts(p, { ...m, U1: c.U1, L1: c.L1 }, this.pal, this.flags, false, null),
@@ -123,6 +126,20 @@ export class CenterBoutPanel implements ViolinFamilyPanel, OnInit {
     });
   }
 }
+
+// each C bout arc carried round to its full circle, in the arc's own ink
+export const renderCenterBoutCircles = (p: ViolinFamilyParams, cb: CenterBoutSolve, pal: PanelPalette) => (g: any, ui: any): void => {
+  let k = p.corners!;
+  let upperTip = pal.ink(4);
+  let bout = pal.ink(3);
+  let lowerTip = pal.ink(2);
+
+  if (cb.C2) renderCircle(cb.C2, upperTip, true)(g, ui);
+  if (k.C21DoubleArc && cb.C21) renderCircle(cb.C21, upperTip, true)(g, ui);
+  if (cb.C1) renderCircle(cb.C1, lowerTip, true)(g, ui);
+  if (k.C11DoubleArc && cb.C11) renderCircle(cb.C11, lowerTip, true)(g, ui);
+  if (cb.C0) renderCircle(cb.C0, bout, true)(g, ui);
+};
 
 // the C bout in its own colours on this panel, where its fields are; grey under another panel's
 // work unless all arcs are shown. The plate edge offsets in from C0, and from a corner arc whichever way that arc turns:
@@ -145,15 +162,6 @@ export const renderCenterBout = (
   let bout = pal.ink(3);
   let lowerTip = pal.ink(2);
 
-  type Part = [Arc | null, string, 1 | -1];
-  let parts = ([
-    [cb.C2, upperTip, cornerTurn(cb.C2, cb.C0)],
-    ...(k.C21DoubleArc ? [[cb.C21, upperTip, cornerTurn(cb.C2, cb.C0)] as Part] : []),
-    [cb.C1, lowerTip, cornerTurn(cb.C1, cb.C0)],
-    ...(k.C11DoubleArc ? [[cb.C11, lowerTip, cornerTurn(cb.C1, cb.C0)] as Part] : []),
-    [cb.C0, bout, -1],
-  ] as Part[]).filter((part): part is [Arc, string, 1 | -1] => !!part[0]);
-
   if (highlighted) {
     if (highlighted.key === 'UCr' || highlighted.key === 'LCr') {
       let tip = k[highlighted.key];
@@ -175,22 +183,36 @@ export const renderCenterBout = (
     for (let P of [k.LCr, mirror(k.LCr)]) renderCrosshair(P, pal.ink(2).faint(5))(g, ui);
   }
   if (moduleArcs) {
-    for (let [arc, color] of parts) {
+    let fancy = (arc: Arc | null, color: string) => {
+      if (!arc) return;
       renderArcFromArcFancy(arc, color)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(arc), color)(g, ui);
-    }
+    };
+    fancy(cb.C2, upperTip);
+    if (k.C21DoubleArc) fancy(cb.C21, upperTip);
+    fancy(cb.C1, lowerTip);
+    if (k.C11DoubleArc) fancy(cb.C11, lowerTip);
+    fancy(cb.C0, bout);
   }
 
   // the outline at offset d from the rib line: 0 is the rib, unless the module arcs stand in
   // for it, and the inset is the plate's edge
   let offsets = [...(moduleArcs ? [] : [0]), ...(flags.renderOuterPath ? [inset] : [])];
+  let upperOut = cornerTurn(cb.C2, cb.C0);
+  let lowerOut = cornerTurn(cb.C1, cb.C0);
   for (let d of offsets) {
-    for (let [arc, color, out] of parts) {
+    let trace = (arc: Arc | null, color: string, out: 1 | -1) => {
+      if (!arc) return;
       let edge = offsetArcRadius(arc, out * d);
-      let trace = currentModule ? color : pal.neutral;
-      renderArcFromArc(edge, trace, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(flipArcAboutY(edge), trace, STROKE_WEIGHT.trace)(g, ui);
-    }
+      let ink = currentModule ? color : pal.neutral;
+      renderArcFromArc(edge, ink, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(flipArcAboutY(edge), ink, STROKE_WEIGHT.trace)(g, ui);
+    };
+    trace(cb.C2, upperTip, upperOut);
+    if (k.C21DoubleArc) trace(cb.C21, upperTip, upperOut);
+    trace(cb.C1, lowerTip, lowerOut);
+    if (k.C11DoubleArc) trace(cb.C11, lowerTip, lowerOut);
+    trace(cb.C0, bout, -1);
   }
 };
 
