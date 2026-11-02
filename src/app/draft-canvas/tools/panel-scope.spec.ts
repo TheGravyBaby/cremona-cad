@@ -1,4 +1,4 @@
-import { isScopeNowhere, scopeLabel, scopeOnly, scopeShows, scopeWith, SCOPE_NOWHERE } from './panel-scope';
+import { isScopeNowhere, scopeOnly, scopeShows, scopeWith, SCOPE_NOWHERE } from './panel-scope';
 
 describe('panel scope', () => {
   it('shows everywhere when absent, nowhere when only is empty', () => {
@@ -41,14 +41,5 @@ describe('panel scope', () => {
     expect(scopeWith(SCOPE_NOWHERE, null, true)).toBeUndefined();
     expect(scopeWith(undefined, null, false)).toEqual(SCOPE_NOWHERE);
     expect(scopeWith(only, null, false)).toEqual(SCOPE_NOWHERE);
-  });
-
-  it('labels from the open panel\'s point of view', () => {
-    expect(scopeLabel(undefined, 'base')).toBe('everywhere');
-    expect(scopeLabel(SCOPE_NOWHERE, 'base')).toBe('nowhere');
-    expect(scopeLabel({ only: ['base'] }, 'base')).toBe('here only');
-    expect(scopeLabel({ only: ['base'] }, 'mould')).toBe('1 panel');
-    expect(scopeLabel({ only: ['base', 'mould'] }, 'base')).toBe('2 panels');
-    expect(scopeLabel({ except: ['base', 'mould', 'neck'] }, 'base')).toBe('all but 3');
   });
 });

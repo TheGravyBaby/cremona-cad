@@ -66,32 +66,36 @@ describe('LayerControlsComponent', () => {
 
     const row = () => all('.layer-tab')[0];
     expect(row().classList.contains('off-panel')).toBe(false);
-    expect(all('.scope-chip')[0].textContent).toContain('everywhere');
 
     (row().querySelector('.layer-tab-icon-btn') as HTMLElement).click();
     fixture.detectChanges();
     expect(component.images[0].scope).toEqual({ except: ['base'] });
     expect(row().classList.contains('off-panel')).toBe(true);
-    expect(all('.scope-chip')[0].textContent).toContain('all but 1');
     expect(component.scopeTitle(component.images[0].scope)).toBe('Shown everywhere except Base');
 
     all('.scope-chip')[0].click();
     fixture.detectChanges();
-    const rows = all('app-scope-menu .scope-row');
-    expect(rows.length).toBe(5);
+    const here = () => all('app-scope-menu .scope-here input')[0] as HTMLInputElement;
+    const modes = () => all('app-scope-menu .scope-modes > .scope-row');
+    const lit = () => Array.from(modes()).findIndex(m => m.classList.contains('checked'));
+    expect(here().checked).toBe(false);
+    expect(lit()).toBe(3);
     expect(all('.panel-list').length).toBe(0);
-    rows[1].click();
+
+    modes()[1].click();
     fixture.detectChanges();
     expect(component.images[0].scope).toEqual({ only: ['base'] });
-    expect(all('.scope-chip')[0].textContent).toContain('here only');
+    expect(here().checked).toBe(true);
+    expect(lit()).toBe(1);
 
-    (rows[3].querySelector('input') as HTMLInputElement).click();
+    here().click();
     fixture.detectChanges();
     expect(component.images[0].scope).toEqual({ only: [] });
-    expect(all('.scope-chip')[0].textContent).toContain('nowhere');
+    expect(lit()).toBe(2);
 
-    rows[4].click();
+    modes()[3].click();
     fixture.detectChanges();
+    expect(lit()).toBe(3);
     const boxes = all('.panel-list input') as NodeListOf<HTMLInputElement>;
     expect(boxes.length).toBe(3);
     boxes[2].click();

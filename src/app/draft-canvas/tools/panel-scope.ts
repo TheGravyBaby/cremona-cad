@@ -38,18 +38,7 @@ export function isScopeOnly(scope: PanelScope | undefined, panel: string | null)
   return !!scope && 'only' in scope && scope.only.length === 1 && scope.only[0] === panel;
 }
 
-/** The chip's word for a scope, from the open panel's point of view. */
-export function scopeLabel(scope: PanelScope | undefined, panel: string | null): string {
-  if (!scope) return 'everywhere';
-  if ('only' in scope) {
-    if (scope.only.length === 0) return 'nowhere';
-    if (isScopeOnly(scope, panel)) return 'here only';
-    return `${scope.only.length} ${scope.only.length === 1 ? 'panel' : 'panels'}`;
-  }
-  return `all but ${scope.except.length}`;
-}
-
-/** The chip's tooltip: the same scope with the panels named. */
+/** The Panels button's tooltip: the same scope with the panels named. */
 export function scopeDescription(scope: PanelScope | undefined, labelFor: (id: string) => string): string {
   if (!scope) return 'Shown on every panel';
   if ('only' in scope) return scope.only.length ? `Shown on ${scope.only.map(labelFor).join(', ')}` : 'Shown nowhere';

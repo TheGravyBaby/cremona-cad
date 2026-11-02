@@ -305,8 +305,8 @@
   }
 }
 
-/* The scope word after a row's name: muted and small, so the name stays the row's subject, with
-   the caret saying it opens. Width is the word's own — "everywhere" is the longest it gets. */
+/* The Panels button after a row's name: muted and small, so the name stays the row's subject, with
+   the caret saying it opens. */
 .scope-chip {
   display: flex;
   align-items: center;

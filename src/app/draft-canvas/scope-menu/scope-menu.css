@@ -47,26 +47,34 @@
   cursor: pointer;
 }
 
-.scope-more {
+/* points at the list it opens: right when folded, down when open */
+.scope-caret {
+  margin-left: -3px;
   color: var(--ui-text-muted);
+  font-size: 9px;
+  transform: rotate(-90deg);
 }
 
-.scope-more.open,
-.scope-more:hover {
-  color: var(--ui-text-primary);
+.scope-caret.open {
+  transform: none;
 }
 
-.scope-sep {
-  height: 1px;
-  margin: 3px 6px;
-  background: var(--ui-border-elevated);
+.scope-here {
+  font-weight: 600;
+}
+
+/* beneath the checkbox, so they read as the answer to "and where else?" */
+.scope-modes {
+  display: flex;
+  flex-direction: column;
+  margin-left: 14px;
 }
 
 .panel-list {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 2px 8px 4px 24px;
+  padding: 2px 8px 4px 23px;
 }
 
 .panel-row {

@@ -2,5 +2,18 @@
 id: layers
 title: Layers
 kind: overview
+aliases: [recipe layer, active layer, import svg, dxf]
 ---
-TODO: write this article.
+The layer list opens from the bottom bar.
+
+## The recipe layer
+Everything the recipe panels draw sits on its own recipe layer. Unlock it to select, measure and duplicate its pieces; they cannot be edited directly. Duplicate a piece with *Ctrl + D* to get a copy you can edit.
+
+## Custom layers
+Every object you draw with the tools must go onto a layer. Layer fuctionality is similar to most drawing apps. You can move objects between layers. You can hide and lock them. 
+
+## Panel viewing
+By default, layers are displayed no matter which recipe panel you are on. However, sometimes you might only want to display a layer on a single panel, or a set of panels. To do this, go the the layer menu and select the panel drop down. Here you can select which panels you would like the layers to display.
+
+## Import and export
+You may also import / export layers as SVGs and DXFs. You will find these controls in the layer menu. 

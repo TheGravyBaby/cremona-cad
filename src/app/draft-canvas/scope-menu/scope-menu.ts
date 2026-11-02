@@ -33,7 +33,14 @@ export class ScopeMenuComponent {
   public get isNowhere(): boolean { return isScopeNowhere(this.scope); }
   public shownOn(panelId: string): boolean { return scopeShows(this.scope, panelId); }
 
+  /** An open list keeps "Choose panels" lit even when the ticks happen to land on a preset. */
+  public get mode(): 'everywhere' | 'here' | 'nowhere' | 'choose' {
+    if (this.panelListOpen) return 'choose';
+    return this.isEverywhere ? 'everywhere' : this.isHereOnly ? 'here' : this.isNowhere ? 'nowhere' : 'choose';
+  }
+
   applyPreset(preset: 'everywhere' | 'here' | 'nowhere'): void {
+    this.panelListOpen = false;
     this.scopeChange.emit(
       preset === 'everywhere' ? SCOPE_EVERYWHERE : preset === 'here' ? scopeOnly(this.activePanel) : SCOPE_NOWHERE);
   }

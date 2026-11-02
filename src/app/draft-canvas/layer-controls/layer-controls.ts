@@ -5,7 +5,7 @@ import { ToolboxStore } from '../tools/toolbox-store';
 import { DraftShape, ImageShape } from '../tools/toolbox-shape';
 import { DEFAULT_LAYER_ID, Layer } from '../tools/layer';
 import { PanelChoice } from '../tools/toolbox-store';
-import { PanelScope, scopeDescription, scopeLabel, scopeWith } from '../tools/panel-scope';
+import { PanelScope, scopeDescription, scopeWith } from '../tools/panel-scope';
 import { SelectionActions } from '../tools/selection-actions';
 import { shapesToSvg } from '../tools/shape-svg';
 import { shapesToDxf } from '../tools/shape-dxf';
@@ -34,8 +34,8 @@ type Scoped = { id: string; scope?: PanelScope };
  * the image list instead.
  *
  * Where a row shows is one thing, its scope (panel-scope.ts), and the row answers it from the
- * open panel's point of view: the eye is "shown on this panel", and the chip after the name says
- * where else, opening the presets. The user is always standing on one panel when they decide,
+ * open panel's point of view: the eye is "shown on this panel", and the Panels button after the
+ * name opens the presets for where else. The user is always standing on one panel when they decide,
  * so the question is never "pick from sixteen" unless they ask for the list.
  */
 @Component({
@@ -105,7 +105,6 @@ export class LayerControlsComponent {
   public get activePanel(): string | null { return this.toolbox.activePanel; }
 
   public shownHere(scope: PanelScope | undefined): boolean { return this.toolbox.shownHere(scope); }
-  public scopeLabel(scope: PanelScope | undefined): string { return scopeLabel(scope, this.activePanel); }
   public scopeTitle(scope: PanelScope | undefined): string {
     return scopeDescription(scope, id => this.availablePanels.find(p => p.id === id)?.label ?? id);
   }
@@ -226,7 +225,7 @@ export class LayerControlsComponent {
   }
 
   // ===== Reference images =====
-  // Deliberately shaped like Layers above: a list of rows, each with an eye, a scope chip, a lock
+  // Deliberately shaped like Layers above: a list of rows, each with an eye, a Panels button, a lock
   // and a delete. Each image is its own scope/lock unit (see ImageShape), so this list *is* the
   // image layering — there's no second layer type behind it.
 

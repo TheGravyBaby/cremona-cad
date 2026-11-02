@@ -171,13 +171,14 @@
     }
   </div>
 
-  <!-- Where the row shows, in a word, from the open panel's point of view. Only offered when the
-       recipe has pushed panels; without them the eye alone (everywhere or nowhere) is the story. -->
+  <!-- Always reads "Panels", whatever the scope, so the row looks the same in every screenshot;
+       the scope itself is in the title. Only offered when the recipe has pushed panels; without
+       them the eye alone (everywhere or nowhere) is the story. -->
   <ng-template #scopeChip let-item="item">
     @if (availablePanels.length) {
     <button type="button" class="scope-chip" [class.open]="scopeMenuFor === item.id"
       (click)="toggleScopeMenu(item.id); $event.stopPropagation()" [title]="scopeTitle(item.scope)">
-      {{ scopeLabel(item.scope) }}<span class="scope-caret">&#x25BE;</span>
+      Panels<span class="scope-caret">&#x25BE;</span>
     </button>
     }
   </ng-template>

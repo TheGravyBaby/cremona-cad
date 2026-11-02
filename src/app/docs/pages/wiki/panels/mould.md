@@ -6,9 +6,16 @@ panel: mould
 status: unreviewed
 image: wiki/mould.svg
 ---
-This panel allows you to set various properties of the mould used to assemble your ribs. Set the size and positions of your blocks. 
+This panel draws the inside mould the ribs are bent around. Its outline is the rib line from the first panels, with pockets cut for the six blocks. 
 
-One of the notable use cases for CremonaCad is a design tool that outputs files to be carved on CNC. If this is your use case, consider entering the size of your bit. CremonaCad will ensure that the mould has appropriate cutouts to make fabrication possible. 
+## Blocks
+Blocks are positioned around the corners and at the top and lower bout. All blocks have custom height and width values, while the corner blocks may be padded along the X or Y directions. 
+
+## Clamp Box
+The clamp box offers flat edges for you to clamp your blocks too, as well as a parallel surface which wraps around the mould. If you would prefer to cut your own clamping system, you can toggle this off. 
+
+## CNC
+If the mould will be cut on a CNC, enter the diameter of the bit you intend to use. A bit cannot cut a sharp inside corner, so CremonaCad adds relief at the block pockets so the blocks seat properly. Leave it at 0 if cutting by hand. 
 
 ## Fields
 Only the sizes of the blocks are set here. Where they sit follows from the outline: the neck and end blocks stand on the centerline against the ends of the outline, and the corner blocks are hung off their corner tips.

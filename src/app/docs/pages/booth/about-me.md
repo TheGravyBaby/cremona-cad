@@ -14,4 +14,6 @@ CremonaCad is open source, and I welcome feedback, ideas, and collaboration from
 
 ✉ [andrewargraves@gmail.com](mailto:andrewargraves@gmail.com)
 
+If you would like to support the development and maintenance of CremonaCad, [consider donating.](https://paypal.me/andrewargraves1)
+
 *Thanks, and happy drafting!*
