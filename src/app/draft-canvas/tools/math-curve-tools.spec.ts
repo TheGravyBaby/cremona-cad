@@ -1,7 +1,8 @@
 import { Pt } from '../../models/types';
 import { battenPath, catenaryBetween, cycloidBetween } from '../../helpers/math/pathVibes';
 import { samplePathToPolyline } from '../../helpers/math/pathMath';
-import { trochoidNorm, battenBeziers, polylineCumulativeLengths, projectOntoPolyline } from '../../helpers/math/vibeMath';
+import { battenBeziers, polylineCumulativeLengths, projectOntoPolyline } from '../../helpers/math/vibeMath';
+import { trochoidNorm } from '../../helpers/math/archMath';
 import { fakeToolHost } from './fake-tool-host';
 import { PathShape, PathSource, pathFromSource } from './toolbox-shape';
 import { ToolboxStore } from './toolbox-store';

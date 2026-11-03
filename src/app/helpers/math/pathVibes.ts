@@ -1,10 +1,11 @@
-import { Pt, Arc } from '../../models/types';
+import { Pt, Pt3D, Arc } from '../../models/types';
 import { svgPathProperties } from 'svg-path-properties';
 import * as polygonClipping from 'polygon-clipping';
 import * as d3 from 'd3';
 import { dist, angleFromCenter, normalizeRadians, TURN, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY, cubicBezierPoint, signedPolygonArea, closestPointOnSegment, pointInPolygon } from './simpleGeometry';
 import { circleCircleIntersections } from './draftMath';
-import { solveCatenaryA, battenBeziers, ArchSplineControlPoint, archSplineKnots, makeArchSplineZOf, trochoidNorm } from './vibeMath';
+import { battenBeziers } from './vibeMath';
+import { solveCatenaryA, ArchSplineControlPoint, archSplineKnots, makeArchSplineZOf, trochoidNorm } from './archMath';
 import { arcCenterFromEndpoints, combinePathStrings, pathFromArc, pathFromLine } from './pathMath';
 
 // path strings past one-at-a-time: joining runs into loops, the area booleans, occlusion,
@@ -1411,4 +1412,99 @@ export function fieldBands(valueAt: (x: number, y: number) => number, box: { min
     if (polygons.length) out.push({ level, polygons });
   }
   return out;
+}
+
+// a height field sampled row by row: whatever one row shares between every sample on it (a
+// section solve, the outline's crossings) is built once by rowAt and handed to every zAt on that
+// row. zAt is null off the surface; halfAt is the row's half width about x = 0, null where the
+// row misses the surface
+export interface RowSampledField<R> {
+  rowAt: (y: number) => R;
+  halfAt: (row: R) => number | null;
+  zAt: (x: number, y: number, row: R) => number | null;
+}
+
+// the field's contour map: heights on a grid, marching squares, every ring clipped to the outline.
+// Positive levels never reach the outline (a flat margin always separates them from the edge), so
+// only the levels at or below zero are clipped. Off the surface the grid reads far below for the
+// positive levels and far above for the rest, so a ring closes on the surface's edge either way
+export function buildContourRings<R>(
+  field: RowSampledField<R>, outline: Pt[], box: { xMax: number; yMin: number; yMax: number }, stepMm: number, gridMm: number,
+): { level: number; rings: [number, number][][] }[] {
+  const { xMax, yMin, yMax } = box;
+  const nx = Math.floor((2 * xMax) / gridMm) + 1;
+  const ny = Math.floor((yMax - yMin) / gridMm) + 1;
+  const posVals = new Float64Array(nx * ny);
+  const negVals = new Float64Array(nx * ny);
+  let zMin = 0, zMax = 0;
+  for (let j = 0; j < ny; j++) {
+    const y = yMin + j * gridMm;
+    const row = field.rowAt(y);
+    for (let i = 0; i < nx; i++) {
+      const z = field.zAt(-xMax + i * gridMm, y, row);
+      posVals[j * nx + i] = z ?? -1e6;
+      negVals[j * nx + i] = z ?? 1e6;
+      if (z !== null) { zMin = Math.min(zMin, z); zMax = Math.max(zMax, z); }
+    }
+  }
+  const levelVals: number[] = [];
+  for (let k = Math.ceil(zMin / stepMm); k * stepMm <= zMax; k++) levelVals.push(k * stepMm);
+
+  // d3 puts sample i at i + 0.5 in its own coordinates
+  const generator = d3.contours().size([nx, ny]).smooth(true);
+  const toLocal = (rings: number[][][][]): [number, number][][] =>
+    rings.flat().map(ring => ring.map(([cx, cy]) => [-xMax + (cx - 0.5) * gridMm, yMin + (cy - 0.5) * gridMm] as [number, number]));
+  const outlineRing: [number, number][] = outline.map(pt => [(pt.x + xMax) / gridMm + 0.5, (pt.y - yMin) / gridMm + 0.5] as [number, number]);
+  outlineRing.push(outlineRing[0]);
+  const outlineClip: [number, number][][][] = [[outlineRing]];
+
+  const levels: { level: number; rings: [number, number][][] }[] = [];
+  for (const level of levelVals) {
+    const multi = generator.contour(level > 0 ? (posVals as any) : (negVals as any), level);
+    const raw: number[][][][] = level > 0 ? (multi.coordinates as any) : ((polygonClipper.intersection(multi.coordinates as any, outlineClip) ?? []) as any);
+    const rings = toLocal(raw);
+    if (rings.length > 0) levels.push({ level, rings });
+  }
+  return levels;
+}
+
+// the field as cross-section strips with ribs running lengthwise down the middle and both edges
+export interface WireframeStrip { y: number; pts: Pt3D[]; maxZ: number }
+export interface WireframeGeometry { strips: WireframeStrip[]; ribs: Pt3D[][] }
+
+export function buildWireframeStrip<R>(field: RowSampledField<R>, y: number, row: R, sampleStep: number): WireframeStrip | null {
+  const hw = field.halfAt(row);
+  if (hw === null) return null;
+  const steps = Math.max(2, Math.ceil(hw * 2 / sampleStep));
+  const pts: Pt3D[] = [];
+  let maxZ = -Infinity;
+  for (let i = 0; i <= steps; i++) {
+    const x = -hw + (i / steps) * hw * 2;
+    const z = field.zAt(x, y, row) ?? 0;
+    if (z > maxZ) maxZ = z;
+    pts.push(new Pt3D(x, y, z));
+  }
+  return { y, pts, maxZ };
+}
+
+export function buildWireframe<R>(field: RowSampledField<R>, yMax: number, stationStepMm: number, sampleStep: number): WireframeGeometry {
+  const strips: WireframeStrip[] = [];
+  const ribSides = [0, -1, 1];
+  const ribs: Pt3D[][] = ribSides.map(() => []);
+  for (let y = 0; y <= yMax; y += stationStepMm) {
+    const row = field.rowAt(y);
+    const half = field.halfAt(row);
+    if (half === null) {
+      // a gap station restarts every rib run, matching the strip coverage
+      for (const rib of ribs) rib.length = 0;
+      continue;
+    }
+    const strip = buildWireframeStrip(field, y, row, sampleStep);
+    if (strip) strips.push(strip);
+    ribSides.forEach((side, k) => {
+      const x = side * half;
+      ribs[k].push(new Pt3D(x, y, field.zAt(x, y, row) ?? 0));
+    });
+  }
+  return { strips, ribs: ribs.filter(rib => rib.length > 1) };
 }

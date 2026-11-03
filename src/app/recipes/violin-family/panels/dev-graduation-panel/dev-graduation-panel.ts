@@ -26,7 +26,7 @@ import { PLATE_LAYOUT_GAP, definePurflingPath, solvePlateContour } from '../plat
 import { renderFholePlate } from '../fhole-placement-panel/fhole-placement-panel';
 import { solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { defineChannelLoop } from '../fluting-panel/fluting-panel';
-import { bodyLandmarks, loopHalfChordAtY, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
+import { calcBodyLandmarks, loopHalfChordAtY, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { MouldPanel, solveMould } from '../mould-panel/mould-panel';
 
 // Graduation, tried out on localhost only and carried without promise of support. The readings on
@@ -480,7 +480,7 @@ export const renderGraduationPoints = (p: ViolinFamilyParams, active: Graduation
 // chord at its row, so the zones scale with the outline. Read from the lower bout up
 export function zonePoints(p: ViolinFamilyParams, plate: GraduationPlate): GraduationPoint[] {
   let ground = solveGraduation(p)?.ground;
-  let marks = new Map(bodyLandmarks(p).map(k => [k.code, k.y]));
+  let marks = new Map(calcBodyLandmarks(p).map(k => [k.code, k.y]));
   let rows = (['LB', 'LC', 'UC', 'UB'] as const).map(code => marks.get(code));
   if (!ground || rows.some(y => y === undefined)) return [];
   let [LB, LC, UC, UB] = rows as number[];

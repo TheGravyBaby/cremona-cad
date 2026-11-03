@@ -15,7 +15,7 @@ import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
 import { FholeContoursSolve, MouldRelief, MouldSolve, NeckSolve, PlateContourSolve, Plate, PlateSurface, ScrollSolve } from '../../violin-family-solves';
-import { contourRings, contourSampleSteps, rowAt, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
+import { buildSurfaceContours, calcContourSampleSteps, rowAt, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { BACK_ARCH_INK, CHANNEL_INK, TOP_ARCH_INK } from '../long-arching-panel/long-arching-panel';
 import { MOULD_EXPORT_STEP, renderMould, solveMould } from '../mould-panel/mould-panel';
 import { definePurflingPath, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
@@ -653,9 +653,9 @@ export const renderHole = (o: PlateContourSolve, plate: Plate, pal: PanelPalette
 // the plate's contours as the Cross Arching panel maps them, under the raster's lines
 export const renderArching = (p: ViolinFamilyParams, surface: PlateSurface, plate: Plate, tp: Toolpaths, pal: PanelPalette) => (gr: any, ui: any): void => {
   let ink = pal.ink(plate === 'top' ? TOP_ARCH_INK : BACK_ARCH_INK);
-  let { stepMm, gridMm } = contourSampleSteps(p, p.arching![plate].long.height);
-  for (let { level, rings } of contourRings(p, surface, stepMm, gridMm)) {
-    let d = rings.map(ring => `M ${ring.map(([x, y]) => `${x} ${y}`).join(' L ')} Z`).join(' ');
+  let { stepMm, gridMm } = calcContourSampleSteps(p, p.arching![plate].long.height);
+  for (let { level, rings } of buildSurfaceContours(p, surface, stepMm, gridMm).levels) {
+    let d = rings.map(ring => `M ${ring.map(pt => `${pt.x} ${pt.y}`).join(' L ')} Z`).join(' ');
     renderPath(d, level <= 0 ? pal.ink(CHANNEL_INK) : ink, STROKE_WEIGHT.guide, level <= 0 ? 0.9 : 0.7)(gr, ui);
   }
   let raster = tp.raster;

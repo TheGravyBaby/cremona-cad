@@ -57,8 +57,10 @@ Sort by what the code knows, not what feature it serves:
 - **`helpers/math/`**: math that doesn't. The test is whether the name and signature would make
   sense to someone drafting a guitar. Files are ordered by distance from compass-and-straightedge,
   and each imports only from those before it: `simpleGeometry` (closed-form) → `draftMath`
-  (casework solvers, fillets, arc fits, runs) → `vibeMath` (splines, catenary, spatial index,
-  projection) → `pathMath` (one SVG `d` string at a time) → `pathVibes` (booleans, offsets, joining).
+  (casework solvers, fillets, arc fits, runs) → `vibeMath` (splines, spatial index, polyline
+  crossings, projection) → `archMath` (the gouge's channel section, arch curves, an arch landing
+  tangent on the channel, the crown profile) → `pathMath` (one SVG `d` string at a time) →
+  `pathVibes` (booleans, offsets, joining, height-field sampling).
 - **`helpers/renderFuncs.ts`**: instrument-agnostic SVG emission. A panel's own renders live in its panel file.
 - **The component**: thin. `panels/panel-component-base.ts` holds what every panel does alike:
   `recordEditAndRedraw()` emits `edit` and calls `drawCanvas()`; `drawCanvas()` emits what the

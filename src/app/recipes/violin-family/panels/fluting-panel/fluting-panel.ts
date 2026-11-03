@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { findJoiningArcs } from '../../../../helpers/math/draftMath';
+import { calcChannelHalfWidth, calcChannelSweep } from '../../../../helpers/math/archMath';
 import {
   closestPointOnSegment, dist, flipArcAboutY, offsetArcRadius, pointInPolygon, pointOnCircle, signedRadianDelta, TURN,
 } from '../../../../helpers/math/simpleGeometry';
@@ -115,40 +116,6 @@ export const renderFluting = (
 export const renderFlutingInnerEdge = (f: FlutingSolve) => (g: any, ui: any): void => {
   if (f.top) renderPath(f.top.inner, ThemeService.getPalette('classicCremona').ink(TOP_CHANNEL_INK).faint(3), STROKE_WEIGHT.guide)(g, ui);
 };
-
-// half the channel's width, the chord where its circular section comes back up to the plate's
-// surface. Zero when nothing cuts it: a channel no wider than twice its depth is past a semicircle,
-// undercut
-export function calcChannelHalfWidth(width: number, depth: number): number {
-  if (!(width > 0 && depth > 0) || width <= 2 * depth) return 0;
-  return width / 2;
-}
-
-// the sweep radius of the gouge that cuts a channel this wide and deep: the circle through the
-// chord's two ends and the trough
-export function calcChannelSweep(width: number, depth: number): number {
-  return (width * width / 4 + depth * depth) / (2 * depth);
-}
-
-// the channel's section across its run: the height relative to the plate's surface at s mm from
-// the centreline, -depth at the trough, 0 at the cut's edges and flat beyond. A true arc, not a
-// curve fitted to it; the arching lands on it
-export function channelProfileZAt(s: number, width: number, depth: number): number {
-  let w = calcChannelHalfWidth(width, depth);
-  if (w <= 0 || Math.abs(s) >= w) return 0;
-  let R = calcChannelSweep(width, depth);
-  return -depth + R - Math.sqrt(Math.max(R * R - s * s, 0));
-}
-
-// its slope, dz/ds: positive climbing away from the trough either way, so the inner flank reads
-// straight
-export function channelProfileSlopeAt(s: number, width: number, depth: number): number {
-  let w = calcChannelHalfWidth(width, depth);
-  if (w <= 0 || Math.abs(s) >= w) return 0;
-  let R = calcChannelSweep(width, depth);
-  let denom = Math.sqrt(Math.max(R * R - s * s, 0));
-  return denom <= 0 ? 0 : s / denom;
-}
 
 // a flank is joined from a little way back from its end rather than the end itself, which is
 // somewhere up the next bout, so it stops there

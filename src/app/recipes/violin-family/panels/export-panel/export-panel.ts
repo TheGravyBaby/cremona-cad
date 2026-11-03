@@ -36,8 +36,8 @@ import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout, solveRibArcs } from '../center-bout-panel/center-bout-panel';
 import { definePurflingPath, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
-import { buildArchPathFor, solveLongArching } from '../long-arching-panel/long-arching-panel';
-import { bodyLandmarks, rowAt, sectionRuns, solveCrossArching, STATION_MERGE_EPS_MM, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
+import { defineArchPath, solveLongArching } from '../long-arching-panel/long-arching-panel';
+import { calcBodyLandmarks, rowAt, calcSectionRuns, solveCrossArching, STATION_MERGE_EPS_MM, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { calcMortiseFloorY, neckHalfWidthAt, calcScrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
 import { fingerboardRadiusAt, fingerboardScoopAt, solveStringSetup } from '../string-setup-panel/string-setup-panel';
 import type { PositionMarkSolve } from '../dev-fingerboard-panel/dev-fingerboard-panel';
@@ -544,7 +544,7 @@ function stackTemplates(shapes: TemplateShape[]): TemplateShape[] {
 // against whether or not the maker set a station there, plus any station they did set that isn't
 // already on one, which would be the same template cut twice
 function templateStations(p: ViolinFamilyParams, plate: Plate): { y: number; code: string }[] {
-  let landmarks = bodyLandmarks(p).map(m => ({ y: m.y, code: m.code as string }));
+  let landmarks = calcBodyLandmarks(p).map(m => ({ y: m.y, code: m.code as string }));
   let authored = p.arching![plate].cross.stations
     .map(st => Math.round(st.y))
     .filter(y => Number.isFinite(y) && !landmarks.some(m => Math.abs(m.y - y) <= STATION_MERGE_EPS_MM))
@@ -568,7 +568,7 @@ export function crossArchTemplates(p: ViolinFamilyParams): TemplateShape[] {
     if (!surface) return [];
     let signZ = plate === 'top' ? 1 : -1;
     return templateStations(p, plate).flatMap(({ y, code }) => {
-      let arch = sectionRuns(surface, y).find(run => run.part === 'arch');
+      let arch = calcSectionRuns(surface, y).find(run => run.part === 'arch');
       return arch ? [{ pts: arch.pts.map(pt => new Pt(pt.x, signZ * pt.y)), label: `${label} ${code ? `${code} ` : ''}${Math.round(y)}mm`, plate, signZ }] : [];
     });
   });
@@ -592,7 +592,7 @@ export function longArchTemplates(p: ViolinFamilyParams): TemplateShape[] {
     let la = a[plate];
     if (!la) continue;
     let sign: 1 | -1 = plate === 'top' ? 1 : -1;
-    let arch = parsePolyline(buildArchPathFor(la.lowered, la.span, la.yStart, 0, sign, la.farZ));
+    let arch = parsePolyline(defineArchPath(la.lowered, la.span, la.yStart, 0, sign, la.farZ));
     let shape = archTemplate(arch, new Pt(sign * templateWidth(archSpan(arch)), 0), `${label} Long`, 90);
     templates.push(plate === 'top' ? rotateTemplateShape180(shape) : shape);
   }

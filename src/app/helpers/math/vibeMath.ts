@@ -401,6 +401,41 @@ export function polylinePointAtY(pts: Pt3D[], y: number): Pt3D | null {
   return null;
 }
 
+// where a closed polyline crosses the line y = const, the x of each crossing sorted ascending.
+// Half-open on each edge, so a vertex exactly on the line counts once
+export function polylineCrossingsAtY(poly: Pt[], y: number): number[] {
+  const xs: number[] = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    if ((a.y <= y) !== (b.y <= y)) xs.push(a.x + ((y - a.y) / (b.y - a.y)) * (b.x - a.x));
+  }
+  return xs.sort((m, n) => m - n);
+}
+
+// half width of the run of a loop that x = 0 sits in, bounded by the crossings either side of it.
+// Where the outline turns a corner it runs nearly flat and a line clips it more than once, leaving
+// a sliver out at the tip that isn't part of the run across the middle. With every crossing on one
+// side, the furthest
+export function calcHalfChord(xs: number[]): number | null {
+  if (!xs.length) return null;
+  const right = xs.find(x => x >= 0);
+  const left = xs.filter(x => x <= 0).pop();
+  return right === undefined || left === undefined ? Math.max(Math.abs(xs[0]), Math.abs(xs[xs.length - 1])) : Math.max(-left, right);
+}
+
+// whether x lies inside a loop, by the parity of the crossings past it
+export function isInsideCrossings(x: number, xs: number[]): boolean {
+  let count = 0;
+  for (const c of xs) if (c > x) count++;
+  return count % 2 === 1;
+}
+
+// inside or on the loop: a corner whose tip hooks back past its flank still counts its tip
+export function isOnOrInsideCrossings(x: number, xs: number[]): boolean {
+  for (const c of xs) if (Math.abs(c - x) <= 1e-9) return true;
+  return isInsideCrossings(x, xs);
+}
+
 // ===== Surface development =====
 // A flat template laid over a curved surface, as a card is: its spine runs along y and the card
 // bends across it, so a point's template coordinates are its surface length along the spine and
@@ -448,29 +483,6 @@ export function developOverSurface(zAt: (x: number, y: number) => number | null,
     const u = Math.sign(pt.x - spine.x) * liftedLength(zAt, foot, pt, stepMm);
     return new Pt(spine.x + u, spine.y + along(pt.y) - v0);
   });
-}
-
-// ===== Curve math =====
-
-/**
- * Solves the catenary shape parameter `a` for a given sag `H` and span `L`.
- * Uses bisection: a * (cosh(L / 2a) − 1) = H.
- */
-// Station sweeps re-solve the same arch hundreds of times per redraw; the
-// bisection is 64 cosh evaluations, so a single-entry memo pays for itself.
-let lastCatenary: { H: number; L: number; a: number } | null = null;
-export function solveCatenaryA(H: number, L: number): number {
-  if (lastCatenary && lastCatenary.H === H && lastCatenary.L === L) return lastCatenary.a;
-  const f = (a: number): number => a * (Math.cosh(L / (2 * a)) - 1) - H;
-  let lo = L * 1e-4;
-  let hi = L * 1e4;
-  for (let i = 0; i < 64; i++) {
-    const mid = (lo + hi) / 2;
-    f(mid) > 0 ? (lo = mid) : (hi = mid);
-  }
-  const a = (lo + hi) / 2;
-  lastCatenary = { H, L, a };
-  return a;
 }
 
 // The fair curve a thin even strip takes bent through pins, as cubic Bézier spans [from, c1, c2, to].
@@ -833,162 +845,6 @@ export function projectedBounds(proj: (x: number, y: number, z: number) => [numb
     if (sy > maxY) maxY = sy;
   }
   return { minX, minY, maxX, maxY };
-}
-
-// arch curves: heights along a catenary, trochoid or spline arch, and the knots a spline passes through
-
-/**
- * A trochoid arch point in the windowed parametrisation, returned as
- * normalised (x, z) both in [0, 1] for the fractional position `frac ∈ [0, 1]`.
- *
- * `pct ∈ (0, 1]` selects the central fraction of the full cusp-to-cusp arch
- * (t ∈ [0, 2π]) stretched across the span. pct=1 is the full arch, whose edges
- * leave the baseline tangent (flat takeoff). Smaller pct clips the flat cusp
- * ends for a nonzero takeoff slope, so a fluting channel can meet the arch at
- * more than a grazing angle. The peak stays centred at frac=0.5.
- *
- * `frac` is linear in the generating parameter t, not in x — so stepping it
- * uniformly clusters points where the curve bends hardest (near the cusps),
- * which is what a sampler wants and a uniform-in-x walk would miss.
- */
-export function trochoidNorm(frac: number, d: number, pct: number): { x: number; z: number } {
-  const t0 = (1 - pct) * TURN.half;
-  const t1 = TURN.full - t0;
-  const t = t0 + frac * (t1 - t0);
-  const xRaw = (tt: number) => tt - d * Math.sin(tt);
-  const x0 = xRaw(t0);
-  const denom = xRaw(t1) - x0;
-  const c0 = Math.cos(t0);
-  return {
-    // pct=1: (t - d·sin t)/2π ; z: (1 - cos t)/2 — the classic normalisation.
-    x: denom !== 0 ? (xRaw(t) - x0) / denom : frac,
-    z: (c0 - Math.cos(t)) / (c0 + 1),
-  };
-}
-
-/** Arch height at position s ∈ [0, span] along a catenary arch. */
-export function catenaryZAt(hEff: number, span: number, s: number): number {
-  if (hEff <= 0 || span <= 0 || s <= 0 || s >= span) return 0;
-  const a = solveCatenaryA(hEff, span);
-  return hEff + a - a * Math.cosh((s - span / 2) / a);
-}
-
-/**
- * Arch height at position s ∈ [0, span] along a trochoid arch. Inverts the
- * monotone windowed x-map (Kepler's equation) by bisection — robust even at
- * the d=1 cusps where Newton's method stalls. `pct` (default 1) clips the flat
- * cusp ends; see {@link trochoidNorm}.
- */
-export function cycloidZAt(hEff: number, span: number, d: number, s: number, pct = 1): number {
-  if (hEff <= 0 || span <= 0 || s <= 0 || s >= span) return 0;
-  const t0 = (1 - pct) * TURN.half;
-  const t1 = TURN.full - t0;
-  const xRaw = (tt: number) => tt - d * Math.sin(tt);
-  const x0 = xRaw(t0);
-  // Target on the raw x-parametrisation, mapped from the fractional station.
-  const m = x0 + (s / span) * (xRaw(t1) - x0);
-  let lo = t0;
-  let hi = t1;
-  // 24 halvings bound t to (t1−t0)/2²⁴ ≈ sub-micron in z; this runs once per
-  // surface sample, so the iteration count is a real cost.
-  for (let i = 0; i < 24; i++) {
-    const t = (lo + hi) / 2;
-    if (xRaw(t) < m) lo = t; else hi = t;
-  }
-  const t = (lo + hi) / 2;
-  const c0 = Math.cos(t0);
-  return ((c0 - Math.cos(t)) / (c0 + 1)) * hEff;
-}
-
-/** A spline-arch control point in normalized full-span coordinates. */
-export interface ArchSplineControlPoint {
-  t: number;
-  z: number;
-  mirror?: boolean;
-}
-
-/** {@link ArchSplineKnot.source} for the peak, which every spline has exactly one of. */
-export const SPLINE_PEAK_SOURCE = -1;
-
-/** One interpolated knot, tagged with the control point it came from. */
-export interface ArchSplineKnot {
-  t: number;
-  z: number;
-  /**
-   * Which control point produced this knot: its index in `points`, or
-   * {@link SPLINE_PEAK_SOURCE} for the peak. A mirrored twin carries its
-   * origin point's index, so both knots of one point share a source — which
-   * is what lets a panel highlight a point and its reflection together.
-   */
-  source: number;
-}
-
-/** Closest approach two knots may make before the later one is discarded. */
-const SPLINE_KNOT_EPS = 1e-3;
-
-/** Control points and the peak are held this far off the plate edges. */
-const SPLINE_POINT_MARGIN = 0.005;
-
-const SPLINE_PEAK_MARGIN  = 0.02;
-
-/**
- * The interior knot list a spline arch actually interpolates, in normalized
- * full-span position: the peak at `hEff`, plus every control point and — for
- * points flagged `mirror` — its reflection about the plate's mid-length. Sorted
- * by t, with knots that land on top of one another collapsed; the peak outranks
- * a control point it collides with, and earlier control points outrank later
- * ones. Excludes the two plate edges, which are always (0, 0) and (1, 0).
- *
- * Shared by the path builder, the height evaluator, and the panel's control
- * point guides so all three agree on where the knots ended up.
- */
-export function archSplineKnots(
-  hEff: number,
-  points: ArchSplineControlPoint[],
-  peak = 0.5,
-): ArchSplineKnot[] {
-  const hold = (t: number, margin: number) => Math.min(Math.max(t, margin), 1 - margin);
-  const raw = [{ t: hold(peak, SPLINE_PEAK_MARGIN), z: hEff, rank: 0, source: SPLINE_PEAK_SOURCE }];
-  points.forEach((p, i) => {
-    const t = hold(p.t, SPLINE_POINT_MARGIN);
-    raw.push({ t, z: p.z, rank: 1, source: i });
-    if (p.mirror) raw.push({ t: 1 - t, z: p.z, rank: 1, source: i });
-  });
-  raw.sort((a, b) => a.t - b.t || a.rank - b.rank);
-  const knots: ArchSplineKnot[] = [];
-  for (const k of raw) {
-    if (knots.length && k.t - knots[knots.length - 1].t <= SPLINE_KNOT_EPS) continue;
-    knots.push({ t: k.t, z: k.z, source: k.source });
-  }
-  return knots;
-}
-
-/** Arch height at position s ∈ [0, span] along a spline arch; `endZ` is the far end's height, 0 unless it lands elsewhere. */
-export function splineZAt(
-  hEff: number,
-  span: number,
-  points: ArchSplineControlPoint[],
-  peak: number,
-  s: number,
-  endZ = 0,
-): number {
-  if (hEff <= 0 || span <= 0 || s <= 0) return 0;
-  if (s >= span) return endZ;
-  return makeArchSplineZOf(hEff, span, points, peak, endZ)(s);
-}
-
-// z(s) over [0, span], shared by the spline arch path builder and splineZAt
-export function makeArchSplineZOf(
-  hEff: number,
-  span: number,
-  points: ArchSplineControlPoint[],
-  peak: number,
-  endZ = 0,
-): (s: number) => number {
-  const knots = archSplineKnots(hEff, points, peak);
-  const ys = [0, ...knots.map(k => k.t * span), span];
-  const zs = [0, ...knots.map(k => k.z),       endZ];
-  return makeMonotoneSpline(ys, zs);
 }
 
 // the polyline with every vertex dropped that lies within `tol` of the chord between the kept

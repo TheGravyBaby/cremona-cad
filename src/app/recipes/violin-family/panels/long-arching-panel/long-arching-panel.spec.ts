@@ -3,10 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { dist } from '../../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../../models/types';
 import {
-  archZAt, LongArchingPanel, longArchCurve, maxRibTaper, placeOnTopPlate, ribHeightAt, solveLongArch, solveLongArching, solveRibTaper,
-  topPlatePlacement,
+  archZAt, LongArchingPanel, calcLongArchCurve, calcMaxRibTaper, placeOnTopPlate, ribHeightAt, solveLongArch, solveLongArching, solveRibTaper,
+  calcTopPlatePlacement,
 } from './long-arching-panel';
-import { FlutingPanel, channelProfileSlopeAt, channelProfileZAt } from '../fluting-panel/fluting-panel';
+import { channelProfileSlopeAt, channelProfileZAt } from '../../../../helpers/math/archMath';
+import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
@@ -106,13 +107,13 @@ describe('the rib taper', () => {
 
   it('fails past the taper the body can carry, and on a cleared height, rather than rolling back', () => {
     const p = seeded();
-    p.arching!.ribHeightLower = p.arching!.ribHeightUpper + maxRibTaper(p) + 0.1;
+    p.arching!.ribHeightLower = p.arching!.ribHeightUpper + calcMaxRibTaper(p) + 0.1;
     let s = solveLongArching(p)!;
     expect(s.ribs).toBeNull();
     expect(s.failures.some(f => f.unsolved.includes('ribs'))).toBe(true);
     expect(s.top).not.toBeNull();
 
-    p.arching!.ribHeightLower = p.arching!.ribHeightUpper + maxRibTaper(p) - 0.1;
+    p.arching!.ribHeightLower = p.arching!.ribHeightUpper + calcMaxRibTaper(p) - 0.1;
     expect(solveLongArching(p)!.ribs).not.toBeNull();
 
     (p.arching as any).ribHeightLower = null;
@@ -123,7 +124,7 @@ describe('the rib taper', () => {
 
   it('tilts the top plate as one rigid piece and leaves the back alone', () => {
     const p = seeded();
-    const pl = topPlatePlacement(p, solveRibTaper(p)!);
+    const pl = calcTopPlatePlacement(p, solveRibTaper(p)!);
     const a = new Pt(3.5, 20), b = new Pt(18, 300);
     expect(dist(placeOnTopPlate(pl, a), placeOnTopPlate(pl, b))).toBeCloseTo(dist(a, b), 9);
     expect(pl.angleDeg).not.toBe(0);
@@ -185,7 +186,7 @@ describe('the long arch', () => {
   it('is the same arch whichever end it is solved from', () => {
     const p = seeded();
     const g = p.fluting!.top;
-    const arch = longArchCurve({ ...p.arching!.top.long, type: 'spline', points: [{ t: 25, z: 9, mirror: false }, { t: 80, z: 11, mirror: false }] });
+    const arch = calcLongArchCurve({ ...p.arching!.top.long, type: 'spline', points: [{ t: 25, z: 9, mirror: false }, { t: 80, z: 11, mirror: false }] });
     const la = solveLongArch(p, arch, g)!;
     const flipped = solveLongArch(p, { ...arch, peak: 1 - arch.peak, points: arch.points.map(pt => ({ ...pt, t: 1 - pt.t })) }, g)!;
     expect(la.takeoff.contactS).toBeCloseTo(flipped.farTakeoff.contactS, 6);
@@ -198,13 +199,13 @@ describe('the long arch', () => {
     const arch = p.arching!.top.long;
     arch.type = 'spline';
     const before = solveLongArching(p)!.top!;
-    const curve = longArchCurve(arch);
+    const curve = calcLongArchCurve(arch);
     arch.points.reverse();
     arch.peakRow = arch.points.length;
     const after = solveLongArching(p)!.top!;
     expect(after.takeoff.contactS).toBeCloseTo(before.takeoff.contactS, 9);
     expect(after.farTakeoff.contactS).toBeCloseTo(before.farTakeoff.contactS, 9);
-    for (let s = 0; s <= 100; s += 5) expect(archZAt(longArchCurve(arch), 100, s)).toBeCloseTo(archZAt(curve, 100, s), 9);
+    for (let s = 0; s <= 100; s += 5) expect(archZAt(calcLongArchCurve(arch), 100, s)).toBeCloseTo(archZAt(curve, 100, s), 9);
   });
 
   it('fails a point above the peak, one deeper than the plate, a position off the body, and a cleared height, each naming its plate', () => {

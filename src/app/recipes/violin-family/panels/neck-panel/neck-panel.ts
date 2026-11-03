@@ -21,7 +21,7 @@ import { familyStandards } from '../../violin-family-seed';
 import { PLATE_LAYOUT_GAP, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
-  channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, ribHeightAt, sideViewOffsetX, solveLongArching, topPlatePlacement,
+  channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, ribHeightAt, calcSideViewOffsetX, solveLongArching, calcTopPlatePlacement,
 } from '../long-arching-panel/long-arching-panel';
 import { defineSideScrollPath } from '../pegbox-panel/pegbox-panel';
 import { ScrollView, buildScrollBackViewStrokes, buildScrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
@@ -69,7 +69,7 @@ export class NeckPanel extends PanelComponentBase<NeckHighlightKey> {
     let w = p.scroll ? solveScrollWidths(p) : null;
     let scroll = w && !w.scroll.failures.length ? w.scroll : undefined;
     let scrollInPlan = scroll && !w!.failures.some(f => f.unsolved.length) ? scroll : null;
-    let sideX = sideViewOffsetX(p);
+    let sideX = calcSideViewOffsetX(p);
     let side = [
       renderBodySideProfile(p, a, o, this.pal, false, { ground: true }),
       renderNeck(p, n, this.pal, { guides: this.flags.showModuleGuides, scroll }),
@@ -345,7 +345,7 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
 
     let angle = nk.angle * TURN.degree;
     let h = p.body.height;
-    let placement = topPlatePlacement(p, a.ribs);
+    let placement = calcTopPlatePlacement(p, a.ribs);
     let outerZ = a.ribs.zLower + p.arching!.top.thickness;
     let direction = vectorFromSlope(angle + TURN.quarter);
     let normal = vectorFromSlope(angle);

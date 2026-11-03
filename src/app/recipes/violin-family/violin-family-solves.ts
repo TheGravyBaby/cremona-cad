@@ -1,6 +1,7 @@
 import { Arc, Circle, Pt, Rectangle } from '../../models/types';
 import { SolveFailure } from '../../helpers/validators';
 import { PolylineIndex } from '../../helpers/math/vibeMath';
+import { ArchTakeoff } from '../../helpers/math/archMath';
 import { ScrollWidths } from './violin-family-types';
 
 // what each panel's solver derives from the params: arcs, points, failures. Rebuilt every draw,
@@ -164,15 +165,8 @@ export interface RibTaper {
   max: number;
 }
 
-// where an arch lands on the channel: how far from the channel's centreline (0 the trough,
-// negative on the outer flank), how deep it is there, the channel's slope there, and whether the
-// meeting is a true tangency or the closest the arch could come
-export interface ArchTakeoff {
-  contactS: number;
-  takeoffDepth: number;
-  slope: number;
-  tangent: boolean;
-}
+// where an arch lands on the channel, solved in archMath and carried on both arches' solves
+export type { ArchTakeoff };
 
 // a long arch in the solver's own terms: fractions of its span, heights in mm
 export interface LongArchCurve {
@@ -213,16 +207,13 @@ export interface CrossArchKnot {
   z: number;
 }
 
-// a crown shape resolved to one station: its knots each side, still fractional, and where the crown
-// sits (fraction of the chord, 0.5 the joint). A catenary carries no knots; a cycloid's knots are
-// fractions of each side's takeoff rather than of the fixed frame
-export interface CrossArchRow {
-  left: CrossArchKnot[];
-  right: CrossArchKnot[];
-  peak?: number;
-  catenary?: boolean;
-  fromTakeoff?: boolean;
-}
+// a crown shape resolved to one station. A catenary carries no knots; otherwise the knots each
+// side, still fractional, where the crown sits (fraction of the chord, 0.5 the joint), and
+// whether the knots are fractions of each side's takeoff (a generated curve) rather than of the
+// fixed frame
+export type CrossArchRow =
+  | { kind: 'catenary' }
+  | { kind: 'knots'; left: CrossArchKnot[]; right: CrossArchKnot[]; peak: number; fromTakeoff: boolean };
 
 // a plate's transverse surface at one station, the transition solved on both sides. zAt is the
 // height above the plate's outer surface at x across the plate, 0 the joint

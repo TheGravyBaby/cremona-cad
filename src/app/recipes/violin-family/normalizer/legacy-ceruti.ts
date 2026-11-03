@@ -1,6 +1,6 @@
 import { ReferenceImage } from '../../../models/types';
 import { normalizeRadians, signedArcSweep, signedRadianDelta, TURN } from '../../../helpers/math/simpleGeometry';
-import { cycloidZAt } from '../../../helpers/math/vibeMath';
+import { cycloidZAt } from '../../../helpers/math/archMath';
 import {
   ArchingParams, ChannelParams, CornersParams, CrossArchParams, CrossShapeParams, FholeContourParams, FholePlacementParams,
   FlutingParams, LongArchParams, MainBoutsParams, MouldParams, PlateContourParams, VIOLIN_FAMILY_RECIPE_NAME,

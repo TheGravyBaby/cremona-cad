@@ -2,16 +2,17 @@
 import { describe, expect, it } from 'vitest';
 import { closestPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import {
-  bodyLandmarks, contourRings, crossArchKnotX, crossArchKnots, crossShape, makeCrossArchResolver, nearestCrossArchShape, rowAt, sectionAt,
-  sectionRuns, solveCrossArching, solveCrossArchSection, surfaceZAt,
+  calcBodyLandmarks, buildSurfaceContours, crossArchKnotX, calcCrossArchKnots, calcCrossArchShape, buildCrossArchResolver, calcNearestCrossArchShape, rowAt, sectionAt,
+  calcSectionRuns, solveCrossArching, solveCrossArchSection, surfaceZAt,
 } from './cross-arching-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
-import { FlutingPanel, calcChannelHalfWidth, channelProfileSlopeAt } from '../fluting-panel/fluting-panel';
+import { calcChannelHalfWidth, channelProfileSlopeAt } from '../../../../helpers/math/archMath';
+import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { CrossArchParams, ViolinFamilyParams } from '../../violin-family-types';
-import { PlateSurface } from '../../violin-family-solves';
+import { CrossArchRow, PlateSurface } from '../../violin-family-solves';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
@@ -37,7 +38,7 @@ const W = 4;
 const D = 1.2;
 const ARCH = 15;
 const HALF = 100;
-const row = { left: [{ x: 0.45, z: 0.6 }], right: [{ x: 0.45, z: 0.6 }] };
+const row: CrossArchRow = { kind: 'knots', left: [{ x: 0.45, z: 0.6 }], right: [{ x: 0.45, z: 0.6 }], peak: 0.5, fromTakeoff: false };
 
 describe('the cross arching solve', () => {
   it('never writes to the params', () => {
@@ -86,7 +87,7 @@ describe('the cross arching solve', () => {
 
   it('lists the five landmarks up the body in order, off the recipe', () => {
     const p = seeded();
-    const marks = bodyLandmarks(p);
+    const marks = calcBodyLandmarks(p);
     expect(marks.map(m => m.code)).toEqual(['LB', 'LC', 'C', 'UC', 'UB']);
     for (let i = 1; i < marks.length; i++) expect(marks[i].y).toBeGreaterThan(marks[i - 1].y);
     expect(marks[1].y).toBe(Math.round(p.corners!.LCr.y));
@@ -116,7 +117,7 @@ describe('a section', () => {
 
   it('holds a point where it was put while an uneven crown lands its two sides apart', () => {
     const s = solveCrossArchSection(ARCH, HALF, W, D, {
-      left: [{ x: 0.3, z: 0.9 }, { x: 0.6, z: 0.8 }], right: [{ x: 0.3, z: 0.9 }, { x: 0.6, z: 0.2 }],
+      ...row, left: [{ x: 0.3, z: 0.9 }, { x: 0.6, z: 0.8 }], right: [{ x: 0.3, z: 0.9 }, { x: 0.6, z: 0.2 }],
     })!;
     expect(s.left!.contactS).not.toBeCloseTo(s.right!.contactS, 3);
     for (const side of [-1, 1] as const) expect(s.zAt(crossArchKnotX(s, side, 0.3))).toBeCloseTo(0.9 * ARCH, 9);
@@ -128,7 +129,7 @@ describe('a section', () => {
       expect(s.zAt(0)).toBeCloseTo(archH, 9);
       expect(s.zAt(0)).toBeGreaterThan(s.zAt(HALF));
     }
-    const dip = solveCrossArchSection(ARCH, HALF, W, D, { left: [{ x: 0.9, z: -0.1 }], right: [{ x: 0.9, z: -0.1 }] })!;
+    const dip = solveCrossArchSection(ARCH, HALF, W, D, { ...row, left: [{ x: 0.9, z: -0.1 }], right: [{ x: 0.9, z: -0.1 }] })!;
     for (const side of [dip.left!, dip.right!]) {
       expect(side.tangent).toBe(true);
       expect(side.contactS).toBeLessThan(0);
@@ -141,7 +142,12 @@ describe('a section', () => {
       type: 'spline', d: 40, pct: 90, peak: 50, points: [{ x: 83, z: 50, mirror: true }],
       stations: [{ y: 100, d: 40, pct: 90, peak: 50, points: [{ x: 83, z: 80, mirror: true }] }],
     };
-    const at = makeCrossArchResolver(cross, 350);
+    const resolve = buildCrossArchResolver(cross, 350);
+    const at = (y: number) => {
+      const r = resolve(y);
+      if (r.kind !== 'knots') throw new Error('a spline crown resolves to knots');
+      return r;
+    };
     expect(at(0).right[0].z).toBeCloseTo(0.5, 9);
     expect(at(100).right[0].z).toBeCloseTo(0.8, 9);
     expect(at(350).right[0].z).toBeCloseTo(0.5, 9);
@@ -150,12 +156,12 @@ describe('a section', () => {
       expect(z).toBeGreaterThanOrEqual(0.5 - 1e-9);
       expect(z).toBeLessThanOrEqual(0.8 + 1e-9);
     }
-    expect(nearestCrossArchShape(cross, 120, 350)).toBe(cross.stations[0]);
-    expect(nearestCrossArchShape(cross, 20, 350)).toBe(cross);
+    expect(calcNearestCrossArchShape(cross, 120, 350)).toBe(cross.stations[0]);
+    expect(calcNearestCrossArchShape(cross, 20, 350)).toBe(cross);
     // a point reads the same place on either side when mirrored, its own side otherwise
-    const shape = crossShape({ ...cross, points: [{ x: 30, z: 50, mirror: false }] }, 'spline');
-    expect(crossArchKnots(shape, -1)).toEqual([{ x: 0.4, z: 0.5 }]);
-    expect(crossArchKnots(shape, 1)).toEqual([]);
+    const shape = calcCrossArchShape({ ...cross, points: [{ x: 30, z: 50, mirror: false }] }, 'spline');
+    expect(calcCrossArchKnots(shape, -1)).toEqual([{ x: 0.4, z: 0.5 }]);
+    expect(calcCrossArchKnots(shape, 1)).toEqual([]);
   });
 });
 
@@ -246,7 +252,7 @@ describe('the surface', () => {
     for (let y = 4; y < p.body.height - 4; y += 6) {
       const rOn = rowAt(surface, y), rOff = rowAt(sOff, y);
       // the flanks: the widest points of the bouts and the waist, where the two loops coincide
-      const flank = bodyLandmarks(p).filter(m => m.code !== 'UC' && m.code !== 'LC').some(m => Math.abs(y - m.y) < 10);
+      const flank = calcBodyLandmarks(p).filter(m => m.code !== 'UC' && m.code !== 'LC').some(m => Math.abs(y - m.y) < 10);
       for (let x = -120; x <= 120; x += 2) {
         const a = surfaceZAt(sOff, x, y, rOff), b = surfaceZAt(surface, x, y, rOn);
         if (a === null || b === null) continue;
@@ -262,7 +268,7 @@ describe('the surface', () => {
   });
 
   it('splits a station into land, channel and arch runs that share their joins', () => {
-    const runs = sectionRuns(surface, p.bouts!.C0Y);
+    const runs = calcSectionRuns(surface, p.bouts!.C0Y);
     expect(runs.map(r => r.part)).toEqual(['land', 'channel', 'arch', 'channel', 'land']);
     for (let i = 1; i < runs.length; i++) expect(runs[i].pts[0]).toEqual(runs[i - 1].pts[runs[i - 1].pts.length - 1]);
     const arch = runs[2].pts;
@@ -270,13 +276,13 @@ describe('the surface', () => {
   });
 
   it('draws closed contours including the channel levels, every ring inside the plate', () => {
-    const levels = contourRings(p, surface, 1, 2);
+    const levels = buildSurfaceContours(p, surface, 1, 2).levels;
     expect(levels.some(l => l.level <= 0)).toBe(true);
     expect(levels.some(l => l.level > 0)).toBe(true);
     for (const { rings } of levels) {
       for (const ring of rings) {
         expect(ring[0]).toEqual(ring[ring.length - 1]);
-        for (const [x, y] of ring) expect(closestPointToPolylineIndexed({ x, y }, surface.flutingEdgeIdx).dist).toBeLessThan(p.body.width);
+        for (const { x, y } of ring) expect(closestPointToPolylineIndexed({ x, y }, surface.flutingEdgeIdx).dist).toBeLessThan(p.body.width);
       }
     }
   }, 20_000);

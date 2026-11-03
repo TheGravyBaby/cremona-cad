@@ -28,7 +28,7 @@ import { familyStandards } from '../../violin-family-seed';
 import { solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
-  channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, sideViewOffsetX, solveLongArching, topPlatePlacement,
+  channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, calcSideViewOffsetX, solveLongArching, calcTopPlatePlacement,
 } from '../long-arching-panel/long-arching-panel';
 import { neckHalfWidthAt, defineNeckInPlan, renderNeck, calcScrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
 import { buildScrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
@@ -89,7 +89,7 @@ export function renderStringSetupViews(
   let w = p.scroll ? solveScrollWidths(p) : null;
   let scroll = w && !w.scroll.failures.length ? w.scroll : undefined;
   let scrollInPlan = scroll && !w!.failures.some(f => f.unsolved.length) ? scroll : null;
-  let sideX = sideViewOffsetX(p);
+  let sideX = calcSideViewOffsetX(p);
   let side = [
     renderBodySideProfile(p, a, o, pal, false, { ground: true }),
     renderNeck(p, s.neck, pal, { ground: true, scroll }),
@@ -435,7 +435,7 @@ export function calcFingerboardCrownLine(p: ViolinFamilyParams, s: StringSetupSo
 
 function calcPointOnArch(p: ViolinFamilyParams, a: LongArchingSolve, at: number): Pt {
   let outerZ = a.ribs!.zLower + p.arching!.top.thickness;
-  return placeOnTopPlate(topPlatePlacement(p, a.ribs!), new Pt(outerZ + channelCenterlineZAt(p, p.fluting!.top, a.top, at), at));
+  return placeOnTopPlate(calcTopPlatePlacement(p, a.ribs!), new Pt(outerZ + channelCenterlineZAt(p, p.fluting!.top, a.top, at), at));
 }
 
 // a later panel reads the string setup by calling this; it returns and never writes to the params.

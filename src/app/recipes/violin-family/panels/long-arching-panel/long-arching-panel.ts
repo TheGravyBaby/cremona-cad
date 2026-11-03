@@ -1,23 +1,25 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
-import { archSplineKnots, catenaryZAt, splineZAt, SPLINE_PEAK_SOURCE } from '../../../../helpers/math/vibeMath';
+import {
+  archSplineKnots, calcChannelHalfWidth, catenaryZAt, channelProfileZAt, solveArchTakeoff, splineZAt, SPLINE_PEAK_SOURCE,
+} from '../../../../helpers/math/archMath';
 import { buildCatenaryPath, buildSplinePath, occludePath } from '../../../../helpers/math/pathVibes';
 import {
   renderGuideBaseline, renderGuideKnot, renderGuideMeasure, renderPath, renderPointHalo, renderSegment, renderSolveFailures, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
-import { reportFailures, solveSection } from '../../../../helpers/validators';
+import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { TooltipDirective } from '../../../../docs/tooltips';
 import { Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { applyRowMove, RowMove, RowReorderDirective, rowsWithMarker } from '../../../../shared/row-reorder';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { ChannelParams, LongArchParams, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
+import { ChannelParams, LongArchParams, PlateArchParams, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
-import { ArchTakeoff, LongArchCurve, LongArchingFailure, LongArchingSolve, LongArchSolve, PlateContourSolve, Plate, RibTaper } from '../../violin-family-solves';
+import { ArchTakeoff, LongArchCurve, LongArchingSolve, LongArchSolve, PlateContourSolve, Plate, RibTaper, FlutingSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
-import { calcChannelHalfWidth, channelProfileSlopeAt, channelProfileZAt, renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
+import { renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
 import { renderPlateContour, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 
@@ -42,20 +44,12 @@ export class LongArchingPanel extends PanelComponentBase<{ plate: Plate; source:
 
   // the ribs and the edge off the family's standards, the arch heights the maker's eye by family;
   // every curve type's fields written at once, the spline's points hung off the seeded height, so
-  // a type switch only reveals
+  // a type switch only reveals. The crown is seeded here too, since both arches share p.arching
   static seed(p: ViolinFamilyParams): void {
     if (p.arching || !p.fluting) return;
     let s = familyStandards(p.body.height);
     let [topH, backH] = { violin: [15, 14], viola: [20, 18], cello: [27, 25], bass: [55, 50] }[s.family];
-    let plate = (height: number) => {
-      let points = seedPoints(height);
-      return {
-        thickness: s.edgeThickness,
-        long: { type: 'catenary' as const, height, peak: 50, peakRow: points.filter(pt => pt.t > 50).length, points },
-        cross: { type: 'cycloid' as const, d: 40, pct: 90, peak: 50, points: [{ x: 83, z: 50, mirror: true }], stations: [] },
-      };
-    };
-    p.arching = { ribHeightLower: s.ribHeightLower, ribHeightUpper: s.ribHeightUpper, top: plate(topH), back: plate(backH) };
+    p.arching = { ribHeightLower: s.ribHeightLower, ribHeightUpper: s.ribHeightUpper, top: seedPlateArch(topH, s.edgeThickness), back: seedPlateArch(backH, s.edgeThickness) };
   }
 
   // what the last draw solved; the template's readouts and reportSolveFailures() read it
@@ -69,8 +63,8 @@ export class LongArchingPanel extends PanelComponentBase<{ plate: Plate; source:
     let p = this.params;
     let o = solvePlateContour(p)!;
     let f = solveFluting(p)!;
-    let a = this.a = solveLongArching(p)!;
-    let sideX = sideViewOffsetX(p);
+    let a = this.a = solveLongArching(p, f)!;
+    let sideX = calcSideViewOffsetX(p);
     let side = renderBodySideProfile(p, a, o, this.pal, true, { highlight: this.highlightedPart?.key ?? null, showGuides: this.flags.showModuleGuides });
     return [
       renderPlateContour(p, o, this.pal, this.flags, false, true),
@@ -85,7 +79,7 @@ export class LongArchingPanel extends PanelComponentBase<{ plate: Plate; source:
   // included, since those are the knots on screen
   addPoint(plate: Plate): void {
     let arch = this.params.arching![plate].long;
-    let knots = [{ t: 0, z: 0 }, ...archSplineKnots(arch.height, longArchCurve(arch).points, arch.peak / 100), { t: 1, z: 0 }];
+    let knots = [{ t: 0, z: 0 }, ...archSplineKnots(arch.height, calcLongArchCurve(arch).points, arch.peak / 100), { t: 1, z: 0 }];
     let gap = 0, at = 0;
     for (let i = 0; i + 1 < knots.length; i++) {
       if (knots[i + 1].t - knots[i].t > gap) { gap = knots[i + 1].t - knots[i].t; at = i; }
@@ -126,14 +120,21 @@ export class LongArchingPanel extends PanelComponentBase<{ plate: Plate; source:
   }
 }
 
+function seedPlateArch(height: number, thickness: number): PlateArchParams {
+  let points = seedLongArchPoints(height);
+  return {
+    thickness,
+    long: { type: 'catenary' as const, height, peak: 50, peakRow: points.filter(pt => pt.t > 50).length, points },
+    cross: { type: 'cycloid' as const, d: 40, pct: 90, peak: 50, points: [{ x: 83, z: 50, mirror: true }], stations: [] },
+  };
+}
+
 // a spline seeded free end to end rather than mirrored: the upper and lower bouts carry different
 // wood, so a long arch is rarely symmetric
-function seedPoints(height: number): LongArchParams['points'] {
+function seedLongArchPoints(height: number): LongArchParams['points'] {
   return [
-    // { t: 87.5, z: +(height * 0.55).toFixed(1), mirror: false },
     { t: 75, z: +(height * 0.85).toFixed(1), mirror: false },
     { t: 25, z: +(height * 0.85).toFixed(1), mirror: false },
-    // { t: 12.5, z: +(height * 0.55).toFixed(1), mirror: false },
   ];
 }
 
@@ -144,10 +145,17 @@ export const CHANNEL_INK = 1;
 
 // right of the plan, where every panel leaves room. The back's gluing plane holds still while the
 // arching is edited, a fixed reference on the canvas, until the back's arch would reach the plan
-export function sideViewOffsetX(p: ViolinFamilyParams): number {
+export function calcSideViewOffsetX(p: ViolinFamilyParams): number {
   let a = p.arching!;
   let clearance = Math.max(0.12 * p.body.height, 20 + a.back.thickness + a.back.long.height);
   return p.body.width / 2 + p.body.overhang + p.body.rib + clearance;
+}
+
+export interface SideProfileOpts {
+  highlight?: { plate: Plate; source: number } | null;
+  showGuides?: boolean;
+  ground?: boolean;
+  fluting?: boolean;
 }
 
 // the body's side profile: the rib between the two plates, the top growing up off it and the back
@@ -160,105 +168,102 @@ export function sideViewOffsetX(p: ViolinFamilyParams): number {
 // does, since the plate's edge standing over the channel would hide it, and keeps the channel in its
 // own ink even on the ground
 export const renderBodySideProfile = (
-  p: ViolinFamilyParams,
-  a: LongArchingSolve,
-  o: PlateContourSolve,
-  pal: PanelPalette,
-  currentModule: boolean,
-  opts: { highlight?: { plate: Plate; source: number } | null; showGuides?: boolean; ground?: boolean; fluting?: boolean },
+  p: ViolinFamilyParams, a: LongArchingSolve, o: PlateContourSolve, pal: PanelPalette, currentModule: boolean, opts: SideProfileOpts,
 ) => (g: any, ui: any): void => {
   let taper = a.ribs;
   if (!taper) return;
   let c = o.corners;
   let flatEnds = [c.U31 ?? c.U3, c.C21 ?? c.C2, c.C11 ?? c.C1, c.L31 ?? c.L3].flatMap(arc => arc ? [pointOnCircle(arc, arc.end).y] : []);
-  let rib = ribLine(p, taper);
+  let rib = calcRibLine(p, taper);
   renderPath(`M 0 ${rib.yLow} L ${rib.zLow} ${rib.yLow} L ${rib.zHigh} ${rib.yHigh} L 0 ${rib.yHigh} Z`, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   for (let corner of [p.corners!.UCr, p.corners!.LCr]) {
     renderSegment(new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   }
   // the ui layer is Y-flipped, so its transform mirrors
-  let { dx, dy, angleDeg, pivotX, pivotY } = topPlatePlacement(p, taper);
-  platePart(
-    g.append('g').attr('transform', `translate(${dx},${dy}) rotate(${angleDeg},${pivotX},${pivotY})`),
-    ui.append('g').attr('transform', `translate(${dx},${-dy}) rotate(${-angleDeg},${pivotX},${-pivotY})`),
-    'top',
-  );
-  platePart(g, ui, 'back');
+  let { dx, dy, angleDeg, pivotX, pivotY } = calcTopPlatePlacement(p, taper);
+  let gTop = g.append('g').attr('transform', `translate(${dx},${dy}) rotate(${angleDeg},${pivotX},${pivotY})`);
+  let uiTop = ui.append('g').attr('transform', `translate(${dx},${-dy}) rotate(${-angleDeg},${pivotX},${-pivotY})`);
+  renderPlateSideProfile(p, a, 'top', flatEnds, pal, currentModule, opts)(gTop, uiTop);
+  renderPlateSideProfile(p, a, 'back', flatEnds, pal, currentModule, opts)(g, ui);
+};
 
-  // cut down the centreline there's no slab outline: over all but the last few millimetres the
-  // plate's outer surface is the arch, and a rectangle at plate level would contradict the curve
-  function platePart(g: any, ui: any, plate: Plate): void {
-    let isTop = plate === 'top';
-    let sign: 1 | -1 = isTop ? 1 : -1;
-    let thickness = p.arching![plate].thickness;
-    let innerZ = isTop ? taper!.zLower : 0;
-    let outerZ = innerZ + sign * thickness;
-    let color = opts.ground ? pal.neutral : pal.ink(isTop ? TOP_ARCH_INK : BACK_ARCH_INK);
-    let channel = opts.ground && !opts.fluting ? pal.neutral : pal.ink(CHANNEL_INK);
-    let gouge = p.fluting![plate];
-    let edge = p.fluting!.flutingEdge;
-    let solved = a[plate];
+// one plate in the side view, flat: the top's tilt is the caller's transform. Cut down the
+// centreline there's no slab outline: over all but the last few millimetres the plate's outer
+// surface is the arch, and a rectangle at plate level would contradict the curve
+export const renderPlateSideProfile = (
+  p: ViolinFamilyParams, a: LongArchingSolve, plate: Plate, flatEnds: number[], pal: PanelPalette, currentModule: boolean, opts: SideProfileOpts,
+) => (g: any, ui: any): void => {
+  let isTop = plate === 'top';
+  let sign: 1 | -1 = isTop ? 1 : -1;
+  let thickness = p.arching![plate].thickness;
+  let innerZ = isTop ? a.ribs!.zLower : 0;
+  let outerZ = innerZ + sign * thickness;
+  let color = opts.ground ? pal.neutral : pal.ink(isTop ? TOP_ARCH_INK : BACK_ARCH_INK);
+  let channel = opts.ground && !opts.fluting ? pal.neutral : pal.ink(CHANNEL_INK);
+  let gouge = p.fluting![plate];
+  let edge = p.fluting!.flutingEdge;
+  let solved = a[plate];
 
-    renderSegment(new Pt(innerZ, 0), new Pt(innerZ, p.body.height), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-    let slab = `M ${innerZ} 0 L ${outerZ} 0 L ${outerZ} ${p.body.height} L ${innerZ} ${p.body.height} Z`;
-    let cut = currentModule || opts.fluting;
-    if (cut) {
-      for (let [yEnd, yLand] of [[0, edge], [p.body.height, p.body.height - edge]] as const) {
-        renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-        renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-      }
-      // the channel is the tool, not a curve fitted to the arch, so it's the same at both caps
-      renderPath(channelCapPath(p, gouge, outerZ, sign, true, solved?.takeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
-      renderPath(channelCapPath(p, gouge, outerZ, sign, false, solved?.farTakeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
-    } else {
-      renderSegment(new Pt(innerZ, 0), new Pt(outerZ, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-      renderSegment(new Pt(innerZ, p.body.height), new Pt(outerZ, p.body.height), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-      renderSegment(new Pt(outerZ, 0), new Pt(outerZ, p.body.height), color, STROKE_WEIGHT.section)(g, ui);
-      for (let y of flatEnds) renderSegment(new Pt(innerZ, y), new Pt(outerZ, y), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+  renderSegment(new Pt(innerZ, 0), new Pt(innerZ, p.body.height), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+  let slab = `M ${innerZ} 0 L ${outerZ} 0 L ${outerZ} ${p.body.height} L ${innerZ} ${p.body.height} Z`;
+  let cut = currentModule || opts.fluting;
+  if (cut) {
+    for (let [yEnd, yLand] of [[0, edge], [p.body.height, p.body.height - edge]] as const) {
+      renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+      renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
     }
-    if (!solved) return;
+    // the channel is the tool, not a curve fitted to the arch, so it's the same at both caps
+    renderPath(defineChannelCapPath(p, gouge, outerZ, sign, true, solved?.takeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
+    renderPath(defineChannelCapPath(p, gouge, outerZ, sign, false, solved?.farTakeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
+  } else {
+    renderSegment(new Pt(innerZ, 0), new Pt(outerZ, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+    renderSegment(new Pt(innerZ, p.body.height), new Pt(outerZ, p.body.height), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+    renderSegment(new Pt(outerZ, 0), new Pt(outerZ, p.body.height), color, STROKE_WEIGHT.section)(g, ui);
+    for (let y of flatEnds) renderSegment(new Pt(innerZ, y), new Pt(outerZ, y), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+  }
+  if (!solved) return;
 
-    let { span, yStart, lowered, takeoff, farZ } = solved;
-    let xBase = outerZ - sign * takeoff.takeoffDepth;
-    // halo behind the point whose field has focus; a mirrored point halos both of its knots
-    if (opts.highlight?.plate === plate && lowered.type === 'spline') {
-      for (let knot of archSplineKnots(lowered.archHeight, lowered.points, lowered.peak)) {
-        if (knot.source === opts.highlight.source) renderPointHalo(new Pt(xBase + sign * knot.z, yStart + knot.t * span), color)(g, ui);
-      }
+  let { span, yStart, lowered, takeoff, farZ } = solved;
+  let xBase = outerZ - sign * takeoff.takeoffDepth;
+  // halo behind the point whose field has focus; a mirrored point halos both of its knots
+  if (opts.highlight?.plate === plate && lowered.type === 'spline') {
+    for (let knot of archSplineKnots(lowered.archHeight, lowered.points, lowered.peak)) {
+      if (knot.source === opts.highlight.source) renderPointHalo(new Pt(xBase + sign * knot.z, yStart + knot.t * span), color)(g, ui);
     }
-    let arch = buildArchPathFor(lowered, span, yStart, xBase, sign, farZ);
-    renderPath(cut ? arch : occludePath(arch, slab).visible, color, STROKE_WEIGHT.section)(g, ui);
+  }
+  let arch = defineArchPath(lowered, span, yStart, xBase, sign, farZ);
+  renderPath(cut ? arch : occludePath(arch, slab).visible, color, STROKE_WEIGHT.section)(g, ui);
 
-    // the guide takes the arch as typed and the plate's outer surface, not the lowered arch against
-    // its takeoff: the takeoff moves with the channel, and a guide counting from it would label a
-    // height nobody typed
-    if (opts.showGuides) {
-      let authored = longArchCurve(p.arching![plate].long);
-      renderGuideBaseline(new Pt(outerZ, 0), new Pt(outerZ, p.body.height), color)(g, ui);
-      for (let knot of archGuideKnots(authored)) {
-        let y = yStart + knot.t * span;
-        let at = new Pt(outerZ + sign * knot.z, y);
-        renderGuideMeasure(new Pt(outerZ, y), at, color, 0, knot.z)(g, ui);
-        renderGuideKnot(at, color)(g, ui);
-      }
+  // the guide takes the arch as typed and the plate's outer surface, not the lowered arch against
+  // its takeoff: the takeoff moves with the channel, and a guide counting from it would label a
+  // height nobody typed
+  if (opts.showGuides) {
+    let authored = calcLongArchCurve(p.arching![plate].long);
+    renderGuideBaseline(new Pt(outerZ, 0), new Pt(outerZ, p.body.height), color)(g, ui);
+    for (let knot of calcArchGuideKnots(authored)) {
+      let y = yStart + knot.t * span;
+      let at = new Pt(outerZ + sign * knot.z, y);
+      renderGuideMeasure(new Pt(outerZ, y), at, color, 0, knot.z)(g, ui);
+      renderGuideKnot(at, color)(g, ui);
     }
   }
 };
 
 // a spline is its control points, so every knot is marked; a catenary follows from the one height
-function archGuideKnots(arch: LongArchCurve): { t: number; z: number }[] {
+function calcArchGuideKnots(arch: LongArchCurve): { t: number; z: number }[] {
   return arch.type === 'spline' ? archSplineKnots(arch.archHeight, arch.points, arch.peak) : [{ t: 0.5, z: arch.archHeight }];
 }
 
-export function buildArchPathFor(arch: LongArchCurve, span: number, yStart: number, xBase: number, sign: 1 | -1, farZ: number): string {
+// the arch over its span in the side view (canvas X = Z, canvas Y = body length)
+export function defineArchPath(arch: LongArchCurve, span: number, yStart: number, xBase: number, sign: 1 | -1, farZ: number): string {
   return arch.type === 'catenary'
     ? buildCatenaryPath(arch.archHeight, span, yStart, xBase, sign)
     : buildSplinePath(arch.archHeight, span, yStart, xBase, sign, arch.points, arch.peak, undefined, farZ);
 }
 
-// the channel's own section at a body cap, in the side view (canvas X = Z, canvas Y = body length),
-// stopped at the arch's contact when one is given: past it the arch is the surface
-export function channelCapPath(p: ViolinFamilyParams, g: ChannelParams, xBase: number, sign: 1 | -1, atStart: boolean, sEnd?: number, n = 40): string {
+// the channel's own section at a body cap, in the side view, stopped at the arch's contact when
+// one is given: past it the arch is the surface
+export function defineChannelCapPath(p: ViolinFamilyParams, g: ChannelParams, xBase: number, sign: 1 | -1, atStart: boolean, sEnd?: number, n = 40): string {
   let w = calcChannelHalfWidth(g.width, g.depth);
   if (w <= 0) return '';
   let centerY = p.fluting!.flutingEdge + w;
@@ -281,7 +286,7 @@ export function solveRibTaper(p: ViolinFamilyParams): RibTaper | null {
   let wLower = a.ribHeightLower, wUpper = a.ribHeightUpper;
   let yLower = 0, yUpper = p.body.height - p.body.overhang;
   let run = yUpper - yLower;
-  let max = maxRibTaper(p);
+  let max = calcMaxRibTaper(p);
   if (!(wLower > 0 && wUpper > 0) || Math.abs(wLower - wUpper) > max) return null;
   let angle = run > 0 ? Math.asin((wLower - wUpper) / run) : 0;
   let cos = Math.cos(angle);
@@ -289,7 +294,7 @@ export function solveRibTaper(p: ViolinFamilyParams): RibTaper | null {
 }
 
 // where the tilted rib, the hypotenuse over the run, would outgrow the body
-export function maxRibTaper(p: ViolinFamilyParams): number {
+export function calcMaxRibTaper(p: ViolinFamilyParams): number {
   let run = p.body.height - p.body.overhang;
   return run <= 0 || p.body.height <= run ? 0 : run * Math.sqrt(1 - (run / p.body.height) ** 2);
 }
@@ -302,7 +307,7 @@ export function ribHeightAt(p: ViolinFamilyParams, y: number, t: RibTaper): numb
 }
 
 // the garland's top edge in the side view: the line the top plate glues to
-export function ribLine(p: ViolinFamilyParams, t: RibTaper): { yLow: number; yHigh: number; zLow: number; zHigh: number } {
+export function calcRibLine(p: ViolinFamilyParams, t: RibTaper): { yLow: number; yHigh: number; zLow: number; zHigh: number } {
   let o = p.body.overhang;
   return { yLow: o, yHigh: p.body.height - o, zLow: ribHeightAt(p, o, t), zHigh: ribHeightAt(p, p.body.height - o, t) };
 }
@@ -311,8 +316,8 @@ export interface TopPlatePlacement { dx: number; dy: number; angleDeg: number; p
 
 // a rigid rotation, not a shear, so the plate reads as carved rather than leaned; pivoted on the
 // plate's midpoint so it overhangs the garland equally at both ends. In SVG's own terms
-export function topPlatePlacement(p: ViolinFamilyParams, t: RibTaper): TopPlatePlacement {
-  let rib = ribLine(p, t);
+export function calcTopPlatePlacement(p: ViolinFamilyParams, t: RibTaper): TopPlatePlacement {
+  let rib = calcRibLine(p, t);
   let run = rib.yHigh - rib.yLow;
   let pivotX = t.zLower, pivotY = p.body.height / 2;
   if (run <= 0) return { dx: 0, dy: 0, angleDeg: 0, pivotX, pivotY };
@@ -333,65 +338,13 @@ export function placeOnTopPlate(pl: TopPlatePlacement, pt: Pt): Pt {
 }
 
 // the typed arch in the solver's terms: fractions along the body, the peak among them
-export function longArchCurve(arch: LongArchParams): LongArchCurve {
+export function calcLongArchCurve(arch: LongArchParams): LongArchCurve {
   return { type: arch.type, archHeight: arch.height, peak: arch.peak / 100, points: arch.points.map(pt => ({ t: pt.t / 100, z: pt.z, mirror: pt.mirror })) };
-}
-
-// Where the arch stops being the curve the maker typed and becomes the run into the channel.
-// Tangency against a known circle is one equation, so one unknown satisfies it: the contact point,
-// free to slide along the channel's flank. Nobody chooses where the blend begins at the bench
-// either; the tool and the wood decide.
-//
-// archSlopeAt is the slope the arch would arrive with at a given contact, supplied by the caller
-// since the long arch and the cross arch build their curves differently. A root of that slope
-// minus the channel's own is a tangent meeting, bracketed by a coarse scan before bisecting since
-// both the span and the takeoff depth move with the contact. The inner flank is scanned first so an
-// arch that met it lands where it did; an arch arriving sloping down meets the outer flank, past the
-// trough. With no root anywhere the closest approach comes back flagged, never nothing: near the
-// caps the two slopes go to zero together and whether they cross comes down to the last digits,
-// and a station pinned at the flank's top beside neighbours at the trough rang a seam round the cap
-export function solveArchTakeoff(
-  width: number, depth: number,
-  archSlopeAt: (takeoffDepth: number, contactS: number) => number,
-  scanSteps = 32,
-): ArchTakeoff | null {
-  let w = calcChannelHalfWidth(width, depth);
-  if (w <= 0) return null;
-  // held just inside both ends: at 0 the channel is exactly flat, at w it has left the cut
-  let lo = w * 1e-3, hi = w * (1 - 1e-3);
-  let residual = (s: number): number => archSlopeAt(-channelProfileZAt(s, width, depth), s) - channelProfileSlopeAt(s, width, depth);
-  let takeoffAt = (contactS: number, tangent: boolean): ArchTakeoff =>
-    ({ contactS, takeoffDepth: -channelProfileZAt(contactS, width, depth), slope: channelProfileSlopeAt(contactS, width, depth), tangent });
-
-  let nearest = { s: lo, mag: Infinity };
-  let bracketOn = (dir: 1 | -1): [number, number, number] | null => {
-    let aS = dir * lo, aR = residual(aS);
-    if (Math.abs(aR) < nearest.mag) nearest = { s: aS, mag: Math.abs(aR) };
-    for (let i = 1; i <= scanSteps; i++) {
-      let s = dir * (lo + ((hi - lo) * i) / scanSteps);
-      let r = residual(s);
-      if (Math.abs(r) < nearest.mag) nearest = { s, mag: Math.abs(r) };
-      if (aR === 0) return [aS, aR, aS];
-      if (aR * r < 0) return aS < s ? [aS, aR, s] : [s, r, aS];
-      aS = s; aR = r;
-    }
-    return null;
-  };
-  let bracket = bracketOn(1) ?? bracketOn(-1);
-  if (!bracket) return takeoffAt(nearest.s, false);
-
-  let [x0, r0, x1] = bracket;
-  for (let i = 0; i < 60 && x1 - x0 > 1e-9; i++) {
-    let mid = (x0 + x1) / 2;
-    let rMid = residual(mid);
-    if (r0 * rMid <= 0) x1 = mid; else { x0 = mid; r0 = rMid; }
-  }
-  return takeoffAt((x0 + x1) / 2, true);
 }
 
 // every height the maker enters is measured from the plate's edge, so an arch taking off
 // edgeDepth below it gains that much once the builders measure z up from the lowered takeoff
-export function archFromLoweredTakeoff(arch: LongArchCurve, edgeDepth: number): LongArchCurve {
+export function restateArchFromTakeoff(arch: LongArchCurve, edgeDepth: number): LongArchCurve {
   let raised = { ...arch, archHeight: arch.archHeight + edgeDepth };
   return raised.type === 'spline' ? { ...raised, points: raised.points.map(pt => ({ ...pt, z: pt.z + edgeDepth })) } : raised;
 }
@@ -403,7 +356,7 @@ export function archZAt(arch: LongArchCurve, span: number, s: number, endZ = 0):
     : splineZAt(arch.archHeight, span, arch.points, arch.peak, s, endZ);
 }
 
-function isSymmetric(arch: LongArchCurve): boolean {
+function isSymmetricArch(arch: LongArchCurve): boolean {
   if (arch.type !== 'spline') return true;
   let k = archSplineKnots(arch.archHeight, arch.points, arch.peak);
   return k.every((a, i) => {
@@ -412,51 +365,71 @@ function isSymmetric(arch: LongArchCurve): boolean {
   });
 }
 
-function mirrored(arch: LongArchCurve): LongArchCurve {
+function mirrorArch(arch: LongArchCurve): LongArchCurve {
   return arch.type === 'spline' ? { ...arch, peak: 1 - arch.peak, points: arch.points.map(pt => ({ ...pt, t: 1 - pt.t })) } : arch;
 }
 
-// the long arch terminated where it meets the channel at the body caps. Each end is solved as the
-// start of its own view of the arch against wherever the other end currently lands, the far end
-// seeing the mirrored arch; the ends nudge each other's span and level only weakly, so a few
-// sweeps settle it. The C bout gouge never reaches a cap, so the main sweep governs both. Null
-// when the gouge doesn't cut, the arch has no height, or the two landings leave no span
+// the slope the long arch arrives with at this end if it lands at contactS, takeoffDepth deep.
+// The landing fixes the arch: its span runs from here to wherever the other end lands (or to a
+// landing like this one while the other end is unsolved), its heights are restated from this
+// takeoff, so the whole curve is known and its slope is read a hair in from the start
+function calcLongArchArrivalSlope(
+  bodyHeight: number, arch: LongArchCurve, centerY: number, other: ArchTakeoff | null, takeoffDepth: number, contactS: number,
+): number {
+  let o = other ?? { takeoffDepth, contactS };
+  let span = bodyHeight - 2 * centerY - contactS - o.contactS;
+  if (span <= 0) return 0;
+  let eps = Math.max(bodyHeight * 1e-5, 1e-4);
+  return archZAt(restateArchFromTakeoff(arch, takeoffDepth), span, eps, takeoffDepth - o.takeoffDepth) / eps;
+}
+
+// one end of the long arch landed tangent on its channel, the arch seen from this end as its
+// start, against wherever the other end currently lands
+function solveLongArchEndTakeoff(p: ViolinFamilyParams, arch: LongArchCurve, g: ChannelParams, centerY: number, other: ArchTakeoff | null): ArchTakeoff | null {
+  return solveArchTakeoff(g.width, g.depth, (takeoffDepth, contactS) => calcLongArchArrivalSlope(p.body.height, arch, centerY, other, takeoffDepth, contactS));
+}
+
+// the long arch terminated where it meets the channel at the body caps. The two ends are coupled,
+// each end's span depending on where the other lands, so a symmetric arch is solved once for both
+// and an asymmetric one by alternating: the lower end against the upper's current landing, then
+// the upper (seeing the mirrored arch) against the lower's. The ends nudge each other's span and
+// level only weakly, so three rounds settle it. The C bout gouge never reaches a cap, so the main
+// sweep governs both. Null when the gouge doesn't cut, the arch has no height, or the two landings
+// leave no span
 export function solveLongArch(p: ViolinFamilyParams, arch: LongArchCurve, g: ChannelParams): LongArchSolve | null {
   let w = calcChannelHalfWidth(g.width, g.depth);
   if (w <= 0 || arch.archHeight <= 0) return null;
   let centerY = p.fluting!.flutingEdge + w;
-  let height = p.body.height;
-  let eps = Math.max(height * 1e-5, 1e-4);
 
-  let solveEnd = (a: LongArchCurve, other: ArchTakeoff | null): ArchTakeoff | null =>
-    solveArchTakeoff(g.width, g.depth, (takeoffDepth, contactS) => {
-      let o = other ?? { takeoffDepth, contactS };
-      let span = height - 2 * centerY - contactS - o.contactS;
-      if (span <= 0) return 0;
-      // a forward difference from the takeoff, which sits at exactly 0 in the lowered arch's frame
-      return archZAt(archFromLoweredTakeoff(a, takeoffDepth), span, eps, takeoffDepth - o.takeoffDepth) / eps;
-    });
-
-  let start = solveEnd(arch, null);
+  let start = solveLongArchEndTakeoff(p, arch, g, centerY, null);
   if (!start) return null;
   let far = start;
-  if (!isSymmetric(arch)) {
-    let flipped = mirrored(arch);
+  if (!isSymmetricArch(arch)) {
+    let flipped = mirrorArch(arch);
     for (let i = 0; i < 3; i++) {
-      far = solveEnd(flipped, start) ?? far;
-      start = solveEnd(arch, far) ?? start;
+      far = solveLongArchEndTakeoff(p, flipped, g, centerY, start) ?? far;
+      start = solveLongArchEndTakeoff(p, arch, g, centerY, far) ?? start;
     }
   }
   let yStart = centerY + start.contactS;
-  let yEnd = height - centerY - far.contactS;
+  let yEnd = p.body.height - centerY - far.contactS;
   let span = yEnd - yStart;
   if (span <= 0) return null;
   return {
     span, yStart, yEnd, takeoff: start, farTakeoff: far,
-    lowered: archFromLoweredTakeoff(arch, start.takeoffDepth),
+    lowered: restateArchFromTakeoff(arch, start.takeoffDepth),
     farZ: start.takeoffDepth - far.takeoffDepth,
     halfWidth: w, centerY,
   };
+}
+
+// the solved arch's height at y along the body, relative to the plate's surface; beyond either
+// landing it holds that landing's depth, the arch having become the channel there
+export function longArchHeightAt(la: LongArchSolve, y: number): number {
+  let s = y - la.yStart;
+  if (s <= 0) return -la.takeoff.takeoffDepth;
+  if (s >= la.span) return -la.farTakeoff.takeoffDepth;
+  return archZAt(la.lowered, la.span, s, la.farZ) - la.takeoff.takeoffDepth;
 }
 
 // the plate's centreline height at y, relative to its surface: flat land at the caps, down through
@@ -467,50 +440,49 @@ export function channelCenterlineZAt(p: ViolinFamilyParams, g: ChannelParams, la
   let w = calcChannelHalfWidth(g.width, g.depth);
   let centerY = p.fluting!.flutingEdge + w;
   let s = Math.min(y, p.body.height - y) - centerY;
-  if (la && y > la.yStart && y < la.yEnd) return archZAt(la.lowered, la.span, y - la.yStart, la.farZ) - la.takeoff.takeoffDepth;
+  if (la && y > la.yStart && y < la.yEnd) return longArchHeightAt(la, y);
   return s <= -w ? 0 : channelProfileZAt(Math.min(s, w), g.width, g.depth);
 }
 
 // a later panel reads the ribs and the arches by calling this; it returns and never writes to the
 // params. An end that found no tangency keeps its closest approach and is reported, since a little
 // sandpaper makes that join at the bench
-export function solveLongArching(p: ViolinFamilyParams): LongArchingSolve | null {
+export function solveLongArching(p: ViolinFamilyParams, f?: FlutingSolve): LongArchingSolve | null {
   if (!p.arching || !p.fluting) return null;
   let a = p.arching;
   let s: LongArchingSolve = { ribs: null, top: null, back: null, failures: [] };
-  let fail = (message: string, unsolved: LongArchingFailure['unsolved']): LongArchingFailure => ({ message, unsolved, circles: [], segments: [] });
+  f ??= solveFluting(p)
 
   solveSection(s.failures, 'Ribs', ['ribs'], () => {
-    if (!(a.ribHeightLower > 0 && a.ribHeightUpper > 0)) return fail('Ribs: both rib heights need a value above 0.', ['ribs']);
+    if (!(a.ribHeightLower > 0 && a.ribHeightUpper > 0)) return buildMiss('Ribs: both rib heights need a value above 0.', ['ribs']);
     s.ribs = solveRibTaper(p);
-    if (!s.ribs) return fail(`Ribs: the ribs can taper by at most ${maxRibTaper(p).toFixed(1)}mm over a body this long. Past that the rib line runs longer than the instrument itself.`, ['ribs']);
+    if (!s.ribs) return buildMiss(`Ribs: the ribs can taper by at most ${calcMaxRibTaper(p).toFixed(1)}mm over a body this long. Past that the rib line runs longer than the instrument itself.`, ['ribs']);
     return null;
   });
 
-  let f = solveFluting(p)!;
   for (let plate of ['top', 'back'] as const) {
     let label = plate === 'top' ? 'Top plate' : 'Back plate';
     let pa = a[plate];
     let arch = pa.long;
     solveSection(s.failures, label, [plate], () => {
-      if (!f[plate]) return fail(`${label}: the fluting channel has to solve first.`, [plate]);
-      if (!(pa.thickness > 0)) return fail(`${label}: the thickness needs a value above 0.`, [plate]);
-      if (!(arch.height > 0)) return fail(`${label}: the arch height needs a value above 0.`, [plate]);
+      if (!f[plate]) return buildMiss(`${label}: the fluting channel has to solve first.`, [plate]);
+      if (!(pa.thickness > 0)) return buildMiss(`${label}: the thickness needs a value above 0.`, [plate]);
+      if (!(arch.height > 0)) return buildMiss(`${label}: the arch height needs a value above 0.`, [plate]);
       if (arch.type === 'spline') {
         // a cleared field reads as 0 against a range, so it is asked for first
-        if (![arch.peak, ...arch.points.flatMap(pt => [pt.t, pt.z])].every(Number.isFinite)) return fail(`${label}: every point needs a position and a height.`, [plate]);
-        if (!(arch.peak >= 5 && arch.peak <= 95)) return fail(`${label}: the peak has to sit between 5% and 95% of the length.`, [plate]);
+        if (![arch.peak, ...arch.points.flatMap(pt => [pt.t, pt.z])].every(Number.isFinite)) return buildMiss(`${label}: every point needs a position and a height.`, [plate]);
+        if (!(arch.peak >= 5 && arch.peak <= 95)) return buildMiss(`${label}: the peak has to sit between 5% and 95% of the length.`, [plate]);
         for (let pt of arch.points) {
-          if (!(pt.t >= 1 && pt.t <= 99)) return fail(`${label}: every point has to sit between 1% and 99% of the length.`, [plate]);
-          if (!(pt.z <= arch.height)) return fail(`${label}: a point stands above the peak. The arch height is its ceiling.`, [plate]);
-          if (!(pt.z >= -pa.thickness)) return fail(`${label}: a point dips deeper than the plate is thick.`, [plate]);
+          if (!(pt.t >= 1 && pt.t <= 99)) return buildMiss(`${label}: every point has to sit between 1% and 99% of the length.`, [plate]);
+          if (!(pt.z <= arch.height)) return buildMiss(`${label}: a point stands above the peak. The arch height is its ceiling.`, [plate]);
+          if (!(pt.z >= -pa.thickness)) return buildMiss(`${label}: a point dips deeper than the plate is thick.`, [plate]);
         }
       }
-      let solved = solveLongArch(p, longArchCurve(arch), p.fluting![plate]);
-      if (!solved) return fail(`${label}: the arch can't meet its channel. Lower the arch, or widen the gouge.`, [plate]);
+      let solved = solveLongArch(p, calcLongArchCurve(arch), p.fluting![plate]);
+      if (!solved) return buildMiss(`${label}: the arch can't meet its channel. Lower the arch, or widen the gouge.`, [plate]);
       s[plate] = solved;
       for (let [end, where] of [[solved.takeoff, 'lower'], [solved.farTakeoff, 'upper']] as const) {
-        if (!end.tangent) s.failures.push(fail(`${label}: the arch meets the channel at a corner at the ${where} end. Ease the point nearest that end.`, []));
+        if (!end.tangent) s.failures.push(buildMiss(`${label}: the arch meets the channel at a corner at the ${where} end. Ease the point nearest that end.`, []));
       }
       return null;
     });

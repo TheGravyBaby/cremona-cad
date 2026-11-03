@@ -825,3 +825,18 @@ export const renderAngle = (vertex: Pt, start: Pt, end: Pt, radius: number, colo
         .text(`${(sweep / TURN.degree).toFixed(1)}°`);
     if (preview) text.style('pointer-events', 'none');
 };
+
+// a dashed frame round a drawn thing that can be dragged to turn it: the whole box takes pointer
+// events, so a drag can start anywhere inside it
+export const renderDragFrame = (
+    bounds: { minX: number; minY: number; maxX: number; maxY: number }, pad: number, color: string, dragging: boolean,
+    onPointerDown: (event: PointerEvent) => void,
+) => (g: any): void => {
+    g.append('rect')
+        .attr('x', bounds.minX - pad).attr('y', bounds.minY - pad)
+        .attr('width', bounds.maxX - bounds.minX + 2 * pad).attr('height', bounds.maxY - bounds.minY + 2 * pad)
+        .attr('fill', 'transparent').attr('stroke', color).attr('stroke-width', STROKE_WEIGHT.guide)
+        .attr('stroke-dasharray', DASH.preview).attr('vector-effect', 'non-scaling-stroke')
+        .style('pointer-events', 'all').style('cursor', dragging ? 'grabbing' : 'grab')
+        .on('pointerdown', onPointerDown);
+};
