@@ -55,24 +55,6 @@
       "C11Sweep": 28,
       "C11DoubleArc": false
     },
-    "outerContour": {
-      "button": {
-        "width": 20,
-        "height": 13.2
-      },
-      "purflingOffset": 5.8,
-      "purflingChannelDepth": 1.2,
-      "U3Cutoff": 0,
-      "U31Cutoff": -3,
-      "C2Cutoff": 4,
-      "C21Cutoff": 16.666651653,
-      "C1Cutoff": 3,
-      "C11Cutoff": 8.630199026,
-      "L3Cutoff": -8,
-      "L31Cutoff": 0,
-      "upperRounding": 0.09,
-      "lowerRounding": 0.23
-    },
     "fluting": {
       "flutingEdge": 1.5,
       "cornerGouge": false,

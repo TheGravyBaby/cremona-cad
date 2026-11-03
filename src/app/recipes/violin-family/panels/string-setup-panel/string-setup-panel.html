@@ -14,6 +14,13 @@
                 [(ngModel)]="ss.nutThickness" (input)="recordEditAndRedraw()" (focus)="highlightPart('nutThickness', pal.ink(0).faint(-3))" (blur)="clearHighlight()" />
         </label>
     </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Neck Angle <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" max="30"
+                [(ngModel)]="params.neck!.angle" (input)="recordEditAndRedraw()" (focus)="highlightPart('angle', pal.ink(2))" (blur)="clearHighlight()" />
+        </label>
+    </div>
 </section>
 
 <section class="ui-group">

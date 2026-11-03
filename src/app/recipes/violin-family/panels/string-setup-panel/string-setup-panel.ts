@@ -34,7 +34,7 @@ import { neckHalfWidthAt, defineNeckInPlan, renderNeck, calcScrollOnNeck, solveN
 import { buildScrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
 
 export type StringSetupHighlightKey =
-  'length' | 'bodyStop' | 'bridgeHeight' | 'nutThickness' | 'fbLength' | 'fbThickness' | 'fbRadius' | 'fbNutRadius' | 'fbEndRadius' | 'scoopAt' | 'scoopBass' | 'scoopTreble';
+  'length' | 'angle' | 'bodyStop' | 'bridgeHeight' | 'nutThickness' | 'fbLength' | 'fbThickness' | 'fbRadius' | 'fbNutRadius' | 'fbEndRadius' | 'scoopAt' | 'scoopBass' | 'scoopTreble';
 
 @Component({
   selector: 'app-vf-string-setup-panel',
@@ -197,6 +197,7 @@ const renderStringSetupHighlight = (
 
   switch (key) {
     case 'length': renderSegmentHalo(n.bottomFront, n.neckTop, color)(g, ui); break;
+    case 'angle': if (n.root) renderSegmentHalo(n.root, n.neckTop, color)(g, ui); break;
     case 'bodyStop': if (s.bridgeFoot) renderSegmentHalo(new Pt(s.bridgeFoot.x, p.body.height), s.bridgeFoot, color)(g, ui); break;
     case 'bridgeHeight': if (s.bridgeFoot && s.bridgeTop) renderSegmentHalo(s.bridgeFoot, s.bridgeTop, color)(g, ui); break;
     case 'nutThickness': if (s.nutTop) renderSegmentHalo(n.neckTop, s.nutTop, color)(g, ui); break;

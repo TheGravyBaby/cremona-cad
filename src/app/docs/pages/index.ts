@@ -18,7 +18,6 @@ import historyV083 from './history/v0.8.3.md';
 import historyV0880 from './history/v0.8.8.0.md';
 import historyV090 from './history/v0.9.0.md';
 import wikiOverview from './wiki/overview.md';
-import wikiCanvasCanvas from './wiki/cremonaCad/canvas.md';
 import wikiCanvasControls from './wiki/cremonaCad/controls.md';
 import wikiCanvasImages from './wiki/cremonaCad/images.md';
 import wikiCanvasLayers from './wiki/cremonaCad/layers.md';
@@ -55,7 +54,6 @@ export const WIKI: WikiCategory[] = [
     label: 'CremonaCad',
     overview: page('wiki/overview.md', wikiOverview),
     pages: [
-      // page('wiki/cremonaCad/canvas.md', wikiCanvasCanvas),
       page('wiki/cremonaCad/controls.md', wikiCanvasControls),
       page('wiki/cremonaCad/files.md', wikiCanvasFiles),
       page('wiki/cremonaCad/tools.md', wikiCanvasTools),
