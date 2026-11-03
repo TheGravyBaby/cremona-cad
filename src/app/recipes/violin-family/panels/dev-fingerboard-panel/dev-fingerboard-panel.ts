@@ -14,7 +14,7 @@ import { StringSetupSolve } from '../../violin-family-solves';
 import { familyStandards, FamilyStandards } from '../../violin-family-seed';
 import { neckHalfWidthAt } from '../neck-panel/neck-panel';
 import {
-  fingerboardInPlan, renderFretTicks, renderStringSetupViews, semitoneStop, solveStringSetup, StringSetupHighlightKey,
+  defineFingerboardInPlan, renderFretTicks, renderStringSetupViews, calcSemitoneStop, solveStringSetup, StringSetupHighlightKey,
 } from '../string-setup-panel/string-setup-panel';
 
 // The fingerboard, tried out on localhost only and carried without promise of support. It draws over
@@ -164,7 +164,7 @@ export function parseSemitones(text: string): number[] {
 
 // the dots in the front view, each the part of it that lands on the board
 const renderPositionMarks = (p: ViolinFamilyParams, s: StringSetupSolve, m: PositionMarksSolve, pal: PanelPalette, halo: string | null): RenderLayer => {
-  let board = fingerboardInPlan(p, s);
+  let board = defineFingerboardInPlan(p, s);
   let dots = board ? m.marks.flatMap(mark => mark.dots).map(dot => ({ dot, inlay: intersectionFromTwoPaths(pathFromCircle(dot), board!) })) : [];
   return (g: any, ui: any): void => {
     for (let { dot, inlay } of dots) {
@@ -195,7 +195,7 @@ export function solvePositionMarks(p: ViolinFamilyParams, s: StringSetupSolve, m
     let board: Vect2D = { a: (s.fingerboardEnd.x - neckTop.x) / boardLength, b: (s.fingerboardEnd.y - neckTop.y) / boardLength, mag: 1 };
     let past: number[] = [];
     for (let semitone of [...new Set(m.semitones)].sort((a, b) => a - b)) {
-      let alongString = semitoneStop(semitone, stringLength);
+      let alongString = calcSemitoneStop(semitone, stringLength);
       let onString = pointAtDistanceToward(s.nutTop, s.bridgeTop, alongString);
       let alongBoard = (onString.x - neckTop.x) * board.a + (onString.y - neckTop.y) * board.b;
       if (alongBoard > boardLength) { past.push(semitone); continue; }

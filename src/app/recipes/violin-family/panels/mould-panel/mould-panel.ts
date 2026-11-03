@@ -8,14 +8,14 @@ import { filletRightAngleCorner, solveTangentCircleAndLine } from '../../../../h
 import { combinePathStrings, pathFromCircle, pathFromRect, pathsBounds, translatePath } from '../../../../helpers/math/pathMath';
 import { differenceFromManyPaths, intersectionFromTwoPaths, mirroredLoop } from '../../../../helpers/math/pathVibes';
 import { renderPath, renderRect, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
-import { Arc, Circle, Line, Pt, Rectangle } from '../../../../models/types';
+import { buildMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { Arc, arcFromCircleAndPoints, Circle, Line, Pt, Rectangle } from '../../../../models/types';
 import { MmInchField } from '../../../../shared/mm-inch-field';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
-import { MouldFailure, MouldKey, MouldSolve } from '../../violin-family-solves';
+import { MouldKey, MouldSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
@@ -119,10 +119,6 @@ export const renderMould = (s: MouldSolve, pal: PanelPalette, flags: ViolinFamil
   }
 };
 
-function buildMouldMiss(message: string, unsolved: MouldKey[]): MouldFailure {
-  return { message, unsolved, circles: [], segments: [] };
-}
-
 function calcRectMinX(r: Rectangle): number {
   return Math.min(r.Pt1.x, r.Pt2.x);
 }
@@ -146,11 +142,6 @@ function calcClampFillet(t: Line, Q: Circle, Pr: number, diff: boolean, side: 1 
   return { center, lineTangent, circleTangent: pointOnCircle(Q, circleAngle), circleAngle };
 }
 
-// the small fillet's own Arc from a calcClampFillet result
-function solveFilletArc(f: { center: Pt; lineTangent: Pt; circleTangent: Pt }, radius: number): Arc {
-  return new Arc(f.center.x, f.center.y, radius, angleFromCenter(f.center, f.lineTangent), angleFromCenter(f.center, f.circleTangent));
-}
-
 // a later panel reads the mould by calling this; it returns and never writes to the params. `step`
 // is how finely the outline is sampled where the blocks cut it
 export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
@@ -158,7 +149,7 @@ export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
   let s: MouldSolve = { blocks: null, ribOutline: null, outline: null, notchOutline: null, reliefs: [], clampBox: [], failures: [] };
   let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
   if (!rib) {
-    s.failures.push(buildMouldMiss('Mould: every arc of the rib outline has to solve first.', [...BLOCK_KEYS, 'clampBox']));
+    s.failures.push(buildMiss('Mould: every arc of the rib outline has to solve first.', [...BLOCK_KEYS, 'clampBox']));
     return s;
   }
   let ribOutline = s.ribOutline = definePurflingPath(p, rib, 0)!;
@@ -174,10 +165,10 @@ export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
       ['endBlock', [mo.endBlock.width, mo.endBlock.height]],
     ];
     for (let [key, values] of typed) {
-      if (!values.every(Number.isFinite)) return buildMouldMiss('Mould: every block field needs a value.', [key]);
-      if (!(values[0] > 0 && values[1] > 0)) return buildMouldMiss('Mould: every block needs a width and a height above 0.', [key]);
+      if (!values.every(Number.isFinite)) return buildMiss('Mould: every block field needs a value.', [key]);
+      if (!(values[0] > 0 && values[1] > 0)) return buildMiss('Mould: every block needs a width and a height above 0.', [key]);
     }
-    if (!(mo.bitDiameter >= 0)) return buildMouldMiss('Mould: the bit diameter needs a value, 0 or more.', BLOCK_KEYS);
+    if (!(mo.bitDiameter >= 0)) return buildMiss('Mould: the bit diameter needs a value, 0 or more.', BLOCK_KEYS);
 
     // a viol neck's block hangs from the neck's join rather than the outline's end
     let top = p.bouts!.useViolNeck ? pointOnCircle(rib.V0!, rib.V0!.start).y : p.body.height - inset;
@@ -215,13 +206,13 @@ export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
 
   if (mo.clampBox && s.blocks) solveSection(s.failures, 'Clamp box', ['clampBox'], () => {
     let b = s.blocks!;
-    if (!rib.U2 || !rib.L2) return buildMouldMiss('Clamp box: the bouts have to turn into their corners for the windows to follow them.', ['clampBox']);
+    if (!rib.U2 || !rib.L2) return buildMiss('Clamp box: the bouts have to turn into their corners for the windows to follow them.', ['clampBox']);
     let clampOffset = MOULD_WALL * (Math.max(mo.neckBlock.height, mo.endBlock.height) + MOULD_CHANNEL_DEPTH);
     if (p.bouts!.useViolNeck)
       clampOffset = MOULD_WALL * (mo.endBlock.height + MOULD_CHANNEL_DEPTH);
 
     if ([rib.U1, rib.U2, rib.L1, rib.L2].some(arc => arc.r <= clampOffset))
-      return buildMouldMiss("Clamp box: the walls are thicker than the bouts are round, so no window can follow them, and it's left uncut.", []);
+      return buildMiss("Clamp box: the walls are thicker than the bouts are round, so no window can follow them, and it's left uncut.", []);
 
     // three closed windows rather than free chords: flanks ride the inset bout arcs, and
     // the horizontal faces sit a fixed web back from every block face, so blocks always
@@ -244,10 +235,10 @@ export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
     // to the centerline would cross its own mirror image
     if (uTop && uBot && uTop.lineTangent.x > rf && uBot.lineTangent.x > rf && uTopY - uBotY >= 2 * rf) {
       s.clampBox.push(mirroredLoop(
-        [solveFilletArc(uTop, rf),
+        [arcFromCircleAndPoints({ ...uTop.center, r: rf }, uTop.lineTangent, uTop.circleTangent),
          new Arc(U1c.x, U1c.y, U1c.r, uTop.circleAngle, U1c.end),
          new Arc(U2c.x, U2c.y, U2c.r, U2c.start, uBot.circleAngle),
-         solveFilletArc(uBot, rf)],
+         arcFromCircleAndPoints({ ...uBot.center, r: rf }, uBot.lineTangent, uBot.circleTangent)],
         [[new Pt(-uTop.lineTangent.x, uTopY), new Pt(uTop.lineTangent.x, uTopY)],
          [new Pt(-uBot.lineTangent.x, uBotY), new Pt(uBot.lineTangent.x, uBotY)]]));
     }
@@ -278,9 +269,9 @@ export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
         const chain: (Arc | [Pt, Pt])[] = [
           cBotFace,
           [new Pt(C0LowPt.x, cBotFace.y), new Pt(C0LowPt.x, cBotArc.lineTangent.y)],
-          solveFilletArc(cBotArc, cBotR),
+          arcFromCircleAndPoints({ ...cBotArc.center, r: cBotR }, cBotArc.lineTangent, cBotArc.circleTangent),
           new Arc(C0Clamp.x, C0Clamp.y, C0Clamp.r, cBotArc.circleAngle, cTopArc.circleAngle),
-          solveFilletArc(cTopArc, cTopR),
+          arcFromCircleAndPoints({ ...cTopArc.center, r: cTopR }, cTopArc.lineTangent, cTopArc.circleTangent),
           [new Pt(C0UpPt.x, cTopArc.lineTangent.y), new Pt(C0UpPt.x, cTopFace.y)],
           cTopFace,
         ];
@@ -302,17 +293,17 @@ export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
     const lBot = calcClampFillet({ m: 0, y: lBotY, x: 0 }, L1c, rf, true, -1, pointOnCircle(L1c, L1c.start));
     if (lTop && lBot && lTop.lineTangent.x > rf && lBot.lineTangent.x > rf && lTopY - lBotY >= 2 * rf) {
       s.clampBox.push(mirroredLoop(
-        [solveFilletArc(lTop, rf),
+        [arcFromCircleAndPoints({ ...lTop.center, r: rf }, lTop.lineTangent, lTop.circleTangent),
          new Arc(L2c.x, L2c.y, L2c.r, L2c.start, lTop.circleAngle),
          new Arc(L1c.x, L1c.y, L1c.r, lBot.circleAngle, L1c.end),
-         solveFilletArc(lBot, rf)],
+         arcFromCircleAndPoints({ ...lBot.center, r: rf }, lBot.lineTangent, lBot.circleTangent)],
         [[new Pt(-lTop.lineTangent.x, lTopY), new Pt(lTop.lineTangent.x, lTopY)],
          [new Pt(-lBot.lineTangent.x, lBotY), new Pt(lBot.lineTangent.x, lBotY)]]));
     }
     else uncut.push('lower');
 
     if (!uncut.length) return null;
-    return buildMouldMiss(`Clamp box: the ${uncut.join(' and ')} ${uncut.length > 1 ? 'windows have' : 'window has'} no room between the blocks and the walls, and ${uncut.length > 1 ? 'are' : 'is'} left uncut.`, []);
+    return buildMiss(`Clamp box: the ${uncut.join(' and ')} ${uncut.length > 1 ? 'windows have' : 'window has'} no room between the blocks and the walls, and ${uncut.length > 1 ? 'are' : 'is'} left uncut.`, []);
   });
 
   return s;

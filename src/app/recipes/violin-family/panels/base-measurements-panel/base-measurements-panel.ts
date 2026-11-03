@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { showFieldHelp } from '../../../../docs/field-help';
 import { Pt, Rectangle } from '../../../../models/types';
 import { renderRect, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { reportFailures, safeRun } from '../../../../helpers/validators';
+import { buildMiss, reportFailures, safeRun } from '../../../../helpers/validators';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
@@ -66,7 +66,7 @@ export class BaseMeasurementsPanel implements ViolinFamilyPanel, OnInit {
     safeRun(() => {
       let p = this.recipe.params;
       this.body = solveBody(p);
-      this.ratios = solveBodyRatios(p);
+      this.ratios = calcBodyRatios(p);
       let m = solveMainBouts(p);
       let c = solveCorners(p);
       let cb = solveCenterBout(p);
@@ -107,10 +107,10 @@ export class BaseMeasurementsPanel implements ViolinFamilyPanel, OnInit {
 export function solveBody(p: ViolinFamilyParams): BodySolve {
   let b = p.body;
   let failures: BodyFailure[] = [];
-  measure(failures, 'height', 'Height', b.height, 10, 3000);
-  measure(failures, 'width', 'Width', b.width, 10, 3000);
-  measure(failures, 'rib', 'Rib thickness', b.rib, 0.1, 5);
-  measure(failures, 'overhang', 'Overhang', b.overhang, 1, 10);
+  pushMeasurementMiss(failures, 'height', 'Height', b.height, 10, 3000);
+  pushMeasurementMiss(failures, 'width', 'Width', b.width, 10, 3000);
+  pushMeasurementMiss(failures, 'rib', 'Rib thickness', b.rib, 0.1, 5);
+  pushMeasurementMiss(failures, 'overhang', 'Overhang', b.overhang, 1, 10);
 
   let inset = b.overhang + b.rib;
   if (failures.length) return { inset, outer: null, ribBox: null, failures };
@@ -121,15 +121,15 @@ export function solveBody(p: ViolinFamilyParams): BodySolve {
   return { inset, outer, ribBox, failures };
 }
 
-function measure(failures: BodyFailure[], key: BodyKey, label: string, value: number, min: number, max: number): void {
+function pushMeasurementMiss(failures: BodyFailure[], key: BodyKey, label: string, value: number, min: number, max: number): void {
   let message =
     !Number.isFinite(value) ? `${label} needs a value.` :
     value < min ? `${label} must be at least ${min}mm.` :
     value > max ? `${label} must be under ${max}mm.` :
     null;
-  if (message) failures.push({ message, unsolved: [key], circles: [], segments: [] });
+  if (message) failures.push(buildMiss(message, [key]));
 }
 
-export function solveBodyRatios(p: ViolinFamilyParams): Partial<ViolinFamilyRatios> {
+export function calcBodyRatios(p: ViolinFamilyParams): Partial<ViolinFamilyRatios> {
   return { HtoW: p.body.height / p.body.width };
 }

@@ -3,12 +3,12 @@ import { FormsModule } from '@angular/forms';
 import { dist, normalizeRadians, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
 import { arcRun, joinedRun, riseAlongRun, Run, straightRun } from '../../../../helpers/math/draftMath';
 import { clipPolylineAtY, hermiteEvaluator, hymanFilterSlopes, naturalSplineSlopes, polylinePointAtY, rayPolylineIntersection } from '../../../../helpers/math/vibeMath';
-import { pathFromLine, pathFromPolygon, pathFromPolyline } from '../../../../helpers/math/pathMath';
+import { arcPathData, pathFromLine, pathFromPolygon, pathFromPolyline } from '../../../../helpers/math/pathMath';
 import { occludePath } from '../../../../helpers/math/pathVibes';
 import {
   renderCircle, renderCrosshair, renderDashLine, renderPath, renderPointHalo, renderSolveFailures, renderStroke, StrokeShape,
 } from '../../../../helpers/renderFuncs';
-import { reportFailures, safeRun } from '../../../../helpers/validators';
+import { buildMiss, reportFailures, safeRun } from '../../../../helpers/validators';
 import { Arc, Circle, Pt, Pt3D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
@@ -24,11 +24,10 @@ import {
 import {
   ScrollSolve,
   ScrollWidthsFailure,
-  ScrollWidthsKey,
   ScrollWidthsSolve,
 } from '../../violin-family-solves';
-import { nutThickness, renderScrollNeck, scrollExtent, scrollNeckStub } from '../volute-panel/volute-panel';
-import { defineSideScrollPath, scrollLines, solveScroll } from '../pegbox-panel/pegbox-panel';
+import { calcNutThickness, renderScrollNeck, calcScrollExtent, calcScrollNeckStub } from '../volute-panel/volute-panel';
+import { defineSideScrollPath, calcScrollLines, solveScroll } from '../pegbox-panel/pegbox-panel';
 
 export type ScrollStationKey = 'nut' | 'neck' | keyof ScrollWidths;
 export type ScrollStation = { key: ScrollStationKey; at: Pt; width: number };
@@ -93,6 +92,25 @@ export class ScrollWidthsPanel implements ViolinFamilyPanel, OnInit {
   }
 }
 
+const renderScrollViewPart = (backView: ScrollView, frontView: ScrollView, part: keyof ScrollView, color: string) => (g: any, ui: any): void => {
+  for (let stroke of [...backView[part], ...frontView[part]]) renderStroke(stroke, color)(g, ui);
+};
+
+const renderWidthMark = (stations: ScrollStation[], key: ScrollStationKey, center: number, half: boolean, color: string) => (g: any, ui: any): void => {
+  let station = stations.find(st => st.key === key);
+  if (!station) return;
+  let r = station.width / 2;
+  if (half) renderPath(arcPathData(new Pt(center, station.at.y), r, TURN.half, TURN.full), color, STROKE_WEIGHT.guide)(g, ui);
+  else renderCircle(new Circle(center, station.at.y, r), color)(g, ui);
+};
+
+const renderWidthCrosshairs = (stations: ScrollStation[], key: ScrollStationKey, center: number, color: string) => (g: any, ui: any): void => {
+  let station = stations.find(st => st.key === key);
+  if (!station) return;
+  renderCrosshair(station.at, color)(g, ui);
+  for (let side of [1, -1]) renderCrosshair(new Pt(center + side * station.width / 2, station.at.y), color)(g, ui);
+};
+
 // the side profile with a crosshair on each width, the back view beside the scroll's furthest reach and the front view beside the nut. Module arcs draw each
 // width in its own view as a circle of that diameter on the centreline at its height, as a maker
 // marks widths on the blank, with a centreline down each view. Everything is worked out here, once
@@ -106,18 +124,17 @@ export const renderScrollWidths = (
   showArcs: boolean,
 ): RenderLayer => {
   let w = p.scroll!.widths;
-  let stations = scrollWidthStations(p, s);
+  let stations = calcScrollWidthStations(p, s);
   // the views hold still while the widths are edited, a fixed reference against a photograph, until
   // the widest would reach the side profile
   let widest = Math.max(w.eye, w.hip, w.foot, w.poll, p.neck!.nutWidth) / 2;
   let clearance = Math.max(0.15 * p.body.height, 20 + widest);
-  let extent = scrollExtent(s);
+  let extent = calcScrollExtent(s);
   let back = -extent.width - clearance;
-  let front = nutThickness(p) + clearance;
-  let stub = scrollNeckStub(p);
-  let backView = scrollBackViewStrokes(p, s, (x, y) => new Pt(back + x, y), -stub);
-  let frontView = scrollFrontViewStrokes(p, s, (x, y) => new Pt(front + x, y), -stub);
-  let frontStations: ScrollStationKey[] = ['neck', 'nut', 'hip', 'throat'];
+  let front = calcNutThickness(p) + clearance;
+  let stub = calcScrollNeckStub(p);
+  let backView = buildScrollBackViewStrokes(p, s, (x, y) => new Pt(back + x, y), -stub);
+  let frontView = buildScrollFrontViewStrokes(p, s, (x, y) => new Pt(front + x, y), -stub);
 
   return (g: any, ui: any): void => {
     let marked = stations.find(station => station.key === focused?.key);
@@ -129,59 +146,42 @@ export const renderScrollWidths = (
     }
 
     // each part on the ink the side views draw it in: everything past the crown on the turns' ink
-    let strokes = (part: keyof ScrollView, color: string) => {
-      for (let stroke of [...backView[part], ...frontView[part]]) renderStroke(stroke, color)(g, ui);
-    };
-    strokes('neck', pal.neutral.faint(5));
-    strokes('back', pal.ink(1));
-    strokes('backLight', pal.ink(1).faint(-3));
-    strokes('front', pal.ink(3));
-    strokes('frontLight', pal.ink(3).faint(-3));
-    strokes('crown', pal.ink(1).faint(5));
-    strokes('turns', pal.ink(2));
-    strokes('nut', pal.ink(0));
+    renderScrollViewPart(backView, frontView, 'neck', pal.neutral.faint(5))(g, ui);
+    renderScrollViewPart(backView, frontView, 'back', pal.ink(1))(g, ui);
+    renderScrollViewPart(backView, frontView, 'backLight', pal.ink(1).faint(-3))(g, ui);
+    renderScrollViewPart(backView, frontView, 'front', pal.ink(3))(g, ui);
+    renderScrollViewPart(backView, frontView, 'frontLight', pal.ink(3).faint(-3))(g, ui);
+    renderScrollViewPart(backView, frontView, 'crown', pal.ink(1).faint(5))(g, ui);
+    renderScrollViewPart(backView, frontView, 'turns', pal.ink(2))(g, ui);
+    renderScrollViewPart(backView, frontView, 'nut', pal.ink(0))(g, ui);
 
     if (showArcs) {
       // only the widths a maker sets out with compasses: behind, the crown, the poll and the duck
       // tail; in front, the crown, the throat and the hips. The crown's and the throat's hang as
       // half circles from the head's top and the pegbox's
-      let mark = (key: ScrollStationKey, center: number, half: boolean, color: string) => {
-        let station = stations.find(st => st.key === key);
-        if (!station) return;
-        let r = station.width / 2;
-        if (half) renderPath(pathFromPolyline(Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: center, y: station.at.y, r }, TURN.half + TURN.half * i / 32))), color, STROKE_WEIGHT.guide)(g, ui);
-        else renderCircle(new Circle(center, station.at.y, r), color)(g, ui);
-      };
-      mark('crown', back, true, pal.ink(1).faint(5));
-      mark('poll', back, false, pal.ink(1).faint(-3));
-      mark('duckTail', back, false, pal.ink(1).faint(3));
-      mark('crown', front, true, pal.ink(1).faint(5));
-      mark('throat', front, true, pal.ink(3).faint(1));
-      mark('hip', front, false, pal.ink(3).faint(-3));
+      renderWidthMark(stations, 'crown', back, true, pal.ink(1).faint(5))(g, ui);
+      renderWidthMark(stations, 'poll', back, false, pal.ink(1).faint(-3))(g, ui);
+      renderWidthMark(stations, 'duckTail', back, false, pal.ink(1).faint(3))(g, ui);
+      renderWidthMark(stations, 'crown', front, true, pal.ink(1).faint(5))(g, ui);
+      renderWidthMark(stations, 'throat', front, true, pal.ink(3).faint(1))(g, ui);
+      renderWidthMark(stations, 'hip', front, false, pal.ink(3).faint(-3))(g, ui);
       renderDashLine(new Pt(back, -stub), new Pt(back, extent.height), pal.ink(1).faint(3), STROKE_WEIGHT.guide)(g, ui);
       renderDashLine(new Pt(front, -stub), new Pt(front, extent.height), pal.ink(3).faint(3), STROKE_WEIGHT.guide)(g, ui);
     }
     // a crosshair on each width's point in the side view, and on both its edges in its own view
     if (showGuides) {
-      let crosshairs = (key: ScrollStationKey, color: string) => {
-        let station = stations.find(st => st.key === key);
-        if (!station) return;
-        renderCrosshair(station.at, color)(g, ui);
-        let center = frontStations.includes(key) ? front : back;
-        for (let side of [1, -1]) renderCrosshair(new Pt(center + side * station.width / 2, station.at.y), color)(g, ui);
-      };
-      crosshairs('neck', pal.neutral);
-      crosshairs('nut', pal.ink(3).faint(-1));
-      crosshairs('hip', pal.ink(3).faint(-3));
-      crosshairs('throat', pal.ink(3).faint(1));
-      crosshairs('duckTail', pal.ink(1).faint(3));
-      crosshairs('foot', pal.ink(1).faint(-4));
-      crosshairs('poll', pal.ink(1).faint(-3));
-      crosshairs('crown', pal.ink(1).faint(5));
-      crosshairs('turn1Bottom', pal.ink(2).faint(3));
-      crosshairs('turn2Top', pal.ink(2).faint(-3));
-      crosshairs('turn2Bottom', pal.ink(2).faint(1));
-      crosshairs('eye', pal.ink(2).faint(-4));
+      renderWidthCrosshairs(stations, 'neck', front, pal.neutral)(g, ui);
+      renderWidthCrosshairs(stations, 'nut', front, pal.ink(3).faint(-1))(g, ui);
+      renderWidthCrosshairs(stations, 'hip', front, pal.ink(3).faint(-3))(g, ui);
+      renderWidthCrosshairs(stations, 'throat', front, pal.ink(3).faint(1))(g, ui);
+      renderWidthCrosshairs(stations, 'duckTail', back, pal.ink(1).faint(3))(g, ui);
+      renderWidthCrosshairs(stations, 'foot', back, pal.ink(1).faint(-4))(g, ui);
+      renderWidthCrosshairs(stations, 'poll', back, pal.ink(1).faint(-3))(g, ui);
+      renderWidthCrosshairs(stations, 'crown', back, pal.ink(1).faint(5))(g, ui);
+      renderWidthCrosshairs(stations, 'turn1Bottom', back, pal.ink(2).faint(3))(g, ui);
+      renderWidthCrosshairs(stations, 'turn2Top', back, pal.ink(2).faint(-3))(g, ui);
+      renderWidthCrosshairs(stations, 'turn2Bottom', back, pal.ink(2).faint(1))(g, ui);
+      renderWidthCrosshairs(stations, 'eye', back, pal.ink(2).faint(-4))(g, ui);
     }
   };
 };
@@ -201,22 +201,28 @@ function coverAt(on: ScrollStretches, y: number, z: number, behind: boolean): nu
   return cover;
 }
 
+function isHiddenAt(on: ScrollStretches, pt: Pt3D, behind: boolean): boolean {
+  return (coverAt(on, pt.y, pt.z, behind) ?? -Infinity) >= pt.x - 1e-9;
+}
+
+function lerpPt3D(a: Pt3D, b: Pt3D, t: number): Pt3D {
+  return new Pt3D(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
+}
+
 // what of a line can be seen: its runs that no nearer stretch at least as wide hides, each cut
 // where the widths cross, so a turn's edge runs right up to the one that hides it
-function seenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[][] {
-  let hidden = (pt: Pt3D) => (coverAt(on, pt.y, pt.z, behind) ?? -Infinity) >= pt.x - 1e-9;
-  let between = (a: Pt3D, b: Pt3D, t: number) => new Pt3D(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
+function calcSeenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[][] {
   let runs: Pt3D[][] = [[]];
   let was: boolean | null = null;
   pts.forEach((pt, k) => {
-    let is = hidden(pt);
+    let is = isHiddenAt(on, pt, behind);
     if (was !== null && is !== was) {
       let lo = 0, hi = 1;
       for (let i = 0; i < 30; i++) {
         let mid = (lo + hi) / 2;
-        if (hidden(between(pts[k - 1], pt, mid)) === was) lo = mid; else hi = mid;
+        if (isHiddenAt(on, lerpPt3D(pts[k - 1], pt, mid), behind) === was) lo = mid; else hi = mid;
       }
-      runs.at(-1)!.push(between(pts[k - 1], pt, was ? hi : lo));
+      runs.at(-1)!.push(lerpPt3D(pts[k - 1], pt, was ? hi : lo));
     }
     if (!is) runs.at(-1)!.push(pt);
     else if (!was) runs.push([]);
@@ -227,17 +233,17 @@ function seenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[][] {
 
 // the pegbox's front, sawn straight through the blank: from the hips in to the nut's edge at its
 // top, square to the foot of the nut, and closing level there
-function pegboxFrontOutline(p: ViolinFamilyParams, s: ScrollSolve) {
+function calcPegboxFrontOutline(p: ViolinFamilyParams, s: ScrollSolve) {
   let { nutHeight } = p.neck!;
-  let hipY = pegboxHipHeight(p);
-  let hips = new Pt(pegboxWidth(p, s, hipY) / 2, hipY);
+  let hipY = calcPegboxHipHeight(p);
+  let hips = new Pt(pegboxWidthAt(p, s, hipY) / 2, hipY);
   let foot = Math.min(hipY, 0);
   let walls = [
     hips,
-    ...(nutHeight < hipY - 1e-6 ? [new Pt(pegboxWidth(p, s, nutHeight) / 2, nutHeight)] : []),
-    ...(foot < hipY - 1e-6 ? [new Pt(pegboxWidth(p, s, foot) / 2, foot)] : []),
+    ...(nutHeight < hipY - 1e-6 ? [new Pt(pegboxWidthAt(p, s, nutHeight) / 2, nutHeight)] : []),
+    ...(foot < hipY - 1e-6 ? [new Pt(pegboxWidthAt(p, s, foot) / 2, foot)] : []),
   ];
-  let bottom = [new Pt(pegboxWidth(p, s, foot) / 2, foot), new Pt(0, foot)];
+  let bottom = [new Pt(pegboxWidthAt(p, s, foot) / 2, foot), new Pt(0, foot)];
   return { walls, bottom };
 }
 
@@ -245,93 +251,98 @@ export type ScrollViewStroke = { weight: number } & StrokeShape;
 export type ScrollView = Record<'front' | 'back' | 'frontLight' | 'backLight' | 'turns' | 'crown' | 'nut' | 'neck', ScrollViewStroke[]>;
 type ScrollViewPart = keyof ScrollView;
 
-// the strokes of a view, each point put where `place` says: x across from the centreline, y up the
-// neck. What hides what is worked out looking along the neck's own normal
-function viewStrokes(place: (x: number, y: number) => Pt) {
-  let parts: ScrollView = { neck: [], nut: [], back: [], front: [], turns: [], backLight: [], frontLight: [], crown: [] };
-  let at = (pt: { x: number; y: number }, side: number) => place(side * pt.x, pt.y);
-  let stroke = (d: string, part: ScrollViewPart, weight: number, cover: string | string[] | null) => {
-    let shown = cover ? occludePath(d, cover).visible : d;
-    if (shown) parts[part].push({ d: shown, weight });
-  };
-  // a half outline, x out from the centreline, drawn on both sides of it
-  let contour = (pts: { x: number; y: number }[], part: ScrollViewPart, cover: string | string[] | null = null) => {
-    if (pts.length < 2) return;
-    for (let side of [1, -1]) stroke(pathFromPolyline(pts.map(pt => at(pt, side))), part, STROKE_WEIGHT.trace, cover);
-  };
-  let line = (a: Pt, b: Pt, part: ScrollViewPart) => parts[part].push({ line: [a, b], weight: STROKE_WEIGHT.trace });
-  // a turn's face, seen edge on where the path turns over: level from the turn's own half-width in
-  // to whatever stands nearer the viewer at that height, or right across where nothing does
-  let face = (y: number, from: number, to: number | null, part: ScrollViewPart) => {
-    if (to === null) line(place(-from, y), place(from, y), part);
-    else if (to < from) for (let side of [1, -1]) line(place(side * from, y), place(side * to, y), part);
-  };
-  return { parts, at, stroke, contour, line, face };
+// a view's points go where `place` says: x across from the centreline, y up the neck. What hides
+// what is worked out looking along the neck's own normal
+type PlaceInView = (x: number, y: number) => Pt;
+
+function buildEmptyScrollView(): ScrollView {
+  return { neck: [], nut: [], back: [], front: [], turns: [], backLight: [], frontLight: [], crown: [] };
+}
+
+function pushViewStroke(parts: ScrollView, d: string, part: ScrollViewPart, weight: number, cover: string | string[] | null): void {
+  let shown = cover ? occludePath(d, cover).visible : d;
+  if (shown) parts[part].push({ d: shown, weight });
+}
+
+// a half outline, x out from the centreline, drawn on both sides of it
+function pushViewContour(parts: ScrollView, place: PlaceInView, pts: { x: number; y: number }[], part: ScrollViewPart, cover: string | string[] | null = null): void {
+  if (pts.length < 2) return;
+  for (let side of [1, -1]) pushViewStroke(parts, pathFromPolyline(pts.map(pt => place(side * pt.x, pt.y))), part, STROKE_WEIGHT.trace, cover);
+}
+
+function pushViewLine(parts: ScrollView, a: Pt, b: Pt, part: ScrollViewPart): void {
+  parts[part].push({ line: [a, b], weight: STROKE_WEIGHT.trace });
+}
+
+// a turn's face, seen edge on where the path turns over: level from the turn's own half-width in
+// to whatever stands nearer the viewer at that height, or right across where nothing does
+function pushViewFace(parts: ScrollView, place: PlaceInView, y: number, from: number, to: number | null, part: ScrollViewPart): void {
+  if (to === null) pushViewLine(parts, place(-from, y), place(from, y), part);
+  else if (to < from) for (let side of [1, -1]) pushViewLine(parts, place(side * from, y), place(side * to, y), part);
 }
 
 // the scroll from behind, the neck's sides running on up from `neckFrom` until they meet it
-export function scrollBackViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, place: (x: number, y: number) => Pt, neckFrom: number): ScrollView {
+export function buildScrollBackViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, place: PlaceInView, neckFrom: number): ScrollView {
   let v = p.scroll!;
   let eye = s.eye!;
   let eyeHalf = v.widths.eye / 2;
   let eyeTop = eye.y + eye.r;
   let eyeBottom = eye.y - eye.r;
-  let on = scrollPathStretches(p, s);
+  let on = calcScrollPathStretches(p, s);
   let start = on.back[0];
   let crown = on.back.at(-1)!;
   let turn1Bottom = on.turn1Front.at(-1)!;
   let turn2Top = on.turn2Back.at(-1)!;
   let turn2Bottom = on.turn2Front.at(-1)!;
   let turn3Top = on.turn3Back.at(-1)!;
-  let seen = (pts: Pt3D[]) => seenRuns(on, pts, true);
-  let { parts, stroke, contour, line, face } = viewStrokes(place);
+  let parts = buildEmptyScrollView();
 
   // the back starts in the duck tail's round, the neck's back carried on round, its sides running on
   // straight up to the foot, and its own edges run up from there
-  let r = duckTailRadius(p);
-  let roundTop = duckTailRoundTop(p, s);
+  let r = calcDuckTailRadius(p);
+  let roundTop = calcDuckTailRoundTop(p, s);
   let round = Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: 0, y: roundTop, r }, TURN.half + TURN.half * i / 32)).map(pt => place(pt.x, pt.y));
   if (start.y - roundTop > 1e-6) round = [place(-r, start.y), ...round, place(r, start.y)];
 
   // the neck's sides run on up until they meet the scroll's round
   let overNeck = r > 0 ? [pathFromPolygon(round)] : null;
   for (let side of [1, -1]) {
-    stroke(pathFromLine(place(side * scrollNeckHalfWidth(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidth(p, start.y), start.y)), 'neck', STROKE_WEIGHT.section, overNeck);
+    pushViewStroke(parts, pathFromLine(place(side * scrollNeckHalfWidthAt(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidthAt(p, start.y), start.y)), 'neck', STROKE_WEIGHT.section, overNeck);
   }
 
   // the head's back stands nearest and shows whole. Every other stretch shows wherever it stands out
   // past all those nearer at its height: a turn wider than the one inside it shows past it, a
   // narrower one hides behind it
-  contour(on.back, 'back');
+  pushViewContour(parts, place, on.back, 'back');
   for (let stretch of [on.turn1Front, on.turn2Back, on.turn2Front, on.turn3Back, on.turn3Front]) {
-    for (let run of seen(stretch)) contour(run, 'turns');
+    for (let run of calcSeenRuns(on, stretch, true)) pushViewContour(parts, place, run, 'turns');
   }
 
   if (r > 0) parts.back.push({ d: pathFromPolyline(round), weight: STROKE_WEIGHT.trace });
 
   // each face runs in to the widest stretch standing nearer at its height
-  face(crown.y, crown.x, null, 'backLight');
-  for (let pt of [turn1Bottom, turn2Top, turn2Bottom, turn3Top]) face(pt.y, pt.x, coverAt(on, pt.y, pt.z, true), 'turns');
-  for (let y of [eyeTop, eyeBottom]) face(y, eyeHalf, coverAt(on, y, eye.x, true), 'turns');
+  pushViewFace(parts, place, crown.y, crown.x, null, 'backLight');
+  for (let pt of [turn1Bottom, turn2Top, turn2Bottom, turn3Top]) pushViewFace(parts, place, pt.y, pt.x, coverAt(on, pt.y, pt.z, true), 'turns');
+  for (let y of [eyeTop, eyeBottom]) pushViewFace(parts, place, y, eyeHalf, coverAt(on, y, eye.x, true), 'turns');
   // the eye stands out as a cylinder to the last width
-  for (let side of [1, -1]) line(place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'turns');
+  for (let side of [1, -1]) pushViewLine(parts, place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'turns');
 
   // a foot wider than the round meets it along level shoulders, the back's own. A neck wider than
   // the round meets it along a shoulder too, out from whichever of the round and the foot stands
   // out further; a narrower one runs in under it
   if (start.x > r + 1e-6) {
-    for (let side of [1, -1]) line(place(side * r, start.y), place(side * start.x, start.y), 'back');
+    for (let side of [1, -1]) pushViewLine(parts, place(side * r, start.y), place(side * start.x, start.y), 'back');
   }
-  let neckHalf = scrollNeckHalfWidth(p, start.y);
+  let neckHalf = scrollNeckHalfWidthAt(p, start.y);
   let cheek = Math.max(r, start.x);
   if (neckHalf > cheek + 1e-6) {
-    for (let side of [1, -1]) line(place(side * cheek, start.y), place(side * neckHalf, start.y), 'backLight');
+    for (let side of [1, -1]) pushViewLine(parts, place(side * cheek, start.y), place(side * neckHalf, start.y), 'backLight');
   }
   return parts;
 }
 
 // the scroll from in front, the neck's sides running on up from `neckFrom` to the nut
-export function scrollFrontViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, place: (x: number, y: number) => Pt, neckFrom: number): ScrollView {
+export function buildScrollFrontViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, place: PlaceInView, neckFrom: number): ScrollView {
   let v = p.scroll!;
   let eye = s.eye!;
   let { nutHeight } = p.neck!;
@@ -339,77 +350,76 @@ export function scrollFrontViewStrokes(p: ViolinFamilyParams, s: ScrollSolve, pl
   let eyeHalf = v.widths.eye / 2;
   let eyeTop = eye.y + eye.r;
   let eyeBottom = eye.y - eye.r;
-  let on = scrollPathStretches(p, s);
+  let on = calcScrollPathStretches(p, s);
   let crown = on.back.at(-1)!;
   let turn1Bottom = on.turn1Front.at(-1)!;
   let turn2Top = on.turn2Back.at(-1)!;
   let turn2Bottom = on.turn2Front.at(-1)!;
   let turn3Top = on.turn3Back.at(-1)!;
-  let { walls, bottom } = pegboxFrontOutline(p, s);
-  let seen = (pts: Pt3D[]) => seenRuns(on, pts, false);
-  let { parts, stroke, contour, line, face } = viewStrokes(place);
+  let { walls, bottom } = calcPegboxFrontOutline(p, s);
+  let parts = buildEmptyScrollView();
 
   // the round is hidden, and the nut stands nearest, hiding whatever of the pegbox is narrower than it
   let nut = [place(-nutHalf, 0), place(nutHalf, 0), place(nutHalf, nutHeight), place(-nutHalf, nutHeight)];
   let overPegbox = pathFromPolygon(nut);
   for (let side of [1, -1]) {
-    stroke(pathFromLine(place(side * scrollNeckHalfWidth(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidth(p, 0), 0)), 'neck', STROKE_WEIGHT.section, null);
+    pushViewStroke(parts, pathFromLine(place(side * scrollNeckHalfWidthAt(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidthAt(p, 0), 0)), 'neck', STROKE_WEIGHT.section, null);
   }
   parts.nut.push({ polygon: nut, weight: STROKE_WEIGHT.section });
-  contour([...walls, ...bottom.slice(1)], 'front', overPegbox);
+  pushViewContour(parts, place, [...walls, ...bottom.slice(1)], 'front', overPegbox);
 
   // the pegbox runs in under the volute at the first turn's bottom, and its back is hidden all the
   // way up: behind the first turn above there, and the same line as its front below
   let pegboxTop = turn1Bottom.y;
-  let pegboxFront = scrollFrontWidths(p, s);
-  contour(clipPolylineAtY(pegboxFront, pegboxTop, 'below'), 'front', overPegbox);
+  let pegboxFront = calcScrollFrontWidths(p, s);
+  pushViewContour(parts, place, clipPolylineAtY(pegboxFront, pegboxTop, 'below'), 'front', overPegbox);
 
   // a pegbox wider than the volute over it is the rare exception: above the first turn's bottom its
   // cheeks show wherever they stand out past the volute
-  for (let run of seen(clipPolylineAtY(pegboxFront, pegboxTop, 'above'))) contour(run, 'front');
+  for (let run of calcSeenRuns(on, clipPolylineAtY(pegboxFront, pegboxTop, 'above'), false)) pushViewContour(parts, place, run, 'front');
 
   // the first turn's front stands nearest and shows whole. Every other stretch shows wherever it
   // stands out past all those nearer at its height, and the last turn's back only up to the eye's
   // bottom, the eye standing out in front of it to the last width
-  contour(on.turn1Front, 'turns');
+  pushViewContour(parts, place, on.turn1Front, 'turns');
   for (let stretch of [on.turn2Back, on.turn2Front, clipPolylineAtY(on.turn3Back, eyeBottom, 'below'), on.turn3Front]) {
-    for (let run of seen(stretch)) contour(run, 'turns');
+    for (let run of calcSeenRuns(on, stretch, false)) pushViewContour(parts, place, run, 'turns');
   }
 
   // each face runs in to the widest stretch standing nearer at its height. The first turn has none
   // in front of it, so its bottom runs right across, over the pegbox running in under it. The eye's
   // top is behind the last turn's front
-  face(crown.y, crown.x, null, 'crown');
-  face(turn1Bottom.y, turn1Bottom.x, null, 'turns');
-  for (let pt of [turn2Top, turn2Bottom, turn3Top]) face(pt.y, pt.x, coverAt(on, pt.y, pt.z, false), 'turns');
-  face(eyeBottom, eyeHalf, coverAt(on, eyeBottom, eye.x, false), 'turns');
+  pushViewFace(parts, place, crown.y, crown.x, null, 'crown');
+  pushViewFace(parts, place, turn1Bottom.y, turn1Bottom.x, null, 'turns');
+  for (let pt of [turn2Top, turn2Bottom, turn3Top]) pushViewFace(parts, place, pt.y, pt.x, coverAt(on, pt.y, pt.z, false), 'turns');
+  pushViewFace(parts, place, eyeBottom, eyeHalf, coverAt(on, eyeBottom, eye.x, false), 'turns');
   // the eye stands out as a cylinder to the last width
-  for (let side of [1, -1]) line(place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'turns');
+  for (let side of [1, -1]) pushViewLine(parts, place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'turns');
   return parts;
 }
 
 // the neck's half-width at y along it, in the scroll's frame, read off the typed widths over the
 // neck's length; over a scroll's reach that and the neck solved against the body differ by
 // hundredths of a mm
-export function scrollNeckHalfWidth(p: ViolinFamilyParams, y: number): number {
+export function scrollNeckHalfWidthAt(p: ViolinFamilyParams, y: number): number {
   let nk = p.neck!;
   return (nk.topWidth - (nk.rootWidth - nk.topWidth) * y / nk.length) / 2;
 }
 
 // seen from behind the scroll's back starts in a round at the duck tail: the edge where the pegbox's
 // flat back dives into the neck's half-round, as wide as the back's own duck tail width says
-export function duckTailRadius(p: ViolinFamilyParams): number {
+export function calcDuckTailRadius(p: ViolinFamilyParams): number {
   return p.scroll!.widths.duckTail / 2;
 }
 
 // the round's top, where the path starts
-export function duckTailRoundTop(p: ViolinFamilyParams, s: ScrollSolve): number {
-  return pointOnCircle(s.S3!, s.S3!.start).y + duckTailRadius(p);
+export function calcDuckTailRoundTop(p: ViolinFamilyParams, s: ScrollSolve): number {
+  return pointOnCircle(s.S3!, s.S3!.start).y + calcDuckTailRadius(p);
 }
 
 // where the pegbox is widest. A violin's hips sit on the round's top; a cello's on the pegbox's
 // foot, the round rising past them when the duck tail hangs less than the round's radius
-export function pegboxHipHeight(p: ViolinFamilyParams): number {
+export function calcPegboxHipHeight(p: ViolinFamilyParams): number {
   return p.neck!.nutHeight + p.scroll!.hipHeight;
 }
 
@@ -421,7 +431,15 @@ export function pegboxHipHeight(p: ViolinFamilyParams): number {
 // how far the round's top does
 type ScrollPath = Run & { round: number; straight: number; poll: number | null; crown: number; turns: number[] };
 
-function scrollPath(p: ViolinFamilyParams, s: ScrollSolve): ScrollPath {
+// an arc walked clockwise is level where it passes straight above or below its centre: how far
+// along the arc that is, or null where its sweep never passes that way
+function calcLevelOnArc(arc: Arc, angle: number): number | null {
+  let sweep = arc.end - arc.start;
+  let past = normalizeRadians(angle - arc.start);
+  return past <= sweep + 1e-9 ? arc.r * (sweep - past) : null;
+}
+
+function buildScrollPath(p: ViolinFamilyParams, s: ScrollSolve): ScrollPath {
   let backFoot = pointOnCircle(s.S3!, s.S3!.end);
   let backTop = pointOnCircle(s.S2!, s.S2!.end);
   let rise = joinedRun([arcRun(s.S3!, 'ccw'), straightRun(backFoot, backTop)]);
@@ -429,18 +447,9 @@ function scrollPath(p: ViolinFamilyParams, s: ScrollSolve): ScrollPath {
   let whole = joinedRun([rise, ...crownArcs.map(a => arcRun(a, 'cw')), ...s.spiral!.map(a => arcRun(a, 'cw'))]);
 
   // the path starts where the back first rises to the foot, the straight above the round's top
-  let roundTop = riseAlongRun(whole, duckTailRoundTop(p, s), whole.length);
-  let start = riseAlongRun(whole, duckTailRoundTop(p, s) + p.scroll!.duckTailStraight, whole.length);
+  let roundTop = riseAlongRun(whole, calcDuckTailRoundTop(p, s), whole.length);
+  let start = riseAlongRun(whole, calcDuckTailRoundTop(p, s) + p.scroll!.duckTailStraight, whole.length);
   let length = whole.length - start;
-  let height = (at: number) => whole.at(start + at).y;
-
-  // an arc walked clockwise is level where it passes straight above or below its centre: how far
-  // along the arc that is, or null where its sweep never passes that way
-  let levelOn = (arc: Arc, angle: number): number | null => {
-    let sweep = arc.end - arc.start;
-    let past = normalizeRadians(angle - arc.start);
-    return past <= sweep + 1e-9 ? arc.r * (sweep - past) : null;
-  };
 
   // the poll is the first arc up the back to pass straight behind its centre; the crown the highest
   // top among them
@@ -448,18 +457,18 @@ function scrollPath(p: ViolinFamilyParams, s: ScrollSolve): ScrollPath {
   let poll: number | null = null;
   let tops: number[] = [];
   for (let arc of crownArcs) {
-    let back = levelOn(arc, TURN.half);
+    let back = calcLevelOnArc(arc, TURN.half);
     if (poll === null && back !== null && along + back > 1e-6) poll = along + back;
-    let top = levelOn(arc, TURN.quarter);
+    let top = calcLevelOnArc(arc, TURN.quarter);
     if (top !== null) tops.push(along + top);
     along += arc.r * (arc.end - arc.start);
   }
-  let crown = tops.length ? tops.reduce((best, at) => height(at) > height(best) ? at : best) : along;
+  let crown = tops.length ? tops.reduce((best, at) => whole.at(start + at).y > whole.at(start + best).y ? at : best) : along;
 
   let levels: number[] = [];
   for (let arc of s.spiral!) {
     for (let angle of [TURN.quarter, -TURN.quarter]) {
-      let level = levelOn(arc, angle);
+      let level = calcLevelOnArc(arc, angle);
       if (level !== null) levels.push(along + level);
     }
     along += arc.r * (arc.end - arc.start);
@@ -471,14 +480,13 @@ function scrollPath(p: ViolinFamilyParams, s: ScrollSolve): ScrollPath {
   return { length, at: at => whole.at(start + at), round: start, straight: start - roundTop, poll, crown, turns };
 }
 
-function scrollFront(p: ViolinFamilyParams, s: ScrollSolve): Run {
-  let at = pointOnCircle;
+function buildScrollFront(p: ViolinFamilyParams, s: ScrollSolve): Run {
   let [F0, F1] = [s.F0!, s.F1!];
-  let flatTop = at(F0, F0.start);
+  let flatTop = pointOnCircle(F0, F0.start);
   return joinedRun([
     straightRun(new Pt(flatTop.x, flatTop.y - p.scroll!.flat), flatTop),
     arcRun(F0, 'ccw'),
-    straightRun(at(F0, F0.end), at(F1, F1.end)),
+    straightRun(pointOnCircle(F0, F0.end), pointOnCircle(F1, F1.end)),
     arcRun(F1, 'cw'),
   ]);
 }
@@ -488,24 +496,28 @@ function scrollFront(p: ViolinFamilyParams, s: ScrollSolve): Run {
 // at the foot of the front's straight, and on up F1 at the same slope. Hips at 0 are none, the
 // cheeks tapering from the nut's edges; below the nut's top they leave no run out from the nut, and
 // hold the hips' width down to the foot
-export function pegboxWidth(p: ViolinFamilyParams, s: ScrollSolve, y: number): number {
+export function pegboxWidthAt(p: ViolinFamilyParams, s: ScrollSolve, y: number): number {
   let { nutWidth, nutHeight } = p.neck!;
   let { hip, throat: throatWidth } = p.scroll!.widths;
   let hipWidth = p.scroll!.hipHeight === 0 ? nutWidth : hip;
   let taperEnd = pointOnCircle(s.F1!, s.F1!.end).y;
   // hips up at the throat leave no taper, and the width steps there
-  let hipY = Math.min(pegboxHipHeight(p), taperEnd);
+  let hipY = Math.min(calcPegboxHipHeight(p), taperEnd);
   if (y > hipY) return taperEnd - hipY > 1e-9 ? Math.max(hipWidth + (throatWidth - hipWidth) * (y - hipY) / (taperEnd - hipY), 0) : throatWidth;
   if (hipY <= nutHeight) return hipWidth;
   if (y <= nutHeight) return nutWidth;
   return nutWidth + (hipWidth - nutWidth) * (y - nutHeight) / (hipY - nutHeight);
 }
 
+function calcBackSlopeWidth(path: ScrollPath, at: number, footWidth: number, toWidth: number, startY: number, toY: number): number {
+  return toY - startY > 1e-9 ? footWidth + (toWidth - footWidth) * (path.at(at).y - startY) / (toY - startY) : toWidth;
+}
+
 // the width along the path. The back goes out from its foot on a straight slope, by height, to its
 // poll, then leaves the slope tangent on a curve
 // through the volute's widths, by distance along the path. A back with no poll runs the slope all
 // the way up to the crown
-function pathWidth(p: ViolinFamilyParams, path: ScrollPath): (at: number) => number {
+function buildPathWidth(p: ViolinFamilyParams, path: ScrollPath): (at: number) => number {
   let w = p.scroll!.widths;
   // the last turn is as wide as the eye from its top on in
   let [turn1Bottom, turn2Top, turn2Bottom, turn3Top] = path.turns;
@@ -518,15 +530,14 @@ function pathWidth(p: ViolinFamilyParams, path: ScrollPath): (at: number) => num
 
   let startY = path.at(0).y;
   let toY = path.at(s[0]).y;
-  let slope = (at: number) => toY - startY > 1e-9 ? w.foot + (widths[0] - w.foot) * (path.at(at).y - startY) / (toY - startY) : widths[0];
 
   let h = s.slice(1).map((next, i) => next - s[i]);
   let delta = h.map((step, i) => (widths[i + 1] - widths[i]) / step);
   let slopes = hymanFilterSlopes(naturalSplineSlopes(h, delta), h, delta);
   // tangent to the slope it leaves, where the path has any of it behind
-  if (s[0] > 1e-3) slopes[0] = (slope(s[0]) - slope(s[0] - 1e-3)) / 1e-3;
+  if (s[0] > 1e-3) slopes[0] = (calcBackSlopeWidth(path, s[0], w.foot, widths[0], startY, toY) - calcBackSlopeWidth(path, s[0] - 1e-3, w.foot, widths[0], startY, toY)) / 1e-3;
   let curve = hermiteEvaluator(s, widths, h, slopes);
-  return at => at < s[0] ? slope(at) : curve(at);
+  return at => at < s[0] ? calcBackSlopeWidth(path, at, w.foot, widths[0], startY, toY) : curve(at);
 }
 
 // the path as the back and front views draw it, in the stretches it falls into at the crown and the
@@ -535,25 +546,26 @@ function pathWidth(p: ViolinFamilyParams, path: ScrollPath): (at: number) => num
 // point the next starts on
 export type ScrollStretches = Record<'back' | 'turn1Front' | 'turn2Back' | 'turn2Front' | 'turn3Back' | 'turn3Front', Pt3D[]>;
 
-export function scrollPathStretches(p: ViolinFamilyParams, s: ScrollSolve): ScrollStretches {
-  let path = scrollPath(p, s);
-  let width = pathWidth(p, path);
-  let stretch = (from: number, to: number): Pt3D[] => {
-    let pieces = Math.ceil(to - from);
-    return Array.from({ length: pieces + 1 }, (_, k) => {
-      let at = from + (to - from) * k / pieces;
-      let pt = path.at(at);
-      return new Pt3D(width(at) / 2, pt.y, pt.x);
-    });
-  };
+function calcStretch(path: ScrollPath, width: (at: number) => number, from: number, to: number): Pt3D[] {
+  let pieces = Math.ceil(to - from);
+  return Array.from({ length: pieces + 1 }, (_, k) => {
+    let at = from + (to - from) * k / pieces;
+    let pt = path.at(at);
+    return new Pt3D(width(at) / 2, pt.y, pt.x);
+  });
+}
+
+export function calcScrollPathStretches(p: ViolinFamilyParams, s: ScrollSolve): ScrollStretches {
+  let path = buildScrollPath(p, s);
+  let width = buildPathWidth(p, path);
   let [turn1Bottom, turn2Top, turn2Bottom, turn3Top] = path.turns;
   return {
-    back: stretch(0, path.crown),
-    turn1Front: stretch(path.crown, turn1Bottom),
-    turn2Back: stretch(turn1Bottom, turn2Top),
-    turn2Front: stretch(turn2Top, turn2Bottom),
-    turn3Back: stretch(turn2Bottom, turn3Top),
-    turn3Front: stretch(turn3Top, path.length),
+    back: calcStretch(path, width, 0, path.crown),
+    turn1Front: calcStretch(path, width, path.crown, turn1Bottom),
+    turn2Back: calcStretch(path, width, turn1Bottom, turn2Top),
+    turn2Front: calcStretch(path, width, turn2Top, turn2Bottom),
+    turn3Back: calcStretch(path, width, turn2Bottom, turn3Top),
+    turn3Front: calcStretch(path, width, turn3Top, path.length),
   };
 }
 
@@ -564,31 +576,30 @@ export function scrollPathStretches(p: ViolinFamilyParams, s: ScrollSolve): Scro
 // to it level, as the shoulders do
 export type ScrollBackStrip = { outline: Pt[]; length: number };
 
-export function scrollBackStrip(p: ViolinFamilyParams, s: ScrollSolve): ScrollBackStrip {
-  let path = scrollPath(p, s);
-  let width = pathWidth(p, path);
-  let r = duckTailRadius(p);
-  let roundTop = duckTailRoundTop(p, s);
+export function buildScrollBackStrip(p: ViolinFamilyParams, s: ScrollSolve): ScrollBackStrip {
+  let path = buildScrollPath(p, s);
+  let width = buildPathWidth(p, path);
+  let r = calcDuckTailRadius(p);
+  let roundTop = calcDuckTailRoundTop(p, s);
   let end = path.turns[2] ?? path.length;
-  let up = (at: number) => at + path.round;
   let step = 0.25;
 
   let side: Pt[] = [];
   let n = Math.ceil((path.round - path.straight) / step);
   for (let k = 0; k <= n && n > 0; k++) {
     let at = -path.round + (path.round - path.straight) * k / n;
-    side.push(new Pt(Math.sqrt(Math.max(r * r - Math.max(roundTop - path.at(at).y, 0) ** 2, 0)), up(at)));
+    side.push(new Pt(Math.sqrt(Math.max(r * r - Math.max(roundTop - path.at(at).y, 0) ** 2, 0)), at + path.round));
   }
-  if (path.straight > 1e-6) side.push(new Pt(r, up(0)));
+  if (path.straight > 1e-6) side.push(new Pt(r, path.round));
 
   // the poll is a corner in the width, so the strip takes it exactly
   let m = Math.max(Math.ceil(end / step), 1);
   let along = Array.from({ length: m + 1 }, (_, k) => end * k / m);
   if (path.poll !== null && path.poll < end) along.push(path.poll);
   along.sort((a, b) => a - b);
-  for (let at of along) side.push(new Pt(width(at) / 2, up(at)));
+  for (let at of along) side.push(new Pt(width(at) / 2, at + path.round));
 
-  return { outline: [...side, ...[...side].reverse().map(pt => new Pt(-pt.x, pt.y))], length: up(end) };
+  return { outline: [...side, ...[...side].reverse().map(pt => new Pt(-pt.x, pt.y))], length: end + path.round };
 }
 
 // the back's widths set out for a compass walk, the older way: the maker walks a compass up the
@@ -605,9 +616,34 @@ export type CompassStation = { at: Pt; along: number; half: number };
 export type CompassWalk = { stations: CompassStation[]; length: number; step: number; volute: number };
 export const COMPASS_STEPS = 10;
 
-export function scrollCompassWalk(p: ViolinFamilyParams, s: ScrollSolve, steps = COMPASS_STEPS): CompassWalk {
-  let path = scrollPath(p, s);
-  let width = pathWidth(p, path);
+// the first point along the path a compass step from `from`, found by marching then halving, or
+// null where the end comes first
+function calcCompassOnward(path: ScrollPath, end: number, from: number, step: number): number | null {
+  let origin = path.at(from);
+  let at = from;
+  while (at < end && dist(origin, path.at(at)) < step) at = Math.min(at + 0.5, end);
+  if (dist(origin, path.at(at)) < step) return null;
+  let lo = Math.max(at - 0.5, from), hi = at;
+  for (let i = 0; i < 40; i++) {
+    let mid = (lo + hi) / 2;
+    if (dist(origin, path.at(mid)) < step) lo = mid; else hi = mid;
+  }
+  return hi;
+}
+
+// how far short of the end the last step falls with a step this long, negative once it overshoots.
+// The last step is found like the rest, the first point along the path a step away, never struck
+// straight at the end: the spiral passes within a step of the end from stations still turns away,
+// and an arc struck from one of those would cross the back twice
+function calcCompassShort(path: ScrollPath, end: number, from: number, step: number, steps: number): number {
+  let at: number | null = from;
+  for (let k = 0; k < steps && at !== null; k++) at = calcCompassOnward(path, end, at, step);
+  return at === null ? -1 : end - at;
+}
+
+export function buildScrollCompassWalk(p: ViolinFamilyParams, s: ScrollSolve, steps = COMPASS_STEPS): CompassWalk {
+  let path = buildScrollPath(p, s);
+  let width = buildPathWidth(p, path);
   let w = p.scroll!.widths;
   let end = path.turns[2] ?? path.length;
   steps = Math.max(1, Math.round(steps));
@@ -615,31 +651,6 @@ export function scrollCompassWalk(p: ViolinFamilyParams, s: ScrollSolve, steps =
   let marks: { s: number; half: number }[] = [{ s: -path.straight, half: w.duckTail / 2 }];
   if (w.foot > w.duckTail + 1e-9 || path.straight > 1e-6) marks.push({ s: 0, half: w.foot / 2 });
   if (path.poll !== null && path.poll < end) marks.push({ s: path.poll, half: width(path.poll) / 2 });
-
-  // the first point along the path a compass step from `from`, found by marching then halving, or
-  // null where the end comes first
-  let onward = (from: number, step: number): number | null => {
-    let origin = path.at(from);
-    let reach = (at: number) => dist(origin, path.at(at));
-    let at = from;
-    while (at < end && reach(at) < step) at = Math.min(at + 0.5, end);
-    if (reach(at) < step) return null;
-    let lo = Math.max(at - 0.5, from), hi = at;
-    for (let i = 0; i < 40; i++) {
-      let mid = (lo + hi) / 2;
-      if (reach(mid) < step) lo = mid; else hi = mid;
-    }
-    return hi;
-  };
-  // how far short of the end the last step falls with a step this long, negative once it overshoots.
-  // The last step is found like the rest, the first point along the path a step away, never struck
-  // straight at the end: the spiral passes within a step of the end from stations still turns away,
-  // and an arc struck from one of those would cross the back twice
-  let short = (step: number): number => {
-    let at: number | null = from;
-    for (let k = 0; k < steps && at !== null; k++) at = onward(at, step);
-    return at === null ? -1 : end - at;
-  };
 
   let from = marks.at(-1)!.s;
   let volute = end - from;
@@ -651,11 +662,11 @@ export function scrollCompassWalk(p: ViolinFamilyParams, s: ScrollSolve, steps =
     let lo = dist(path.at(from), path.at(end)) / steps, hi = volute / steps;
     for (let i = 0; i < 48; i++) {
       let mid = (lo + hi) / 2;
-      if (short(mid) > 0) lo = mid; else hi = mid;
+      if (calcCompassShort(path, end, from, mid, steps) > 0) lo = mid; else hi = mid;
     }
     step = hi;
     for (let k = 1; k < steps; k++) {
-      let next = onward(from, step);
+      let next = calcCompassOnward(path, end, from, step);
       if (next === null) break;
       from = next;
       marks.push({ s: from, half: width(from) / 2 });
@@ -674,12 +685,12 @@ export function scrollCompassWalk(p: ViolinFamilyParams, s: ScrollSolve, steps =
 }
 
 // the front from the nut up to the throat the same way, as wide as the pegbox at each height
-export function scrollFrontWidths(p: ViolinFamilyParams, s: ScrollSolve): Pt3D[] {
-  let front = scrollFront(p, s);
+export function calcScrollFrontWidths(p: ViolinFamilyParams, s: ScrollSolve): Pt3D[] {
+  let front = buildScrollFront(p, s);
   let pieces = Math.ceil(front.length);
   return Array.from({ length: pieces + 1 }, (_, i) => {
     let pt = front.at(front.length * i / pieces);
-    return new Pt3D(pegboxWidth(p, s, pt.y) / 2, pt.y, pt.x);
+    return new Pt3D(pegboxWidthAt(p, s, pt.y) / 2, pt.y, pt.x);
   });
 }
 
@@ -687,16 +698,16 @@ export function scrollFrontWidths(p: ViolinFamilyParams, s: ScrollSolve): Pt3D[]
 // the nut's foot, then the front's up the pegbox's front, the nut, the hips and the throat; the
 // back's from the top of the duck tail's round, then along the path from the foot in to the eye's
 // centre. A back with no poll has no station for it
-export function scrollWidthStations(p: ViolinFamilyParams, s: ScrollSolve): ScrollStation[] {
+export function calcScrollWidthStations(p: ViolinFamilyParams, s: ScrollSolve): ScrollStation[] {
   let w = p.scroll!.widths;
-  let front = scrollFront(p, s);
-  let hip = front.at(riseAlongRun(front, pegboxHipHeight(p), front.length));
-  let path = scrollPath(p, s);
+  let front = buildScrollFront(p, s);
+  let hip = front.at(riseAlongRun(front, calcPegboxHipHeight(p), front.length));
+  let path = buildScrollPath(p, s);
   let [turn1Bottom, turn2Top, turn2Bottom] = path.turns;
   return [
     { key: 'neck', at: new Pt(0, 0), width: p.neck!.topWidth },
     { key: 'nut', at: new Pt(0, p.neck!.nutHeight), width: p.neck!.nutWidth },
-    { key: 'hip', at: hip, width: pegboxWidth(p, s, hip.y) },
+    { key: 'hip', at: hip, width: pegboxWidthAt(p, s, hip.y) },
     { key: 'throat', at: pointOnCircle(s.F1!, s.F1!.end), width: w.throat },
     { key: 'duckTail', at: path.at(-path.straight), width: w.duckTail },
     { key: 'foot', at: path.at(0), width: w.foot },
@@ -715,7 +726,7 @@ const NUT_WALL_LEAN = 15 * TURN.degree;
 // the pegbox's hollow in the side view: from the nut's top down the wall under it, along the floor,
 // and out to the front again along a wall square to the neck, where the front's straight ends.
 // Null where a wall never reaches the floor
-export function pegboxCavity(p: ViolinFamilyParams, s: ScrollSolve): Pt[] | null {
+export function calcPegboxCavity(p: ViolinFamilyParams, s: ScrollSolve): Pt[] | null {
   let v = p.scroll!;
   let backFoot = pointOnCircle(s.S3!, s.S3!.end);
   let backTop = pointOnCircle(s.S2!, s.S2!.end);
@@ -735,7 +746,7 @@ export function pegboxCavity(p: ViolinFamilyParams, s: ScrollSolve): Pt[] | null
   }
 
   let nutTop = new Pt(0, p.neck!.nutHeight);
-  let frontEnd = scrollLines(p, s).frontStraight[1];
+  let frontEnd = calcScrollLines(p, s).frontStraight[1];
   let underNut = rayPolylineIntersection(nutTop, TURN.half - NUT_WALL_LEAN, floor);
   let underThroat = rayPolylineIntersection(frontEnd, TURN.half, floor);
   if (!underNut || !underThroat || underNut.index > underThroat.index) return null;
@@ -759,26 +770,25 @@ export function solveScrollWidths(p: ViolinFamilyParams): ScrollWidthsSolve | nu
   if (scroll.failures.length) return { scroll, failures };
   let v = p.scroll!;
   let w = v.widths;
-  let fail = (message: string, unsolved: ScrollWidthsKey[]) => failures.push({ message, unsolved, circles: [], segments: [] });
   let keys = Object.keys(w) as (keyof ScrollWidths)[];
 
   if (!keys.every(k => Number.isFinite(w[k]) && w[k] >= 0) || ![v.hipHeight, v.wall].every(Number.isFinite) || !(v.duckTailStraight >= 0))
-    fail('Scroll widths: every width, the hip height, the straight and the wall need a value, the widths and the straight 0 or more.', [...keys, 'hipHeight', 'duckTailStraight', 'wall']);
-  else if (!(v.wall > 0)) fail('Scroll widths: the pegbox wall needs a thickness above 0.', ['wall']);
+    failures.push(buildMiss('Scroll widths: every width, the hip height, the straight and the wall need a value, the widths and the straight 0 or more.', [...keys, 'hipHeight', 'duckTailStraight', 'wall']));
+  else if (!(v.wall > 0)) failures.push(buildMiss('Scroll widths: the pegbox wall needs a thickness above 0.', ['wall']));
   else {
     let duckTail = pointOnCircle(scroll.S3!, scroll.S3!.start).y - p.neck!.nutHeight;
-    if (v.hipHeight < duckTail) fail(`Scroll widths: the hips can't sit below the duck tail, ${duckTail.toFixed(1)} mm from the nut's top.`, ['hipHeight']);
+    if (v.hipHeight < duckTail) failures.push(buildMiss(`Scroll widths: the hips can't sit below the duck tail, ${duckTail.toFixed(1)} mm from the nut's top.`, ['hipHeight']));
     let order: [keyof ScrollWidths, keyof ScrollWidths, string][] = [
       ['duckTail', 'foot', "the back's foot has to be at least as wide as the duck tail's round"],
       ['crown', 'poll', 'the head has to be no wider over the crown than at the poll'],
       ['turn2Bottom', 'eye', 'the eye has to stand at least as wide as the second turn\'s bottom'],
     ];
-    for (let [lesser, greater, what] of order) if (w[greater] < w[lesser]) fail(`Scroll widths: ${what}.`, [lesser, greater]);
+    for (let [lesser, greater, what] of order) if (w[greater] < w[lesser]) failures.push(buildMiss(`Scroll widths: ${what}.`, [lesser, greater]));
   }
   if (!failures.length) {
-    let path = scrollPath(p, scroll);
-    if (!(path.crown > 1e-6)) fail("Scroll widths: the duck tail's straight runs the foot up past the crown. Shorten it.", ['duckTailStraight']);
-    else if (path.turns.length < 4) fail('Scroll widths: the spiral has to turn twice past the crown for the widths to hang on it.', keys);
+    let path = buildScrollPath(p, scroll);
+    if (!(path.crown > 1e-6)) failures.push(buildMiss("Scroll widths: the duck tail's straight runs the foot up past the crown. Shorten it.", ['duckTailStraight']));
+    else if (path.turns.length < 4) failures.push(buildMiss('Scroll widths: the spiral has to turn twice past the crown for the widths to hang on it.', keys));
   }
   return { scroll, failures };
 }

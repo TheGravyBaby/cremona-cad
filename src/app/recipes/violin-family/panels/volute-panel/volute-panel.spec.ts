@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { angleFromCenter, arcReach, pointOnCircle } from '../../../../helpers/math/simpleGeometry';
 import { Arc } from '../../../../models/types';
-import { solveVolute, spiralArcs, TO_FRONT, VolutePanel, voluteConstruction } from './volute-panel';
+import { solveVolute, solveSpiral, TO_FRONT, VolutePanel, calcVoluteConstruction } from './volute-panel';
 import { solveScroll } from '../pegbox-panel/pegbox-panel';
 import { NeckPanel } from '../neck-panel/neck-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
@@ -115,7 +115,7 @@ describe.each(STYLES)('the %s volute', style => {
   });
 
   it('marks the figure its centres are found on', () => {
-    expect(voluteConstruction(p, s).length).toBeGreaterThan(0);
+    expect(calcVoluteConstruction(p, s).length).toBeGreaterThan(0);
   });
 });
 
@@ -164,8 +164,8 @@ describe('the volute\'s failures', () => {
 
   it('draws the same spiral whatever the four point\'s radii, for every other style', () => {
     const p = seeded();
-    const before = spiralArcs(p.scroll!);
+    const before = solveSpiral(p.scroll!);
     p.scroll!.arcRadii = p.scroll!.arcRadii.map(r => r * 2);
-    expect(spiralArcs(p.scroll!)).toEqual(before);
+    expect(solveSpiral(p.scroll!)).toEqual(before);
   });
 });

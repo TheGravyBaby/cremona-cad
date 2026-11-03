@@ -55,7 +55,7 @@ export const WIKI: WikiCategory[] = [
     label: 'CremonaCad',
     overview: page('wiki/overview.md', wikiOverview),
     pages: [
-      page('wiki/cremonaCad/canvas.md', wikiCanvasCanvas),
+      // page('wiki/cremonaCad/canvas.md', wikiCanvasCanvas),
       page('wiki/cremonaCad/controls.md', wikiCanvasControls),
       page('wiki/cremonaCad/files.md', wikiCanvasFiles),
       page('wiki/cremonaCad/tools.md', wikiCanvasTools),

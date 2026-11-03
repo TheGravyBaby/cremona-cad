@@ -6,7 +6,7 @@ import {
 import {
   renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashLine, renderPolygon, renderSegment, renderSolveFailures, renderPath,
 } from '../../../../helpers/renderFuncs';
-import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { buildMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { Arc, Circle, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
@@ -27,11 +27,12 @@ import {
   ScrollSolve,
 } from '../../violin-family-solves';
 import { defineSideScrollPath, solveScroll } from '../pegbox-panel/pegbox-panel';
-import { duckTailRoundTop } from '../scroll-widths-panel/scroll-widths-panel';
+import { calcDuckTailRoundTop } from '../scroll-widths-panel/scroll-widths-panel';
 import { calcNeckTaper } from '../neck-panel/neck-panel';
 import { showFieldHelp } from '../../../../docs/field-help';
 
 export type VoluteHighlightKey = number | 'S0' | 'S1' | 'S2';
+
 
 @Component({
   selector: 'app-vf-volute-panel',
@@ -43,7 +44,7 @@ export class VolutePanel implements ViolinFamilyPanel, OnInit {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'showVoluteConstruction'];
   protected readonly pal = ThemeService.getPalette('stones');
   protected readonly styles = Object.entries(VOLUTE_STYLE_LABELS).map(([id, label]) => ({ id, label }));
-  protected readonly arcEnd = (i: number) => turnsLabel((i + 1) / 4);
+  protected readonly arcEnd = (i: number) => formatTurnsLabel((i + 1) / 4);
   protected readonly help = showFieldHelp;
   protected readonly nearestFraction = nearestFraction;
   
@@ -55,42 +56,41 @@ export class VolutePanel implements ViolinFamilyPanel, OnInit {
   static seed(p: ViolinFamilyParams): void {
     if (p.scroll || !p.neck) return;
     let k = p.body.height / 350;
-    let mm = (v: number) => Math.round(v * k);
     let eyeRadius = Math.round(3.5 * k * 4) / 4;
     let scroll: ScrollParams = {
       style: 'salviati',
-      eye: { x: 0, y: mm(83), r: eyeRadius },
+      eye: { x: 0, y: Math.round(83 * k), r: eyeRadius },
       fitToNeck: true,
       // about the Salviati's own opening, its front as far out
       pitch: Math.round(1.9 * eyeRadius * 10) / 10,
       seedLength: eyeRadius,
-      arcRadii: kellyArcs(eyeRadius, eyeRadius).reverse().map(a => Math.round(a.r * 100) / 100),
-      S0R: mm(21), S0Sweep: 80,
-      S1R: mm(28), S1Sweep: 85,
-      S2R: mm(35), S2Sweep: 50,
-      backStraight: mm(25),
-      S3R: mm(35),
+      arcRadii: solveKellySpiral(eyeRadius, eyeRadius).reverse().map(a => Math.round(a.r * 100) / 100),
+      S0R: Math.round(21 * k), S0Sweep: 80,
+      S1R: Math.round(28 * k), S1Sweep: 85,
+      S2R: Math.round(35 * k), S2Sweep: 50,
+      backStraight: Math.round(25 * k),
+      S3R: Math.round(35 * k),
       hang: 0,
-      napeR: mm(10),
+      napeR: Math.round(10 * k),
       napeAngle: 0,
       flat: 0,
-      F0R: mm(60), F0Sweep: 45,
-      frontStraight: mm(18),
-      F1R: mm(9),
+      F0R: Math.round(60 * k), F0Sweep: 45,
+      frontStraight: Math.round(18 * k),
+      F1R: Math.round(9 * k),
       // placeholders about a Stradivari head, to be set from the scroll being copied: hips a little
       // proud of the nut, the first turn wide enough that the pegbox runs in under it out of sight,
       // and the duck tail's round the neck's width
-      widths: { hip: mm(25), throat: mm(20), duckTail: mm(26), foot: mm(26), poll: mm(24), crown: mm(13), turn1Bottom: mm(26), turn2Top: mm(30), turn2Bottom: mm(34), eye: mm(41) },
+      widths: { hip: Math.round(25 * k), throat: Math.round(20 * k), duckTail: Math.round(26 * k), foot: Math.round(26 * k), poll: Math.round(24 * k), crown: Math.round(13 * k), turn1Bottom: Math.round(26 * k), turn2Top: Math.round(30 * k), turn2Bottom: Math.round(34 * k), eye: Math.round(41 * k) },
       hipHeight: 0,
       duckTailStraight: 0,
-      wall: mm(5),
+      wall: Math.round(5 * k),
     };
     p.scroll = scroll;
     let s = solveScroll(p)!;
     scroll.eye.x = s.eye!.x;
     scroll.F0R = Math.round(-s.S3!.x);
     scroll.flat = Math.round(s.S3!.y - p.neck.nutHeight);
-    scroll.hipHeight = duckTailRoundTop(p, s) - p.neck.nutHeight;
+    scroll.hipHeight = calcDuckTailRoundTop(p, s) - p.neck.nutHeight;
   }
 
   @Input({ required: true }) params!: ViolinFamilyParams;
@@ -149,7 +149,7 @@ export class VolutePanel implements ViolinFamilyPanel, OnInit {
       let p = this.params;
       let s = solveScroll(p)!;
       this.s = { ...s, failures: s.failures.filter(f => f.unsolved.some(k => k === 'spiral' || k === 'S0' || k === 'S1' || k === 'S2')) };
-      this.extent = s.S2 ? scrollExtent(s) : null;
+      this.extent = s.S2 ? calcScrollExtent(s) : null;
       let key = this.highlighted?.key ?? null;
       let arc = key === null ? null : typeof key === 'number' ? s.spiral?.[s.spiral.length - 1 - key] ?? null : s[key];
       // the rest of the scroll for context, under the volute's own arcs, once it all solves
@@ -164,25 +164,21 @@ export class VolutePanel implements ViolinFamilyPanel, OnInit {
 }
 
 // a count of turns in quarters, as the luthier says it
-const turnsLabel = (turns: number) => {
+const formatTurnsLabel = (turns: number) => {
   let whole = Math.floor(turns);
   let quarter = Math.round(turns * 4) % 4;
   return `${whole || ''}${['', '¼', '½', '¾'][quarter]}`;
 };
 
 // a scroll arc runs counterclockwise from start to end, so one past a half turn is the long way round
-export const longArc = (arc: Arc) => normalizeRadians(arc.end - arc.start) > TURN.half;
-
-// every arc draws in its own colour; module arcs add its centre and the two radii that bound it
-export const scrollArc = (arc: Arc, color: string, fancy: boolean) =>
-  fancy ? renderArcFromArcFancy(arc, color, longArc(arc)) : renderArcFromArc(arc, color, STROKE_WEIGHT.trace, longArc(arc));
+export const isLongArc = (arc: Arc) => normalizeRadians(arc.end - arc.start) > TURN.half;
 
 // how far each view carries the neck on below the scroll
-export const scrollNeckStub = (p: ViolinFamilyParams) => 2 * p.neck!.upperThickness;
+export const calcScrollNeckStub = (p: ViolinFamilyParams) => 2 * p.neck!.upperThickness;
 
 // how far the nut stands off the neck: the string setup's, and until it has one, or while its field
 // is cleared, the thickness it would seed
-export const nutThickness = (p: ViolinFamilyParams) => {
+export const calcNutThickness = (p: ViolinFamilyParams) => {
   let t = p.stringSetup?.nutThickness;
   return Number.isFinite(t) ? t! : Math.round(7.5 * p.body.height / 355 * 2) / 2;
 };
@@ -192,8 +188,8 @@ export const nutThickness = (p: ViolinFamilyParams) => {
 // nut up to the crown's top, and the neck's front back to the scroll's furthest reach
 export const renderScrollNeck = (p: ViolinFamilyParams, s: ScrollSolve, pal: PanelPalette, showGuides: boolean) => (g: any, ui: any): void => {
   let { upperThickness: thickness, nutHeight } = p.neck!;
-  let stub = scrollNeckStub(p);
-  let t = nutThickness(p);
+  let stub = calcScrollNeckStub(p);
+  let t = calcNutThickness(p);
   renderPolygon([new Pt(0, 0), new Pt(0, nutHeight), new Pt(t, nutHeight), new Pt(t, 0)], pal.ink(0), STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(0, -stub), new Pt(0, 0), pal.neutral.faint(5), STROKE_WEIGHT.section)(g, ui);
   // the neck's back, leaning with the taper, runs on up to where the nape meets it, or to the nut's
@@ -203,7 +199,7 @@ export const renderScrollNeck = (p: ViolinFamilyParams, s: ScrollSolve, pal: Pan
   if (backTop.y > -stub) renderSegment(backFoot, backTop, pal.neutral.faint(5), STROKE_WEIGHT.section)(g, ui);
 
   if (!showGuides || !s.S2) return;
-  let { height, width } = scrollExtent(s);
+  let { height, width } = calcScrollExtent(s);
   let corners = [new Pt(0, 0), new Pt(0, height), new Pt(-width, height), new Pt(-width, 0)];
   for (let i = 0; i < 4; i++) renderDashLine(corners[i], corners[(i + 1) % 4], pal.ink(1).faint(4), STROKE_WEIGHT.guide)(g, ui);
 };
@@ -219,27 +215,34 @@ export const renderVolute = (
   highlighted: { arc: Arc; color: string } | null,
 ) => (g: any, ui: any): void => {
   let fancy = currentModule && flags.showModuleArcs;
-  if (highlighted) renderArcHalo(highlighted.arc, highlighted.color, undefined, undefined, longArc(highlighted.arc))(g, ui);
+  if (highlighted) renderArcHalo(highlighted.arc, highlighted.color, undefined, undefined, isLongArc(highlighted.arc))(g, ui);
   if (!s.spiral || !s.eye) return;
   let eye = s.eye;
   renderCircle(eye, pal.ink(2))(g, ui);
   if (currentModule && flags.showVoluteConstruction) {
-    for (let line of voluteConstruction(p, s)) {
+    for (let line of calcVoluteConstruction(p, s)) {
       let placed = line.map(pt => new Pt(eye.x + pt.x, eye.y + pt.y));
       for (let i = 1; i < placed.length; i++) renderSegment(placed[i - 1], placed[i], pal.ink(2).faint(2), STROKE_WEIGHT.guide, true)(g, ui);
     }
   }
   // innermost first, two tones alternating arc by arc, the same as the four point's fields
   let inward = [...s.spiral].reverse();
-  for (let i = 0; i < inward.length; i++) scrollArc(inward[i], i % 2 ? pal.ink(2).faint(1) : pal.ink(2).faint(-3), fancy)(g, ui);
-  if (s.S0) scrollArc(s.S0, pal.ink(1).faint(3), fancy)(g, ui);
-  if (s.S1) scrollArc(s.S1, pal.ink(1), fancy)(g, ui);
-  if (s.S2) scrollArc(s.S2, pal.ink(1).faint(-3), fancy)(g, ui);
+  if (fancy) {
+    for (let i = 0; i < inward.length; i++) renderArcFromArcFancy(inward[i], i % 2 ? pal.ink(2).faint(1) : pal.ink(2).faint(-3), isLongArc(inward[i]))(g, ui);
+    if (s.S0) renderArcFromArcFancy(s.S0, pal.ink(1).faint(3), isLongArc(s.S0))(g, ui);
+    if (s.S1) renderArcFromArcFancy(s.S1, pal.ink(1), isLongArc(s.S1))(g, ui);
+    if (s.S2) renderArcFromArcFancy(s.S2, pal.ink(1).faint(-3), isLongArc(s.S2))(g, ui);
+  } else {
+    for (let i = 0; i < inward.length; i++) renderArcFromArc(inward[i], i % 2 ? pal.ink(2).faint(1) : pal.ink(2).faint(-3), STROKE_WEIGHT.trace, isLongArc(inward[i]))(g, ui);
+    if (s.S0) renderArcFromArc(s.S0, pal.ink(1).faint(3), STROKE_WEIGHT.trace, isLongArc(s.S0))(g, ui);
+    if (s.S1) renderArcFromArc(s.S1, pal.ink(1), STROKE_WEIGHT.trace, isLongArc(s.S1))(g, ui);
+    if (s.S2) renderArcFromArc(s.S2, pal.ink(1).faint(-3), STROKE_WEIGHT.trace, isLongArc(s.S2))(g, ui);
+  }
 };
 
 // the readouts, off the back as far as it solved: the nut up to the crown's top, and the neck's
 // front back to the scroll's furthest reach
-export function scrollExtent(s: ScrollSolve): { height: number; width: number } {
+export function calcScrollExtent(s: ScrollSolve): { height: number; width: number } {
   let back = [s.S0, s.S1, s.S2, s.S3].filter((a): a is Arc => !!a);
   return {
     height: Math.max(...back.flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y)),
@@ -261,21 +264,21 @@ export const TO_FRONT = 8;
 
 // the style's spiral in the eye's frame, outermost arc first, or [] when its fields can't draw it.
 // Each winds counterclockwise from the eye's front and ends two turns out heading straight up
-export function spiralArcs(v: Pick<ScrollParams, 'style' | 'eye' | 'pitch' | 'seedLength' | 'arcRadii'>): Arc[] {
+export function solveSpiral(v: Pick<ScrollParams, 'style' | 'eye' | 'pitch' | 'seedLength' | 'arcRadii'>): Arc[] {
   switch (v.style) {
-    case 'fourPoint': return fourPointArcs(v.eye.r, v.arcRadii);
-    case 'archimedean': return archimedeanArcs(v.eye.r, v.pitch);
+    case 'fourPoint': return solveFourPointSpiral(v.eye.r, v.arcRadii);
+    case 'archimedean': return solveArchimedeanSpiral(v.eye.r, v.pitch);
     // the older authors started at the top of the eye; their figures are turned a quarter here
-    case 'serlio': return serlioArcs(v.eye.r);
-    case 'salviati': return salviatiArcs(v.eye.r);
-    case 'goldmann': return goldmannArcs(v.eye.r);
-    case 'kelly': return kellyArcs(v.eye.r, v.seedLength);
+    case 'serlio': return solveSerlioSpiral(v.eye.r);
+    case 'salviati': return solveSalviatiSpiral(v.eye.r);
+    case 'goldmann': return solveGoldmannSpiral(v.eye.r);
+    case 'kelly': return solveKellySpiral(v.eye.r, v.seedLength);
   }
 }
 
 // Four point: a quarter turn per radius, each centre stepping back from the last joint by the
 // growth so the arcs stay tangent. The radii are the user's, since old scrolls rarely open evenly
-function fourPointArcs(eyeRadius: number, arcRadii: number[]): Arc[] {
+function solveFourPointSpiral(eyeRadius: number, arcRadii: number[]): Arc[] {
   let radii = arcRadii.slice(0, TO_FRONT);
   if (radii.length < TO_FRONT || !(radii[0] > 0) || !radii.every((r, i) => r >= (radii[i - 1] ?? 0))) return [];
   let arcs: Arc[] = [];
@@ -292,25 +295,31 @@ function fourPointArcs(eyeRadius: number, arcRadii: number[]): Arc[] {
   return arcs.reverse();
 }
 
+function calcArchimedeanRadius(eyeRadius: number, pitch: number, k: number): number {
+  return eyeRadius + pitch * k / 8;
+}
+
+function calcArchimedeanHeading(eyeRadius: number, pitch: number, k: number): number {
+  let growth = pitch / TURN.full;
+  let r = calcArchimedeanRadius(eyeRadius, pitch, k);
+  let t = k * TURN.eighth;
+  return Math.atan2(growth * Math.sin(t) + r * Math.cos(t), growth * Math.cos(t) - r * Math.sin(t));
+}
+
+function calcArchimedeanMiss(eyeRadius: number, pitch: number, k: number, chord: number): number {
+  return normalizeRadians(calcArchimedeanHeading(eyeRadius, pitch, k) - chord + TURN.half) - TURN.half;
+}
+
 // Archimedes (c. 225 BC): the radius grows by `pitch` each turn from the eye's edge. Set out as
 // arcs through points an eighth of a turn apart, each tangent to the last
-function archimedeanArcs(eyeRadius: number, pitch: number): Arc[] {
+function solveArchimedeanSpiral(eyeRadius: number, pitch: number): Arc[] {
   if (!(pitch > 0)) return [];
   let eighths = 2 * TO_FRONT;
-  let angle = (k: number) => k * TURN.eighth;
-  let radius = (k: number) => eyeRadius + pitch * k / 8;
-  let points = Array.from({ length: eighths + 1 }, (_, k) => pointOnCircle({ x: 0, y: 0, r: radius(k) }, angle(k)));
-  let growth = pitch / TURN.full;
-  let heading = (k: number) => {
-    let r = radius(k);
-    let t = angle(k);
-    return Math.atan2(growth * Math.sin(t) + r * Math.cos(t), growth * Math.cos(t) - r * Math.sin(t));
-  };
+  let points = Array.from({ length: eighths + 1 }, (_, k) => pointOnCircle({ x: 0, y: 0, r: calcArchimedeanRadius(eyeRadius, pitch, k) }, k * TURN.eighth));
   let chord = Math.atan2(points[1].y - points[0].y, points[1].x - points[0].x);
-  let miss = (k: number) => normalizeRadians(heading(k) - chord + TURN.half) - TURN.half;
 
   // aimed to miss the curve's heading equally at both ends, or the arcs alternate flat and round
-  let tangent = pointOnCircle({ x: 0, y: 0, r: 1 }, chord + (miss(0) - miss(1)) / 2);
+  let tangent = pointOnCircle({ x: 0, y: 0, r: 1 }, chord + (calcArchimedeanMiss(eyeRadius, pitch, 0, chord) - calcArchimedeanMiss(eyeRadius, pitch, 1, chord)) / 2);
   let arcs: Arc[] = [];
   for (let k = 0; k < eighths; k++) {
     let a = points[k];
@@ -335,7 +344,7 @@ function archimedeanArcs(eyeRadius: number, pitch: number): Arc[] {
 
 // Serlio (1537): semicircles about centres a sixth of his eye's diameter apart, stepping out to
 // either side in turn. Two turns end on his 13/6-diameter semicircle
-function serlioArcs(eyeRadius: number): Arc[] {
+function solveSerlioSpiral(eyeRadius: number): Arc[] {
   // a semicircle is two quarter arcs about the same centre
   let centers: Pt[] = [];
   for (let k of [-1, 1, -2, 2]) {
@@ -355,7 +364,7 @@ function serlioArcs(eyeRadius: number): Arc[] {
 
 // Salviati (1552): quarter arcs about the corners of three nested squares on the eye's diagonals;
 // two turns use the inner two. Vignola, Palladio and Scamozzi reprint the same centres
-function salviatiArcs(eyeRadius: number): Arc[] {
+function solveSalviatiSpiral(eyeRadius: number): Arc[] {
   let g = eyeRadius * Math.SQRT2 / 6;
   let n = TO_FRONT;
   let centers = Array.from({ length: n }, (_, i) => pointOnCircle({ x: 0, y: 0, r: (2 - Math.floor(i / 4)) * g }, TURN.eighth - i * TURN.quarter));
@@ -379,7 +388,7 @@ function salviatiArcs(eyeRadius: number): Arc[] {
 
 // Goldmann (1696): Salviati's squares hung below the eye's horizontal diameter instead, so every
 // arc is an exact quarter. Two turns go round the inner two squares
-function goldmannArcs(eyeRadius: number): Arc[] {
+function solveGoldmannSpiral(eyeRadius: number): Arc[] {
   // round each square from its upper left corner
   let centers: Pt[] = [];
   for (let k of [1, 2]) {
@@ -399,7 +408,7 @@ function goldmannArcs(eyeRadius: number): Arc[] {
 
 // Kelly (2011): from the left end of the seed's middle line, then round the outer corners of its
 // middle two squares and then its own. He varies the seed's length by scroll, so it's a field
-function kellyArcs(eyeRadius: number, seedLength: number): Arc[] {
+function solveKellySpiral(eyeRadius: number, seedLength: number): Arc[] {
   if (!(seedLength > 0)) return [];
   let s = seedLength / 4;
   let centers = [new Pt(-s / 2, 0)];
@@ -416,13 +425,15 @@ function kellyArcs(eyeRadius: number, seedLength: number): Arc[] {
   return arcs.reverse();
 }
 
+function calcSquarePolyline(left: number, right: number, bottom: number, top: number): Pt[] {
+  return [new Pt(left, bottom), new Pt(right, bottom), new Pt(right, top), new Pt(left, top), new Pt(left, bottom)];
+}
+
 // the figure each style finds its centres on, as polylines in the eye's frame
-export function voluteConstruction(p: ViolinFamilyParams, s: ScrollSolve): Pt[][] {
+export function calcVoluteConstruction(p: ViolinFamilyParams, s: ScrollSolve): Pt[][] {
   let v = p.scroll!;
   let eye = s.eye!;
   let r = v.eye.r;
-  let square = (left: number, right: number, bottom: number, top: number) =>
-    [new Pt(left, bottom), new Pt(right, bottom), new Pt(right, top), new Pt(left, top), new Pt(left, bottom)];
 
   switch (v.style) {
     // the walk of centres
@@ -445,7 +456,7 @@ export function voluteConstruction(p: ViolinFamilyParams, s: ScrollSolve): Pt[][
       let h = r / 2;
       return [
         [0, 1, 2, 3, 4].map(i => pointOnCircle({ x: 0, y: 0, r }, i * TURN.quarter)),
-        square(-h, h, -h, h),
+        calcSquarePolyline(-h, h, -h, h),
         [new Pt(-h, -h), new Pt(h, h)],
         [new Pt(-h, h), new Pt(h, -h)],
       ];
@@ -455,7 +466,7 @@ export function voluteConstruction(p: ViolinFamilyParams, s: ScrollSolve): Pt[][
     case 'goldmann':
       return [
         [new Pt(-r, 0), new Pt(r, 0)],
-        ...[1, 2, 3].map(k => square(-k * r / 6, k * r / 6, -k * r / 3, 0)),
+        ...[1, 2, 3].map(k => calcSquarePolyline(-k * r / 6, k * r / 6, -k * r / 3, 0)),
       ];
 
     // the seed, its middle lines, and the eye's two axes out to the spiral's furthest reach
@@ -463,7 +474,7 @@ export function voluteConstruction(p: ViolinFamilyParams, s: ScrollSolve): Pt[][
       let q = v.seedLength / 4;
       let reach = Math.max(r, ...s.spiral!.map(a => dist(eye, a) + a.r));
       return [
-        square(-q / 2, q / 2, -2 * q, 2 * q),
+        calcSquarePolyline(-q / 2, q / 2, -2 * q, 2 * q),
         ...[-1, 0, 1].map(k => [new Pt(-q / 2, k * q), new Pt(q / 2, k * q)]),
         [new Pt(0, -reach), new Pt(0, reach)],
         [new Pt(-reach, 0), new Pt(reach, 0)],
@@ -477,7 +488,7 @@ export const BACK_KEYS: ScrollKey[] = ['S0', 'S1', 'S2', 'S3', 'nape', 'backStra
 
 // a part of the back or front that isn't a radius, or doesn't sweep on from where the last ended by
 // up to a full turn; a run stops there, everything after it unsolved
-export const badArc = (section: string, key: ScrollKey, r: number, unsolved: ScrollKey[]): ScrollFailure => ({
+export const buildBadArcMiss = (section: string, key: ScrollKey, r: number, unsolved: ScrollKey[]): ScrollFailure => ({
   message: !(r > 0)
     ? `${section}: ${key} needs a radius.`
     : `${section}: ${key} has to sweep on from where the last part ended, by up to a full turn.`,
@@ -491,22 +502,21 @@ export function solveVolute(p: ViolinFamilyParams): ScrollSolve | null {
   if (!p.scroll || !p.neck) return null;
   let v = p.scroll;
   let s: ScrollSolve = { eye: null, spiral: null, S0: null, S1: null, S2: null, S3: null, nape: null, F0: null, F1: null, failures: [] };
-  let fail = (message: string): ScrollFailure => ({ message, unsolved: ALL_SCROLL_KEYS, circles: [], segments: [] });
 
   solveSection(s.failures, 'Volute', ALL_SCROLL_KEYS, () => {
-    if (!(v.eye.r > 0)) return fail('Volute: the eye needs a radius.');
-    let arcs = spiralArcs(v);
-    if (!arcs.length) return fail(
+    if (!(v.eye.r > 0)) return buildMiss('Volute: the eye needs a radius.', ALL_SCROLL_KEYS);
+    let arcs = solveSpiral(v);
+    if (!arcs.length) return buildMiss(
       v.style === 'fourPoint' ? 'Volute: the four point needs every radius set, each at least the one inside it.'
       : v.style === 'archimedean' ? 'Volute: the Archimedean needs a pitch.'
       : v.style === 'kelly' ? "Volute: Kelly's needs a seed length."
-      : `Volute: ${VOLUTE_STYLE_LABELS[v.style]} can't be drawn from this eye.`);
+      : `Volute: ${VOLUTE_STYLE_LABELS[v.style]} can't be drawn from this eye.`, ALL_SCROLL_KEYS);
     let x = v.eye.x;
     if (v.fitToNeck) {
       let front = Math.max(...arcs.flatMap(a => arcReach(a, 0)).map(pt => pt.x));
       x = Math.round(-front * 100) / 100;
     }
-    if (!Number.isFinite(x) || !Number.isFinite(v.eye.y)) return fail('Volute: the eye needs a position.');
+    if (!Number.isFinite(x) || !Number.isFinite(v.eye.y)) return buildMiss('Volute: the eye needs a position.', ALL_SCROLL_KEYS);
     s.eye = new Circle(x, v.eye.y, v.eye.r);
     s.spiral = arcs.map(a => new Arc(a.x + x, a.y + v.eye.y, a.r, a.start, a.end));
     return null;
@@ -518,19 +528,19 @@ export function solveVolute(p: ViolinFamilyParams): ScrollSolve | null {
     let outer = s.spiral![0];
     let joint = pointOnCircle(outer, outer.end);
     let S0End = v.S0Sweep * TURN.degree;
-    if (!(v.S0R > 0) || !(S0End > 0) || S0End > TURN.full) return badArc('Back', 'S0', v.S0R, BACK_KEYS);
+    if (!(v.S0R > 0) || !(S0End > 0) || S0End > TURN.full) return buildBadArcMiss('Back', 'S0', v.S0R, BACK_KEYS);
     let S0 = placeCircleOnPointAtAngle(v.S0R, joint, 0);
     s.S0 = new Arc(S0.x, S0.y, S0.r, 0, S0End);
     joint = pointOnCircle(s.S0, S0End);
 
     let S1Sweep = v.S1Sweep * TURN.degree;
-    if (!(v.S1R > 0) || !(S1Sweep > 0) || S1Sweep > TURN.full) return badArc('Back', 'S1', v.S1R, BACK_KEYS.slice(1));
+    if (!(v.S1R > 0) || !(S1Sweep > 0) || S1Sweep > TURN.full) return buildBadArcMiss('Back', 'S1', v.S1R, BACK_KEYS.slice(1));
     let S1 = placeCircleOnPointAtAngle(v.S1R, joint, S0End);
     s.S1 = new Arc(S1.x, S1.y, S1.r, S0End, S0End + S1Sweep);
     joint = pointOnCircle(s.S1, s.S1.end);
 
     let S2Sweep = v.S2Sweep * TURN.degree;
-    if (!(v.S2R > 0) || !(S2Sweep > 0) || S2Sweep > TURN.full) return badArc('Back', 'S2', v.S2R, BACK_KEYS.slice(2));
+    if (!(v.S2R > 0) || !(S2Sweep > 0) || S2Sweep > TURN.full) return buildBadArcMiss('Back', 'S2', v.S2R, BACK_KEYS.slice(2));
     let S2 = placeCircleOnPointAtAngle(v.S2R, joint, s.S1.end);
     s.S2 = new Arc(S2.x, S2.y, S2.r, s.S1.end, s.S1.end + S2Sweep);
     return null;

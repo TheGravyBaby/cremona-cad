@@ -109,11 +109,12 @@ export function pathFromArcLongWay(arc: Arc): string {
  * Y-up drafting space (see renderArcFromArc in helpers/renderFuncs.ts).
  * Deliberately not pathFromArc's minor-sweep convention — see toolbox-shape.ts's
  * ArcShape header for why the two conventions can't be blindly converted between.
+ * With `clockwise` it sweeps the other way, for walking an arc back from end to start.
  */
-export function arcPathData(center: Pt, radius: number, startAngle: number, endAngle: number): string {
-  const span = normalizeRadians(endAngle - startAngle);
+export function arcPathData(center: Pt, radius: number, startAngle: number, endAngle: number, clockwise = false): string {
+  const span = normalizeRadians(clockwise ? startAngle - endAngle : endAngle - startAngle);
   const largeArcFlag = span > TURN.half ? 1 : 0;
-  const sweepFlag = 1;
+  const sweepFlag = clockwise ? 0 : 1;
   const start = pointOnCircle({ ...center, r: radius }, startAngle);
   const end = pointOnCircle({ ...center, r: radius }, endAngle);
   return `M ${start.x},${start.y} A ${radius},${radius} 0 ${largeArcFlag},${sweepFlag} ${end.x},${end.y}`;

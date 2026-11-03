@@ -18,7 +18,7 @@ import { solveStringSetup, StringSetupPanel } from '../string-setup-panel/string
 import { neckHalfWidthAt } from '../neck-panel/neck-panel';
 import { MouldPanel } from '../mould-panel/mould-panel';
 import { solveScroll } from '../pegbox-panel/pegbox-panel';
-import { scrollBackStrip, scrollCompassWalk } from '../scroll-widths-panel/scroll-widths-panel';
+import { buildScrollBackStrip, buildScrollCompassWalk } from '../scroll-widths-panel/scroll-widths-panel';
 import { solveCrossArching } from '../cross-arching-panel/cross-arching-panel';
 import { solvePositionMarks } from '../dev-fingerboard-panel/dev-fingerboard-panel';
 import { ExportPanel, ExportType, exportReady, exportSheet, fingerboardStl, plateStl } from './export-panel';
@@ -367,7 +367,7 @@ describe('the neck and scroll sheets', () => {
     expect(doc.querySelectorAll('path')).toHaveLength(1);
     expect(doc.querySelectorAll('text')).toHaveLength(0);
     expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
-    const strip = scrollBackStrip(p, solveScroll(p)!);
+    const strip = buildScrollBackStrip(p, solveScroll(p)!);
     const [, , w, h] = viewBox(result!.text);
     expect(h).toBeGreaterThan(strip.length);
     expect(w / 2).toBeGreaterThan(Math.max(...strip.outline.map(pt => pt.x)));
@@ -388,7 +388,7 @@ describe('the neck and scroll sheets', () => {
       expect(pt.y).toBeGreaterThanOrEqual(Math.min(...ys));
       expect(pt.y).toBeLessThanOrEqual(Math.max(...ys));
     }
-    const walk = scrollCompassWalk(p, solveScroll(p)!);
+    const walk = buildScrollCompassWalk(p, solveScroll(p)!);
     const stars = endpoints(paths[2]);
     expect(stars).toHaveLength(6 * walk.stations.length);
     for (let k = 0; k < stars.length; k += 2) {

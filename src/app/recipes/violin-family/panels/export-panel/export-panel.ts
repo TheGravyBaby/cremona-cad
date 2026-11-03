@@ -43,7 +43,7 @@ import { calcMortiseFloorY, neckHalfWidthAt, calcScrollOnNeck, solveNeck } from 
 import { fingerboardRadiusAt, fingerboardScoopAt, solveStringSetup } from '../string-setup-panel/string-setup-panel';
 import type { PositionMarkSolve } from '../dev-fingerboard-panel/dev-fingerboard-panel';
 import { defineSideScrollPath } from '../pegbox-panel/pegbox-panel';
-import { scrollBackStrip, scrollBackViewStrokes, scrollCompassWalk, scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
+import { buildScrollBackStrip, buildScrollBackViewStrokes, buildScrollCompassWalk, buildScrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
 import { buildBlockLayout, MOULD_EXPORT_STEP, solveMould } from '../mould-panel/mould-panel';
 
 // The export panel: every sheet the drawing leaves the app on. Each is built once, by `exportSheet`,
@@ -340,14 +340,14 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
       let scroll = solvedScroll(p);
       if (!scroll?.widths) return null;
       let place = (x: number, y: number) => new Pt(x, y);
-      let strokes = type === 'scrollFrontView' ? scrollFrontViewStrokes(p, scroll.s, place, 0) : scrollBackViewStrokes(p, scroll.s, place, 0);
+      let strokes = type === 'scrollFrontView' ? buildScrollFrontViewStrokes(p, scroll.s, place, 0) : buildScrollBackViewStrokes(p, scroll.s, place, 0);
       let d = combinePathStrings(Object.values(strokes).flat().map(s => 'line' in s ? pathFromLine(...s.line) : 'polygon' in s ? pathFromPolygon(s.polygon) : s.d));
       return sheet([black(translatePath(d, 0, -pathsBounds([d]).minY))]);
     }
     case 'scrollBack': {
       // the back unrolled into a strip, on its own sheet from the duck tail up
       let scroll = solvedScroll(p);
-      return scroll?.widths ? sheet([black(pathFromPolygon(scrollBackStrip(p, scroll.s).outline))]) : null;
+      return scroll?.widths ? sheet([black(pathFromPolygon(buildScrollBackStrip(p, scroll.s).outline))]) : null;
     }
     case 'scrollCompass': {
       let t = compassSheet(p);
@@ -443,7 +443,7 @@ function neckTemplateOnSheet(p: ViolinFamilyParams): NeckTemplate | null {
 function compassSheet(p: ViolinFamilyParams): { box: string; marks: string; centres: string; edges: string } | null {
   let scroll = solvedScroll(p);
   if (!scroll?.widths) return null;
-  let walk = scrollCompassWalk(p, scroll.s);
+  let walk = buildScrollCompassWalk(p, scroll.s);
   let bottom = Math.max(...walk.stations.filter(st => st.along === 0).map(st => st.half));
   let y = (st: { along: number }) => COMPASS_BOX_MARGIN + bottom + st.along;
   let half = Math.max(...walk.stations.map(st => st.half)) + COMPASS_BOX_MARGIN;

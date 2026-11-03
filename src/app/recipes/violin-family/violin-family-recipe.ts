@@ -11,7 +11,7 @@ import {
   VIOLIN_FAMILY_VIEW_FLAGS_KEY, ViolinFamilyPanel, ViolinFamilyPanelId, ViolinFamilyParams, ViolinFamilyRecipe,
   ViolinFamilyTemplate, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
 } from './violin-family-types';
-import { BaseMeasurementsPanel, solveBodyRatios } from './panels/base-measurements-panel/base-measurements-panel';
+import { BaseMeasurementsPanel, calcBodyRatios } from './panels/base-measurements-panel/base-measurements-panel';
 import { MainBoutsPanel, solveMainBouts, calcMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel, calcCornersRatios } from './panels/corners-panel/corners-panel';
 import { CenterBoutPanel, solveCenterBout, calcCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
@@ -250,7 +250,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
   private stampRatios(): void {
     let p = this.d.params;
     this.d.ratios = {
-      ...solveBodyRatios(p),
+      ...calcBodyRatios(p),
       ...calcMainBoutsRatios(p),
       ...calcCornersRatios(p),
       ...calcCenterBoutRatios(p),

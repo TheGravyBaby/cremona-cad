@@ -5,7 +5,7 @@ import {
   angleFromCenter, dist, flipArcAboutY, flipPointAboutY, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, moveInVectorSpace,
   normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, signedArcSweep, signedRadianDelta, solveSineSum, tangentUnitVectorFromLine, TURN, vectorFromSlope,
 } from '../../../../helpers/math/simpleGeometry';
-import { pathFromArc, pathFromArcLongWay, pathFromLine, pathFromPolyline } from '../../../../helpers/math/pathMath';
+import { pathFromArc, pathFromArcLongWay, pathFromLine, pathFromPolyline, transformPath } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
 import {
   AngleMarkSize, renderAngle, renderArcHalo, renderCircle, renderMirroredArc, renderMirroredArcFancy, renderMirroredSegment, renderPath, renderPointHalo,
@@ -338,18 +338,6 @@ function calcNotchOnRun(n: FholeNotch, from: Pt, to: Pt): Pt[] {
   return from.y > to.y ? v : v.reverse();
 }
 
-function flipArcIf(arc: Arc, flip: boolean): Arc {
-  return flip ? flipArcAboutY(arc) : arc;
-}
-
-function flipPointIf(pt: Pt, flip: boolean): Pt {
-  return flip ? flipPointAboutY(pt) : pt;
-}
-
-function defineStemRun(from: Pt, to: Pt, notch: FholeNotch | null, flip: boolean): string {
-  return pathFromPolyline([from, ...(notch ? calcNotchOnRun(notch, from, to) : []), to].map(pt => flipPointIf(pt, flip)));
-}
-
 // one f-hole's solved arcs stitched into a single closed outline, the way the render draws them
 // but as one path; `flip` mirrors it to the bass side. The eye arcs aren't on the solve: they are
 // cheap to re-derive from what is. The notches are cut into the stem's runs while the placement
@@ -377,27 +365,28 @@ export function defineFholePath(p: ViolinFamilyParams, s: FholeContoursSolve, fl
   const notches = f.notches ? calcFholeNotches(f, s.LTip) : null;
 
   const paths = [
-    renderEyes ? pathFromArcLongWay(flipArcIf(upperEyeArc, flip)) : pathFromArc(flipArcIf(upperEyeArc, flip)),
-    pathFromArc(flipArcIf(s.U1!, flip)),
-    pathFromArc(flipArcIf(s.U2!, flip)),
-    ...(k.U21DoubleArc ? [pathFromArc(flipArcIf(s.U21!, flip))] : []),
-    pathFromArc(flipArcIf(s.S2!, flip)),
-    defineStemRun(outerStemTop, outerStemBottom, notches && notches.outer, flip),
-    pathFromArc(flipArcIf(s.S4!, flip)),
-    pathFromArc(flipArcIf(s.L3!, flip)),
-    pathFromLine(flipPointIf(s.LTip, flip), flipPointIf(lowerCutPt, flip)),
-    renderEyes ? pathFromArcLongWay(flipArcIf(lowerEyeArc, flip)) : pathFromArc(flipArcIf(lowerEyeArc, flip)),
-    pathFromArc(flipArcIf(s.L1!, flip)),
-    pathFromArc(flipArcIf(s.L2!, flip)),
-    ...(k.L21DoubleArc ? [pathFromArc(flipArcIf(s.L21!, flip))] : []),
-    pathFromArc(flipArcIf(s.S3!, flip)),
-    defineStemRun(innerStemBottom, innerStemTop, notches && notches.inner, flip),
-    pathFromArc(flipArcIf(s.S1!, flip)),
-    pathFromArc(flipArcIf(s.U3!, flip)),
-    pathFromLine(flipPointIf(s.UTip, flip), flipPointIf(upperCutPt, flip)),
+    renderEyes ? pathFromArcLongWay(upperEyeArc) : pathFromArc(upperEyeArc),
+    pathFromArc(s.U1!),
+    pathFromArc(s.U2!),
+    ...(k.U21DoubleArc ? [pathFromArc(s.U21!)] : []),
+    pathFromArc(s.S2!),
+    pathFromPolyline([outerStemTop, ...(notches?.outer ? calcNotchOnRun(notches.outer, outerStemTop, outerStemBottom) : []), outerStemBottom]),
+    pathFromArc(s.S4!),
+    pathFromArc(s.L3!),
+    pathFromLine(s.LTip, lowerCutPt),
+    renderEyes ? pathFromArcLongWay(lowerEyeArc) : pathFromArc(lowerEyeArc),
+    pathFromArc(s.L1!),
+    pathFromArc(s.L2!),
+    ...(k.L21DoubleArc ? [pathFromArc(s.L21!)] : []),
+    pathFromArc(s.S3!),
+    pathFromPolyline([innerStemBottom, ...(notches ? calcNotchOnRun(notches.inner, innerStemBottom, innerStemTop) : []), innerStemTop]),
+    pathFromArc(s.S1!),
+    pathFromArc(s.U3!),
+    pathFromLine(s.UTip, upperCutPt),
   ];
 
-  return unifyConnectedSvgPaths(paths);
+  const path = unifyConnectedSvgPaths(paths);
+  return flip ? transformPath(path, [-1, 0, 0, 1, 0, 0]) : path;
 }
 
 // where a wing ends on its own circle, from the angle it meets the cut at: its tangent at the

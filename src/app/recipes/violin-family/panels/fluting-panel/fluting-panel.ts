@@ -8,14 +8,14 @@ import {
 import { pathFromArc, samplePathToPolyline, translatePath } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
 import { renderFilledPath, renderPath, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { buildMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { showFieldHelp } from '../../../../docs/field-help';
 import { Arc, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
-import { ChannelSolve, FlutingFailure, FlutingSolve } from '../../violin-family-solves';
+import { ChannelSolve, FlutingSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
@@ -422,10 +422,6 @@ function defineCachedChannelPath(cuts: Map<string, ReturnType<typeof defineChann
   return cuts.get(key)!;
 }
 
-function buildFlutingMiss(message: string, plate: 'top' | 'back'): FlutingFailure {
-  return { message, unsolved: [plate], circles: [], segments: [] };
-}
-
 // a later panel reads the channels by calling this; it returns and never writes to the params.
 // Each plate's channel is anchored at the fluting edge and grows inward by its width, so
 // its outer edge sits on the fluting edge by construction. A second width through the waist moves only
@@ -465,11 +461,11 @@ function solveFlutingUncached(p: ViolinFamilyParams): FlutingSolve {
     solveSection(s.failures, label, [plate], () => {
       let channel = f[plate];
       let typed = [channel.width, channel.depth, ...(channel.useCBoutGouge ? [channel.cBoutWidth] : [])];
-      if (!typed.every(Number.isFinite)) return buildFlutingMiss(`${label}: every channel field needs a value.`, plate);
+      if (!typed.every(Number.isFinite)) return buildMiss(`${label}: every channel field needs a value.`, [plate]);
       let w = calcChannelHalfWidth(channel.width, channel.depth);
-      if (w <= 0) return buildFlutingMiss(`${label}: no gouge cuts this channel. Its depth has to be above 0 and under half its width.`, plate);
+      if (w <= 0) return buildMiss(`${label}: no gouge cuts this channel. Its depth has to be above 0 and under half its width.`, [plate]);
       let wC = calcChannelHalfWidth(channel.useCBoutGouge ? channel.cBoutWidth : channel.width, channel.depth);
-      if (wC <= 0) return buildFlutingMiss(`${label}: no gouge cuts the C bout channel this deep. Its width has to be over twice the depth.`, plate);
+      if (wC <= 0) return buildMiss(`${label}: no gouge cuts the C bout channel this deep. Its width has to be over twice the depth.`, [plate]);
 
       let edge = f.flutingEdge;
       let edges = [
@@ -478,9 +474,9 @@ function solveFlutingUncached(p: ViolinFamilyParams): FlutingSolve {
         defineCachedChannelPath(cuts, p, rib, edge + 2 * w, edge + 2 * wC),
       ];
       if (edges.some(e => !e.joined))
-        return buildFlutingMiss(`${label}: the channel round the C bout can't be joined to the one round the bouts at these corners. Bring the two gouges closer, or open the corners.`, plate);
+        return buildMiss(`${label}: the channel round the C bout can't be joined to the one round the bouts at these corners. Bring the two gouges closer, or open the corners.`, [plate]);
       if (edges.some(e => !e.path))
-        return buildFlutingMiss(`${label}: the channel doesn't close into one loop at this width; it has eaten the neck face. Narrow the gouge or bring the fluting edge in.`, plate);
+        return buildMiss(`${label}: the channel doesn't close into one loop at this width; it has eaten the neck face. Narrow the gouge or bring the fluting edge in.`, [plate]);
       let [outer, center, inner] = edges.map(e => e.path!);
       s[plate] = {
         outer, center, inner, sweep: calcChannelSweep(2 * w, channel.depth), cBoutSweep: calcChannelSweep(2 * wC, channel.depth),

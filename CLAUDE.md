@@ -70,6 +70,34 @@ back. Don't add derived points or readouts to a params interface: derive them wi
 function beside the solver and call it from the solve, the render and the highlight. A radius or
 angle the user authors is a number on params; the arc built from it is on the solve.
 
+## Naming
+
+A panel's top-level function starts with a verb that says what comes back. Name a mixed result by
+its main part.
+
+| Verb | Returns | For example |
+|---|---|---|
+| `solve` | a `*Solve`, or an arc or arc system | `solveCorners`, `solveSpiral`, `solveHeel` |
+| `define` | one or more path strings | `definePurflingPath`, `defineFholePath` |
+| `calc` | a number, point, list of points or small record | `calcViolNeckCap`, `calcMainBoutsRatios` |
+| `is` | a boolean | `isLongArc`, `isJoinCrossing` |
+| `build` | a larger structure: template data, a view's strokes, a failure | `buildScrollBackStrip`, `buildMiss` |
+| `render` | a layer, `(g, ui) => void` | `renderCorners`, `renderMirroredArc` |
+
+- A value read at a position takes no verb: `<thing>At`, as in `neckHalfWidthAt`, `stemEdgeAt`.
+- A function that acts on what it's given takes a plain verb: `meetCornerArcs`, `pushViewFace`.
+- The export panels' toolpath functions don't have a settled verb yet.
+
+Local helper lambdas don't belong in a panel; callbacks passed inline to `map` and the like are fine.
+Before writing a function, check `helpers/`: if it would only wrap one, call the helper directly, and
+if one nearly fits, give it an option. Failures come from `buildMiss` and `buildBlankMiss` in
+`validators.ts`; a panel's own builder only holds wording.
+
+In a `render*`, write the calls out as plain if/else, not an array of parts in a loop. A render that
+only picks a colour or trace-or-fancy isn't a function: name the ink, resolve
+`let xTrace = currentModule ? x : pal.neutral`, and keep `if (fancy)` as its own block calling
+`renderMirroredArc` and `renderMirroredArcFancy`.
+
 ## Traps
 
 - **Arc sweep conventions differ.** `models/types.ts` `Arc` always renders the minor arc;

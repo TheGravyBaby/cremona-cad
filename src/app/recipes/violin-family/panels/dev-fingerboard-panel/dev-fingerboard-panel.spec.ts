@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../../models/types';
 import { defaultPositionMarks, parseSemitones, PositionMarksSettings, solvePositionMarks } from './dev-fingerboard-panel';
-import { semitoneStop, solveStringSetup, StringSetupPanel } from '../string-setup-panel/string-setup-panel';
+import { calcSemitoneStop, solveStringSetup, StringSetupPanel } from '../string-setup-panel/string-setup-panel';
 import { NeckPanel, neckHalfWidthAt } from '../neck-panel/neck-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
@@ -54,10 +54,10 @@ describe('the position marks', () => {
   });
 
   it('stop the octave at half the string, the fifth near a third, each semitone further than the last', () => {
-    expect(semitoneStop(12, 300)).toBeCloseTo(150, 9);
-    expect(semitoneStop(24, 300)).toBeCloseTo(225, 9);
-    expect(semitoneStop(7, 300)).toBeCloseTo(100, 0);
-    for (let n = 1; n <= 24; n++) expect(semitoneStop(n, 300)).toBeGreaterThan(semitoneStop(n - 1, 300));
+    expect(calcSemitoneStop(12, 300)).toBeCloseTo(150, 9);
+    expect(calcSemitoneStop(24, 300)).toBeCloseTo(225, 9);
+    expect(calcSemitoneStop(7, 300)).toBeCloseTo(100, 0);
+    for (let n = 1; n <= 24; n++) expect(calcSemitoneStop(n, 300)).toBeGreaterThan(calcSemitoneStop(n - 1, 300));
   });
 
   it('stop the string a share of its length from the nut, and drop the station square onto the board', () => {
@@ -68,7 +68,7 @@ describe('the position marks', () => {
     const stringLength = dist(s.nutTop!, s.bridgeTop!);
     expect(marks.map(m => m.semitone)).toEqual([5, 7, 12]);
     for (const m of marks) {
-      expect(m.alongString).toBeCloseTo(semitoneStop(m.semitone, stringLength), 9);
+      expect(m.alongString).toBeCloseTo(calcSemitoneStop(m.semitone, stringLength), 9);
       expect(off(p, s, m.station)).toBeCloseTo(0, 9);
       const onString = new Pt(
         s.nutTop!.x + (s.bridgeTop!.x - s.nutTop!.x) * m.alongString / stringLength,

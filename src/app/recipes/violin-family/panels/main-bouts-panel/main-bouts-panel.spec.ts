@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { dist, normalizeRadians, pointOnCircle, signedArcSweep, travelAtArcStart, TURN } from '../../../../helpers/math/simpleGeometry';
 import { MainBoutsPanel, calcMainBoutsRatios, solveMainBouts, calcViolNeckJoinLimit } from './main-bouts-panel';
-import { solveBodyRatios } from '../base-measurements-panel/base-measurements-panel';
+import { calcBodyRatios } from '../base-measurements-panel/base-measurements-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS, SEED_RATIOS } from '../../violin-family-seed';
 
@@ -234,7 +234,7 @@ describe('ratios', () => {
   });
 
   it('reports only ratios that have a seed fraction', () => {
-    const keys = Object.keys({ ...solveBodyRatios(seeded()), ...calcMainBoutsRatios(seeded()) });
+    const keys = Object.keys({ ...calcBodyRatios(seeded()), ...calcMainBoutsRatios(seeded()) });
     for (const key of keys) expect(key in SEED_RATIOS, key).toBe(true);
   });
 });

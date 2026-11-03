@@ -9,13 +9,13 @@ import {
   AngleMarkSize, renderAngle, renderArcHalo, renderDashedLine, renderGuideBaseline, renderGuideMeasure, renderPath, renderPolygon, renderSegment,
   renderSegmentHalo, renderSolveFailures, renderStroke, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
-import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { buildMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { Arc, arcFromCircle, Circle, Pt, Vect2D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
-import { NeckFailure, NeckSolve, PlateContourSolve, ScrollSolve } from '../../violin-family-solves';
+import { NeckSolve, PlateContourSolve, ScrollSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { PLATE_LAYOUT_GAP, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
@@ -23,7 +23,7 @@ import {
   channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, ribHeightAt, sideViewOffsetX, solveLongArching, topPlatePlacement,
 } from '../long-arching-panel/long-arching-panel';
 import { defineSideScrollPath } from '../pegbox-panel/pegbox-panel';
-import { ScrollView, scrollBackViewStrokes, scrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
+import { ScrollView, buildScrollBackViewStrokes, buildScrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
 
 // The neck set in the side elevation, and its widths in plan. Everything hangs off the top plate's
 // edge at the neck end, so the rib taper carries through: the fingerboard plane stands off that edge
@@ -288,8 +288,8 @@ const renderNeckFrontView = (p: ViolinFamilyParams, n: NeckSolve, o: PlateContou
   // the scroll's frame seen from the front: across stays across, up the neck foreshortens by the angle
   if (scroll) {
     let onNeck = calcScrollOnNeck(p, n);
-    renderScrollViewOnNeck(scrollFrontViewStrokes(p, scroll, (x, y) => new Pt(x, onNeck[3] * y + onNeck[5]), 0), false, pal)(g, ui);
-    if (o.back) renderScrollViewOnNeck(scrollBackViewStrokes(p, scroll, (x, y) => new Pt(dx + x, onNeck[3] * y + onNeck[5]), 0), true, pal)(g, ui);
+    renderScrollViewOnNeck(buildScrollFrontViewStrokes(p, scroll, (x, y) => new Pt(x, onNeck[3] * y + onNeck[5]), 0), false, pal)(g, ui);
+    if (o.back) renderScrollViewOnNeck(buildScrollBackViewStrokes(p, scroll, (x, y) => new Pt(dx + x, onNeck[3] * y + onNeck[5]), 0), true, pal)(g, ui);
   }
 
   // drawn last, since they lie along the neck's own ends
@@ -348,10 +348,6 @@ function solveHeel(corner: Pt, backNut: Pt, tip: Pt, radius: number): Arc {
   return arcFromCircle(circle, angleFromCenter(center, start), angleFromCenter(center, end));
 }
 
-function buildNeckMiss(message: string, unsolved: NeckFailure['unsolved']): NeckFailure {
-  return { message, unsolved, circles: [], segments: [] };
-}
-
 // a later panel reads the neck by calling this; it returns and never writes to the params. The
 // fingerboard plane and the normal to it are both square to the neck's angle, which leaves the top
 // plate tilted by that angle off the plate's own square-to-the-rib line
@@ -365,15 +361,15 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
   let a = solveLongArching(p)!;
 
   solveSection(s.failures, 'Neck', ['neck', 'heel'], () => {
-    if (!a.ribs) return buildNeckMiss('Neck: the ribs have to solve first; it stands on the top plate.', ['neck', 'heel']);
+    if (!a.ribs) return buildMiss('Neck: the ribs have to solve first; it stands on the top plate.', ['neck', 'heel']);
     let typed = [nk.length, nk.angle, nk.upperThickness, nk.lowerThickness, nk.topWidth, nk.rootWidth, nk.mortiseDepth, nk.overstand];
-    if (!typed.every(Number.isFinite)) return buildNeckMiss('Neck: every neck field needs a value.', ['neck', 'heel']);
+    if (!typed.every(Number.isFinite)) return buildMiss('Neck: every neck field needs a value.', ['neck', 'heel']);
     if (![nk.length, nk.upperThickness, nk.lowerThickness, nk.topWidth, nk.rootWidth].every(v => v > 0))
-      return buildNeckMiss('Neck: the length, thicknesses and widths need values above 0.', ['neck', 'heel']);
-    if (nk.mortiseDepth < 0 || nk.overstand < 0) return buildNeckMiss('Neck: the mortise and overstand can\'t be negative.', ['neck', 'heel']);
-    if (!(nk.angle > -90 && nk.angle < 90)) return buildNeckMiss('Neck: the projection has to lie between -90° and 90°.', ['neck', 'heel']);
+      return buildMiss('Neck: the length, thicknesses and widths need values above 0.', ['neck', 'heel']);
+    if (nk.mortiseDepth < 0 || nk.overstand < 0) return buildMiss('Neck: the mortise and overstand can\'t be negative.', ['neck', 'heel']);
+    if (!(nk.angle > -90 && nk.angle < 90)) return buildMiss('Neck: the projection has to lie between -90° and 90°.', ['neck', 'heel']);
     let buttonHeight = p.plateContour!.button.height;
-    if (!Number.isFinite(buttonHeight) || buttonHeight < 0) return buildNeckMiss('Neck: the button height needs a value of 0 or more.', ['neck', 'heel']);
+    if (!Number.isFinite(buttonHeight) || buttonHeight < 0) return buildMiss('Neck: the button height needs a value of 0 or more.', ['neck', 'heel']);
 
     let angle = nk.angle * TURN.degree;
     let h = p.body.height;
@@ -406,22 +402,22 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
     // the heel: a cove, so a back past the tip or a cleared radius leaves the back straight down to
     // the root, and says so
     if (!Number.isFinite(nk.heelRadius) || nk.heelRadius <= 0) {
-      s.failures.push(buildNeckMiss('Heel: the heel radius needs a value above 0.', ['heel']));
+      s.failures.push(buildMiss('Heel: the heel radius needs a value above 0.', ['heel']));
       return null;
     }
     if (!(calcTipDepthBehindBack(backHeel, backNut, tip) > 0)) {
-      s.failures.push(buildNeckMiss('Heel: the neck\'s back runs out past the button tip, so no cove can reach it. Thin the neck at the heel.', ['heel']));
+      s.failures.push(buildMiss('Heel: the neck\'s back runs out past the button tip, so no cove can reach it. Thin the neck at the heel.', ['heel']));
       return null;
     }
     if (!(nk.heelAngle > -90 && nk.heelAngle < 90)) {
-      s.failures.push(buildNeckMiss('Heel: the heel angle has to lie between -90° and 90°.', ['heel']));
+      s.failures.push(buildMiss('Heel: the heel angle has to lie between -90° and 90°.', ['heel']));
       return null;
     }
     let foot = vectorFromSlope(nk.heelAngle * TURN.degree);
     let corner = intersectLines(lineFromTwoPoints(backNut, backHeel), lineFromTwoPoints(tip, moveInVectorSpace(tip, [foot])));
     let alongBack = corner ? ((corner.x - s.backRoot.x) * (backNut.x - s.backRoot.x) + (corner.y - s.backRoot.y) * (backNut.y - s.backRoot.y)) / dist(s.backRoot, backNut) ** 2 : NaN;
     if (!corner || (corner.x - tip.x) * foot.a + (corner.y - tip.y) * foot.b <= 0 || !(alongBack > 0 && alongBack < 1)) {
-      s.failures.push(buildNeckMiss('Heel: at this heel angle the foot never meets the neck\'s back between the root and the nut. Bring the angle nearer the neck projection.', ['heel']));
+      s.failures.push(buildMiss('Heel: at this heel angle the foot never meets the neck\'s back between the root and the nut. Bring the angle nearer the neck projection.', ['heel']));
       return null;
     }
     s.heelCorner = new Pt(corner.x, corner.y);

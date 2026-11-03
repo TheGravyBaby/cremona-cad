@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { solveBody, solveBodyRatios } from './base-measurements-panel';
+import { solveBody, calcBodyRatios } from './base-measurements-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
@@ -44,6 +44,6 @@ describe('the body', () => {
 
   it('reads its height to width ratio off the params', () => {
     const p = blank();
-    expect(solveBodyRatios(p).HtoW).toBeCloseTo(p.body.height / p.body.width, 12);
+    expect(calcBodyRatios(p).HtoW).toBeCloseTo(p.body.height / p.body.width, 12);
   });
 });

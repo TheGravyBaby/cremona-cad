@@ -4,11 +4,11 @@ import { applyMatrix } from '../../../../helpers/math/pathMath';
 import { TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../../models/types';
 import {
-  fingerboardCrown, fingerboardCrownLine, fingerboardEdgeLine, fingerboardRadiusAt, fingerboardScoopAt, scoopGuideGeometry, solveStringSetup,
+  fingerboardCrownAt, calcFingerboardCrownLine, calcFingerboardEdgeLine, fingerboardRadiusAt, fingerboardScoopAt, calcScoopGuideGeometry, solveStringSetup,
   StringSetupPanel,
 } from './string-setup-panel';
 import { NeckPanel, neckHalfWidthAt, calcScrollOnNeck } from '../neck-panel/neck-panel';
-import { nutThickness, VolutePanel } from '../volute-panel/volute-panel';
+import { calcNutThickness, VolutePanel } from '../volute-panel/volute-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
@@ -107,7 +107,7 @@ describe('the string setup solve', () => {
   it('raises the crown with the board\'s width, from its edges at either end', () => {
     const p = seeded();
     const s = solved(p);
-    const crown = fingerboardCrownLine(p, s)!;
+    const crown = calcFingerboardCrownLine(p, s)!;
     const t = p.stringSetup!.fingerboardThickness;
     expect(off(p, s, crown[0])).toBeCloseTo(t, 9);
     expect(off(p, s, crown.at(-1)!)).toBeCloseTo(t, 9);
@@ -117,7 +117,7 @@ describe('the string setup solve', () => {
     const topY = s.neck.neckTop!.y, endY = s.fingerboardEnd!.y;
     for (const [r, y] of [[p.stringSetup!.fingerboardNutRadius, topY], [p.stringSetup!.fingerboardEndRadius, endY]]) {
       const half = neckHalfWidthAt(p, s.neck, y);
-      expect(fingerboardCrown(p, s, y)).toBeCloseTo(r - Math.sqrt(r * r - half * half), 9);
+      expect(fingerboardCrownAt(p, s, y)).toBeCloseTo(r - Math.sqrt(r * r - half * half), 9);
     }
   });
 
@@ -135,7 +135,7 @@ describe('the string setup solve', () => {
     // a tighter nut radius crowns the nut end higher
     const wider: ViolinFamilyParams = JSON.parse(JSON.stringify(p));
     wider.stringSetup!.fingerboardNutRadius = 50;
-    expect(fingerboardCrown(wider, solved(wider), topY)).toBeLessThan(fingerboardCrown(p, s, topY));
+    expect(fingerboardCrownAt(wider, solved(wider), topY)).toBeLessThan(fingerboardCrownAt(p, s, topY));
   });
 
   it('scoops each edge to its own depth at the one station, nothing at the ends, and runs the depth across linearly', () => {
@@ -178,12 +178,12 @@ describe('the string setup solve', () => {
     flat.stringSetup!.scoopBass = flat.stringSetup!.scoopTreble = 0;
     const sScooped = solved(scooped), sFlat = solved(flat);
     const t = scooped.stringSetup!.fingerboardThickness;
-    for (const pt of fingerboardEdgeLine(flat, sFlat, -1)) expect(off(flat, sFlat, pt)).toBeCloseTo(t, 9);
-    const edge = fingerboardEdgeLine(scooped, sScooped, -1);
+    for (const pt of calcFingerboardEdgeLine(flat, sFlat, -1)) expect(off(flat, sFlat, pt)).toBeCloseTo(t, 9);
+    const edge = calcFingerboardEdgeLine(scooped, sScooped, -1);
     expect(off(scooped, sScooped, edge[0])).toBeCloseTo(t, 9);
     expect(off(scooped, sScooped, edge.at(-1)!)).toBeCloseTo(t, 9);
     for (const pt of edge.slice(1, -1)) expect(off(scooped, sScooped, pt)).toBeLessThan(t);
-    const crownScooped = fingerboardCrownLine(scooped, sScooped)!, crownFlat = fingerboardCrownLine(flat, sFlat)!;
+    const crownScooped = calcFingerboardCrownLine(scooped, sScooped)!, crownFlat = calcFingerboardCrownLine(flat, sFlat)!;
     const deepest = Math.max(scooped.stringSetup!.scoopBass, scooped.stringSetup!.scoopTreble);
     // the line's first two and last two points stand at the ends, where the scoop is nothing
     for (let i = 2; i < crownScooped.length - 2; i++) {
@@ -197,7 +197,7 @@ describe('the string setup solve', () => {
     const p = seeded();
     const ss = p.stringSetup!;
     const s = solved(p);
-    const guide = scoopGuideGeometry(p, s)!;
+    const guide = calcScoopGuideGeometry(p, s)!;
     const top = s.neck.neckTop!, end = s.fingerboardEnd!;
     const t = ss.fingerboardThickness;
     const along = (pt: Pt) => ((pt.x - top.x) * (end.x - top.x) + (pt.y - top.y) * (end.y - top.y)) / dist(top, end);
@@ -230,10 +230,10 @@ describe('the string setup solve', () => {
       const s = solveStringSetup(p)!;
       expect(unsolved(s, 'scoop')).toBe(true);
       expect(unsolved(s, 'fingerboard')).toBe(false);
-      expect(scoopGuideGeometry(p, s)).toBeNull();
-      const mid = fingerboardCrownLine(p, s)!;
+      expect(calcScoopGuideGeometry(p, s)).toBeNull();
+      const mid = calcFingerboardCrownLine(p, s)!;
       expect(mid).not.toBeNull();
-      for (const pt of fingerboardEdgeLine(p, s, -1)) expect(off(p, s, pt)).toBeCloseTo(p.stringSetup!.fingerboardThickness, 9);
+      for (const pt of calcFingerboardEdgeLine(p, s, -1)) expect(off(p, s, pt)).toBeCloseTo(p.stringSetup!.fingerboardThickness, 9);
     }
   });
 
@@ -243,7 +243,7 @@ describe('the string setup solve', () => {
     const nut = off(p, s, s.nutTop!);
     const bridge = off(p, s, s.bridgeTop!);
     const along = (pt: Pt) => dist(s.neck.neckTop!, pt) / dist(s.neck.neckTop!, s.bridgeTop!);
-    for (const pt of fingerboardCrownLine(p, s)!) expect(nut + (bridge - nut) * along(pt)).toBeGreaterThan(off(p, s, pt));
+    for (const pt of calcFingerboardCrownLine(p, s)!) expect(nut + (bridge - nut) * along(pt)).toBeGreaterThan(off(p, s, pt));
   });
 
   it('reports a cleared field rather than drawing it', () => {
@@ -276,7 +276,7 @@ describe('the string setup solve', () => {
       const s = solveStringSetup(p)!;
       expect(unsolved(s, 'fingerboard')).toBe(true);
       expect(s.fingerboardEnd).not.toBeNull();
-      expect(fingerboardCrownLine(p, s)).toBeNull();
+      expect(calcFingerboardCrownLine(p, s)).toBeNull();
     }
   });
 
@@ -313,10 +313,10 @@ describe('the scroll set on the neck', () => {
   it('draws the scroll\'s nut at the string setup\'s thickness, and its own while that\'s cleared', () => {
     const p = seeded();
     VolutePanel.seed(p);
-    const seededThickness = nutThickness(p);
+    const seededThickness = calcNutThickness(p);
     p.stringSetup!.nutThickness = seededThickness + 2;
-    expect(nutThickness(p)).toBe(seededThickness + 2);
+    expect(calcNutThickness(p)).toBe(seededThickness + 2);
     p.stringSetup!.nutThickness = null as any;
-    expect(nutThickness(p)).toBe(seededThickness);
+    expect(calcNutThickness(p)).toBe(seededThickness);
   });
 });

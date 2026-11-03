@@ -12,7 +12,7 @@ Welcome to CremonaCad, a one-of-a-kind tool for designing violins! This article 
 Most of CremonaCad's UI elements are located on the edges of the screen. These elements draw and modify shapes which are rendered on the canvas. 
 
 |--|--|
-| Canvas | Located in the center of the screen, the [[canvas]] is a flat XY plane where all objects are rendered. To learn about navigating the canvas, please see the [[controls]] article. |
+| Canvas | Located in the center of the screen, the  is a flat XY plane where all objects are rendered. To learn about navigating the canvas, please see the [[controls]] article. |
 | Recipe Panels | Located on the right of the screen, the recipe panels contain the various parameters and options used in designing your instrument. |
 | Toolbox | Located on the left side of the screen, the toolbox contains a large library of drafting [[tools]] that can assist you in designing your instrument. |
 | Top Bar | The top bar contains high-level controls for file selection, settings, the notification system, as well as access to these docs. |

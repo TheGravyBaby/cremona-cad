@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { angleFromCenter, angleWithinSweep, dist, pointOnCircle } from '../../../../helpers/math/simpleGeometry';
 import { Arc, Pt } from '../../../../models/types';
-import { defineSideScrollPath, scrollLines, solveScroll } from './pegbox-panel';
-import { scrollExtent, VolutePanel } from '../volute-panel/volute-panel';
+import { defineSideScrollPath, calcScrollLines, solveScroll } from './pegbox-panel';
+import { calcScrollExtent, VolutePanel } from '../volute-panel/volute-panel';
 import { NeckPanel, calcNeckTaper } from '../neck-panel/neck-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
@@ -61,7 +61,7 @@ describe('the scroll solve', () => {
     const p = seeded();
     const s = solved(p);
     expect(Math.abs(s.F0!.x - s.S3!.x)).toBeLessThan(0.5);
-    expect(scrollExtent(s).height).toBeGreaterThan(scrollExtent(s).width);
+    expect(calcScrollExtent(s).height).toBeGreaterThan(calcScrollExtent(s).width);
     expect(defineSideScrollPath(p, s)).toContain(' A ');
   });
 });
@@ -72,7 +72,7 @@ describe('the back', () => {
   const s = solved(p);
 
   it('runs the straight on from S2\'s end along its heading', () => {
-    const [a, b] = scrollLines(p, s).backStraight;
+    const [a, b] = calcScrollLines(p, s).backStraight;
     meets(a, end(s.S2!));
     expect(dist(a, b)).toBeCloseTo(v.backStraight, 9);
     const h = heading(s.S2!.end);
@@ -80,7 +80,7 @@ describe('the back', () => {
   });
 
   it('turns S3 back the other way from the straight\'s foot, down to the hang below the nut', () => {
-    meets(end(s.S3!), scrollLines(p, s).backStraight[1]);
+    meets(end(s.S3!), calcScrollLines(p, s).backStraight[1]);
     expect(start(s.S3!).y).toBeCloseTo(-v.hang, 9);
   });
 
@@ -91,7 +91,7 @@ describe('the back', () => {
   });
 
   it('runs square from the duck tail to the neck\'s back, the nape filleting it in', () => {
-    const [a, b] = scrollLines(p, s).napeLine;
+    const [a, b] = calcScrollLines(p, s).napeLine;
     meets(a, start(s.S3!));
     expect(b.y).toBeCloseTo(a.y, 9);
     meets(b, end(s.nape!));
@@ -105,7 +105,7 @@ describe('the back', () => {
     const q = tapered();
     q.scroll!.napeAngle = 15;
     const t = solved(q);
-    const [a, b] = scrollLines(q, t).napeLine;
+    const [a, b] = calcScrollLines(q, t).napeLine;
     meets(a, start(t.S3!));
     meets(b, end(t.nape!));
     const tilt = 15 * Math.PI / 180;
@@ -131,11 +131,11 @@ describe('the front', () => {
   const s = solved(p);
 
   it('runs up the flat from the nut\'s top, F0 turning back, the straight on, and F1 up into the spiral', () => {
-    const [a, b] = scrollLines(p, s).flat;
+    const [a, b] = calcScrollLines(p, s).flat;
     expect(a.y).toBe(p.neck!.nutHeight);
     expect(b.y - a.y).toBe(v.flat);
     meets(start(s.F0!), b);
-    const [c, d] = scrollLines(p, s).frontStraight;
+    const [c, d] = calcScrollLines(p, s).frontStraight;
     meets(c, end(s.F0!));
     meets(end(s.F1!), d);
     // F1 stops on a drawn arc of the spiral

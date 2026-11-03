@@ -6,7 +6,7 @@ import {
 } from '../../../../helpers/math/simpleGeometry';
 import { circleCircleIntersections } from '../../../../helpers/math/draftMath';
 import { arcPathData, combinePathStrings, pathFromLine } from '../../../../helpers/math/pathMath';
-import { renderArcHalo, renderPath, renderSegment, renderSegmentHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderPath, renderSegment, renderSegmentHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
 import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { Arc, Pt } from '../../../../models/types';
@@ -25,7 +25,7 @@ import {
   ScrollKey,
   ScrollSolve,
 } from '../../violin-family-solves';
-import { badArc, longArc, renderScrollNeck, renderVolute, scrollArc, scrollExtent, solveVolute } from '../volute-panel/volute-panel';
+import { buildBadArcMiss, isLongArc, renderScrollNeck, renderVolute, calcScrollExtent, solveVolute } from '../volute-panel/volute-panel';
 import { calcNeckTaper } from '../neck-panel/neck-panel';
 
 export type PegboxHighlightKey = 'S3' | 'nape' | 'napeAngle' | 'F0' | 'F1' | 'backStraight' | 'flat' | 'frontStraight' | 'upperThickness';
@@ -79,11 +79,11 @@ export class PegboxPanel implements ViolinFamilyPanel, OnInit {
     safeRun(() => {
       let p = this.params;
       let s = this.s = solveScroll(p)!;
-      this.extent = s.S3 ? scrollExtent(s) : null;
+      this.extent = s.S3 ? calcScrollExtent(s) : null;
       let key = this.highlighted?.key;
       let color = this.highlighted?.color ?? '';
-      let line = (key === 'backStraight' || key === 'flat' || key === 'frontStraight') && !unsolved(s, key) ? scrollLines(p, s)[key]
-        : key === 'napeAngle' && s.nape ? scrollLines(p, s).napeLine
+      let line = (key === 'backStraight' || key === 'flat' || key === 'frontStraight') && !isUnsolved(s, key) ? calcScrollLines(p, s)[key]
+        : key === 'napeAngle' && s.nape ? calcScrollLines(p, s).napeLine
         : key === 'upperThickness' ? [new Pt(0, 0), new Pt(-p.neck!.upperThickness, 0)] as [Pt, Pt]
         : null;
       let arc = key === 'S3' || key === 'nape' || key === 'F0' || key === 'F1' ? s[key] : null;
@@ -101,7 +101,12 @@ export class PegboxPanel implements ViolinFamilyPanel, OnInit {
   }
 }
 
-const unsolved = (s: ScrollSolve, key: ScrollKey) => s.failures.some(f => f.unsolved.includes(key));
+const isUnsolved = (s: ScrollSolve, key: ScrollKey) => s.failures.some(f => f.unsolved.includes(key));
+
+// a straight of no length, or a duck tail already at the nape, has nothing to draw
+const renderScrollLine = ([a, b]: [Pt, Pt], color: string) => (g: any, ui: any): void => {
+  if (dist(a, b) > 1e-9) renderSegment(a, b, color, STROKE_WEIGHT.trace)(g, ui);
+};
 
 // the back from S2's end down to the nape, and the front up from the nut. The back's straight takes
 // S2's colour, the others their arc's, the nape's line the nape's
@@ -115,26 +120,31 @@ export const renderPegbox = (
   highlightedLine: { line: [Pt, Pt]; color: string } | null,
 ) => (g: any, ui: any): void => {
   let fancy = currentModule && flags.showModuleArcs;
-  if (highlighted) renderArcHalo(highlighted.arc, highlighted.color, undefined, undefined, longArc(highlighted.arc))(g, ui);
+  if (highlighted) renderArcHalo(highlighted.arc, highlighted.color, undefined, undefined, isLongArc(highlighted.arc))(g, ui);
   if (highlightedLine) renderSegmentHalo(...highlightedLine.line, highlightedLine.color)(g, ui);
 
-  if (s.S3) scrollArc(s.S3, pal.ink(1).faint(-1), fancy)(g, ui);
-  if (s.nape) scrollArc(s.nape, pal.ink(1).faint(5), fancy)(g, ui);
-  if (s.F0) scrollArc(s.F0, pal.ink(3), fancy)(g, ui);
-  if (s.F1) scrollArc(s.F1, pal.ink(3).faint(-3), fancy)(g, ui);
+  if (fancy) {
+    if (s.S3) renderArcFromArcFancy(s.S3, pal.ink(1).faint(-1), isLongArc(s.S3))(g, ui);
+    if (s.nape) renderArcFromArcFancy(s.nape, pal.ink(1).faint(5), isLongArc(s.nape))(g, ui);
+    if (s.F0) renderArcFromArcFancy(s.F0, pal.ink(3), isLongArc(s.F0))(g, ui);
+    if (s.F1) renderArcFromArcFancy(s.F1, pal.ink(3).faint(-3), isLongArc(s.F1))(g, ui);
+  } else {
+    if (s.S3) renderArcFromArc(s.S3, pal.ink(1).faint(-1), STROKE_WEIGHT.trace, isLongArc(s.S3))(g, ui);
+    if (s.nape) renderArcFromArc(s.nape, pal.ink(1).faint(5), STROKE_WEIGHT.trace, isLongArc(s.nape))(g, ui);
+    if (s.F0) renderArcFromArc(s.F0, pal.ink(3), STROKE_WEIGHT.trace, isLongArc(s.F0))(g, ui);
+    if (s.F1) renderArcFromArc(s.F1, pal.ink(3).faint(-3), STROKE_WEIGHT.trace, isLongArc(s.F1))(g, ui);
+  }
 
-  // a straight of no length, or a duck tail already at the nape, has nothing to draw
-  let line = ([a, b]: [Pt, Pt], color: string) => dist(a, b) > 1e-9 && renderSegment(a, b, color, STROKE_WEIGHT.trace)(g, ui);
-  let lines = scrollLines(p, s);
-  if (s.S2 && !unsolved(s, 'backStraight')) line(lines.backStraight, pal.ink(1).faint(-3));
-  if (s.nape) line(lines.napeLine, pal.ink(1).faint(5));
-  if (!unsolved(s, 'flat')) line(lines.flat, pal.ink(3).faint(-3));
-  if (s.F0 && !unsolved(s, 'frontStraight')) line(lines.frontStraight, pal.ink(3));
+  let lines = calcScrollLines(p, s);
+  if (s.S2 && !isUnsolved(s, 'backStraight')) renderScrollLine(lines.backStraight, pal.ink(1).faint(-3))(g, ui);
+  if (s.nape) renderScrollLine(lines.napeLine, pal.ink(1).faint(5))(g, ui);
+  if (!isUnsolved(s, 'flat')) renderScrollLine(lines.flat, pal.ink(3).faint(-3))(g, ui);
+  if (s.F0 && !isUnsolved(s, 'frontStraight')) renderScrollLine(lines.frontStraight, pal.ink(3))(g, ui);
 };
 
 // the lines aren't solved as parts: each runs between solved arcs, so it is read off here. A line
 // whose arc hasn't solved is a point where that arc would start
-export function scrollLines(p: ViolinFamilyParams, s: ScrollSolve): Record<ScrollLine, [Pt, Pt]> {
+export function calcScrollLines(p: ViolinFamilyParams, s: ScrollSolve): Record<ScrollLine, [Pt, Pt]> {
   let v = p.scroll!;
   let nutTop = new Pt(0, p.neck!.nutHeight);
   let backTop = s.S2 ? pointOnCircle(s.S2, s.S2.end) : nutTop;
@@ -155,32 +165,33 @@ export function scrollLines(p: ViolinFamilyParams, s: ScrollSolve): Record<Scrol
 // drawn end to start to keep every piece running on from the last
 export function defineSideScrollPath(p: ViolinFamilyParams, s: ScrollSolve): string {
   let v = p.scroll!;
-  let arc = (a: Arc) => arcPathData(a, a.r, a.start, a.end);
-  let backward = (a: Arc) => {
-    let from = pointOnCircle(a, a.end);
-    let to = pointOnCircle(a, a.start);
-    let large = normalizeRadians(a.end - a.start) > TURN.half ? 1 : 0;
-    return `M ${from.x},${from.y} A ${a.r},${a.r} 0 ${large},0 ${to.x},${to.y}`;
-  };
-  let at = pointOnCircle;
   let [S0, S1, S2, S3, nape, F0, F1] = [s.S0!, s.S1!, s.S2!, s.S3!, s.nape!, s.F0!, s.F1!];
-  let flatTop = at(F0, F0.start);
+  let flatTop = pointOnCircle(F0, F0.start);
   let back = [
     arcPathData(s.eye!, s.eye!.r, -TURN.half, 0),
-    ...[...s.spiral!].reverse().map(arc),
-    arc(S0), arc(S1), arc(S2),
-    pathFromLine(at(S2, S2.end), at(S3, S3.end)),
-    backward(S3),
-    pathFromLine(at(S3, S3.start), at(nape, nape.end)),
-    backward(nape),
+    ...[...s.spiral!].reverse().map(a => arcPathData(a, a.r, a.start, a.end)),
+    arcPathData(S0, S0.r, S0.start, S0.end), arcPathData(S1, S1.r, S1.start, S1.end), arcPathData(S2, S2.r, S2.start, S2.end),
+    pathFromLine(pointOnCircle(S2, S2.end), pointOnCircle(S3, S3.end)),
+    arcPathData(S3, S3.r, S3.end, S3.start, true),
+    pathFromLine(pointOnCircle(S3, S3.start), pointOnCircle(nape, nape.end)),
+    arcPathData(nape, nape.r, nape.end, nape.start, true),
   ];
   let front = [
     pathFromLine(new Pt(flatTop.x, flatTop.y - v.flat), flatTop),
-    arc(F0),
-    pathFromLine(at(F0, F0.end), at(F1, F1.end)),
-    backward(F1),
+    arcPathData(F0, F0.r, F0.start, F0.end),
+    pathFromLine(pointOnCircle(F0, F0.end), pointOnCircle(F1, F1.end)),
+    arcPathData(F1, F1.r, F1.end, F1.start, true),
   ];
   return combinePathStrings([...back, ...front]);
+}
+
+// a cleared field is null, which passes `>= 0`, so it is asked for first
+function buildBadLengthMiss(section: string, key: ScrollKey, unsolved: ScrollKey[]): ScrollFailure {
+  return { message: `${section}: ${key} needs a length, or 0.`, unsolved, circles: [], segments: [] };
+}
+
+function calcSweepBackTo(a: number, end: number): number {
+  return normalizeRadians(end - a) || TURN.full;
 }
 
 // the scroll's side solved whole, the volute's solve run on: the back from S2's end down to the nape, the
@@ -194,18 +205,15 @@ export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
   let taper = calcNeckTaper(p);
   let lean = Math.atan(taper);
   let nutTop = new Pt(0, p.neck!.nutHeight);
-  // a cleared field is null, which passes `>= 0`, so it is asked for first
-  let badLength = (section: string, key: ScrollKey, unsolved: ScrollKey[]): ScrollFailure =>
-    ({ message: `${section}: ${key} needs a length, or 0.`, unsolved, circles: [], segments: [] });
 
   if (s.S2) solveSection(s.failures, 'Back', ['S3', 'nape', 'backStraight'], () => {
     let S2 = s.S2!;
-    if (!Number.isFinite(v.backStraight) || v.backStraight < 0) return badLength('Back', 'backStraight', ['S3', 'nape', 'backStraight']);
+    if (!Number.isFinite(v.backStraight) || v.backStraight < 0) return buildBadLengthMiss('Back', 'backStraight', ['S3', 'nape', 'backStraight']);
     let foot = moveInVectorSpace(pointOnCircle(S2, S2.end), [{ ...vectorFromSlope(S2.end + TURN.quarter), mag: v.backStraight }]);
 
     // S3 turns back clockwise, so as a counterclockwise sweep it runs from the duck tail to the foot
     let S3end = S2.end - TURN.half;
-    if (!(v.S3R > 0)) return badArc('Back', 'S3', v.S3R, ['S3', 'nape']);
+    if (!(v.S3R > 0)) return buildBadArcMiss('Back', 'S3', v.S3R, ['S3', 'nape']);
     // negative lifts the duck tail above the nut; only a missing number is refused
     if (!Number.isFinite(v.hang))
       return { message: 'Back: the hang below the nut needs a length.', unsolved: ['S3', 'nape'], circles: [], segments: [] };
@@ -216,11 +224,10 @@ export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
     if (Math.abs(level) > 1)
       return { message: 'Back: S3 never comes down to the hang below the nut. Enlarge S3, lower it with the straight, or shorten the hang.', unsolved: ['S3', 'nape'], circles: [S3], segments: [] };
     let below = Math.asin(level);
-    let sweepTo = (a: number) => normalizeRadians(S3end - a) || TURN.full;
-    s.S3 = new Arc(S3.x, S3.y, S3.r, S3end - Math.min(sweepTo(below), sweepTo(TURN.half - below)), S3end);
+    s.S3 = new Arc(S3.x, S3.y, S3.r, S3end - Math.min(calcSweepBackTo(below, S3end), calcSweepBackTo(TURN.half - below, S3end)), S3end);
 
     let duckTail = pointOnCircle(s.S3, s.S3.start);
-    if (!(v.napeR > 0)) return badArc('Back', 'nape', v.napeR, ['nape']);
+    if (!(v.napeR > 0)) return buildBadArcMiss('Back', 'nape', v.napeR, ['nape']);
 
     if (!Number.isFinite(v.napeAngle))
       return { message: 'Back: the nape needs an angle, or 0.', unsolved: ['nape'], circles: [], segments: [] };
@@ -249,19 +256,19 @@ export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
   });
 
   solveSection(s.failures, 'Front', ['F0', 'F1', 'flat', 'frontStraight'], () => {
-    if (!Number.isFinite(v.flat) || v.flat < 0) return badLength('Front', 'flat', ['F0', 'F1', 'flat', 'frontStraight']);
+    if (!Number.isFinite(v.flat) || v.flat < 0) return buildBadLengthMiss('Front', 'flat', ['F0', 'F1', 'flat', 'frontStraight']);
     let top = new Pt(nutTop.x, nutTop.y + v.flat);
 
     let F0End = v.F0Sweep * TURN.degree;
-    if (!(v.F0R > 0) || !(F0End > 0) || F0End > TURN.full) return badArc('Front', 'F0', v.F0R, ['F0', 'F1', 'frontStraight']);
+    if (!(v.F0R > 0) || !(F0End > 0) || F0End > TURN.full) return buildBadArcMiss('Front', 'F0', v.F0R, ['F0', 'F1', 'frontStraight']);
     let F0 = placeCircleOnPointAtAngle(v.F0R, top, 0);
     s.F0 = new Arc(F0.x, F0.y, F0.r, 0, F0End);
 
-    if (!Number.isFinite(v.frontStraight) || v.frontStraight < 0) return badLength('Front', 'frontStraight', ['F1', 'frontStraight']);
+    if (!Number.isFinite(v.frontStraight) || v.frontStraight < 0) return buildBadLengthMiss('Front', 'frontStraight', ['F1', 'frontStraight']);
     let foot = moveInVectorSpace(pointOnCircle(s.F0, s.F0.end), [{ ...vectorFromSlope(s.F0.end + TURN.quarter), mag: v.frontStraight }]);
 
     // F1 curves back clockwise until it first crosses a drawn arc of the spiral
-    if (!(v.F1R > 0)) return badArc('Front', 'F1', v.F1R, ['F1']);
+    if (!(v.F1R > 0)) return buildBadArcMiss('Front', 'F1', v.F1R, ['F1']);
     let F1end = s.F0.end + TURN.half;
     let F1 = placeCircleOnPointAtAngle(v.F1R, foot, F1end);
     let sweep = Infinity;
