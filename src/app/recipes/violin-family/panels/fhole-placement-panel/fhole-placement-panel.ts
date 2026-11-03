@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections } from '../../../../helpers/math/draftMath';
 import {
@@ -10,12 +10,12 @@ import { nearestFraction, nearestSmallFraction } from '../../../../helpers/neare
 import {
   renderArcFromArcFancy, renderCircle, renderDashedLine, renderMirroredArcFancy, renderMirroredSegment, renderPath, renderRect, renderSmallCrosshair,
 } from '../../../../helpers/renderFuncs';
-import { safeRun } from '../../../../helpers/validators';
 import { Arc, Circle, Pt, Rectangle } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { FholePlacementParams, FholeStemParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { FholePlacementParams, FholeStemParams, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import { FHOLE_SEED_RATIOS, FholeRatios } from '../../violin-family-seed';
 import { renderBoutBounds, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
@@ -23,7 +23,6 @@ import { solveCenterBout, solveRibArcs, RibArcs } from '../center-bout-panel/cen
 import { definePurflingPath, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFlutingInnerEdge, solveFluting } from '../fluting-panel/fluting-panel';
 import { renderFholes, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
-import { showFieldHelp } from '../../../../docs/field-help';
 
 // Where the two f-holes sit on the top plate: the eyes first, everything else hung off them. The
 // stage is all typed values, so there is nothing to solve here beyond the box the eyes and rises
@@ -45,10 +44,9 @@ function roundToHundredth(v: number): number {
   templateUrl: './fhole-placement-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
+export class FHolePlacementPanel extends PanelComponentBase<never, FholeRatios> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFholeBounds', 'showFholePlacementGuides', 'showBeardGuides', 'showFlutingEdge', 'showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('orchid');
-  protected readonly help = showFieldHelp;
 
   // eyes, rises and stem placed from the corners and the waist alone, once the plate has solved,
   // by the fractions in FHOLE_SEED_RATIOS: the lower eye in from the lower corner, the upper eye
@@ -81,11 +79,6 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
     p.fHoles = f;
   }
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
-
   protected readonly stemAngleRange = STEM_ANGLE_RANGE;
 
   // what the last draw read off the placement; the template's readouts read these
@@ -94,54 +87,40 @@ export class FHolePlacementPanel implements ViolinFamilyPanel, OnInit {
   eyeAngle = 0;
   stemGap = 0;
   notchStop = 0;
-  ratios: Partial<FholeRatios> = {};
-
-  ngOnInit(): void {
-    this.draw();
-  }
-
-  // every field calls this: the shell seeds the stage and schedules the commit (the undo entry, the
-  // session write, report()) for when the typing stops, and the picture catches up now
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
 
   // the lower eye against the width is a small fraction (1/50), where the usual search collapses to 0
-  ratio(key: keyof FholeRatios): string {
+  override formatRatio(key: keyof FholeRatios): string {
     let value = this.ratios[key];
     if (!Number.isFinite(value)) return '–';
     return key === 'LEyetoW' ? nearestSmallFraction(value!) : nearestFraction(value!);
   }
 
   // nothing solves here, so nothing to report; the contours panel reports what the placement broke
-  report(): void {}
+  reportSolveFailures(): void {}
 
-  draw(): void {
-    safeRun(() => {
-      let p = this.params;
-      let f = p.fHoles!;
-      let bounds = calcFholeBounds(f);
-      this.boundsHtoW = bounds.width ? nearestFraction(bounds.height! / bounds.width) : '–';
-      this.eyeDistance = Math.round(dist(f.UEye, f.LEye) * 100) / 100;
-      this.eyeAngle = Math.round(angleFromCenter(f.LEye, f.UEye) / TURN.degree * 10) / 10;
-      // across the two stems' inner edges at the stem's height, where the pair is mirrored about x = 0
-      this.stemGap = Math.round(2 * stemEdgeAt(f.stem, calcStemEdgePoints(f.stem).inner, f.stem.center.y).x * 100) / 100;
-      // the top edge down to the notch line, the stop as the trade reads it off a finished top
-      this.notchStop = Math.round((p.body.height - f.stem.center.y) * 100) / 100;
-      this.ratios = calcFholePlacementRatios(p);
-      let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
-      let layers: RenderLayer[] = [renderFholePlate(p, this.pal, rib, false)];
-      if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
-      if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, ThemeService.getPalette('classicCremona')));
-      if (this.flags.showFholePlacementGuides && rib) layers.push(renderFholeEyePlacementGuides(p, rib, this.pal));
-      if (this.flags.showBeardGuides) layers.push(renderBeardBoxes(p, ThemeService.getPalette('classicCremona')));
-      if (this.flags.showFholeBounds) layers.push(renderFholeBounds(f, this.pal));
-      // the outer notch is struck from the lower wing's tip, so it waits on the contours
-      let contours = p.fHoleContours ? solveFholeContours(p) : null;
-      layers.push(renderFholePlacement(f, contours?.LTip ?? null, this.pal));
-      this.drawn.emit(layers);
-    });
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    let f = p.fHoles!;
+    let bounds = calcFholeBounds(f);
+    this.boundsHtoW = bounds.width ? nearestFraction(bounds.height! / bounds.width) : '–';
+    this.eyeDistance = Math.round(dist(f.UEye, f.LEye) * 100) / 100;
+    this.eyeAngle = Math.round(angleFromCenter(f.LEye, f.UEye) / TURN.degree * 10) / 10;
+    // across the two stems' inner edges at the stem's height, where the pair is mirrored about x = 0
+    this.stemGap = Math.round(2 * stemEdgeAt(f.stem, calcStemEdgePoints(f.stem).inner, f.stem.center.y).x * 100) / 100;
+    // the top edge down to the notch line, the stop as the trade reads it off a finished top
+    this.notchStop = Math.round((p.body.height - f.stem.center.y) * 100) / 100;
+    this.ratios = calcFholePlacementRatios(p);
+    let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+    let layers: RenderLayer[] = [renderFholePlate(p, this.pal, rib, false)];
+    if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
+    if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, ThemeService.getPalette('classicCremona')));
+    if (this.flags.showFholePlacementGuides && rib) layers.push(renderFholeEyePlacementGuides(p, rib, this.pal));
+    if (this.flags.showBeardGuides) layers.push(renderBeardBoxes(p, ThemeService.getPalette('classicCremona')));
+    if (this.flags.showFholeBounds) layers.push(renderFholeBounds(f, this.pal));
+    // the outer notch is struck from the lower wing's tip, so it waits on the contours
+    let contours = p.fHoleContours ? solveFholeContours(p) : null;
+    layers.push(renderFholePlacement(f, contours?.LTip ?? null, this.pal));
+    return layers;
   }
 }
 

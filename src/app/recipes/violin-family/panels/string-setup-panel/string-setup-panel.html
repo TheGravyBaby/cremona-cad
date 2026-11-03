@@ -6,12 +6,12 @@
         <label class="field-cell">
             <span class="field-title">Length <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(2)"
-                [(ngModel)]="params.neck!.length" (input)="edited()" (focus)="focus('length', pal.ink(2))" (blur)="blur()" />
+                [(ngModel)]="params.neck!.length" (input)="recordEditAndRedraw()" (focus)="highlightPart('length', pal.ink(2))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Nut Thickness <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0).faint(-3)"
-                [(ngModel)]="ss.nutThickness" (input)="edited()" (focus)="focus('nutThickness', pal.ink(0).faint(-3))" (blur)="blur()" />
+                [(ngModel)]="ss.nutThickness" (input)="recordEditAndRedraw()" (focus)="highlightPart('nutThickness', pal.ink(0).faint(-3))" (blur)="clearHighlight()" />
         </label>
     </div>
 </section>
@@ -22,17 +22,17 @@
         <label class="field-cell">
             <span class="field-title">Length <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="ss.fingerboardLength" (input)="edited()" (focus)="focus('fbLength', pal.ink(0))" (blur)="blur()" />
+                [(ngModel)]="ss.fingerboardLength" (input)="recordEditAndRedraw()" (focus)="highlightPart('fbLength', pal.ink(0))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Thickness <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="ss.fingerboardThickness" (input)="edited()" (focus)="focus('fbThickness', pal.ink(0))" (blur)="blur()" />
+                [(ngModel)]="ss.fingerboardThickness" (input)="recordEditAndRedraw()" (focus)="highlightPart('fbThickness', pal.ink(0))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
-                [ngModel]="ss.fingerboardNutRadius" (ngModelChange)="radiusEdited($event)" (focus)="focus('fbRadius', pal.ink(0))" (blur)="blur()" />
+                [ngModel]="ss.fingerboardNutRadius" (ngModelChange)="radiusEdited($event)" (focus)="highlightPart('fbRadius', pal.ink(0))" (blur)="clearHighlight()" />
         </label>
     </div>
 </section>
@@ -43,12 +43,12 @@
         <label class="field-cell">
             <span class="field-title">Stop <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(1)"
-                [(ngModel)]="ss.bodyStop" (input)="edited()" (focus)="focus('bodyStop', pal.ink(1))" (blur)="blur()" />
+                [(ngModel)]="ss.bodyStop" (input)="recordEditAndRedraw()" (focus)="highlightPart('bodyStop', pal.ink(1))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1)"
-                [(ngModel)]="ss.bridgeHeight" (input)="edited()" (focus)="focus('bridgeHeight', pal.ink(1))" (blur)="blur()" />
+                [(ngModel)]="ss.bridgeHeight" (input)="recordEditAndRedraw()" (focus)="highlightPart('bridgeHeight', pal.ink(1))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">String Length <span class="unit-label">mm</span></span>

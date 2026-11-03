@@ -1,16 +1,15 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompoundBySweep } from '../../../../helpers/math/draftMath';
 import { dist, flipArcAboutY, flipPointAboutY, offsetArcRadius, TURN } from '../../../../helpers/math/simpleGeometry';
-import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderMirroredArc, renderMirroredArcFancy, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { buildBlankMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
-import { showFieldHelp } from '../../../../docs/field-help';
+import { buildBlankMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { Arc, arcFromCircleAndPoints, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import { CenterBoutFailure, CenterBoutKey, CenterBoutSolve, CornersSolve, MainBoutsSolve } from '../../violin-family-solves';
 import { ViolinFamilyRatios } from '../../violin-family-seed';
 import { renderBoutBounds, renderMainBoutCircles, renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -28,42 +27,14 @@ type CenterBoutHighlightKey = CenterBoutKey | 'UCr' | 'LCr';
   templateUrl: './center-bout-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class CenterBoutPanel implements ViolinFamilyPanel, OnInit {
+export class CenterBoutPanel extends PanelComponentBase<CenterBoutHighlightKey, ViolinFamilyRatios> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleCircles', 'showAllCircles', 'showModuleGuides', 'renderOuterPath'];
   protected readonly pal = ThemeService.getPalette('classicCremona');
-  protected readonly help = showFieldHelp;
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
-
-  // what the last draw solved; the template and report() read these rather than solving again
+  // what the last draw solved; the template and reportSolveFailures() read these rather than solving again
   m!: MainBoutsSolve;
   c!: CornersSolve;
   cb!: CenterBoutSolve;
-  ratios: Partial<ViolinFamilyRatios> = {};
-
-  private highlightedKey: CenterBoutHighlightKey | null = null;
-  private highlightedColor = '';
-
-  ngOnInit(): void {
-    this.draw();
-  }
-
-  // every field calls this: the shell seeds the stage and schedules the commit (the undo entry, the
-  // session write, report()) for when the typing stops, and the picture catches up now
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
-
-  // the arc or tip a field sets, haloed while the field has focus; null on blur
-  highlight(key: CenterBoutHighlightKey | null, color = ''): void {
-    this.highlightedKey = key;
-    this.highlightedColor = color;
-    this.draw();
-  }
 
   // turning the fit off keeps the width and height it found, so the hand fields carry on from
   // the fitted shape rather than jumping back to what was typed before it
@@ -73,7 +44,7 @@ export class CenterBoutPanel implements ViolinFamilyPanel, OnInit {
       b.CBW = Math.round(this.cb.CBW * 10) / 10;
       b.C0Y = Math.round(this.cb.C0.y * 10) / 10;
     }
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   // the tip goes back onto its guide circle; the arcs keep their radii
@@ -82,48 +53,39 @@ export class CenterBoutPanel implements ViolinFamilyPanel, OnInit {
     if (!tips) return;
     if (corner === 'upper') this.params.corners!.UCr = tips.UCr;
     else this.params.corners!.LCr = tips.LCr;
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
-  ratio(key: keyof ViolinFamilyRatios): string {
-    let value = this.ratios[key];
-    return Number.isFinite(value) ? nearestFraction(value!) : '–';
-  }
-
-  // messages for what didn't solve, raised once the edit settles rather than on every keystroke
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures(this.cb.failures, 'Center Bout');
   }
 
-  draw(): void {
-    safeRun(() => {
-      let p = this.params;
-      let m = this.m = solveMainBouts(p)!;
-      let c = this.c = solveCorners(p)!;
-      let cb = this.cb = solveCenterBout(p)!;
-      this.ratios = calcCenterBoutRatios(p);
-      let highlighted = this.highlightedKey ? { key: this.highlightedKey, color: this.highlightedColor } : null;
-      let layers: RenderLayer[] = [];
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    let m = this.m = solveMainBouts(p)!;
+    let c = this.c = solveCorners(p)!;
+    let cb = this.cb = solveCenterBout(p)!;
+    this.ratios = calcCenterBoutRatios(p);
+    let layers: RenderLayer[] = [];
 
-      if (this.flags.showModuleGuides) {
-        let hw = p.body.width / 2;
-        layers.push(renderBoutBounds(p, this.pal));
-        // the height C0 is placed at, or was fitted to
-        if (cb.C0) layers.push(renderDashedLine(new Pt(-hw, cb.C0.y), new Pt(hw, cb.C0.y), this.pal.ink(3)));
-      }
+    if (this.flags.showModuleGuides) {
+      let hw = p.body.width / 2;
+      layers.push(renderBoutBounds(p, this.pal));
+      // the height C0 is placed at, or was fitted to
+      if (cb.C0) layers.push(renderDashedLine(new Pt(-hw, cb.C0.y), new Pt(hw, cb.C0.y), this.pal.ink(3)));
+    }
 
-      if (this.flags.showModuleCircles || this.flags.showAllCircles) layers.push(renderCenterBoutCircles(p, cb, this.pal));
-      if (this.flags.showAllCircles) layers.push(renderMainBoutCircles(m, this.pal), renderCornerCircles(p, c, this.pal));
+    if (this.flags.showModuleCircles || this.flags.showAllCircles) layers.push(renderCenterBoutCircles(p, cb, this.pal));
+    if (this.flags.showAllCircles) layers.push(renderMainBoutCircles(m, this.pal), renderCornerCircles(p, c, this.pal));
 
-      // the bouts and the corners in grey under this panel's C bout
-      layers.push(
-        renderMainBouts(p, { ...m, U1: c.U1, L1: c.L1 }, this.pal, this.flags, false, null),
-        renderCorners(p, c, this.pal, this.flags, false, null),
-        renderCenterBout(p, cb, this.pal, this.flags, true, highlighted),
-        renderSolveFailures(cb.failures, this.pal.alert, true),
-      );
-      this.drawn.emit(layers);
-    });
+    // the bouts and the corners in grey under this panel's C bout
+    layers.push(
+      renderMainBouts(p, { ...m, U1: c.U1, L1: c.L1 }, this.pal, this.flags, false, null),
+      renderCorners(p, c, this.pal, this.flags, false, null),
+      renderCenterBout(p, cb, this.pal, this.flags, true, this.highlightedPart),
+      renderSolveFailures(cb.failures, this.pal.alert, true),
+    );
+    return layers;
   }
 }
 

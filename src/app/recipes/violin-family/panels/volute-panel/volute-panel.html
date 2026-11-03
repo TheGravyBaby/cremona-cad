@@ -2,13 +2,13 @@
 
 <section class="ui-group">
     <div class="ui-group-title">Volute      
-        <button type="button" class="info-icon" (click)="help('volute')" title="More information"
+        <button type="button" class="info-icon" (click)="showFieldHelp('volute')" title="More information"
             aria-label="Information">ⓘ</button>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell field-cell--full">
             <span class="field-title">Style</span>
-            <select [(ngModel)]="v.style" (change)="edited()">
+            <select [(ngModel)]="v.style" (change)="recordEditAndRedraw()">
                 @for (style of styles; track style.id) {
                 <option [value]="style.id">{{ style.label }}</option>
                 }
@@ -19,7 +19,7 @@
         <label class="field-cell">
             <span class="field-title">Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.25" min="0.25" [style.border-color]="pal.ink(2)"
-                [(ngModel)]="v.eye.r" (input)="edited()" />
+                [(ngModel)]="v.eye.r" (input)="recordEditAndRedraw()" />
         </label>
         <div class="field-cell field-cell--xy">
             <div class="xy-titles">
@@ -30,9 +30,9 @@
                 @if (v.fitToNeck) {
                 <input type="number" class="basic-input" data-xy="x" aria-label="Eye X" disabled [ngModel]="s.eye?.x" />
                 } @else {
-                <input type="number" class="basic-input" step="0.25" data-xy="x" aria-label="Eye X" [(ngModel)]="v.eye.x" (input)="edited()" />
+                <input type="number" class="basic-input" step="0.25" data-xy="x" aria-label="Eye X" [(ngModel)]="v.eye.x" (input)="recordEditAndRedraw()" />
                 }
-                <input type="number" class="basic-input" step="0.25" data-xy="y" aria-label="Eye Y" [(ngModel)]="v.eye.y" (input)="edited()" />
+                <input type="number" class="basic-input" step="0.25" data-xy="y" aria-label="Eye Y" [(ngModel)]="v.eye.y" (input)="recordEditAndRedraw()" />
             </div>
         </div>
     </div>
@@ -40,13 +40,13 @@
         @if (v.style === 'archimedean') {
         <label class="field-cell">
             <span class="field-title">Pitch <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.25" min="0.25" [(ngModel)]="v.pitch" (input)="edited()" />
+            <input type="number" class="basic-input" step="0.25" min="0.25" [(ngModel)]="v.pitch" (input)="recordEditAndRedraw()" />
         </label>
         }
         @if (v.style === 'kelly') {
         <label class="field-cell">
             <span class="field-title">Seed <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.25" min="0.25" [(ngModel)]="v.seedLength" (input)="edited()" />
+            <input type="number" class="basic-input" step="0.25" min="0.25" [(ngModel)]="v.seedLength" (input)="recordEditAndRedraw()" />
         </label>
         }
         <label class="field-cell">
@@ -62,7 +62,7 @@
         <label class="field-cell field-cell--arc">
             <span class="field-title" [style.color]="arcInk(i)">R {{ arcEnd(i) }} <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.25" min="0.25" [style.border-color]="arcInk(i)"
-                [(ngModel)]="v.arcRadii[i]" (input)="edited()" (focus)="focus(i, arcInk(i))" (blur)="blur()" />
+                [(ngModel)]="v.arcRadii[i]" (input)="recordEditAndRedraw()" (focus)="highlightPart(i, arcInk(i))" (blur)="clearHighlight()" />
         </label>
         }
     </div>
@@ -76,12 +76,12 @@
         <label class="field-cell">
             <span class="field-title" [style.color]="pal.ink(1).faint(3)">S0 R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(3)"
-                [(ngModel)]="v.S0R" (input)="edited()" (focus)="focus('S0', pal.ink(1).faint(3))" (blur)="blur()" />
+                [(ngModel)]="v.S0R" (input)="recordEditAndRedraw()" (focus)="highlightPart('S0', pal.ink(1).faint(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Sweep <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" min="0" max="360"
-                [(ngModel)]="v.S0Sweep" (input)="edited()" (focus)="focus('S0', pal.ink(1).faint(3))" (blur)="blur()" />
+                [(ngModel)]="v.S0Sweep" (input)="recordEditAndRedraw()" (focus)="highlightPart('S0', pal.ink(1).faint(3))" (blur)="clearHighlight()" />
         </label>
           <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
@@ -92,12 +92,12 @@
         <label class="field-cell">
             <span class="field-title" [style.color]="pal.ink(1)">S1 R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1)"
-                [(ngModel)]="v.S1R" (input)="edited()" (focus)="focus('S1', pal.ink(1))" (blur)="blur()" />
+                [(ngModel)]="v.S1R" (input)="recordEditAndRedraw()" (focus)="highlightPart('S1', pal.ink(1))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Sweep <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" min="0" max="360"
-                [(ngModel)]="v.S1Sweep" (input)="edited()" (focus)="focus('S1', pal.ink(1))" (blur)="blur()" />
+                [(ngModel)]="v.S1Sweep" (input)="recordEditAndRedraw()" (focus)="highlightPart('S1', pal.ink(1))" (blur)="clearHighlight()" />
         </label>
          <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
@@ -108,12 +108,12 @@
         <label class="field-cell">
             <span class="field-title" [style.color]="pal.ink(1).faint(-3)">S2 R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(-3)"
-                [(ngModel)]="v.S2R" (input)="edited()" (focus)="focus('S2', pal.ink(1).faint(-3))" (blur)="blur()" />
+                [(ngModel)]="v.S2R" (input)="recordEditAndRedraw()" (focus)="highlightPart('S2', pal.ink(1).faint(-3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Sweep <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" min="0" max="360"
-                [(ngModel)]="v.S2Sweep" (input)="edited()" (focus)="focus('S2', pal.ink(1).faint(-3))" (blur)="blur()" />
+                [(ngModel)]="v.S2Sweep" (input)="recordEditAndRedraw()" (focus)="highlightPart('S2', pal.ink(1).faint(-3))" (blur)="clearHighlight()" />
         </label>
           <label class="field-cell">
             <span class="field-title">H to W</span>

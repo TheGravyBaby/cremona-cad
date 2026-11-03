@@ -1,14 +1,13 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { showFieldHelp } from '../../../../docs/field-help';
 import { Pt, Rectangle } from '../../../../models/types';
 import { renderRect, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { buildMiss, reportFailures, safeRun } from '../../../../helpers/validators';
-import { nearestFraction } from '../../../../helpers/nearestFraction';
+import { buildMiss, reportFailures } from '../../../../helpers/validators';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { ThemeService } from '../../../../theme/theme.service';
-import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyRecipe, ViolinFamilyToggleKey } from '../../violin-family-types';
+import { RenderLayer, ViolinFamilyParams, ViolinFamilyRecipe, ViolinFamilyToggleKey } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import { BodyFailure, BodyKey, BodySolve } from '../../violin-family-solves';
 import { ViolinFamilyRatios } from '../../violin-family-seed';
 import { renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -26,79 +25,56 @@ import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
   templateUrl: './base-measurements-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class BaseMeasurementsPanel implements ViolinFamilyPanel, OnInit {
+export class BaseMeasurementsPanel extends PanelComponentBase<never, ViolinFamilyRatios> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = [];
 
-  // the whole recipe rather than its params: the file's name, description and source are set here
+  // the whole recipe too: the file's name, description and source are set here
   @Input({ required: true }) recipe!: ViolinFamilyRecipe;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
 
   protected readonly pal = ThemeService.getPalette('classicCremona');
-  protected readonly help = showFieldHelp;
 
   // what the last draw solved; the template reads these rather than solving again
   body!: BodySolve;
-  ratios: Partial<ViolinFamilyRatios> = {};
 
-  ngOnInit(): void {
-    this.draw();
-  }
-
-  // every field calls this: the shell seeds the stage and schedules the commit (the undo entry, the
-  // session write, report()) for when the typing stops, and the picture catches up now
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
-
-  ratio(key: keyof ViolinFamilyRatios): string {
-    let value = this.ratios[key];
-    return Number.isFinite(value) ? nearestFraction(value!) : '–';
-  }
-
-  // messages for what didn't solve, raised once the edit settles rather than on every keystroke
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures(this.body.failures, 'Base Measurements');
   }
 
-  draw(): void {
-    safeRun(() => {
-      let p = this.recipe.params;
-      this.body = solveBody(p);
-      this.ratios = calcBodyRatios(p);
-      let m = solveMainBouts(p);
-      let c = solveCorners(p);
-      let cb = solveCenterBout(p);
-      let o = solvePlateContour(p);
-      let layers: RenderLayer[] = [];
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    this.body = solveBody(p);
+    this.ratios = calcBodyRatios(p);
+    let m = solveMainBouts(p);
+    let c = solveCorners(p);
+    let cb = solveCenterBout(p);
+    let o = solvePlateContour(p);
+    let layers: RenderLayer[] = [];
 
-      // a loaded instrument shows as built: the top plate's edge, purfling and f-holes. Otherwise
-      // the instrument as far as it's been drafted, in grey under the envelope. Once there are
-      // corners, the bouts end where the corners take over
-      if (o?.top) {
-        layers.push(renderPlateContour(p, o, this.pal, { showModuleArcs: false }, false, false));
-        layers.push(renderFholes(p, this.pal));
-      } else {
-        if (m) {
-          layers.push(renderMainBouts(p, c ? { ...m, U1: c.U1, L1: c.L1 } : m, this.pal, { showModuleArcs: false, showAllArcs: false, renderOuterPath: false }, false, null));
-          layers.push(renderSolveFailures(m.failures, this.pal.alert, true));
-        }
-        if (c) {
-          layers.push(renderCorners(p, c, this.pal, { showModuleArcs: false, showAllArcs: false, renderOuterPath: false }, false, null));
-          layers.push(renderSolveFailures(c.failures, this.pal.alert, true));
-        }
-        if (cb) {
-          layers.push(renderCenterBout(p, cb, this.pal, { showModuleArcs: false, showAllArcs: false, renderOuterPath: false }, false, null));
-          layers.push(renderSolveFailures(cb.failures, this.pal.alert, true));
-        }
+    // a loaded instrument shows as built: the top plate's edge, purfling and f-holes. Otherwise
+    // the instrument as far as it's been drafted, in grey under the envelope. Once there are
+    // corners, the bouts end where the corners take over
+    if (o?.top) {
+      layers.push(renderPlateContour(p, o, this.pal, { showModuleArcs: false }, false, false));
+      layers.push(renderFholes(p, this.pal));
+    } else {
+      if (m) {
+        layers.push(renderMainBouts(p, c ? { ...m, U1: c.U1, L1: c.L1 } : m, this.pal, { showModuleArcs: false, showAllArcs: false, renderOuterPath: false }, false, null));
+        layers.push(renderSolveFailures(m.failures, this.pal.alert, true));
       }
-      if (this.body.outer && this.body.ribBox) {
-        layers.push(renderRect(this.body.outer, this.pal.neutral, 'none', STROKE_WEIGHT.guide));
-        layers.push(renderRect(this.body.ribBox, this.pal.neutral, 'none', STROKE_WEIGHT.guide));
+      if (c) {
+        layers.push(renderCorners(p, c, this.pal, { showModuleArcs: false, showAllArcs: false, renderOuterPath: false }, false, null));
+        layers.push(renderSolveFailures(c.failures, this.pal.alert, true));
       }
-      this.drawn.emit(layers);
-    });
+      if (cb) {
+        layers.push(renderCenterBout(p, cb, this.pal, { showModuleArcs: false, showAllArcs: false, renderOuterPath: false }, false, null));
+        layers.push(renderSolveFailures(cb.failures, this.pal.alert, true));
+      }
+    }
+    if (this.body.outer && this.body.ribBox) {
+      layers.push(renderRect(this.body.outer, this.pal.neutral, 'none', STROKE_WEIGHT.guide));
+      layers.push(renderRect(this.body.ribBox, this.pal.neutral, 'none', STROKE_WEIGHT.guide));
+    }
+    return layers;
   }
 }
 

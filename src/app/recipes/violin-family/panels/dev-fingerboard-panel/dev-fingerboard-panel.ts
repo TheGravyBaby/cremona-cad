@@ -1,15 +1,16 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { dist, moveInVectorSpace, pointAtDistanceToward } from '../../../../helpers/math/simpleGeometry';
 import { pathFromCircle } from '../../../../helpers/math/pathMath';
 import { intersectionFromTwoPaths } from '../../../../helpers/math/pathVibes';
 import { renderFilledPath, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { reportFailures, safeRun, solveSection, SolveFailure } from '../../../../helpers/validators';
+import { reportFailures, solveSection, SolveFailure } from '../../../../helpers/validators';
 import { readWorkingState, writeWorkingState } from '../../../../helpers/workingStorage';
 import { Circle, Pt, Vect2D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import { StringSetupSolve } from '../../violin-family-solves';
 import { familyStandards, FamilyStandards } from '../../violin-family-seed';
 import { neckHalfWidthAt } from '../neck-panel/neck-panel';
@@ -73,38 +74,26 @@ type DevFingerboardHighlightKey = StringSetupHighlightKey | 'marks';
   templateUrl: './dev-fingerboard-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class DevFingerboardPanel implements ViolinFamilyPanel, OnInit {
+export class DevFingerboardPanel extends PanelComponentBase<DevFingerboardHighlightKey> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFingerboard', 'showFretMarks', 'showScoopGuide'];
   protected readonly pal = ThemeService.getPalette('varnish');
-
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
 
   marks!: PositionMarksSettings;
   s!: StringSetupSolve;
   m!: PositionMarksSolve;
-  highlighted: { key: DevFingerboardHighlightKey; color: string } | null = null;
   // the semitones as typed, so a half-typed list isn't reformatted under the cursor
   semitonesText = '';
 
-  ngOnInit(): void {
+  override ngOnInit(): void {
     this.marks = readMarks() ?? defaultPositionMarks(this.params);
     this.semitonesText = this.marks.semitones.join(', ');
-    this.draw();
-  }
-
-  // a field on the board, so it goes into the file and the undo history
-  edited(): void {
-    this.edit.emit();
-    this.draw();
+    super.ngOnInit();
   }
 
   // the panel's own settings, kept for the tab alone
   stateEdited(): void {
     writeWorkingState(STATE_KEY, JSON.stringify(this.marks));
-    this.draw();
+    this.drawCanvas();
   }
 
   semitonesEdited(text: string): void {
@@ -113,36 +102,24 @@ export class DevFingerboardPanel implements ViolinFamilyPanel, OnInit {
     this.stateEdited();
   }
 
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures([...this.s.failures, ...this.m.failures], 'Dev Fingerboard');
   }
 
-  focus(key: DevFingerboardHighlightKey, color: string): void {
-    this.highlighted = { key, color };
-    this.draw();
-  }
-
-  blur(): void {
-    this.highlighted = null;
-    this.draw();
-  }
-
-  draw(): void {
-    safeRun(() => {
-      let p = this.params;
-      let s = this.s = solveStringSetup(p)!;
-      let front: RenderLayer[] = [], side: RenderLayer[] = [];
-      let m = this.m = solvePositionMarks(p, s, this.marks);
-      let halo = this.highlighted?.key === 'marks' ? this.highlighted.color : null;
-      if (this.flags.showFingerboard) front.push(renderPositionMarks(p, s, m, this.pal, halo));
-      if (this.flags.showFretMarks) side.push(renderFretTicks(s, this.marks.semitones, this.pal));
-      side.push(renderSolveFailures(m.failures, this.pal.alert));
-      let highlighted = this.highlighted?.key === 'marks' ? null : this.highlighted as { key: StringSetupHighlightKey; color: string } | null;
-      this.drawn.emit(renderStringSetupViews(p, s, this.pal, {
-        fingerboard: this.flags.showFingerboard,
-        scoopGuide: this.flags.showScoopGuide,
-        highlighted, front, side,
-      }));
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    let s = this.s = solveStringSetup(p)!;
+    let front: RenderLayer[] = [], side: RenderLayer[] = [];
+    let m = this.m = solvePositionMarks(p, s, this.marks);
+    let halo = this.highlightedPart?.key === 'marks' ? this.highlightedPart.color : null;
+    if (this.flags.showFingerboard) front.push(renderPositionMarks(p, s, m, this.pal, halo));
+    if (this.flags.showFretMarks) side.push(renderFretTicks(s, this.marks.semitones, this.pal));
+    side.push(renderSolveFailures(m.failures, this.pal.alert));
+    let highlighted = this.highlightedPart?.key === 'marks' ? null : this.highlightedPart as { key: StringSetupHighlightKey; color: string } | null;
+    return renderStringSetupViews(p, s, this.pal, {
+      fingerboard: this.flags.showFingerboard,
+      scoopGuide: this.flags.showScoopGuide,
+      highlighted, front, side,
     });
   }
 }

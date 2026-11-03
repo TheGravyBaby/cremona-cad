@@ -7,31 +7,31 @@
         <label class="field-cell">
             <span class="field-title" [style.color]="pal.ink(1).faint(-3)">Straight <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(-3)"
-                [(ngModel)]="v.backStraight" (input)="edited()" (focus)="focus('backStraight', pal.ink(1).faint(-3))" (blur)="blur()" />
+                [(ngModel)]="v.backStraight" (input)="recordEditAndRedraw()" (focus)="highlightPart('backStraight', pal.ink(1).faint(-3))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title" [style.color]="pal.ink(1).faint(-1)">S3 R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(-1)"
-                [(ngModel)]="v.S3R" (input)="edited()" (focus)="focus('S3', pal.ink(1).faint(-1))" (blur)="blur()" />
+                [(ngModel)]="v.S3R" (input)="recordEditAndRedraw()" (focus)="highlightPart('S3', pal.ink(1).faint(-1))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Hang <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1"
-                [(ngModel)]="v.hang" (input)="edited()" (focus)="focus('S3', pal.ink(1).faint(-1))" (blur)="blur()" />
+                [(ngModel)]="v.hang" (input)="recordEditAndRedraw()" (focus)="highlightPart('S3', pal.ink(1).faint(-1))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title" [style.color]="pal.ink(1).faint(5)">Nape R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(5)"
-                [(ngModel)]="v.napeR" (input)="edited()" (focus)="focus('nape', pal.ink(1).faint(5))" (blur)="blur()" />
+                [(ngModel)]="v.napeR" (input)="recordEditAndRedraw()" (focus)="highlightPart('nape', pal.ink(1).faint(5))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Nape Angle <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="0.5" min="-89.5" max="89.5"
-                [(ngModel)]="v.napeAngle" (input)="edited()" (focus)="focus('napeAngle', pal.ink(1).faint(5))" (blur)="blur()" />
+                [(ngModel)]="v.napeAngle" (input)="recordEditAndRedraw()" (focus)="highlightPart('napeAngle', pal.ink(1).faint(5))" (blur)="clearHighlight()" />
         </label>
     </div>
 </section>
@@ -42,31 +42,31 @@
         <label class="field-cell">
             <span class="field-title" [style.color]="pal.ink(3).faint(-3)">Flat <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3).faint(-3)"
-                [(ngModel)]="v.flat" (input)="edited()" (focus)="focus('flat', pal.ink(3).faint(-3))" (blur)="blur()" />
+                [(ngModel)]="v.flat" (input)="recordEditAndRedraw()" (focus)="highlightPart('flat', pal.ink(3).faint(-3))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title" [style.color]="pal.ink(3)">F0 R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3)"
-                [(ngModel)]="v.F0R" (input)="edited()" (focus)="focus('F0', pal.ink(3))" (blur)="blur()" />
+                [(ngModel)]="v.F0R" (input)="recordEditAndRedraw()" (focus)="highlightPart('F0', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Sweep <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" min="0" max="360"
-                [(ngModel)]="v.F0Sweep" (input)="edited()" (focus)="focus('F0', pal.ink(3))" (blur)="blur()" />
+                [(ngModel)]="v.F0Sweep" (input)="recordEditAndRedraw()" (focus)="highlightPart('F0', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title" [style.color]="pal.ink(3)">Straight <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3)"
-                [(ngModel)]="v.frontStraight" (input)="edited()" (focus)="focus('frontStraight', pal.ink(3))" (blur)="blur()" />
+                [(ngModel)]="v.frontStraight" (input)="recordEditAndRedraw()" (focus)="highlightPart('frontStraight', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title" [style.color]="pal.ink(3).faint(-3)">F1 R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3).faint(-3)"
-                [(ngModel)]="v.F1R" (input)="edited()" (focus)="focus('F1', pal.ink(3).faint(-3))" (blur)="blur()" />
+                [(ngModel)]="v.F1R" (input)="recordEditAndRedraw()" (focus)="highlightPart('F1', pal.ink(3).faint(-3))" (blur)="clearHighlight()" />
         </label>
     </div>
 </section>
@@ -77,12 +77,12 @@
         <label class="field-cell">
             <span class="field-title" [style.color]="pal.ink(2)">Thickness <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="1" [style.border-color]="pal.ink(2)"
-                [(ngModel)]="nk.upperThickness" (input)="edited()" (focus)="focus('upperThickness', pal.ink(2))" (blur)="blur()" />
+                [(ngModel)]="nk.upperThickness" (input)="recordEditAndRedraw()" (focus)="highlightPart('upperThickness', pal.ink(2))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title" [style.color]="pal.ink(0)">Nut Height <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="nk.nutHeight" (input)="edited()" />
+                [(ngModel)]="nk.nutHeight" (input)="recordEditAndRedraw()" />
         </label>
     </div>
 </section>

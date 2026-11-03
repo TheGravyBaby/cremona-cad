@@ -60,8 +60,11 @@ Sort by what the code knows, not what feature it serves:
   (casework solvers, fillets, arc fits, runs) → `vibeMath` (splines, catenary, spatial index,
   projection) → `pathMath` (one SVG `d` string at a time) → `pathVibes` (booleans, offsets, joining).
 - **`helpers/renderFuncs.ts`**: instrument-agnostic SVG emission. A panel's own renders live in its panel file.
-- **The component**: thin. `edited()` emits `edit` and calls `draw()`; `draw()` solves, composes
-  layers, emits `drawn`; `report()` raises the failures once the edit settles. Only highlight keys
+- **The component**: thin. `panels/panel-component-base.ts` holds what every panel does alike:
+  `recordEditAndRedraw()` emits `edit` and calls `drawCanvas()`; `drawCanvas()` emits what the
+  panel's `buildCanvasLayers()` returns; `highlightPart()` and `clearHighlight()` follow a field's
+  focus. The panel writes `buildCanvasLayers()`, which solves and composes layers, and
+  `reportSolveFailures()`, which raises the failures once the edit settles. Only highlight keys
   and view state (drag handlers, cursor) stay on the component.
 
 **Params hold what the user sets, and only that.** One optional sub-object per stage, absent until
@@ -120,16 +123,16 @@ Six edits. Missing one usually fails quietly (a panel that never unlocks):
 
 1. `violin-family-types.ts` → `VIOLIN_FAMILY_PANEL_IDS` and the stage's `<Stage>Params` on
    `ViolinFamilyParams`; `violin-family-solves.ts` → its `<Stage>Solve`. Ids are file-format vocabulary (images scope to them).
-2. `panels/<name>-panel/`: `.ts` + `.html` only, shared stylesheets. `implements ViolinFamilyPanel`,
-   declare `static readonly renderToggles` and `static seed(p)`, outputs `drawn` and `edit`. Copy
+2. `panels/<name>-panel/`: `.ts` + `.html` only, shared stylesheets. `extends PanelComponentBase<HighlightKey, Ratios>`,
+   declare `pal`, `static readonly renderToggles` and `static seed(p)`, write `buildCanvasLayers()` and `reportSolveFailures()`. Copy
    `corners-panel/`.
 3. `violin-family-recipe.ts` → `panelOrder` (bench order, `toggles`, `seed`).
 4. `violin-family-recipe.ts` → `canOpenPanel()` case reading the solver the stage depends on.
 5. `violin-family-recipe.ts` → component `imports`.
-6. `violin-family.html` → `@if (openPanel === '<id>')` block with `#panelRef`, `(drawn)` and `(edit)`.
+6. `violin-family.html` → `@if (openPanel === '<id>')` block with `#panelRef`, `[params]`, `[flags]`, `(drawn)` and `(edit)`.
 
-`ngOnInit` → `draw()`; every field `(input)="edited()"`; failures go out through `report()` when
-the edit settles, not on every keystroke. `export-panel` takes `drawn` only; don't copy it.
+Every field `(input)="recordEditAndRedraw()"`; failures go out through `reportSolveFailures()` when
+the edit settles, not on every keystroke. `export-panel` never emits `edit`; don't copy it.
 
 ## Adding a tool
 
@@ -173,12 +176,10 @@ arcs, F0–F1 the front's.
 
 ## Code taste
 
-- **Locality beats abstraction.** Don't extract a helper because a block got long or split a
+- **Locality beats abstraction**, except for what every panel does alike (`PanelComponentBase`). Don't extract a helper because a block got long or split a
   file because it got big. Split only on boundaries a reader already thinks in (a panel, a
   pipeline stage). Prefer a local edit to a new layer of indirection; raise sweeping structural
   changes before making them.
-- **The arching panels (fluting, long arching, cross arching) were agent-built.** Explain changes
-  there in bench terms and lean on the specs, which encode the acceptance criteria.
 - **Comments default to zero.** Only a WHY the code can't carry: a hidden constraint, a workaround.
   Lowercase, brief, inline. Banned: banner/divider comments, JSDoc by default, restating the next
   line, duplicated explanations, commented-out code, stale comments.

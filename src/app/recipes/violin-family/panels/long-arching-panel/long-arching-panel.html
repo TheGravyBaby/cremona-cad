@@ -7,13 +7,13 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Upper Rib <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="arching.ribHeightUpper" (input)="edited()" />
+            <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="arching.ribHeightUpper" (input)="recordEditAndRedraw()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Lower Rib <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="arching.ribHeightLower" (input)="edited()" />
+            <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="arching.ribHeightLower" (input)="recordEditAndRedraw()" />
         </label>
-         <button type="button" class="info-icon" (click)="help('ribHeight')" title="More information"
+         <button type="button" class="info-icon" (click)="showFieldHelp('ribHeight')" title="More information"
             aria-label="Information">ⓘ</button>
     </div>
 </section>
@@ -29,27 +29,27 @@
      <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Thickness <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.5" min="0" [(ngModel)]="pa.thickness" (input)="edited()" />
+            <input type="number" class="basic-input" step="0.5" min="0" [(ngModel)]="pa.thickness" (input)="recordEditAndRedraw()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
-            <input type="radio" [name]="plate + '-arch-type'" value="catenary" [(ngModel)]="arch.type" (change)="edited()" />
+            <input type="radio" [name]="plate + '-arch-type'" value="catenary" [(ngModel)]="arch.type" (change)="recordEditAndRedraw()" />
             <span>Catenary</span>
         </div>
         <div class="toggle">
-            <input type="radio" [name]="plate + '-arch-type'" value="spline" [(ngModel)]="arch.type" (change)="edited()" />
+            <input type="radio" [name]="plate + '-arch-type'" value="spline" [(ngModel)]="arch.type" (change)="recordEditAndRedraw()" />
             <span>Spline</span>
         </div>
-            <button type="button" class="info-icon" (click)="help('curveType')" title="More information"
+            <button type="button" class="info-icon" (click)="showFieldHelp('curveType')" title="More information"
                 aria-label="Information">ⓘ</button>
     </div>
     @if (arch.type === 'catenary') {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Arch Height <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="arch.height" (input)="edited()"
-                [style.borderColor]="ink" (focus)="focus(plate, peakSource)" (blur)="blur()" />
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="arch.height" (input)="recordEditAndRedraw()"
+                [style.borderColor]="ink" (focus)="highlightArchPoint(plate, peakSource)" (blur)="clearHighlight()" />
         </label>
     </div>
     } @else {
@@ -64,27 +64,27 @@
             <button type="button" class="row-grip" data-reorder-handle aria-label="Reorder row" docTip="reorderRow">⠿</button>
             @if (row.item; as pt) {
             <div class="field-cell">
-                <input type="number" class="basic-input" step="1" min="1" max="99" [(ngModel)]="pt.t" (input)="edited()"
-                    (focus)="focus(plate, row.index)" (blur)="blur()" />
+                <input type="number" class="basic-input" step="1" min="1" max="99" [(ngModel)]="pt.t" (input)="recordEditAndRedraw()"
+                    (focus)="highlightArchPoint(plate, row.index)" (blur)="clearHighlight()" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
-                <input type="number" class="basic-input" step="0.1" [min]="-pa.thickness" [max]="arch.height" [(ngModel)]="pt.z" (input)="edited()"
-                    (focus)="focus(plate, row.index)" (blur)="blur()" />
+                <input type="number" class="basic-input" step="0.1" [min]="-pa.thickness" [max]="arch.height" [(ngModel)]="pt.z" (input)="recordEditAndRedraw()"
+                    (focus)="highlightArchPoint(plate, row.index)" (blur)="clearHighlight()" />
             </div>
             <div class="toggle">
-                <input type="checkbox" [(ngModel)]="pt.mirror" (change)="edited()" /><span>Mirror</span>
+                <input type="checkbox" [(ngModel)]="pt.mirror" (change)="recordEditAndRedraw()" /><span>Mirror</span>
             </div>
             <button type="button" class="info-icon" (click)="removePoint(plate, row.index)" title="Remove point" aria-label="Remove point">×</button>
             } @else {
             <div class="field-cell">
-                <input type="number" class="basic-input" step="1" min="5" max="95" [(ngModel)]="arch.peak" (input)="edited()"
-                    (focus)="focus(plate, peakSource)" (blur)="blur()" />
+                <input type="number" class="basic-input" step="1" min="5" max="95" [(ngModel)]="arch.peak" (input)="recordEditAndRedraw()"
+                    (focus)="highlightArchPoint(plate, peakSource)" (blur)="clearHighlight()" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
-                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="arch.height" (input)="edited()"
-                    [style.borderColor]="ink" (focus)="focus(plate, peakSource)" (blur)="blur()" />
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="arch.height" (input)="recordEditAndRedraw()"
+                    [style.borderColor]="ink" (focus)="highlightArchPoint(plate, peakSource)" (blur)="clearHighlight()" />
             </div>
             <span>Peak</span>
             }

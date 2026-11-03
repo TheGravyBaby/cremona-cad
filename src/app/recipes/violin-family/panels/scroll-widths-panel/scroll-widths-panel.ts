@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { dist, normalizeRadians, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
 import { arcRun, joinedRun, riseAlongRun, Run, straightRun } from '../../../../helpers/math/draftMath';
@@ -8,7 +8,7 @@ import { occludePath } from '../../../../helpers/math/pathVibes';
 import {
   renderCircle, renderCrosshair, renderDashLine, renderPath, renderPointHalo, renderSolveFailures, renderStroke, StrokeShape,
 } from '../../../../helpers/renderFuncs';
-import { buildMiss, reportFailures, safeRun } from '../../../../helpers/validators';
+import { buildMiss, reportFailures } from '../../../../helpers/validators';
 import { Arc, Circle, Pt, Pt3D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
@@ -16,11 +16,10 @@ import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
   RenderLayer,
   ScrollWidths,
-  ViolinFamilyPanel,
   ViolinFamilyParams,
   ViolinFamilyToggleKey,
-  ViolinFamilyViewFlags,
 } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import {
   ScrollSolve,
   ScrollWidthsFailure,
@@ -38,57 +37,30 @@ export type ScrollStation = { key: ScrollStationKey; at: Pt; width: number };
   templateUrl: './scroll-widths-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class ScrollWidthsPanel implements ViolinFamilyPanel, OnInit {
+export class ScrollWidthsPanel extends PanelComponentBase<ScrollStationKey> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('stones');
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
-
-  // what the last draw solved; report() reads it
+  // what the last draw solved; reportSolveFailures() reads it
   w!: ScrollWidthsSolve;
-  focused: { key: ScrollStationKey; color: string } | null = null;
 
-  ngOnInit(): void {
-    this.draw();
-  }
-
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
-
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures([...this.w.scroll.failures, ...this.w.failures], 'Scroll Widths');
   }
 
-  focus(key: ScrollStationKey, color: string): void {
-    this.focused = { key, color };
-    this.draw();
-  }
-
-  blur(): void {
-    this.focused = null;
-    this.draw();
-  }
-
-  draw(): void {
-    safeRun(() => {
-      let p = this.params;
-      let w = this.w = solveScrollWidths(p)!;
-      let s = w.scroll;
-      let whole = !s.failures.length && !w.failures.some(f => f.unsolved.length);
-      this.drawn.emit([
-        renderScrollNeck(p, s, this.pal, false),
-        ...(whole ? [
-          renderPath(defineSideScrollPath(p, s), this.pal.neutral, STROKE_WEIGHT.trace),
-          renderScrollWidths(p, s, this.pal, this.focused, this.flags.showModuleGuides, this.flags.showModuleArcs),
-        ] : []),
-        renderSolveFailures([...s.failures, ...w.failures], this.pal.alert),
-      ]);
-    });
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    let w = this.w = solveScrollWidths(p)!;
+    let s = w.scroll;
+    let whole = !s.failures.length && !w.failures.some(f => f.unsolved.length);
+    return [
+      renderScrollNeck(p, s, this.pal, false),
+      ...(whole ? [
+        renderPath(defineSideScrollPath(p, s), this.pal.neutral, STROKE_WEIGHT.trace),
+        renderScrollWidths(p, s, this.pal, this.highlightedPart, this.flags.showModuleGuides, this.flags.showModuleArcs),
+      ] : []),
+      renderSolveFailures([...s.failures, ...w.failures], this.pal.alert),
+    ];
   }
 }
 

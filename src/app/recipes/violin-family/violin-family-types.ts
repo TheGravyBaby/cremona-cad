@@ -497,13 +497,6 @@ export interface HighlightedArc {
 
 export type RenderLayer = (g: any, ui: any) => void;
 
-// what the shell asks of whichever panel is mounted: a draw when the theme, a view toggle or an
-// undo has changed the picture, and the messages once an edit has settled
-export interface ViolinFamilyPanel {
-  draw(): void;
-  report(): void;
-}
-
 export const VIOLIN_FAMILY_RECIPE_NAME = 'violin-family-recipe';
 // its own key: the Ceruti recipe's flags are a different shape
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';

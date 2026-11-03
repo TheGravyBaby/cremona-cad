@@ -5,80 +5,80 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">U1 Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U1R" (input)="edited()"
-                [style.borderColor]="pal.ink(1).faint(3)" (focus)="highlight('U1', pal.ink(1).faint(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U1R" (input)="recordEditAndRedraw()"
+                [style.borderColor]="pal.ink(1).faint(3)" (focus)="highlightPart('U1', pal.ink(1).faint(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">U1 End <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" [(ngModel)]="k.U1End" (input)="edited()"
-                (focus)="highlight('U1', pal.ink(1).faint(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" [(ngModel)]="k.U1End" (input)="recordEditAndRedraw()"
+                (focus)="highlightPart('U1', pal.ink(1).faint(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">to S</span>
-            <div class="basic-display" aria-label="U1 to S ratio value">{{ ratio('U1toS') }}</div>
+            <div class="basic-display" aria-label="U1 to S ratio value">{{ formatRatio('U1toS') }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">U2 Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U2R" (input)="edited()"
-                [style.borderColor]="pal.ink(1)" (focus)="highlight('U2', pal.ink(1))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U2R" (input)="recordEditAndRedraw()"
+                [style.borderColor]="pal.ink(1)" (focus)="highlightPart('U2', pal.ink(1))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <div class="toggle">
-                <input type="checkbox" [(ngModel)]="k.U21DoubleArc" (change)="edited()" /><span>Compound</span>
+                <input type="checkbox" [(ngModel)]="k.U21DoubleArc" (change)="recordEditAndRedraw()" /><span>Compound</span>
             </div>
         </label>
         <label class="field-cell">
             <span class="field-title">to S</span>
-            <div class="basic-display" aria-label="U2 to S ratio value">{{ ratio('U2toS') }}</div>
+            <div class="basic-display" aria-label="U2 to S ratio value">{{ formatRatio('U2toS') }}</div>
         </label>
     </div>
     @if (k.U21DoubleArc) {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">U21 Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U21R" (input)="edited()"
-                [style.borderColor]="pal.ink(1).faint(3)" (focus)="highlight('U21', pal.ink(1).faint(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U21R" (input)="recordEditAndRedraw()"
+                [style.borderColor]="pal.ink(1).faint(3)" (focus)="highlightPart('U21', pal.ink(1).faint(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">U2 Sweep <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="k.U2Sweep" (input)="edited()"
-                (focus)="highlight('U21', pal.ink(1).faint(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="k.U2Sweep" (input)="recordEditAndRedraw()"
+                (focus)="highlightPart('U21', pal.ink(1).faint(3))" (blur)="clearHighlight()" />
         </label>
     </div>
     }
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">U3 Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U3R" (input)="edited()"
-                [style.borderColor]="pal.ink(1).faint(-3)" (focus)="highlight('U3', pal.ink(1).faint(-3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U3R" (input)="recordEditAndRedraw()"
+                [style.borderColor]="pal.ink(1).faint(-3)" (focus)="highlightPart('U3', pal.ink(1).faint(-3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Wing Angle <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" [(ngModel)]="k.U3Angle" (input)="edited()"
-                (focus)="highlight('U3', pal.ink(1).faint(-3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" [(ngModel)]="k.U3Angle" (input)="recordEditAndRedraw()"
+                (focus)="highlightPart('U3', pal.ink(1).faint(-3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">to S</span>
-            <div class="basic-display" aria-label="U3 to S ratio value">{{ ratio('U3toS') }}</div>
+            <div class="basic-display" aria-label="U3 to S ratio value">{{ formatRatio('U3toS') }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Wing <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.25" min="0" [(ngModel)]="k.UCut.length" (input)="edited()"
-                [style.borderColor]="pal.ink(3)" (focus)="highlight('UCut', pal.ink(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="0.25" min="0" [(ngModel)]="k.UCut.length" (input)="recordEditAndRedraw()"
+                [style.borderColor]="pal.ink(3)" (focus)="highlightPart('UCut', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Slope <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" [(ngModel)]="k.UCut.slope" (input)="edited()"
-                (focus)="highlight('UCut', pal.ink(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" [(ngModel)]="k.UCut.slope" (input)="recordEditAndRedraw()"
+                (focus)="highlightPart('UCut', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Eye Angle <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" [(ngModel)]="k.UCut.angleOnEye" (input)="edited()"
-                (focus)="highlight('UCut', pal.ink(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" [(ngModel)]="k.UCut.angleOnEye" (input)="recordEditAndRedraw()"
+                (focus)="highlightPart('UCut', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
     </div>
 </section>
@@ -88,13 +88,13 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Arc Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.stemArcR" (input)="edited()"
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.stemArcR" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(2)" />
         </label>
         <label class="field-cell"></label>
         <label class="field-cell">
             <span class="field-title">to Eye Span</span>
-            <div class="basic-display" aria-label="S to EyeSpan ratio value">{{ ratio('StoEyeSpan') }}</div>
+            <div class="basic-display" aria-label="S to EyeSpan ratio value">{{ formatRatio('StoEyeSpan') }}</div>
         </label>
     </div>
 </section>
@@ -104,80 +104,80 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">L1 Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L1R" (input)="edited()"
-                [style.borderColor]="pal.ink(0).faint(3)" (focus)="highlight('L1', pal.ink(0).faint(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L1R" (input)="recordEditAndRedraw()"
+                [style.borderColor]="pal.ink(0).faint(3)" (focus)="highlightPart('L1', pal.ink(0).faint(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">L1 End <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" [(ngModel)]="k.L1End" (input)="edited()"
-                (focus)="highlight('L1', pal.ink(0).faint(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" [(ngModel)]="k.L1End" (input)="recordEditAndRedraw()"
+                (focus)="highlightPart('L1', pal.ink(0).faint(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">to S</span>
-            <div class="basic-display" aria-label="L1 to S ratio value">{{ ratio('L1toS') }}</div>
+            <div class="basic-display" aria-label="L1 to S ratio value">{{ formatRatio('L1toS') }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">L2 Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L2R" (input)="edited()"
-                [style.borderColor]="pal.ink(0)" (focus)="highlight('L2', pal.ink(0))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L2R" (input)="recordEditAndRedraw()"
+                [style.borderColor]="pal.ink(0)" (focus)="highlightPart('L2', pal.ink(0))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <div class="toggle">
-                <input type="checkbox" [(ngModel)]="k.L21DoubleArc" (change)="edited()" /><span>Compound</span>
+                <input type="checkbox" [(ngModel)]="k.L21DoubleArc" (change)="recordEditAndRedraw()" /><span>Compound</span>
             </div>
         </label>
         <label class="field-cell">
             <span class="field-title">to S</span>
-            <div class="basic-display" aria-label="L2 to S ratio value">{{ ratio('L2toS') }}</div>
+            <div class="basic-display" aria-label="L2 to S ratio value">{{ formatRatio('L2toS') }}</div>
         </label>
     </div>
     @if (k.L21DoubleArc) {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">L21 Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L21R" (input)="edited()"
-                [style.borderColor]="pal.ink(0).faint(3)" (focus)="highlight('L21', pal.ink(0).faint(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L21R" (input)="recordEditAndRedraw()"
+                [style.borderColor]="pal.ink(0).faint(3)" (focus)="highlightPart('L21', pal.ink(0).faint(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">L2 Sweep <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="k.L2Sweep" (input)="edited()"
-                (focus)="highlight('L21', pal.ink(0).faint(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="k.L2Sweep" (input)="recordEditAndRedraw()"
+                (focus)="highlightPart('L21', pal.ink(0).faint(3))" (blur)="clearHighlight()" />
         </label>
     </div>
     }
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L3R" (input)="edited()"
-                [style.borderColor]="pal.ink(0).faint(-3)" (focus)="highlight('L3', pal.ink(0).faint(-3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L3R" (input)="recordEditAndRedraw()"
+                [style.borderColor]="pal.ink(0).faint(-3)" (focus)="highlightPart('L3', pal.ink(0).faint(-3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Wing Angle <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" [(ngModel)]="k.L3Angle" (input)="edited()"
-                (focus)="highlight('L3', pal.ink(0).faint(-3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" [(ngModel)]="k.L3Angle" (input)="recordEditAndRedraw()"
+                (focus)="highlightPart('L3', pal.ink(0).faint(-3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">to S</span>
-            <div class="basic-display" aria-label="L3 to S ratio value">{{ ratio('L3toS') }}</div>
+            <div class="basic-display" aria-label="L3 to S ratio value">{{ formatRatio('L3toS') }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Wing <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.25" min="0" [(ngModel)]="k.LCut.length" (input)="edited()"
-                [style.borderColor]="pal.ink(3)" (focus)="highlight('LCut', pal.ink(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="0.25" min="0" [(ngModel)]="k.LCut.length" (input)="recordEditAndRedraw()"
+                [style.borderColor]="pal.ink(3)" (focus)="highlightPart('LCut', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Slope <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" [(ngModel)]="k.LCut.slope" (input)="edited()"
-                (focus)="highlight('LCut', pal.ink(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" [(ngModel)]="k.LCut.slope" (input)="recordEditAndRedraw()"
+                (focus)="highlightPart('LCut', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Eye Angle <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step="1" [(ngModel)]="k.LCut.angleOnEye" (input)="edited()"
-                (focus)="highlight('LCut', pal.ink(3))" (blur)="highlight(null)" />
+            <input type="number" class="basic-input" step="1" [(ngModel)]="k.LCut.angleOnEye" (input)="recordEditAndRedraw()"
+                (focus)="highlightPart('LCut', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
     </div>
 </section>

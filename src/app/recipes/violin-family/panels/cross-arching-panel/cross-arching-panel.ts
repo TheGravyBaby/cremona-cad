@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import * as d3 from 'd3';
 import * as polygonClipping from 'polygon-clipping';
@@ -12,9 +12,8 @@ import {
   renderCircle, renderDashedLine, renderGuideBaseline, renderGuideKnot, renderGuideMeasure, renderPath, renderPointHalo, renderRect, renderSegment,
   renderSolveFailures, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
-import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { reportFailures, solveSection } from '../../../../helpers/validators';
 import { readWorkingState, writeWorkingState } from '../../../../helpers/workingStorage';
-import { showFieldHelp } from '../../../../docs/field-help';
 import { TooltipDirective } from '../../../../docs/tooltips';
 import { Circle, Pt, Pt3D, Rectangle } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
@@ -26,11 +25,10 @@ import {
   CrossShapeParams,
   CrossStationParams,
   RenderLayer,
-  ViolinFamilyPanel,
   ViolinFamilyParams,
   ViolinFamilyToggleKey,
-  ViolinFamilyViewFlags,
 } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import {
   ArchTakeoff,
   CrossArchingFailure,
@@ -98,19 +96,13 @@ interface Sampled {
   templateUrl: './cross-arching-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
+export class CrossArchingPanel extends PanelComponentBase<{ plate: Plate; index: number }> implements OnDestroy {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('iceAndFire');
-  protected readonly help = showFieldHelp;
   protected readonly plates: readonly Plate[] = ['top', 'back'];
   protected readonly rows = rowsWithMarker;
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
-
-  // what the last draw solved; the template's readouts and report() read it
+  // what the last draw solved; the template's readouts and reportSolveFailures() read it
   s!: CrossArchingSolve;
   section: Record<Plate, CrossArchSection | null> = { top: null, back: null };
 
@@ -118,17 +110,16 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
   private sampled: Record<Plate, Sampled | null> = { top: null, back: null };
   // the rib outline the section's box is cut from, sampled once per plate contour solve
   private ribOutline: { for: PlateContourSolve; poly: Pt[] | null } | null = null;
-  highlighted: { plate: Plate; index: number } | null = null;
   dragging = false;
   private dragLast = { x: 0, y: 0 };
 
-  ngOnInit(): void {
+  override ngOnInit(): void {
     try {
       this.view = { ...this.view, ...JSON.parse(readWorkingState(VIEW_KEY) ?? '{}') };
     } catch { /* a fresh tab */ }
     // first open sights the waist
     this.view.cursorY ??= Math.round(this.params.bouts!.C0Y);
-    this.draw();
+    super.ngOnInit();
   }
 
   ngOnDestroy(): void {
@@ -136,47 +127,39 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     window.removeEventListener('pointerup', this.onPointerUp);
   }
 
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
-
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures(this.s.failures, 'Cross arching');
   }
 
-  draw(): void {
-    safeRun(() => {
-      let p = this.params;
-      let o = solvePlateContour(p)!;
-      let f = solveFluting(p)!;
-      let a = solveLongArching(p)!;
-      let sideX = sideViewOffsetX(p);
-      let s = this.s = solveCrossArching(p)!;
-      let y = this.cursorY;
-      for (let plate of this.plates) {
-        let surface = s[plate];
-        this.section[plate] = surface ? sectionAt(surface, y) : null;
-        if (surface && this.sampled[plate]?.surface !== surface) this.sampled[plate] = { surface, contours: null, wireframe: null };
-        if (!surface) this.sampled[plate] = null;
-      }
-      let dx = -p.body.width * PLATE_LAYOUT_GAP;
-      let sideReach = sideX + Math.max(a.ribs!.zLower, a.ribs!.zUpper) + p.arching!.top.thickness + p.arching!.top.long.height + STATION_LINE_OVERRUN_MM;
-      let stationLine = renderDashedLine(new Pt(dx - p.body.width / 2 - STATION_LINE_OVERRUN_MM, y), new Pt(sideReach, y), this.pal.neutral, DASH.guide, STROKE_WEIGHT.section, 0.7);
-      let side = renderBodySideProfile(p, a, o, this.pal, false, { ground: true, fluting: true });
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    let o = solvePlateContour(p)!;
+    let f = solveFluting(p)!;
+    let a = solveLongArching(p)!;
+    let sideX = sideViewOffsetX(p);
+    let s = this.s = solveCrossArching(p)!;
+    let y = this.cursorY;
+    for (let plate of this.plates) {
+      let surface = s[plate];
+      this.section[plate] = surface ? sectionAt(surface, y) : null;
+      if (surface && this.sampled[plate]?.surface !== surface) this.sampled[plate] = { surface, contours: null, wireframe: null };
+      if (!surface) this.sampled[plate] = null;
+    }
+    let dx = -p.body.width * PLATE_LAYOUT_GAP;
+    let sideReach = sideX + Math.max(a.ribs!.zLower, a.ribs!.zUpper) + p.arching!.top.thickness + p.arching!.top.long.height + STATION_LINE_OVERRUN_MM;
+    let stationLine = renderDashedLine(new Pt(dx - p.body.width / 2 - STATION_LINE_OVERRUN_MM, y), new Pt(sideReach, y), this.pal.neutral, DASH.guide, STROKE_WEIGHT.section, 0.7);
+    let side = renderBodySideProfile(p, a, o, this.pal, false, { ground: true, fluting: true });
 
-
-      this.drawn.emit([
-        renderPlateContour(p, o, this.pal, this.flags, false),
-        renderFluting(p, f, this.pal, false),
-        renderFholes(p, this.pal),
-        renderTranslatedLayers([side], sideX),
-        stationLine,
-        this.sectionView(y),
-        ...this.overlayLayers(y),
-        renderSolveFailures(s.failures, this.pal.alert),
-      ]);
-    });
+    return [
+      renderPlateContour(p, o, this.pal, this.flags, false),
+      renderFluting(p, f, this.pal, false),
+      renderFholes(p, this.pal),
+      renderTranslatedLayers([side], sideX),
+      stationLine,
+      this.sectionView(y),
+      ...this.overlayLayers(y),
+      renderSolveFailures(s.failures, this.pal.alert),
+    ];
   }
 
   // the cursor runs the whole body, both ends included: there is no plate at either end, so those
@@ -190,7 +173,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     if (!Number.isFinite(mm)) return;
     this.view.cursorY = clamp(mm, 0, this.params.body.height);
     this.saveView();
-    this.draw();
+    this.drawCanvas();
   }
 
   jumpTo(y: number): void {
@@ -258,12 +241,12 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     let shape = this.shown(plate);
     cross.stations.push({ y: this.cursorY, d: shape.d, pct: shape.pct, peak: shape.peak, peakRow: shape.peakRow, points: shape.points.map(pt => ({ ...pt })) });
     cross.stations.sort((a, b) => a.y - b.y);
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   removeStation(plate: Plate, index: number): void {
     this.params.arching![plate].cross.stations.splice(index, 1);
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   // partway from the outermost point toward the channel, half its height, mirrored
@@ -274,7 +257,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     let outer = shape.points.find(pt => Math.abs(pt.x - 50) === outermost);
     let x = outermost > 0 ? (outermost + 50) / 2 : 25;
     shape.points.push({ x: +(50 + x).toFixed(0), z: +((outer?.z ?? 100) / 2).toFixed(0), mirror: true });
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   // the crown keeps its place between the same points
@@ -283,7 +266,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     if (!shape) return;
     if (index < (shape.peakRow ?? 0)) shape.peakRow!--;
     shape.points.splice(index, 1);
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   // bass side first
@@ -292,14 +275,14 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     if (!shape) return;
     shape.points.sort((a, b) => a.x - b.x);
     shape.peakRow = shape.points.filter(pt => pt.x < shape.peak).length;
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   moveRow(plate: Plate, move: RowMove): void {
     let shape = this.active(plate);
     if (!shape) return;
     shape.peakRow = applyRowMove(shape.points, shape.peakRow ?? 0, move);
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   // the lowest a point may dip, % of the arch height: the plate's thickness
@@ -319,17 +302,11 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     this.view.overlay[plate] = next;
     if (next !== 'none') this.view.overlay[other] = 'none';
     this.saveView();
-    this.draw();
+    this.drawCanvas();
   }
 
-  focus(plate: Plate, index: number): void {
-    this.highlighted = { plate, index };
-    this.draw();
-  }
-
-  blur(): void {
-    this.highlighted = null;
-    this.draw();
+  highlightArchPoint(plate: Plate, index: number): void {
+    this.highlightPart({ plate, index });
   }
 
   private saveView(): void {
@@ -352,7 +329,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     this.dragLast = { x: event.clientX, y: event.clientY };
     this.view.rotY = normalizeDegrees(this.view.rotY + dx * PLATE_DEG_PER_PX);
     this.view.rotX = clamp(this.view.rotX - dy * PLATE_DEG_PER_PX, -90, 90);
-    this.draw();
+    this.drawCanvas();
   };
 
   private onPointerUp = (): void => {
@@ -360,7 +337,7 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
     window.removeEventListener('pointermove', this.onPointerMove);
     window.removeEventListener('pointerup', this.onPointerUp);
     this.saveView();
-    this.draw();
+    this.drawCanvas();
   };
 
   // the surface above the body, as a contour map or a wireframe, the cursor's station drawn across
@@ -476,8 +453,8 @@ export class CrossArchingPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
 
       let shape = this.shown(plate);
       let type = a[plate].cross.type;
-      if (this.highlighted?.plate === plate && type === 'spline') {
-        let pt = shape.points[this.highlighted.index];
+      if (this.highlightedPart?.key.plate === plate && type === 'spline') {
+        let pt = shape.points[this.highlightedPart.key.index];
         if (pt) {
           let side: 1 | -1 = pt.x < 50 ? -1 : 1;
           let xs = pt.mirror ? [1, -1] as const : [side];

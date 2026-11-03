@@ -1,6 +1,7 @@
 import { ChangeDetectorRef, Component, ViewChild, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../../recipe-base/recipe-base';
+import { PanelComponentBase } from './panels/panel-component-base';
 import { RecipeToolbarComponent } from '../../recipe-toolbar/recipe-toolbar';
 import { ThemeService } from '../../theme/theme.service';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../../helpers/workingStorage';
@@ -8,7 +9,7 @@ import { isLocalHost } from '../../helpers/debugDump';
 import { normalizeViolinFamilyRecipe } from './normalizer/violin-family-normalizer';
 import {
   blankViolinFamilyRecipe, DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS, VIOLIN_FAMILY_PANEL_IDS,
-  VIOLIN_FAMILY_VIEW_FLAGS_KEY, ViolinFamilyPanel, ViolinFamilyPanelId, ViolinFamilyParams, ViolinFamilyRecipe,
+  VIOLIN_FAMILY_VIEW_FLAGS_KEY, ViolinFamilyPanelId, ViolinFamilyParams, ViolinFamilyRecipe,
   ViolinFamilyTemplate, ViolinFamilyToggleKey, ViolinFamilyViewFlags,
 } from './violin-family-types';
 import { BaseMeasurementsPanel, calcBodyRatios } from './panels/base-measurements-panel/base-measurements-panel';
@@ -39,7 +40,7 @@ import { IconDirective } from '../../icons/icon.directive';
 // shell owns panel order, the file, undo and the view toggles; every panel solves and draws itself.
 //
 // An edit takes two paths from here. A field writes its param through ngModel and calls its
-// panel's edited(), which redraws at once and lands in onPanelEdit: commit() follows once the
+// panel's recordEditAndRedraw(), which redraws at once and lands in onPanelEdit: commit() follows once the
 // typing stops.
 
 @Component({
@@ -93,13 +94,13 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
   viewFlags: ViolinFamilyViewFlags = { ...DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS, ...readStoredViewFlags() };
 
   // only one panel is ever mounted, behind mutually exclusive @if blocks in the template
-  @ViewChild('panelRef') private panelRef?: ViolinFamilyPanel;
+  @ViewChild('panelRef') private panelRef?: PanelComponentBase;
 
   constructor(private readonly cdr: ChangeDetectorRef) {
     super();
     effect(() => {
       this.themeService.mode();
-      this.panelRef?.draw();
+      this.panelRef?.drawCanvas();
     });
     this.initializePanelFlow(this.panelOrder);
     this.initializeDebounce(() => this.refreshBoundInputs());
@@ -157,7 +158,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
   // open panel does the drawing, once the template has caught up with a replaced `d`
   override firstRender = (): void => {
     this.requestFit.emit();
-    setTimeout(() => this.panelRef?.draw());
+    setTimeout(() => this.panelRef?.drawCanvas());
   };
 
   // every way a panel opens comes through here: a pick, the session, a load, an undo. Its stage is
@@ -216,7 +217,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
   protected override onStateRestored(): void {
     setTimeout(() => {
       if (this._destroyed) return;
-      this.panelRef?.draw();
+      this.panelRef?.drawCanvas();
     });
   }
 
@@ -227,7 +228,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
   onRenderToggle(key: ViolinFamilyToggleKey): void {
     this.viewFlags[key] = !this.viewFlags[key];
     writeWorkingState(VIOLIN_FAMILY_VIEW_FLAGS_KEY, JSON.stringify(this.viewFlags));
-    this.panelRef?.draw();
+    this.panelRef?.drawCanvas();
   }
 
   // a panel's field was edited: its stage is seeded again (a toggle may have opened new fields),
@@ -240,7 +241,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
   // what an edit settles into: debounce() has pushed the undo entry by the time this runs
   private commit(): void {
     this.panelFlow?.refreshEnabledPanels();
-    this.panelRef?.report();
+    this.panelRef?.reportSolveFailures();
     this.stampRatios();
     writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
   }

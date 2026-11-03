@@ -3,7 +3,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell field-cell--full">
             <span class="field-title">Part</span>
-            <select [(ngModel)]="settings.job" (change)="edited()">
+            <select [(ngModel)]="settings.job" (change)="saveSettingsAndRedraw()">
                 @for (e of exports; track e.id) {
                 <option [value]="e.id">{{ e.label }}</option>
                 }
@@ -14,7 +14,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">{{ inCradle ? 'Cradle cut to' : 'Plate' }}</span>
-            <select [(ngModel)]="cutTo.plate" (change)="edited()">
+            <select [(ngModel)]="cutTo.plate" (change)="saveSettingsAndRedraw()">
                 <option value="top">Top</option>
                 <option value="back">Back</option>
             </select>
@@ -22,7 +22,7 @@
         @if (settings.job === 'plate') {
         <label class="field-cell">
             <span class="field-title">Stage</span>
-            <select [(ngModel)]="blank.stage" (change)="edited()">
+            <select [(ngModel)]="blank.stage" (change)="saveSettingsAndRedraw()">
                 <option value="rough">Roughing</option>
                 <option value="finish">Finishing</option>
             </select>
@@ -30,7 +30,7 @@
         } @else if (settings.job === 'cradle') {
         <label class="field-cell">
             <span class="field-title">Stage</span>
-            <select [(ngModel)]="cradle.stage" (change)="edited()">
+            <select [(ngModel)]="cradle.stage" (change)="saveSettingsAndRedraw()">
                 <option value="pocket">Pocket</option>
                 <option value="hole">Hole</option>
             </select>
@@ -38,7 +38,7 @@
         } @else if (settings.job === 'fholes') {
         <label class="field-cell">
             <span class="field-title">Stage</span>
-            <select [(ngModel)]="fholes.stage" (change)="edited()">
+            <select [(ngModel)]="fholes.stage" (change)="saveSettingsAndRedraw()">
                 <option value="eyes">Eyes</option>
                 <option value="scribe">Scribe</option>
             </select>
@@ -50,7 +50,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell field-cell--full">
             <span class="field-title">Side</span>
-            <select [(ngModel)]="scroll.side" (change)="edited()">
+            <select [(ngModel)]="scroll.side" (change)="saveSettingsAndRedraw()">
                 <option value="left">First, left of the stem</option>
                 <option value="right">Second, right of the stem</option>
             </select>
@@ -66,13 +66,13 @@
     @if (fholes.stage === 'eyes') {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Plate at the eyes" [step]="0.1" [min]="0" [value]="fholes.thickness"
-            (valueChange)="fholes.thickness = $event; edited()"></app-mm-inch>
+            (valueChange)="fholes.thickness = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     <p class="hint">The graduated thickness there. The eyes go through it by {{ fhole.exitMargin }} mm, into the cradle's hole.</p>
     } @else {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Scribe depth" [step]="0.05" [min]="0" [value]="fholes.scribeDepth"
-            (valueChange)="fholes.scribeDepth = $event; edited()"></app-mm-inch>
+            (valueChange)="fholes.scribeDepth = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     <p class="hint">Under the surface. The groove's centre is the drawn line at any depth.</p>
     }
@@ -84,9 +84,9 @@
     <div class="ui-group-title">Harness</div>
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Fence X" [step]="0.5" [min]="0" [value]="blank.fence.x"
-            (valueChange)="blank.fence.x = $event; edited()"></app-mm-inch>
+            (valueChange)="blank.fence.x = $event; saveSettingsAndRedraw()"></app-mm-inch>
         <app-mm-inch label="Fence Y" [step]="0.5" [min]="0" [value]="blank.fence.y"
-            (valueChange)="blank.fence.y = $event; edited()"></app-mm-inch>
+            (valueChange)="blank.fence.y = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     <p class="hint">Where the fences stand from the harness's zero, the file's XY0. The blank is pushed into their corner.</p>
 </section>
@@ -95,21 +95,21 @@
     <div class="ui-group-title">Harness</div>
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Width" [step]="1" [min]="0" [value]="scroll.harness.width"
-            (valueChange)="scroll.harness.width = $event; edited()"></app-mm-inch>
+            (valueChange)="scroll.harness.width = $event; saveSettingsAndRedraw()"></app-mm-inch>
         <app-mm-inch label="Length" [step]="1" [min]="0" [value]="scroll.harness.length"
-            (valueChange)="scroll.harness.length = $event; edited()"></app-mm-inch>
+            (valueChange)="scroll.harness.length = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Stem X" [step]="0.5" [min]="0" [value]="scroll.fence.x"
-            (valueChange)="scroll.fence.x = $event; edited()"></app-mm-inch>
+            (valueChange)="scroll.fence.x = $event; saveSettingsAndRedraw()"></app-mm-inch>
         <app-mm-inch label="Crossbar Y" [step]="0.5" [min]="0" [value]="scroll.fence.y"
-            (valueChange)="scroll.fence.y = $event; edited()"></app-mm-inch>
+            (valueChange)="scroll.fence.y = $event; saveSettingsAndRedraw()"></app-mm-inch>
         <app-mm-inch label="Stem thickness" [step]="0.5" [min]="0" [value]="scroll.fence.thickness"
-            (valueChange)="scroll.fence.thickness = $event; edited()"></app-mm-inch>
+            (valueChange)="scroll.fence.thickness = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Stem reach" [step]="1" [min]="0" [value]="scroll.fence.reach"
-            (valueChange)="scroll.fence.reach = $event; edited()"></app-mm-inch>
+            (valueChange)="scroll.fence.reach = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     <p class="hint">The harness board from its lower-left corner, the file's XY0. The T fence's stem stands at X, its left face, and runs its reach up from the crossbar at Y, along the neck only: the head may stand proud of the face. The blank needs room on both sides of the stem.</p>
 </section>
@@ -120,58 +120,58 @@
     @if (onBlank) {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="At the seam" [step]="0.1" [min]="0" [value]="blank.stock.thickness"
-            (valueChange)="blank.stock.thickness = $event; edited()"></app-mm-inch>
+            (valueChange)="blank.stock.thickness = $event; saveSettingsAndRedraw()"></app-mm-inch>
         <app-mm-inch label="At the edges" [step]="0.1" [min]="0" [value]="blank.stock.edge"
-            (valueChange)="blank.stock.edge = $event; edited()"></app-mm-inch>
+            (valueChange)="blank.stock.edge = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Seam from left" [step]="0.5" [min]="0" [value]="blank.seam"
-            (valueChange)="blank.seam = $event; edited()"></app-mm-inch>
+            (valueChange)="blank.seam = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     <p class="hint">From the blank's left edge, against the fence. The plate's centre line sits on it, centred along the blank.</p>
     @if (settings.job === 'purfling') {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Strip height" [step]="0.1" [min]="0" [value]="blank.purflingDepth"
-            (valueChange)="blank.purflingDepth = $event; edited()"></app-mm-inch>
+            (valueChange)="blank.purflingDepth = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     <p class="hint">How deep the channel goes under the plate's edge. Its width is the Plate Contour panel's.</p>
     }
     } @else if (isScroll) {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Across the cheeks" [step]="0.5" [min]="0" [value]="scroll.stock.thickness"
-            (valueChange)="scroll.stock.thickness = $event; edited()"></app-mm-inch>
+            (valueChange)="scroll.stock.thickness = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Depth" [step]="1" [min]="0" [value]="scroll.stock.width"
-            (valueChange)="scroll.stock.width = $event; edited()"></app-mm-inch>
+            (valueChange)="scroll.stock.width = $event; saveSettingsAndRedraw()"></app-mm-inch>
         <app-mm-inch label="Length" [step]="1" [min]="0" [value]="scroll.stock.length"
-            (valueChange)="scroll.stock.length = $event; edited()"></app-mm-inch>
+            (valueChange)="scroll.stock.length = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Face inset" [step]="0.5" [min]="0" [value]="scroll.faceInset"
-            (valueChange)="scroll.faceInset = $event; edited()"></app-mm-inch>
+            (valueChange)="scroll.faceInset = $event; saveSettingsAndRedraw()"></app-mm-inch>
         <app-mm-inch label="Heel margin" [step]="0.5" [min]="0" [value]="scroll.endMargin"
-            (valueChange)="scroll.endMargin = $event; edited()"></app-mm-inch>
+            (valueChange)="scroll.endMargin = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     <p class="hint">Depth is back from the planed face. The face inset is the fingerboard plane in from that face: 0 leaves the face on the stem, uncut; a bit's width and more cuts it. The heel margin is the heel's lowest point up from the end on the crossbar.</p>
     } @else {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Thickness" [step]="0.1" [min]="0" [value]="g.stock.thickness"
-            (valueChange)="g.stock.thickness = $event; edited()"></app-mm-inch>
+            (valueChange)="g.stock.thickness = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     }
     @if (!isScroll) {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="Width" [step]="1" [min]="0" [value]="g.stock.width"
-            (valueChange)="g.stock.width = $event; edited()"></app-mm-inch>
+            (valueChange)="g.stock.width = $event; saveSettingsAndRedraw()"></app-mm-inch>
         <app-mm-inch label="Length" [step]="1" [min]="0" [value]="g.stock.length"
-            (valueChange)="g.stock.length = $event; edited()"></app-mm-inch>
+            (valueChange)="g.stock.length = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
     }
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell field-cell--full">
             <span class="field-title">Wood</span>
-            <select [(ngModel)]="g.wood" (change)="edited()">
+            <select [(ngModel)]="g.wood" (change)="saveSettingsAndRedraw()">
                 <option value="soft">Soft (ply, spruce, poplar)</option>
                 <option value="hard">Hard (maple, beech)</option>
             </select>
@@ -185,7 +185,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell field-cell--full">
             <span class="field-title">{{ stageShape[stage] === 'ball' ? 'Ball' : stageShape[stage] === 'v' ? 'V' : 'Flat' }}</span>
-            <select [(ngModel)]="settings.tools[stage]" (change)="edited()">
+            <select [(ngModel)]="settings.tools[stage]" (change)="saveSettingsAndRedraw()">
                 @for (t of toolsFor(stageShape[stage]); track t.number) {
                 <option [ngValue]="t.number">#{{ t.number }} {{ t.name }}{{ t.feeds[wood] ? '' : ' (no feeds yet)' }}</option>
                 }
@@ -211,7 +211,7 @@
 <section class="ui-group">
     <div class="ui-group-title">
         Plan
-        <button type="button" class="info-icon" (click)="help()" title="Why these defaults"
+        <button type="button" class="info-icon" (click)="showMachineHelp()" title="Why these defaults"
             aria-label="Information">ⓘ</button>
     </div>
     @if (!toolpaths) {

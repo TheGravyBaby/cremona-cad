@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { EXPORT_DESCRIPTIONS } from '../../../../docs/export-descriptions';
 import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, pointAtDistanceToward, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
 import {
@@ -14,16 +14,15 @@ import {
 import { downloadDxfFile } from '../../../../helpers/dxfExporter';
 import { buildHeightFieldStl, downloadStlFile, HeightFieldCut } from '../../../../helpers/stlExporter';
 import { renderPath, renderText } from '../../../../helpers/renderFuncs';
-import { safeRun } from '../../../../helpers/validators';
 import { Arc, Circle, Pt, Rectangle } from '../../../../models/types';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
   RenderLayer,
-  ViolinFamilyPanel,
   ViolinFamilyParams,
   ViolinFamilyToggleKey,
 } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import {
   NeckSolve,
   Plate,
@@ -126,7 +125,7 @@ const cutFirst = (d: string, strokeWidth = '.5'): SvgPathExport => ({ ...black(d
   templateUrl: './export-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class ExportPanel implements ViolinFamilyPanel, OnInit {
+export class ExportPanel extends PanelComponentBase {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = [];
   // the previews draw in the trace grey alone, so any palette serves
   protected readonly pal = ThemeService.getPalette('classicCremona');
@@ -134,10 +133,8 @@ export class ExportPanel implements ViolinFamilyPanel, OnInit {
   protected readonly groups = EXPORT_GROUPS;
   protected readonly templateBundle = TEMPLATE_BUNDLE;
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
   @Input() fileName = '';
   @Input() description = '';
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
   @Output() saveRecipe = new EventEmitter<void>();
 
   // what each sheet can be built from, refreshed before every preview and download: a sheet is
@@ -147,25 +144,19 @@ export class ExportPanel implements ViolinFamilyPanel, OnInit {
   // the sheet on the canvas: the top plate until one is picked, or the first sheet there is
   preview: ExportType = 'topPlate';
 
-  ngOnInit(): void {
-    this.draw();
-  }
-
   // nothing is edited here, so an edit settling has nothing to say
-  report(): void {}
+  reportSolveFailures(): void {}
 
   show(type: ExportType): void {
     this.preview = type;
-    this.draw();
+    this.drawCanvas();
   }
 
-  draw(): void {
-    safeRun(() => {
-      this.ready = exportReady(this.params);
-      if (!this.ready.has(this.preview)) this.preview = EXPORT_TYPES.find(type => this.ready.has(type)) ?? this.preview;
-      let sheet = this.ready.has(this.preview) ? exportSheet(this.params, this.preview) : null;
-      this.drawn.emit(sheet ? renderSheet(sheet, this.pal) : []);
-    });
+  protected buildCanvasLayers(): RenderLayer[] {
+    this.ready = exportReady(this.params);
+    if (!this.ready.has(this.preview)) this.preview = EXPORT_TYPES.find(type => this.ready.has(type)) ?? this.preview;
+    let sheet = this.ready.has(this.preview) ? exportSheet(this.params, this.preview) : null;
+    return sheet ? renderSheet(sheet, this.pal) : [];
   }
 
   readyCount(types: ReadonlyArray<{ type: ExportReady } | ExportReady>): number {

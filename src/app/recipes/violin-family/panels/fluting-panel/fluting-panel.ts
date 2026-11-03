@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { findJoiningArcs } from '../../../../helpers/math/draftMath';
@@ -8,13 +8,13 @@ import {
 import { pathFromArc, samplePathToPolyline, translatePath } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
 import { renderFilledPath, renderPath, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { buildMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
-import { showFieldHelp } from '../../../../docs/field-help';
+import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { Arc, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import { ChannelSolve, FlutingSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -36,10 +36,9 @@ import {
   templateUrl: './fluting-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class FlutingPanel implements ViolinFamilyPanel, OnInit {
+export class FlutingPanel extends PanelComponentBase {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = [];
   protected readonly pal = ThemeService.getPalette('classicCremona');
-  protected readonly help = showFieldHelp;
 
   // the first channels, sized by instrument family, with a narrower one through the waist, and the
   // flat at the edge half the overhang wide
@@ -55,12 +54,7 @@ export class FlutingPanel implements ViolinFamilyPanel, OnInit {
     };
   }
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
-
-  // what the last draw solved; the template's width readouts and report() read it
+  // what the last draw solved; the template's width readouts and reportSolveFailures() read it
   f!: FlutingSolve;
 
   // the channel's width as a fraction of the body's lower bout width
@@ -69,34 +63,20 @@ export class FlutingPanel implements ViolinFamilyPanel, OnInit {
     return Number.isFinite(ratio) ? nearestFraction(ratio) : '–';
   }
 
-  ngOnInit(): void {
-    this.draw();
-  }
-
-  // every field calls this: the shell seeds the stage and schedules the commit (the undo entry, the
-  // session write, report()) for when the typing stops, and the picture catches up now
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
-
-  // messages for what didn't solve, raised once the edit settles rather than on every keystroke
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures(this.f.failures, 'Fluting');
   }
 
-  draw(): void {
-    safeRun(() => {
-      let p = this.params;
-      let o = solvePlateContour(p)!;
-      let f = this.f = solveFluting(p)!;
-      this.drawn.emit([
-        renderPlateContour(p, o, this.pal, this.flags, false),
-        renderFholes(p, this.pal),
-        renderFluting(p, f, this.pal, true),
-        renderSolveFailures(f.failures, this.pal.alert, true),
-      ]);
-    });
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    let o = solvePlateContour(p)!;
+    let f = this.f = solveFluting(p)!;
+    return [
+      renderPlateContour(p, o, this.pal, this.flags, false),
+      renderFholes(p, this.pal),
+      renderFluting(p, f, this.pal, true),
+      renderSolveFailures(f.failures, this.pal.alert, true),
+    ];
   }
 }
 

@@ -5,15 +5,15 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Total Width <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.UBW" (input)="edited()" />
+            <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.UBW" (input)="recordEditAndRedraw()" />
         </label>
-        <button type="button" class="info-icon" (click)="help('boutWidth')" title="More information"
+        <button type="button" class="info-icon" (click)="showFieldHelp('boutWidth')" title="More information"
             aria-label="Information">ⓘ</button>
         <!-- empty cell for spacing -->
         <label class="field-cell"></label>
         <label class="field-cell">
             <span class="field-title">UB to LB</span>
-            <div class="basic-display" aria-label="Upper bout to lower bout ratio value">{{ ratio('UBtoLB') }}</div>
+            <div class="basic-display" aria-label="Upper bout to lower bout ratio value">{{ formatRatio('UBtoLB') }}</div>
         </label>
     </div>
 
@@ -21,27 +21,27 @@
         <div class="input-group basic-row field-row" role="group">
             <label class='field-cell'>
                 <span class="field-title">U0 - Join Radius <span class="unit-label">mm</span></span>
-                <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.U0R" (input)="edited()"
+                <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.U0R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(1)"
-                    (focus)="highlight('U0', pal.ink(1))" (blur)="highlight(null)" />
+                    (focus)="highlightPart('U0', pal.ink(1))" (blur)="clearHighlight()" />
             </label>
             <label class="field-cell"></label>
             <label class='field-cell'>
                 <span class="field-title">U0 to UBW</span>
-                <div class="basic-display" aria-label="U0 to upper bout width ratio value">{{ ratio('U0toUBW') }}</div>
+                <div class="basic-display" aria-label="U0 to upper bout width ratio value">{{ formatRatio('U0toUBW') }}</div>
             </label>
         </div>
         <div class="input-group basic-row field-row" role="group">
             <label class='field-cell'>
                 <span class="field-title">U1 - vesica Radius <span class="unit-label">mm</span></span>
-                <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.U1R" (input)="edited()"
+                <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.U1R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(1).faint(-2)"
-                    (focus)="highlight('U1', pal.ink(1).faint(-2))" (blur)="highlight(null)" />
+                    (focus)="highlightPart('U1', pal.ink(1).faint(-2))" (blur)="clearHighlight()" />
             </label>
             <label class="field-cell"></label>
             <label class='field-cell'>
                 <span class="field-title">U1 to UBW</span>
-                <div class="basic-display" aria-label="U1 to upper bout width ratio value">{{ ratio('U1toUBW') }}</div>
+                <div class="basic-display" aria-label="U1 to upper bout width ratio value">{{ formatRatio('U1toUBW') }}</div>
             </label>
         </div>
     </div>
@@ -52,15 +52,15 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Total Width <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="params.body.width" (input)="edited()" />
+            <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="params.body.width" (input)="recordEditAndRedraw()" />
         </label>
-        <button type="button" class="info-icon" (click)="help('boutWidth')" title="More information"
+        <button type="button" class="info-icon" (click)="showFieldHelp('boutWidth')" title="More information"
             aria-label="Information">ⓘ</button>
         <!-- empty cell for spacing -->
         <label class="field-cell"></label>
         <label class="field-cell">
             <span class="field-title">LB to H</span>
-            <div class="basic-display" aria-label="Lower bout to height ratio value">{{ ratio('LBtoH') }}</div>
+            <div class="basic-display" aria-label="Lower bout to height ratio value">{{ formatRatio('LBtoH') }}</div>
         </label>
     </div>
 
@@ -68,27 +68,27 @@
         <div class="input-group basic-row field-row" role="group">
             <label class='field-cell'>
                 <span class="field-title">L0 - Join Radius <span class="unit-label">mm</span></span>
-                <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.L0R" (input)="edited()"
+                <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.L0R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(0)"
-                    (focus)="highlight('L0', pal.ink(0))" (blur)="highlight(null)" />
+                    (focus)="highlightPart('L0', pal.ink(0))" (blur)="clearHighlight()" />
             </label>
             <label class="field-cell"></label>
             <label class='field-cell'>
                 <span class="field-title">L0 to LBW</span>
-                <div class="basic-display" aria-label="L0 to lower bout width ratio value">{{ ratio('L0toLBW') }}</div>
+                <div class="basic-display" aria-label="L0 to lower bout width ratio value">{{ formatRatio('L0toLBW') }}</div>
             </label>
         </div>
         <div class="input-group basic-row field-row" role="group">
             <label class='field-cell'>
                 <span class="field-title">L1 - vesica Radius <span class="unit-label">mm</span></span>
-                <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.L1R" (input)="edited()"
+                <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.L1R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(0).faint(-2)"
-                    (focus)="highlight('L1', pal.ink(0).faint(-2))" (blur)="highlight(null)" />
+                    (focus)="highlightPart('L1', pal.ink(0).faint(-2))" (blur)="clearHighlight()" />
             </label>
             <label class="field-cell"></label>
             <label class='field-cell'>
                 <span class="field-title">L1 to LBW</span>
-                <div class="basic-display" aria-label="L1 to lower bout width ratio value">{{ ratio('L1toLBW') }}</div>
+                <div class="basic-display" aria-label="L1 to lower bout width ratio value">{{ formatRatio('L1toLBW') }}</div>
             </label>
         </div>
     </div>
@@ -98,9 +98,9 @@
     <div class="ui-group-title">Viol Neck</div>
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
-            <input type="checkbox" [(ngModel)]="bouts.useViolNeck" (change)="edited()" /><span>Use Viol Neck </span>
+            <input type="checkbox" [(ngModel)]="bouts.useViolNeck" (change)="recordEditAndRedraw()" /><span>Use Viol Neck </span>
         </div>
-        <button type="button" class="info-icon" (click)="help('violNeck')" title="More information"
+        <button type="button" class="info-icon" (click)="showFieldHelp('violNeck')" title="More information"
             aria-label="Information">ⓘ</button>
     </div>
 
@@ -109,30 +109,30 @@
         <div class="input-group basic-row field-row" role="group">
             <label class="field-cell">
                 <span class="field-title">V0 Radius <span class="unit-label">mm</span></span>
-                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="viol.V0R" (input)="edited()" [style.borderColor]="pal.ink(1)"
-                    (focus)="highlight('V0', pal.ink(1))" (blur)="highlight(null)" />
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="viol.V0R" (input)="recordEditAndRedraw()" [style.borderColor]="pal.ink(1)"
+                    (focus)="highlightPart('V0', pal.ink(1))" (blur)="clearHighlight()" />
             </label>
             <label class="field-cell">
                 <span class="field-title">Join Turn <span class="unit-label">°</span></span>
-                <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="viol.joinTurn" (input)="edited()"
-                    (focus)="highlight('V0', pal.ink(1))" (blur)="highlight(null)" />
+                <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="viol.joinTurn" (input)="recordEditAndRedraw()"
+                    (focus)="highlightPart('V0', pal.ink(1))" (blur)="clearHighlight()" />
             </label>
             <label class="field-cell">
                 <span class="field-title">V0 Sweep <span class="unit-label">°</span></span>
-                <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="viol.V0Sweep" (input)="edited()"
-                    (focus)="highlight('V0', pal.ink(1))" (blur)="highlight(null)" />
+                <input type="number" class="basic-input" step="1" min="0" max="180" [(ngModel)]="viol.V0Sweep" (input)="recordEditAndRedraw()"
+                    (focus)="highlightPart('V0', pal.ink(1))" (blur)="clearHighlight()" />
             </label>
         </div>
         <div class="input-group basic-row field-row" role="group">
             <label class="field-cell">
                 <span class="field-title">Width <span class="unit-label">mm</span></span>
-                <input type="number" class="basic-input" step="1" [(ngModel)]="viol.width" (input)="edited()" />
+                <input type="number" class="basic-input" step="1" [(ngModel)]="viol.width" (input)="recordEditAndRedraw()" />
             </label>
             <label class="field-cell">
                 <span class="field-title">Join Radius <span class="unit-label">mm</span></span>
-                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="viol.neckRadius" (input)="edited()" />
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="viol.neckRadius" (input)="recordEditAndRedraw()" />
             </label>
-            <button type="button" class="info-icon" (click)="help('violNeckJoin')" title="More information"
+            <button type="button" class="info-icon" (click)="showFieldHelp('violNeckJoin')" title="More information"
                 aria-label="Information">ⓘ</button>
         </div>
     </div>

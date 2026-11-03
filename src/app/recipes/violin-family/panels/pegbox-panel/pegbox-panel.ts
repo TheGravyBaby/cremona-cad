@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   angleFromCenter, angleWithinSweep, dist, moveInVectorSpace, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, TURN,
@@ -7,7 +7,7 @@ import {
 import { circleCircleIntersections } from '../../../../helpers/math/draftMath';
 import { arcPathData, combinePathStrings, pathFromLine } from '../../../../helpers/math/pathMath';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderPath, renderSegment, renderSegmentHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { reportFailures, solveSection } from '../../../../helpers/validators';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { Arc, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
@@ -15,11 +15,11 @@ import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
   RenderLayer,
-  ViolinFamilyPanel,
   ViolinFamilyParams,
   ViolinFamilyToggleKey,
   ViolinFamilyViewFlags,
 } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import {
   ScrollFailure,
   ScrollKey,
@@ -37,67 +37,40 @@ export type ScrollLine = 'napeLine' | 'backStraight' | 'flat' | 'frontStraight';
   templateUrl: './pegbox-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class PegboxPanel implements ViolinFamilyPanel, OnInit {
+export class PegboxPanel extends PanelComponentBase<PegboxHighlightKey> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('stones');
   protected readonly nearestFraction = nearestFraction;
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
-
-  // what the last draw solved; the readouts and report() read it
+  // what the last draw solved; the readouts and reportSolveFailures() read it
   s!: ScrollSolve;
   extent: { height: number; width: number } | null = null;
-  highlighted: { key: PegboxHighlightKey; color: string } | null = null;
 
-  ngOnInit(): void {
-    this.draw();
-  }
-
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
-
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures(this.s.failures, 'Pegbox');
   }
 
-  focus(key: PegboxHighlightKey, color: string): void {
-    this.highlighted = { key, color };
-    this.draw();
-  }
-
-  blur(): void {
-    this.highlighted = null;
-    this.draw();
-  }
-
-  draw(): void {
-    safeRun(() => {
-      let p = this.params;
-      let s = this.s = solveScroll(p)!;
-      this.extent = s.S3 ? calcScrollExtent(s) : null;
-      let key = this.highlighted?.key;
-      let color = this.highlighted?.color ?? '';
-      let line = (key === 'backStraight' || key === 'flat' || key === 'frontStraight') && !isUnsolved(s, key) ? calcScrollLines(p, s)[key]
-        : key === 'napeAngle' && s.nape ? calcScrollLines(p, s).napeLine
-        : key === 'upperThickness' ? [new Pt(0, 0), new Pt(-p.neck!.upperThickness, 0)] as [Pt, Pt]
-        : null;
-      let arc = key === 'S3' || key === 'nape' || key === 'F0' || key === 'F1' ? s[key] : null;
-      // the volute as plain profile, so only what this panel edits is in colour. The profile needs
-      // the whole scroll solved, so a miss falls back to the volute's own render
-      this.drawn.emit([
-        renderScrollNeck(p, s, this.pal, this.flags.showModuleGuides),
-        s.failures.length
-          ? renderVolute(p, s, this.pal, this.flags, false, null)
-          : renderPath(defineSideScrollPath(p, s), this.pal.neutral, STROKE_WEIGHT.trace),
-        renderPegbox(p, s, this.pal, this.flags, true, arc ? { arc, color } : null, line ? { line, color } : null),
-        renderSolveFailures(s.failures, this.pal.alert),
-      ]);
-    });
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    let s = this.s = solveScroll(p)!;
+    this.extent = s.S3 ? calcScrollExtent(s) : null;
+    let key = this.highlightedPart?.key;
+    let color = this.highlightedPart?.color ?? '';
+    let line = (key === 'backStraight' || key === 'flat' || key === 'frontStraight') && !isUnsolved(s, key) ? calcScrollLines(p, s)[key]
+      : key === 'napeAngle' && s.nape ? calcScrollLines(p, s).napeLine
+      : key === 'upperThickness' ? [new Pt(0, 0), new Pt(-p.neck!.upperThickness, 0)] as [Pt, Pt]
+      : null;
+    let arc = key === 'S3' || key === 'nape' || key === 'F0' || key === 'F1' ? s[key] : null;
+    // the volute as plain profile, so only what this panel edits is in colour. The profile needs
+    // the whole scroll solved, so a miss falls back to the volute's own render
+    return [
+      renderScrollNeck(p, s, this.pal, this.flags.showModuleGuides),
+      s.failures.length
+        ? renderVolute(p, s, this.pal, this.flags, false, null)
+        : renderPath(defineSideScrollPath(p, s), this.pal.neutral, STROKE_WEIGHT.trace),
+      renderPegbox(p, s, this.pal, this.flags, true, arc ? { arc, color } : null, line ? { line, color } : null),
+      renderSolveFailures(s.failures, this.pal.alert),
+    ];
   }
 }
 

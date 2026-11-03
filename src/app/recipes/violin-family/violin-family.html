@@ -91,6 +91,8 @@
         <app-vf-base-measurements-panel #panelRef
             [style.display]="galleryShown ? 'none' : null"
             [recipe]="d"
+            [params]="d.params"
+            [flags]="viewFlags"
             (drawn)="draftChange.emit($event)"
             (edit)="onPanelEdit()">
         </app-vf-base-measurements-panel>
@@ -234,6 +236,7 @@
         @if (openPanel === 'export') {
         <app-vf-export-panel #panelRef
             [params]="d.params"
+            [flags]="viewFlags"
             [fileName]="d.fileName"
             [description]="d.description ?? ''"
             (drawn)="draftChange.emit($event)"

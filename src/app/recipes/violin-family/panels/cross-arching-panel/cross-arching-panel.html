@@ -3,7 +3,7 @@
 <section class="ui-group">
     <div class="ui-group-title">
         Station
-        <button type="button" class="info-icon" (click)="help('crossSectionStation')" title="More information"
+        <button type="button" class="info-icon" (click)="showFieldHelp('crossSectionStation')" title="More information"
             aria-label="Information">ⓘ</button>
     </div>
     <div class="input-group basic-row field-row station-row" role="group">
@@ -71,20 +71,20 @@
 <section class="ui-group">
     <div class="ui-group-title">
         {{ plate === 'top' ? 'Top Plate' : 'Back Plate' }}
-        <button type="button" class="info-icon" (click)="help('crossArchCurveType')" title="More information"
+        <button type="button" class="info-icon" (click)="showFieldHelp('crossArchCurveType')" title="More information"
             aria-label="Information">ⓘ</button>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
-            <input type="radio" [name]="plate + '-cross-type'" value="catenary" [(ngModel)]="cross.type" (change)="edited()" />
+            <input type="radio" [name]="plate + '-cross-type'" value="catenary" [(ngModel)]="cross.type" (change)="recordEditAndRedraw()" />
             <span>Catenary</span>
         </div>
         <div class="toggle">
-            <input type="radio" [name]="plate + '-cross-type'" value="cycloid" [(ngModel)]="cross.type" (change)="edited()" />
+            <input type="radio" [name]="plate + '-cross-type'" value="cycloid" [(ngModel)]="cross.type" (change)="recordEditAndRedraw()" />
             <span>Cycloid</span>
         </div>
         <div class="toggle">
-            <input type="radio" [name]="plate + '-cross-type'" value="spline" [(ngModel)]="cross.type" (change)="edited()" />
+            <input type="radio" [name]="plate + '-cross-type'" value="spline" [(ngModel)]="cross.type" (change)="recordEditAndRedraw()" />
             <span>Spline</span>
         </div>
     </div>
@@ -93,12 +93,12 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Curtate <span class="unit-label">%</span></span>
-            <input type="number" class="basic-input" step="5" min="0" max="100" [(ngModel)]="shape.d" (input)="edited()"
+            <input type="number" class="basic-input" step="5" min="0" max="100" [(ngModel)]="shape.d" (input)="recordEditAndRedraw()"
                 [disabled]="!editable" [style.borderColor]="ink" />
         </label>
         <label class="field-cell">
             <span class="field-title">Percent <span class="unit-label">%</span></span>
-            <input type="number" class="basic-input" step="1" min="5" [max]="pctMax(plate)" [(ngModel)]="shape.pct" (input)="edited()"
+            <input type="number" class="basic-input" step="1" min="5" [max]="pctMax(plate)" [(ngModel)]="shape.pct" (input)="recordEditAndRedraw()"
                 [disabled]="!editable" />
         </label>
     </div>
@@ -117,22 +117,22 @@
                 [disabled]="!editable">⠿</button>
             @if (row.item; as pt) {
             <div class="field-cell">
-                <input type="number" class="basic-input" step="1" min="0" max="100" [(ngModel)]="pt.x" (input)="edited()"
-                    [disabled]="!editable" (focus)="focus(plate, row.index)" (blur)="blur()" />
+                <input type="number" class="basic-input" step="1" min="0" max="100" [(ngModel)]="pt.x" (input)="recordEditAndRedraw()"
+                    [disabled]="!editable" (focus)="highlightArchPoint(plate, row.index)" (blur)="clearHighlight()" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
-                <input type="number" class="basic-input" step="1" [min]="zFloor(plate)" max="100" [(ngModel)]="pt.z" (input)="edited()"
-                    [disabled]="!editable" (focus)="focus(plate, row.index)" (blur)="blur()" />
+                <input type="number" class="basic-input" step="1" [min]="zFloor(plate)" max="100" [(ngModel)]="pt.z" (input)="recordEditAndRedraw()"
+                    [disabled]="!editable" (focus)="highlightArchPoint(plate, row.index)" (blur)="clearHighlight()" />
             </div>
             <div class="toggle">
-                <input type="checkbox" [(ngModel)]="pt.mirror" (change)="edited()" [disabled]="!editable" /><span>Mirror</span>
+                <input type="checkbox" [(ngModel)]="pt.mirror" (change)="recordEditAndRedraw()" [disabled]="!editable" /><span>Mirror</span>
             </div>
             <button type="button" class="info-icon" (click)="removePoint(plate, row.index)" title="Remove point" aria-label="Remove point"
                 [disabled]="!editable">×</button>
             } @else {
             <div class="field-cell">
-                <input type="number" class="basic-input" step="1" min="30" max="70" [(ngModel)]="shape.peak" (input)="edited()"
+                <input type="number" class="basic-input" step="1" min="30" max="70" [(ngModel)]="shape.peak" (input)="recordEditAndRedraw()"
                     [disabled]="!editable" [style.borderColor]="ink" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>

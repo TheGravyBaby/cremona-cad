@@ -5,13 +5,13 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.UEye.r" (input)="edited()"
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.UEye.r" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(1)" />
         </label>
         <label class="field-cell"></label>
         <label class="field-cell">
             <span class="field-title">Ur to Lr</span>
-            <div class="basic-display" aria-label="Upper eye radius to lower eye radius ratio value">{{ ratio('UEyetoLEye') }}</div>
+            <div class="basic-display" aria-label="Upper eye radius to lower eye radius ratio value">{{ formatRatio('UEyetoLEye') }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
@@ -23,9 +23,9 @@
             <div class="xy-field" data-xy-point role="group" aria-label="Upper eye position"
                 [style.borderColor]="pal.ink(1).faint(5)" title="Arrow keys move the eye from either box">
                 <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Upper eye X"
-                    [(ngModel)]="f.UEye.x" (input)="edited()" />
+                    [(ngModel)]="f.UEye.x" (input)="recordEditAndRedraw()" />
                 <input type="number" class="basic-input" step="1" min="0" data-xy="y" aria-label="Upper eye Y"
-                    [(ngModel)]="f.UEye.y" (input)="edited()" />
+                    [(ngModel)]="f.UEye.y" (input)="recordEditAndRedraw()" />
             </div>
         </div>
         <label class="field-cell">
@@ -36,7 +36,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Rise <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.URise" (input)="edited()" />
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.URise" (input)="recordEditAndRedraw()" />
         </label>
         <label class="field-cell">
             <span class="field-title">H to W</span>
@@ -54,13 +54,13 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.stem.width" (input)="edited()"
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.stem.width" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(2)" />
         </label>
         <label class="field-cell">
             <span class="field-title">Angle <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="0.1" [min]="stemAngleRange[0]" [max]="stemAngleRange[1]"
-                [(ngModel)]="f.stem.angle" (input)="edited()" />
+                [(ngModel)]="f.stem.angle" (input)="recordEditAndRedraw()" />
         </label>
         
         @if(f.notches) {
@@ -83,17 +83,17 @@
             <div class="xy-field" data-xy-point role="group" aria-label="Stem centre position"
                 [style.borderColor]="pal.ink(2).faint(5)" title="Arrow keys move the stem from either box">
                 <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Stem centre X"
-                    [(ngModel)]="f.stem.center.x" (input)="edited()" />
+                    [(ngModel)]="f.stem.center.x" (input)="recordEditAndRedraw()" />
                 <input type="number" class="basic-input" step="1" min="0" data-xy="y" aria-label="Stem centre Y"
-                    [(ngModel)]="f.stem.center.y" (input)="edited()" />
+                    [(ngModel)]="f.stem.center.y" (input)="recordEditAndRedraw()" />
             </div>
         </div>
         <label class="field-cell">
             <div class="toggle">
-                <input type="checkbox" [(ngModel)]="f.notches" (change)="edited()" /><span>Notches</span>
+                <input type="checkbox" [(ngModel)]="f.notches" (change)="recordEditAndRedraw()" /><span>Notches</span>
             </div>
         </label>
-         <button type="button" class="info-icon" (click)="help('notches')" title="More information"
+         <button type="button" class="info-icon" (click)="showFieldHelp('notches')" title="More information"
             aria-label="Information">ⓘ</button>
         
     </div>
@@ -104,7 +104,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.LEye.r" (input)="edited()"
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.LEye.r" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(0)" />
         </label>
     </div>
@@ -117,16 +117,16 @@
             <div class="xy-field" data-xy-point role="group" aria-label="Lower eye position"
                 [style.borderColor]="pal.ink(0).faint(5)" title="Arrow keys move the eye from either box">
                 <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Lower eye X"
-                    [(ngModel)]="f.LEye.x" (input)="edited()" />
+                    [(ngModel)]="f.LEye.x" (input)="recordEditAndRedraw()" />
                 <input type="number" class="basic-input" step="1" min="0" data-xy="y" aria-label="Lower eye Y"
-                    [(ngModel)]="f.LEye.y" (input)="edited()" />
+                    [(ngModel)]="f.LEye.y" (input)="recordEditAndRedraw()" />
             </div>
         </div>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Rise <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.LRise" (input)="edited()" />
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.LRise" (input)="recordEditAndRedraw()" />
         </label>
     </div>
 </section>

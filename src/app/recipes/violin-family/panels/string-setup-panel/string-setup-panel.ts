@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { dist, moveInVectorSpace, pointAtDistanceToward, TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
@@ -7,18 +7,17 @@ import { occludePath } from '../../../../helpers/math/pathVibes';
 import {
   renderDashedLine, renderGuideBaseline, renderGuideKnot, renderPath, renderPolygon, renderSegment, renderSegmentHalo, renderSolveFailures, renderStroke, renderText, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
-import { buildMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { Pt, Vect2D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
   RenderLayer,
-  ViolinFamilyPanel,
   ViolinFamilyParams,
   ViolinFamilyToggleKey,
-  ViolinFamilyViewFlags,
 } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import {
   LongArchingSolve,
   PlateContourSolve,
@@ -43,7 +42,7 @@ export type StringSetupHighlightKey =
   templateUrl: './string-setup-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
+export class StringSetupPanel extends PanelComponentBase<StringSetupHighlightKey> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFingerboard', 'showFretMarks'];
   protected readonly pal = ThemeService.getPalette('varnish');
 
@@ -52,55 +51,28 @@ export class StringSetupPanel implements ViolinFamilyPanel, OnInit {
     p.stringSetup = structuredClone(familyStandards(p.body.height).strings);
   }
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
-
-  // what the last draw solved; the readout and report() read it
+  // what the last draw solved; the readout and reportSolveFailures() read it
   s!: StringSetupSolve;
-  highlighted: { key: StringSetupHighlightKey; color: string } | null = null;
 
   get stringLength(): number | null {
     return this.s?.nutTop && this.s.bridgeTop ? dist(this.s.nutTop, this.s.bridgeTop) : null;
   }
 
-  ngOnInit(): void {
-    this.draw();
-  }
-
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
-
   // the one radius sets the board's crown the same at both ends
   radiusEdited(r: number): void {
     this.params.stringSetup!.fingerboardNutRadius = this.params.stringSetup!.fingerboardEndRadius = r;
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   // the neck's length is edited here too, so its failures are this panel's to report
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures([...this.s.neck.failures, ...this.s.failures], 'String Setup');
   }
 
-  focus(key: StringSetupHighlightKey, color: string): void {
-    this.highlighted = { key, color };
-    this.draw();
-  }
-
-  blur(): void {
-    this.highlighted = null;
-    this.draw();
-  }
-
-  draw(): void {
-    safeRun(() => {
-      let s = this.s = solveStringSetup(this.params)!;
-      let side = this.flags.showFretMarks ? [renderFretTicks(s, FRET_LANDMARKS, this.pal)] : [];
-      this.drawn.emit(renderStringSetupViews(this.params, s, this.pal, { fingerboard: this.flags.showFingerboard, highlighted: this.highlighted, side }));
-    });
+  protected buildCanvasLayers(): RenderLayer[] {
+    let s = this.s = solveStringSetup(this.params)!;
+    let side = this.flags.showFretMarks ? [renderFretTicks(s, FRET_LANDMARKS, this.pal)] : [];
+    return renderStringSetupViews(this.params, s, this.pal, { fingerboard: this.flags.showFingerboard, highlighted: this.highlightedPart, side });
   }
 }
 

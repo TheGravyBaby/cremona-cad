@@ -5,21 +5,21 @@
         <label class="field-cell field-cell--full">
             <span class="field-title">Name</span>
             <input class="basic-input" type="text" placeholder="Untitled" maxlength="120"
-                [(ngModel)]="recipe.fileName" (input)="edited()" />
+                [(ngModel)]="recipe.fileName" (input)="recordEditAndRedraw()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell field-cell--full">
             <span class="field-title">Description</span>
             <textarea class="description-textarea" rows="1" maxlength="200"
-                [(ngModel)]="recipe.description" (input)="edited()"></textarea>
+                [(ngModel)]="recipe.description" (input)="recordEditAndRedraw()"></textarea>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell field-cell--full">
             <span class="field-title">Source</span>
             <input class="basic-input" type="text" placeholder="Where this came from" maxlength="300"
-                [(ngModel)]="recipe.source" (input)="edited()" />
+                [(ngModel)]="recipe.source" (input)="recordEditAndRedraw()" />
         </label>
     </div>
 </section>
@@ -30,38 +30,38 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="recipe.params.body.height" (input)="edited()" />
+            <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="params.body.height" (input)="recordEditAndRedraw()" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="recipe.params.body.width" (input)="edited()" />
+            <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="params.body.width" (input)="recordEditAndRedraw()" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">H to W</span>
-            <div class="basic-display" aria-label="Height to width ratio value">{{ ratio('HtoW') }}</div>
+            <div class="basic-display" aria-label="Height to width ratio value">{{ formatRatio('HtoW') }}</div>
         </label>
-        <button type="button" class="info-icon" (click)="help('dimension')" title="More information"
+        <button type="button" class="info-icon" (click)="showFieldHelp('dimension')" title="More information"
             aria-label="Information">ⓘ</button>
     </div>
 
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Overhang <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="recipe.params.body.overhang" (input)="edited()" />
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.body.overhang" (input)="recordEditAndRedraw()" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Ribs <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="recipe.params.body.rib" (input)="edited()" />
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.body.rib" (input)="recordEditAndRedraw()" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Inset<span class="unit-label">mm</span></span>
             <div class="basic-display" aria-label="Inset">{{ body.failures.length ? '–' : body.inset }}</div>
         </label>
-        <button type="button" class="info-icon" (click)="help('inset')" title="More information"
+        <button type="button" class="info-icon" (click)="showFieldHelp('inset')" title="More information"
             aria-label="Information">ⓘ</button>
     </div>
 </section>

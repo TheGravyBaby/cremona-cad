@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   angleFromCenter, dist, intersectLines, lineFromTwoPoints, moveInVectorSpace, pointOnCircle, TURN, vectorFromSlope,
@@ -9,12 +9,13 @@ import {
   AngleMarkSize, renderAngle, renderArcHalo, renderDashedLine, renderGuideBaseline, renderGuideMeasure, renderPath, renderPolygon, renderSegment,
   renderSegmentHalo, renderSolveFailures, renderStroke, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
-import { buildMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { Arc, arcFromCircle, Circle, Pt, Vect2D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import { NeckSolve, PlateContourSolve, ScrollSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { PLATE_LAYOUT_GAP, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
@@ -40,7 +41,7 @@ export type NeckHighlightKey = 'length' | 'upperThickness' | 'lowerThickness' | 
   templateUrl: './neck-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class NeckPanel implements ViolinFamilyPanel, OnInit {
+export class NeckPanel extends PanelComponentBase<NeckHighlightKey> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('varnish');
 
@@ -53,62 +54,33 @@ export class NeckPanel implements ViolinFamilyPanel, OnInit {
     p.neck = { length: Math.round((s.neckStop + inPlate) * 2) / 2, ...s.neck, heelAngle: s.neck.angle };
   }
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
-
-  // what the last draw solved; report() reads it
+  // what the last draw solved; reportSolveFailures() reads it
   n!: NeckSolve;
 
-  // the field with focus, haloed where it measures
-  highlighted: { key: NeckHighlightKey; color: string } | null = null;
-
-  ngOnInit(): void {
-    this.draw();
-  }
-
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
-
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures(this.n.failures, 'Neck');
   }
 
-  focus(key: NeckHighlightKey, color: string): void {
-    this.highlighted = { key, color };
-    this.draw();
-  }
-
-  blur(): void {
-    this.highlighted = null;
-    this.draw();
-  }
-
-  draw(): void {
-    safeRun(() => {
-      let p = this.params;
-      let n = this.n = solveNeck(p)!;
-      let a = solveLongArching(p)!;
-      let o = solvePlateContour(p)!;
-      let w = p.scroll ? solveScrollWidths(p) : null;
-      let scroll = w && !w.scroll.failures.length ? w.scroll : undefined;
-      let scrollInPlan = scroll && !w!.failures.some(f => f.unsolved.length) ? scroll : null;
-      let sideX = sideViewOffsetX(p);
-      let side = [
-        renderBodySideProfile(p, a, o, this.pal, false, { ground: true }),
-        renderNeck(p, n, this.pal, { guides: this.flags.showModuleGuides, scroll }),
-        renderNeckHighlight(p, n, this.highlighted, 'side'),
-        renderSolveFailures(n.failures, this.pal.alert),
-      ];
-      this.drawn.emit([
-        renderNeckFrontView(p, n, o, scrollInPlan, this.pal),
-        renderNeckHighlight(p, n, this.highlighted, 'front', o.back ? -p.body.width * PLATE_LAYOUT_GAP : null),
-        renderTranslatedLayers(side, sideX),
-      ]);
-    });
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    let n = this.n = solveNeck(p)!;
+    let a = solveLongArching(p)!;
+    let o = solvePlateContour(p)!;
+    let w = p.scroll ? solveScrollWidths(p) : null;
+    let scroll = w && !w.scroll.failures.length ? w.scroll : undefined;
+    let scrollInPlan = scroll && !w!.failures.some(f => f.unsolved.length) ? scroll : null;
+    let sideX = sideViewOffsetX(p);
+    let side = [
+      renderBodySideProfile(p, a, o, this.pal, false, { ground: true }),
+      renderNeck(p, n, this.pal, { guides: this.flags.showModuleGuides, scroll }),
+      renderNeckHighlight(p, n, this.highlightedPart, 'side'),
+      renderSolveFailures(n.failures, this.pal.alert),
+    ];
+    return [
+      renderNeckFrontView(p, n, o, scrollInPlan, this.pal),
+      renderNeckHighlight(p, n, this.highlightedPart, 'front', o.back ? -p.body.width * PLATE_LAYOUT_GAP : null),
+      renderTranslatedLayers(side, sideX),
+    ];
   }
 }
 

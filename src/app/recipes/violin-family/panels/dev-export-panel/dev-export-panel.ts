@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { buildGcode, downloadGcodeFile, GcodeJob } from '../../../../helpers/gcodeExporter';
 import { angleFromCenter, angleWithinSweep, closestPointOnSegment, dist, flipPointAboutY, normalizeRadians, pointInPolygon, pointOnCircle, signedPolygonArea, TURN } from '../../../../helpers/math/simpleGeometry';
@@ -7,13 +7,13 @@ import { buildPolylineIndex, distPointToPolylineIndexed, pointAtPolylineLength, 
 import { erodePolygon, flattenPath, offsetPath } from '../../../../helpers/math/pathVibes';
 import { inchFraction } from '../../../../helpers/nearestFraction';
 import { renderCrosshair, renderPath, renderRect, renderText, renderTranslatedLayers } from '../../../../helpers/renderFuncs';
-import { safeRun } from '../../../../helpers/validators';
 import { Arc, Circle, Pt, Pt3D, Rectangle } from '../../../../models/types';
 import { info } from '../../../../shared/message-emitter';
 import { MmInchField } from '../../../../shared/mm-inch-field';
 import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import { FholeContoursSolve, MouldRelief, MouldSolve, NeckSolve, PlateContourSolve, Plate, PlateSurface, ScrollSolve } from '../../violin-family-solves';
 import { contourRings, contourSampleSteps, rowAt, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { BACK_ARCH_INK, CHANNEL_INK, TOP_ARCH_INK } from '../long-arching-panel/long-arching-panel';
@@ -390,31 +390,23 @@ const MIRROR: Matrix2D = [-1, 0, 0, 1, 0, 0];
   templateUrl: './dev-export-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class DevExportPanel implements ViolinFamilyPanel, OnInit {
+export class DevExportPanel extends PanelComponentBase {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = [];
   protected readonly pal = ThemeService.getPalette('classicCremona');
   protected readonly fhole = FHOLE;
   protected readonly stageShape = STAGE_SHAPE;
   protected readonly exports = EXPORTS;
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
   @Input() fileName = '';
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
 
   settings: DevExportSettings = readSettings();
   // what the last draw planned; the template reads its failures
   toolpaths: Toolpaths | null = null;
 
-  ngOnInit(): void {
-    this.draw();
-  }
-
   // a shop setting: stored here, never on the recipe, so it never reaches the undo stack
-  edited(): void {
+  saveSettingsAndRedraw(): void {
     writeSettings(this.settings);
-    this.draw();
+    this.drawCanvas();
   }
 
   // the bit is the mould panel's param (its reliefs are cut for it), so changing it here is a
@@ -422,23 +414,20 @@ export class DevExportPanel implements ViolinFamilyPanel, OnInit {
   setBit(diameter: number): void {
     if (!this.params.mould) return;
     this.params.mould.bitDiameter = diameter;
-    this.edit.emit();
-    this.draw();
+    this.recordEditAndRedraw();
   }
 
-  help(): void {
+  showMachineHelp(): void {
     info(MACHINE_HELP.text, MACHINE_HELP.title, 60000, true);
   }
 
-  report(): void {}
+  reportSolveFailures(): void {}
 
-  draw(): void {
-    safeRun(() => {
-      let bit = this.bit;
-      let plan = bit ? planExport(this.params, this.settings, bit, this.pal, this.flags) : null;
-      this.toolpaths = plan?.toolpaths ?? null;
-      this.drawn.emit(plan ? [inSheet(plan.toolpaths, plan.layers)] : []);
-    });
+  protected buildCanvasLayers(): RenderLayer[] {
+    let bit = this.bit;
+    let plan = bit ? planExport(this.params, this.settings, bit, this.pal, this.flags) : null;
+    this.toolpaths = plan?.toolpaths ?? null;
+    return plan ? [inSheet(plan.toolpaths, plan.layers)] : [];
   }
 
   // the open job's stock
@@ -525,7 +514,7 @@ export class DevExportPanel implements ViolinFamilyPanel, OnInit {
 
   reset(): void {
     this.settings = { ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), job: this.settings.job };
-    this.edited();
+    this.saveSettingsAndRedraw();
   }
 
   // planned again from the fine solve the sheets export from, not the preview's

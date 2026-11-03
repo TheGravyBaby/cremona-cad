@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
 import { archSplineKnots, catenaryZAt, splineZAt, SPLINE_PEAK_SOURCE } from '../../../../helpers/math/vibeMath';
@@ -6,15 +6,15 @@ import { buildCatenaryPath, buildSplinePath, occludePath } from '../../../../hel
 import {
   renderGuideBaseline, renderGuideKnot, renderGuideMeasure, renderPath, renderPointHalo, renderSegment, renderSolveFailures, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
-import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
-import { showFieldHelp } from '../../../../docs/field-help';
+import { reportFailures, solveSection } from '../../../../helpers/validators';
 import { TooltipDirective } from '../../../../docs/tooltips';
 import { Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { applyRowMove, RowMove, RowReorderDirective, rowsWithMarker } from '../../../../shared/row-reorder';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { ChannelParams, LongArchParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { ChannelParams, LongArchParams, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import { ArchTakeoff, LongArchCurve, LongArchingFailure, LongArchingSolve, LongArchSolve, PlateContourSolve, Plate, RibTaper } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { calcChannelHalfWidth, channelProfileSlopeAt, channelProfileZAt, renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
@@ -33,10 +33,9 @@ import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
   templateUrl: './long-arching-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
+export class LongArchingPanel extends PanelComponentBase<{ plate: Plate; source: number }> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('iceAndFire');
-  protected readonly help = showFieldHelp;
   protected readonly peakSource = SPLINE_PEAK_SOURCE;
   protected readonly plates: readonly Plate[] = ['top', 'back'];
   protected readonly rows = rowsWithMarker;
@@ -59,46 +58,27 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
     p.arching = { ribHeightLower: s.ribHeightLower, ribHeightUpper: s.ribHeightUpper, top: plate(topH), back: plate(backH) };
   }
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
-
-  // what the last draw solved; the template's readouts and report() read it
+  // what the last draw solved; the template's readouts and reportSolveFailures() read it
   a!: LongArchingSolve;
 
-  // the point whose field has focus, haloed on the arch; the peak is a point too
-  highlighted: { plate: Plate; source: number } | null = null;
-
-  ngOnInit(): void {
-    this.draw();
-  }
-
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
-
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures(this.a.failures, 'Long arching');
   }
 
-  draw(): void {
-    safeRun(() => {
-      let p = this.params;
-      let o = solvePlateContour(p)!;
-      let f = solveFluting(p)!;
-      let a = this.a = solveLongArching(p)!;
-      let sideX = sideViewOffsetX(p);
-      let side = renderBodySideProfile(p, a, o, this.pal, true, { highlight: this.highlighted, showGuides: this.flags.showModuleGuides });
-      this.drawn.emit([
-        renderPlateContour(p, o, this.pal, this.flags, false, true),
-        renderFluting(p, f, this.pal, false, true),
-        renderFholes(p, this.pal),
-        renderTranslatedLayers([side], sideX),
-        renderSolveFailures(a.failures, this.pal.alert),
-      ]);
-    });
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    let o = solvePlateContour(p)!;
+    let f = solveFluting(p)!;
+    let a = this.a = solveLongArching(p)!;
+    let sideX = sideViewOffsetX(p);
+    let side = renderBodySideProfile(p, a, o, this.pal, true, { highlight: this.highlightedPart?.key ?? null, showGuides: this.flags.showModuleGuides });
+    return [
+      renderPlateContour(p, o, this.pal, this.flags, false, true),
+      renderFluting(p, f, this.pal, false, true),
+      renderFholes(p, this.pal),
+      renderTranslatedLayers([side], sideX),
+      renderSolveFailures(a.failures, this.pal.alert),
+    ];
   }
 
   // a new point fills the widest gap in the curve as it stands, mirrored twins and the peak
@@ -115,7 +95,7 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
       z: +((knots[at].z + knots[at + 1].z) / 2).toFixed(1),
       mirror: false,
     });
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   // the peak keeps its place between the same points
@@ -123,7 +103,7 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
     let arch = this.params.arching![plate].long;
     if (index < (arch.peakRow ?? 0)) arch.peakRow!--;
     arch.points.splice(index, 1);
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   // the upper end first, as the side view stands
@@ -131,23 +111,18 @@ export class LongArchingPanel implements ViolinFamilyPanel, OnInit {
     let arch = this.params.arching![plate].long;
     arch.points.sort((a, b) => b.t - a.t);
     arch.peakRow = arch.points.filter(pt => pt.t > arch.peak).length;
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   moveRow(plate: Plate, move: RowMove): void {
     let arch = this.params.arching![plate].long;
     arch.peakRow = applyRowMove(arch.points, arch.peakRow ?? 0, move);
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
-  focus(plate: Plate, source: number): void {
-    this.highlighted = { plate, source };
-    this.draw();
-  }
-
-  blur(): void {
-    this.highlighted = null;
-    this.draw();
+  // the point whose field has focus, haloed on the arch; the peak is a point too
+  highlightArchPoint(plate: Plate, source: number): void {
+    this.highlightPart({ plate, source });
   }
 }
 

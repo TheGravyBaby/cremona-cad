@@ -6,29 +6,29 @@
         <label class="field-cell">
             <span class="field-title">Length <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(2)"
-                [(ngModel)]="neck.length" (input)="edited()" (focus)="focus('length', pal.ink(2))" (blur)="blur()" />
+                [(ngModel)]="neck.length" (input)="recordEditAndRedraw()" (focus)="highlightPart('length', pal.ink(2))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Thickness Upper - Lower <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="1" [style.border-color]="pal.ink(2).faint(3)"
-                [(ngModel)]="neck.upperThickness" (input)="edited()" (focus)="focus('upperThickness', pal.ink(2).faint(3))" (blur)="blur()" />
+                [(ngModel)]="neck.upperThickness" (input)="recordEditAndRedraw()" (focus)="highlightPart('upperThickness', pal.ink(2).faint(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <input type="number" class="basic-input" step="0.5" min="1" [style.border-color]="pal.ink(2).faint(-3)"
-                [(ngModel)]="neck.lowerThickness" (input)="edited()" (focus)="focus('lowerThickness', pal.ink(2).faint(-3))" (blur)="blur()" />
+                [(ngModel)]="neck.lowerThickness" (input)="recordEditAndRedraw()" (focus)="highlightPart('lowerThickness', pal.ink(2).faint(-3))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Width Upper - Lower<span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="1" [style.border-color]="pal.ink(2).faint(3)"
-                [(ngModel)]="neck.topWidth" (input)="edited()" (focus)="focus('topWidth', pal.ink(2).faint(3))" (blur)="blur()" />
+                [(ngModel)]="neck.topWidth" (input)="recordEditAndRedraw()" (focus)="highlightPart('topWidth', pal.ink(2).faint(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <input type="number" class="basic-input" step="0.5" min="1" [style.border-color]="pal.ink(2).faint(-3)"
-                [(ngModel)]="neck.rootWidth" (input)="edited()" (focus)="focus('rootWidth', pal.ink(2).faint(-3))" (blur)="blur()" />
+                [(ngModel)]="neck.rootWidth" (input)="recordEditAndRedraw()" (focus)="highlightPart('rootWidth', pal.ink(2).faint(-3))" (blur)="clearHighlight()" />
         </label>
     </div>
 </section>
@@ -39,19 +39,19 @@
         <label class="field-cell">
             <span class="field-title">Heel Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(3)"
-                [(ngModel)]="neck.heelRadius" (input)="edited()" (focus)="focus('heel', pal.ink(3))" (blur)="blur()" />
+                [(ngModel)]="neck.heelRadius" (input)="recordEditAndRedraw()" (focus)="highlightPart('heel', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
          <label class="field-cell">
             <span class="field-title">Heel Angle <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="0.5" min="-89.5" max="89.5"
-                [(ngModel)]="neck.heelAngle" (input)="edited()" (focus)="focus('heelAngle', pal.ink(3))" (blur)="blur()" />
+                [(ngModel)]="neck.heelAngle" (input)="recordEditAndRedraw()" (focus)="highlightPart('heelAngle', pal.ink(3))" (blur)="clearHighlight()" />
         </label>    
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Button Height <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1)"
-                [(ngModel)]="params.plateContour!.button.height" (input)="edited()" (focus)="focus('buttonHeight', pal.ink(1))" (blur)="blur()" />
+                [(ngModel)]="params.plateContour!.button.height" (input)="recordEditAndRedraw()" (focus)="highlightPart('buttonHeight', pal.ink(1))" (blur)="clearHighlight()" />
         </label> 
     </div>
 </section>
@@ -62,19 +62,19 @@
         <label class="field-cell">
             <span class="field-title">Mortise Depth <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0).faint(-3)"
-                [(ngModel)]="neck.mortiseDepth" (input)="edited()" (focus)="focus('mortise', pal.ink(0).faint(-3))" (blur)="blur()" />
+                [(ngModel)]="neck.mortiseDepth" (input)="recordEditAndRedraw()" (focus)="highlightPart('mortise', pal.ink(0).faint(-3))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Overstand <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="neck.overstand" (input)="edited()" (focus)="focus('overstand', pal.ink(0))" (blur)="blur()" />
+                [(ngModel)]="neck.overstand" (input)="recordEditAndRedraw()" (focus)="highlightPart('overstand', pal.ink(0))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Neck Angle <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" max="30"
-                [(ngModel)]="neck.angle" (input)="edited()" (focus)="focus('angle', pal.ink(0))" (blur)="blur()" />
+                [(ngModel)]="neck.angle" (input)="recordEditAndRedraw()" (focus)="highlightPart('angle', pal.ink(0))" (blur)="clearHighlight()" />
         </label>
     </div>
 </section>

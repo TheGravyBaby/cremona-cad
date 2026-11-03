@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections, inscribeCircleWithinCircle, solveTangentCircleAndLine } from '../../../../helpers/math/draftMath';
 import {
@@ -11,13 +11,13 @@ import {
   AngleMarkSize, renderAngle, renderArcHalo, renderCircle, renderMirroredArc, renderMirroredArcFancy, renderMirroredSegment, renderPath, renderPointHalo,
   renderSolveFailures,
 } from '../../../../helpers/renderFuncs';
-import { buildBlankMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
-import { nearestFraction } from '../../../../helpers/nearestFraction';
+import { buildBlankMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { Arc, Circle, Line, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { FholeCutParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { FholeCutParams, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import { FholeArcKey, FholeContoursSolve, FholeFailure } from '../../violin-family-solves';
 import { FHOLE_SEED_RATIOS, FholeRatios } from '../../violin-family-seed';
 import { renderBoutBounds } from '../main-bouts-panel/main-bouts-panel';
@@ -42,7 +42,7 @@ function calcHalfSweep(arm: Arc | null): number {
   templateUrl: './fhole-contours-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
+export class FHoleContoursPanel extends PanelComponentBase<FholeHighlightKey, FholeRatios> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFholeBounds', 'showModuleArcs', 'showFlutingEdge', 'showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('orchid');
 
@@ -81,65 +81,28 @@ export class FHoleContoursPanel implements ViolinFamilyPanel, OnInit {
     p.fHoleContours.L2Sweep = calcHalfSweep(s.L2);
   }
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
-
-  // what the last draw solved; report() reads it rather than solving again, and the template reads
+  // what the last draw solved; reportSolveFailures() reads it rather than solving again, and the template reads
   // the fractions beside each radius
   s!: FholeContoursSolve;
-  ratios: Partial<FholeRatios> = {};
 
-  // held as a key rather than the arc: every solve builds new arcs
-  private highlightedKey: FholeHighlightKey | null = null;
-  private highlightedColor = '';
-
-  ngOnInit(): void {
-    this.draw();
-  }
-
-  // every field calls this: the shell seeds the stage and schedules the commit (the undo entry, the
-  // session write, report()) for when the typing stops, and the picture catches up now
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
-
-  ratio(key: keyof FholeRatios): string {
-    let value = this.ratios[key];
-    return Number.isFinite(value) ? nearestFraction(value!) : '–';
-  }
-
-  // the arc or tip a field sets, haloed while the field has focus; null on blur
-  highlight(key: FholeHighlightKey | null, color = ''): void {
-    this.highlightedKey = key;
-    this.highlightedColor = color;
-    this.draw();
-  }
-
-  // messages for what didn't solve, raised once the edit settles rather than on every keystroke
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures(this.s.failures, 'F-hole Contours');
   }
 
-  draw(): void {
-    safeRun(() => {
-      let p = this.params;
-      let s = this.s = solveFholeContours(p)!;
-      this.ratios = calcFholeContoursRatios(p);
-      let highlighted = this.highlightedKey ? { key: this.highlightedKey, color: this.highlightedColor } : null;
-      let layers: RenderLayer[] = [renderFholePlate(p, this.pal, null, true)];
-      if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
-      if (this.flags.showModuleGuides) layers.push(renderFholeAngleGuides(p, s, this.pal));
-      if (this.flags.showFholeBounds) layers.push(renderFholeBounds(p.fHoles!, this.pal));
-      if (p.fHoles!.notches) layers.push(renderFholeNotches(p.fHoles!, s.LTip, this.pal));
-      layers.push(
-        renderFholeContours(p, s, this.pal, this.flags, true, highlighted),
-        renderSolveFailures(s.failures, this.pal.alert, true),
-      );
-      this.drawn.emit(layers);
-    });
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    let s = this.s = solveFholeContours(p)!;
+    this.ratios = calcFholeContoursRatios(p);
+    let layers: RenderLayer[] = [renderFholePlate(p, this.pal, null, true)];
+    if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
+    if (this.flags.showModuleGuides) layers.push(renderFholeAngleGuides(p, s, this.pal));
+    if (this.flags.showFholeBounds) layers.push(renderFholeBounds(p.fHoles!, this.pal));
+    if (p.fHoles!.notches) layers.push(renderFholeNotches(p.fHoles!, s.LTip, this.pal));
+    layers.push(
+      renderFholeContours(p, s, this.pal, this.flags, true, this.highlightedPart),
+      renderSolveFailures(s.failures, this.pal.alert, true),
+    );
+    return layers;
   }
 }
 

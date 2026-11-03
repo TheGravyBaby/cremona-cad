@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections } from '../../../../helpers/math/draftMath';
 import {
@@ -8,14 +8,13 @@ import {
 import { combinePathStrings, pathFromArc, pathFromCornerCubic, pathFromLine, translatePath } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
 import { renderArcFromArcFancy, renderMirroredArc, renderMirroredArcFancy, renderPath, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { buildBlankMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
-import { showFieldHelp } from '../../../../docs/field-help';
-import { nearestFraction } from '../../../../helpers/nearestFraction';
+import { buildBlankMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { Arc, arcFromCircle, Circle, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { ButtonParams, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { ButtonParams, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import { PlateContourSolve, OuterCornerKey } from '../../violin-family-solves';
 import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
 import { solveMainBouts, calcViolNeckCap } from '../main-bouts-panel/main-bouts-panel';
@@ -32,10 +31,9 @@ export const PLATE_LAYOUT_GAP = 1.1;
   templateUrl: './plate-contour-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class PlateContourPanel implements ViolinFamilyPanel, OnInit {
+export class PlateContourPanel extends PanelComponentBase<never, ViolinFamilyRatios> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs'];
   protected readonly pal = ThemeService.getPalette('classicCremona');
-  protected readonly help = showFieldHelp;
 
   // the first draft of the plate edge, once the C bout has solved: each corner arc runs on a few
   // degrees past the rib corner so the plate's corner stands proud of the ribs', a compound
@@ -72,48 +70,23 @@ export class PlateContourPanel implements ViolinFamilyPanel, OnInit {
     };
   }
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
-
-  // what the last draw solved; report() reads it rather than solving again
+  // what the last draw solved; reportSolveFailures() reads it rather than solving again
   o!: PlateContourSolve;
-  ratios: Partial<ViolinFamilyRatios> = {};
 
-  ngOnInit(): void {
-    this.draw();
-  }
-
-  // every field calls this: the shell seeds the stage and schedules the commit (the undo entry, the
-  // session write, report()) for when the typing stops, and the picture catches up now
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
-
-  ratio(key: keyof ViolinFamilyRatios): string {
-    let value = this.ratios[key];
-    return Number.isFinite(value) ? nearestFraction(value!) : '–';
-  }
-
-  // messages for what didn't solve, raised once the edit settles rather than on every keystroke
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures(this.o.failures, 'Plate Contour');
   }
 
-  draw(): void {
-    safeRun(() => {
-      let p = this.params;
-      let o = this.o = solvePlateContour(p)!;
-      this.ratios = calcPlateContourRatios(p);
-      // the holes, once cut, ride on the top plate here as on every panel after this one
-      this.drawn.emit([
-        renderPlateContour(p, o, this.pal, this.flags, true),
-        renderFholes(p, this.pal),
-        renderSolveFailures(o.failures, this.pal.alert, true),
-      ]);
-    });
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    let o = this.o = solvePlateContour(p)!;
+    this.ratios = calcPlateContourRatios(p);
+    // the holes, once cut, ride on the top plate here as on every panel after this one
+    return [
+      renderPlateContour(p, o, this.pal, this.flags, true),
+      renderFholes(p, this.pal),
+      renderSolveFailures(o.failures, this.pal.alert, true),
+    ];
   }
 }
 

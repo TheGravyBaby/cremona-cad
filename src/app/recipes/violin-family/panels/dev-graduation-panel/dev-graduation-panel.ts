@@ -1,4 +1,4 @@
-import { Component, EventEmitter, inject, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, inject, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { pointInPolygon } from '../../../../helpers/math/simpleGeometry';
 import { filletRightAngleCorner } from '../../../../helpers/math/draftMath';
@@ -6,7 +6,7 @@ import { pathFromPolyline, pathFromRect, samplePathToPolyline, translatePath } f
 import { buildPolylineIndex, closestPointToPolylineIndexed, distPointToPolylineIndexed, minCostAssignment, pointAtPolylineLength, polylineCumulativeLengths, Reading, thinPlateSplineFitter } from '../../../../helpers/math/vibeMath';
 import { differenceFromManyPaths, fieldBands, intersectionFromTwoPaths, mirroredLoop } from '../../../../helpers/math/pathVibes';
 import { renderFilledPath, renderPath, renderPointHalo, renderSolveFailures, renderText } from '../../../../helpers/renderFuncs';
-import { reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { reportFailures, solveSection } from '../../../../helpers/validators';
 import { stepAmountForKey } from '../../../../helpers/stepSize';
 import { DraftTool, DraftToolHost } from '../../../../draft-canvas/tools/draft-tool';
 import { ToolRegistryService } from '../../../../draft-canvas/tools/tool-registry';
@@ -15,7 +15,8 @@ import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { contrastRatio, PanelPalette, parseHex, ThemeService, toHex } from '../../../../theme/theme.service';
 import { Pt, Rectangle } from '../../../../models/types';
-import { GraduationParams, GraduationPoint, RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { GraduationParams, GraduationPoint, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import { GraduationFailure, GraduationSolve, PlateSurface } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -58,15 +59,10 @@ export function edgeThicknessOf(p: ViolinFamilyParams, plate: GraduationPlate): 
   templateUrl: './dev-graduation-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy {
+export class DevGraduationPanel extends PanelComponentBase implements OnDestroy {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showGraduationPoints'];
   protected readonly pal = ThemeService.getPalette('lamplight');
   private readonly tools = inject(ToolRegistryService);
-
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
 
   readonly plates = GRADUATION_PLATES;
   solve!: GraduationSolve;
@@ -106,12 +102,8 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
     for (let plate of GRADUATION_PLATES) p.graduation[plate].points = gridPoints(p, DEFAULT_SPACING, plate);
   }
 
-  ngOnInit(): void {
-    this.draw();
-  }
-
   ngOnDestroy(): void {
-    if (this.pending !== undefined) this.edited();
+    if (this.pending !== undefined) this.recordEditAndRedraw();
     this.unwatchTools();
     if (this.pickTool) this.tools.selectTool(null);
   }
@@ -139,7 +131,7 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
       for (let px of xs) this.points.push({ x: px, y, thickness });
       this.selected = xs.map((_, i) => this.points.length - xs.length + i);
       this.tools.selectTool(null);
-      this.edited();
+      this.recordEditAndRedraw();
     }, () => this.tools.selectTool(null));
     this.tools.selectTool(this.pickTool);
   }
@@ -149,17 +141,16 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
     return new Pt(pt.x - PLATE_DX[plate](this.params), pt.y);
   }
 
-  edited(): void {
+  override recordEditAndRedraw(): void {
     clearTimeout(this.pending);
     this.pending = undefined;
-    this.edit.emit();
-    this.draw();
+    super.recordEditAndRedraw();
   }
 
   // typed and stepped fields settle before the solve runs, since it is slow
   editedSoon(): void {
     clearTimeout(this.pending);
-    this.pending = setTimeout(() => this.edited(), EDIT_DEBOUNCE_MS);
+    this.pending = setTimeout(() => this.recordEditAndRedraw(), EDIT_DEBOUNCE_MS);
   }
 
   setAllSoon(value: number | null): void {
@@ -173,14 +164,14 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
     let p = this.params;
     this.gr[plate].points = style === 'zones' ? zonePoints(p, plate) : style === 'grid' ? gridPoints(p, this.spacing[plate], plate) : [];
     if (plate === this.active) this.selected = [];
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   activate(plate: GraduationPlate): void {
     if (plate === this.active) return;
     this.active = plate;
     this.selected = [];
-    this.draw();
+    this.drawCanvas();
   }
 
   // an added point starts on the joint at the boundary's middle, at the edge thickness
@@ -189,14 +180,14 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
     let y = ground ? round((ground.minY + ground.maxY) / 2) : 0;
     this.points.push({ x: 0, y, thickness: edgeThicknessOf(this.params, this.active) });
     this.selected = [this.points.length - 1];
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   removeSelected(): void {
     let plate = this.gr[this.active];
     plate.points = plate.points.filter((_, i) => !this.selected.includes(i));
     this.selected = [];
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   // a click picks one point, a shift-click adds it to the pick or takes it back out
@@ -205,19 +196,19 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
     (e.currentTarget as HTMLElement | null)?.focus?.();
     if (!e.shiftKey) this.selected = [i];
     else this.selected = this.selected.includes(i) ? this.selected.filter(j => j !== i) : [...this.selected, i];
-    this.draw();
+    this.drawCanvas();
   }
 
   // a row's label picks the whole station or ring
   selectRow(row: PlateMapRow, e: MouseEvent): void {
     let picked = row.cells.filter((i): i is number => i !== null);
     this.selected = e.shiftKey ? [...new Set([...this.selected, ...picked])] : picked;
-    this.draw();
+    this.drawCanvas();
   }
 
   pickAll(): void {
     this.selected = this.points.map((_, i) => i);
-    this.draw();
+    this.drawCanvas();
   }
 
   private mapOf(plate: GraduationPlate): PlateMap {
@@ -247,7 +238,7 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
   setAll(value: number | null): void {
     if (value === null || !Number.isFinite(value)) return;
     for (let pt of this.picked) pt.thickness = value;
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   // every picked point stepped by the same amount, so a mixed pick keeps its differences
@@ -255,7 +246,7 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
     e?.preventDefault();
     if (!this.picked.length) return;
     for (let pt of this.picked) pt.thickness = Math.max(0, Math.round((pt.thickness + delta) * 100) / 100);
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   move(dx: number, dy: number, e?: Event): void {
@@ -265,7 +256,7 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
       pt.x = Math.round((pt.x + dx) * 100) / 100;
       pt.y = Math.round((pt.y + dy) * 100) / 100;
     }
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
   // the arrows move the pick on the plate, = and - step its thickness
@@ -278,7 +269,7 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
     else if (e.key === 'Escape' && this.selected.length) {
       e.preventDefault();
       this.selected = [];
-      this.draw();
+      this.drawCanvas();
     }
   }
 
@@ -312,11 +303,11 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
     return `linear-gradient(90deg, ${RAMP.map(i => this.pal.ink(i)).join(', ')})`;
   }
 
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures(this.solve.failures, 'Graduation');
   }
 
-  draw(): void {
+  protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
     this.maps = { top: this.mapOf('top'), back: this.mapOf('back') };
     let all = GRADUATION_PLATES.flatMap(plate => this.gr[plate].points.map(pt => pt.thickness)).filter(Number.isFinite);
@@ -329,18 +320,16 @@ export class DevGraduationPanel implements ViolinFamilyPanel, OnInit, OnDestroy 
     let lo = all.length ? Math.floor(Math.min(...all) * 2) / 2 : 0;
     let hi = all.length ? Math.ceil(Math.max(...all) * 2) / 2 : 1;
     this.scale = { lo, hi: Math.max(hi, lo + 1) };
-    safeRun(() => {
-      let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
-      let solve = this.solve = solveGraduation(p)!;
-      this.drawn.emit([
-        renderThicknessMap(p, this.scale, this.pal),
-        renderFholePlate(p, this.pal, rib, false),
-        renderBackPlate(p, this.pal, rib),
-        renderGraduation(p, solve, this.pal),
-        ...(this.flags.showGraduationPoints ? [renderGraduationPoints(p, this.active, this.selected, this.pal)] : []),
-        renderSolveFailures(solve.failures, this.pal.alert, true),
-      ]);
-    });
+    let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+    let solve = this.solve = solveGraduation(p)!;
+    return [
+      renderThicknessMap(p, this.scale, this.pal),
+      renderFholePlate(p, this.pal, rib, false),
+      renderBackPlate(p, this.pal, rib),
+      renderGraduation(p, solve, this.pal),
+      ...(this.flags.showGraduationPoints ? [renderGraduationPoints(p, this.active, this.selected, this.pal)] : []),
+      renderSolveFailures(solve.failures, this.pal.alert, true),
+    ];
   }
 }
 

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   angleFromCenter, arcReach, dist, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, TURN,
@@ -6,7 +6,7 @@ import {
 import {
   renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashLine, renderPolygon, renderSegment, renderSolveFailures, renderPath,
 } from '../../../../helpers/renderFuncs';
-import { buildMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { Arc, Circle, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
@@ -15,12 +15,12 @@ import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
   RenderLayer,
   ScrollParams,
-  ViolinFamilyPanel,
   ViolinFamilyParams,
   ViolinFamilyToggleKey,
   ViolinFamilyViewFlags,
   VoluteStyle,
 } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import {
   ScrollFailure,
   ScrollKey,
@@ -29,7 +29,6 @@ import {
 import { defineSideScrollPath, solveScroll } from '../pegbox-panel/pegbox-panel';
 import { calcDuckTailRoundTop } from '../scroll-widths-panel/scroll-widths-panel';
 import { calcNeckTaper } from '../neck-panel/neck-panel';
-import { showFieldHelp } from '../../../../docs/field-help';
 
 export type VoluteHighlightKey = number | 'S0' | 'S1' | 'S2';
 
@@ -40,12 +39,11 @@ export type VoluteHighlightKey = number | 'S0' | 'S1' | 'S2';
   templateUrl: './volute-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class VolutePanel implements ViolinFamilyPanel, OnInit {
+export class VolutePanel extends PanelComponentBase<VoluteHighlightKey> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'showVoluteConstruction'];
   protected readonly pal = ThemeService.getPalette('stones');
   protected readonly styles = Object.entries(VOLUTE_STYLE_LABELS).map(([id, label]) => ({ id, label }));
   protected readonly arcEnd = (i: number) => formatTurnsLabel((i + 1) / 4);
-  protected readonly help = showFieldHelp;
   protected readonly nearestFraction = nearestFraction;
   
   // after Stradivari's Betts on a 350 mm body, scaled by body length. The whole scroll is seeded
@@ -93,15 +91,9 @@ export class VolutePanel implements ViolinFamilyPanel, OnInit {
     scroll.hipHeight = calcDuckTailRoundTop(p, s) - p.neck.nutHeight;
   }
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
-
-  // what the last draw solved; the template's readouts and report() read it
+  // what the last draw solved; the template's readouts and reportSolveFailures() read it
   s!: ScrollSolve;
   extent: { height: number; width: number } | null = null;
-  highlighted: { key: VoluteHighlightKey; color: string } | null = null;
 
   // the four point's fields four to a row, a turn of the spiral each
   get arcRows(): number[][] {
@@ -114,52 +106,31 @@ export class VolutePanel implements ViolinFamilyPanel, OnInit {
     return i % 2 ? this.pal.ink(2).faint(1) : this.pal.ink(2).faint(-3);
   }
 
-  ngOnInit(): void {
-    this.draw();
-  }
-
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
-
   // turning the fit off leaves the eye where the fit put it, so editing goes on from there
   fitChanged(): void {
     let v = this.params.scroll!;
     if (!v.fitToNeck && this.s.eye) v.eye.x = this.s.eye.x;
-    this.edited();
+    this.recordEditAndRedraw();
   }
 
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures(this.s.failures, 'Volute');
   }
 
-  focus(key: VoluteHighlightKey, color: string): void {
-    this.highlighted = { key, color };
-    this.draw();
-  }
-
-  blur(): void {
-    this.highlighted = null;
-    this.draw();
-  }
-
-  draw(): void {
-    safeRun(() => {
-      let p = this.params;
-      let s = solveScroll(p)!;
-      this.s = { ...s, failures: s.failures.filter(f => f.unsolved.some(k => k === 'spiral' || k === 'S0' || k === 'S1' || k === 'S2')) };
-      this.extent = s.S2 ? calcScrollExtent(s) : null;
-      let key = this.highlighted?.key ?? null;
-      let arc = key === null ? null : typeof key === 'number' ? s.spiral?.[s.spiral.length - 1 - key] ?? null : s[key];
-      // the rest of the scroll for context, under the volute's own arcs, once it all solves
-      this.drawn.emit([
-        renderScrollNeck(p, s, this.pal, this.flags.showModuleGuides),
-        ...(s.failures.length ? [] : [renderPath(defineSideScrollPath(p, s), this.pal.neutral, STROKE_WEIGHT.trace)]),
-        renderVolute(p, s, this.pal, this.flags, true, arc ? { arc, color: this.highlighted!.color } : null),
-        renderSolveFailures(this.s.failures, this.pal.alert),
-      ]);
-    });
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    let s = solveScroll(p)!;
+    this.s = { ...s, failures: s.failures.filter(f => f.unsolved.some(k => k === 'spiral' || k === 'S0' || k === 'S1' || k === 'S2')) };
+    this.extent = s.S2 ? calcScrollExtent(s) : null;
+    let key = this.highlightedPart?.key ?? null;
+    let arc = key === null ? null : typeof key === 'number' ? s.spiral?.[s.spiral.length - 1 - key] ?? null : s[key];
+    // the rest of the scroll for context, under the volute's own arcs, once it all solves
+    return [
+      renderScrollNeck(p, s, this.pal, this.flags.showModuleGuides),
+      ...(s.failures.length ? [] : [renderPath(defineSideScrollPath(p, s), this.pal.neutral, STROKE_WEIGHT.trace)]),
+      renderVolute(p, s, this.pal, this.flags, true, arc ? { arc, color: this.highlightedPart!.color } : null),
+      renderSolveFailures(this.s.failures, this.pal.alert),
+    ];
   }
 }
 

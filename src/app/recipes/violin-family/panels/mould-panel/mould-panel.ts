@@ -1,6 +1,5 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { showFieldHelp } from '../../../../docs/field-help';
 import {
   angleFromCenter, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope, offsetArcRadius, pointOnCircle, tangentUnitVectorFromLine,
 } from '../../../../helpers/math/simpleGeometry';
@@ -8,13 +7,14 @@ import { filletRightAngleCorner, solveTangentCircleAndLine } from '../../../../h
 import { combinePathStrings, pathFromCircle, pathFromRect, pathsBounds, translatePath } from '../../../../helpers/math/pathMath';
 import { differenceFromManyPaths, intersectionFromTwoPaths, mirroredLoop } from '../../../../helpers/math/pathVibes';
 import { renderPath, renderRect, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { buildMiss, reportFailures, safeRun, solveSection } from '../../../../helpers/validators';
+import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { Arc, arcFromCircleAndPoints, Circle, Line, Pt, Rectangle } from '../../../../models/types';
 import { MmInchField } from '../../../../shared/mm-inch-field';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { RenderLayer, ViolinFamilyPanel, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
+import { PanelComponentBase } from '../panel-component-base';
 import { MouldKey, MouldSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -32,10 +32,9 @@ import { definePurflingPath } from '../plate-contour-panel/plate-contour-panel';
   templateUrl: './mould-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class MouldPanel implements ViolinFamilyPanel, OnInit {
+export class MouldPanel extends PanelComponentBase {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showBlocks', 'showRibOutline', 'showRibJoin'];
   protected readonly pal = ThemeService.getPalette('classicCremona');
-  protected readonly help = showFieldHelp;
 
   // the blocks by size class, each corner block padded the same distance out and toward the waist.
   // The neck and end blocks are three times as wide as they are high, half again the Ceruti
@@ -58,40 +57,24 @@ export class MouldPanel implements ViolinFamilyPanel, OnInit {
     };
   }
 
-  @Input({ required: true }) params!: ViolinFamilyParams;
-  @Input({ required: true }) flags!: ViolinFamilyViewFlags;
-  @Output() drawn = new EventEmitter<RenderLayer[]>();
-  @Output() edit = new EventEmitter<void>();
-
-  // what the last draw solved; report() reads it
+  // what the last draw solved; reportSolveFailures() reads it
   s!: MouldSolve;
 
-  ngOnInit(): void {
-    this.draw();
-  }
-
-  edited(): void {
-    this.edit.emit();
-    this.draw();
-  }
-
-  report(): void {
+  reportSolveFailures(): void {
     reportFailures(this.s.failures, 'Mould');
   }
 
-  draw(): void {
-    safeRun(() => {
-      let p = this.params;
-      let s = this.s = solveMould(p)!;
-      // the fluting channel's corner joins struck on the rib line: the wood the blocks have to fill
-      let rib = this.flags.showRibJoin ? solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!) : null;
-      let join = rib ? defineChannelPath(p, rib, p.body.overhang + p.body.rib, p.body.overhang + p.body.rib).path : null;
-      this.drawn.emit([
-        renderMould(s, this.pal, this.flags),
-        ...(join ? [renderPath(join, this.pal.ink(2), STROKE_WEIGHT.guide)] : []),
-        renderSolveFailures(s.failures, this.pal.alert),
-      ]);
-    });
+  protected buildCanvasLayers(): RenderLayer[] {
+    let p = this.params;
+    let s = this.s = solveMould(p)!;
+    // the fluting channel's corner joins struck on the rib line: the wood the blocks have to fill
+    let rib = this.flags.showRibJoin ? solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!) : null;
+    let join = rib ? defineChannelPath(p, rib, p.body.overhang + p.body.rib, p.body.overhang + p.body.rib).path : null;
+    return [
+      renderMould(s, this.pal, this.flags),
+      ...(join ? [renderPath(join, this.pal.ink(2), STROKE_WEIGHT.guide)] : []),
+      renderSolveFailures(s.failures, this.pal.alert),
+    ];
   }
 }
 
