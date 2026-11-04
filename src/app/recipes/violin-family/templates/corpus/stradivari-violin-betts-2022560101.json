@@ -394,10 +394,9 @@
       "opacity": 0.75,
       "suppressWhite": true,
       "mirrored": false,
-      "locked": true,
+      "locked": false,
       "scope": {
         "except": [
-          "fluting",
           "volute",
           "pegbox",
           "scrollWidths",

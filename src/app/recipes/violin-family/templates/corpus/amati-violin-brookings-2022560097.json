@@ -384,10 +384,9 @@
       "rotationDeg": 359.1,
       "opacity": 0.75,
       "suppressWhite": true,
-      "locked": false,
+      "locked": true,
       "scope": {
         "except": [
-          "crossArching",
           "volute",
           "pegbox",
           "scrollWidths"
@@ -402,7 +401,7 @@
       "id": "amati-violin-brookings-profiles",
       "label": "Profiles, both sides (sp=3)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154831:musihas-200154831.0003/full/pct:100.0/0/default.jpg",
-      "x": 107.34573333169249,
+      "x": 114.24573333169249,
       "y": -2.5499999999999994,
       "width": 120.10853333661512,
       "height": 388.3509033203125,
