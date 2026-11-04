@@ -21,5 +21,11 @@ Theory alone would not have been sufficient to properly model these instruments.
 
 ### **Zethelius, Torbjörn.** "Inside Information." *The Strad*, August 2006, 44–48.
 
+### François Denis, Traité de lutherie: The Violin and the Art of Measurement (Lille: Aladfi, 2006).
+
+### [**Hargrave, Roger Graham.**](https://www.roger-hargrave.de/PDF/Arching/Arching_Purfling_Edgework.pdf) *Arching, Purfling & Edgework in Cremonese Instruments.* Edited by Chris Ruffo. Schwanewede: self-published, 2015. PDF.
+
+### [**Mottola, R. M.**](http://SavartJournal.org/index.php/sj/article/view/12/pdf) "Comparison of Arching Profiles of Golden Age Cremonese Violins and Some Mathematically Generated Curves." *Savart Journal* 1, no. 1 (2011).
+
 ## Special Thanks
-A very special thanks to my partner, the lovely Caroline Dahm, who has beem my most ardent supporter and active tester, this app would have not been possible without her. Thanks dear <3. 
+A very special thanks to my partner, Caroline Dahm, who has beem my most ardent supporter and active tester, this app would have not been possible without her. Thanks dear <3. 
