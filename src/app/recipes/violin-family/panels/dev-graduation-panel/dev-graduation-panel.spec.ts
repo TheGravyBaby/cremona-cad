@@ -4,7 +4,7 @@ import { dist, pointInPolygon } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
-import { DevGraduationPanel, edgeThicknessOf, gridPoints, plateMap, solveGraduation, thicknessBands, thicknessField, zonePoints } from './dev-graduation-panel';
+import { DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, thicknessBands, thicknessField, zonePoints } from './dev-graduation-panel';
 import { definePurflingPath, PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
 import { MainBoutsPanel, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -563,6 +563,46 @@ describe('the thickness field', () => {
     const area = (ring: Pt[]) => Math.abs(ring.reduce((a, q, i) => a + q.x * ring[(i + 1) % ring.length].y - ring[(i + 1) % ring.length].x * q.y, 0)) / 2;
     const outer = (b: { polygons: Pt[][][] }) => b.polygons.reduce((a, poly) => a + area(poly[0]), 0);
     for (let i = 1; i < bands.length; i++) expect(outer(bands[i])).toBeLessThanOrEqual(outer(bands[i - 1]) + 1e-6);
+  });
+});
+
+describe('the inner surface', () => {
+  const graduated = (): ViolinFamilyParams => {
+    const p = seeded();
+    FlutingPanel.seed(p);
+    FHolePlacementPanel.seed(p);
+    FHoleContoursPanel.seed(p);
+    LongArchingPanel.seed(p);
+    const s = grad(p);
+    // thickness by station alone, so the field is mirrored across the joint
+    s.top.points.forEach(pt => pt.thickness = 2.5 + Math.abs(Math.sin(pt.y / 40)));
+    return p;
+  };
+
+  it('is nothing before the plate is graduated', () => {
+    const p = seeded();
+    FlutingPanel.seed(p);
+    LongArchingPanel.seed(p);
+    expect(innerSurfaceZAt(p, 'top', 0, p.body.height / 2)).toBeNull();
+  });
+
+  it('stands under the outside, mirrored across the joint, and is nothing off the plate', () => {
+    const p = graduated();
+    const surface = solveCrossArching(p)!.top!;
+    const f = thicknessField(p, 'top')!;
+    const xs = f.loop.map(q => q.x), ys = f.loop.map(q => q.y);
+    let read = 0;
+    for (let y = Math.min(...ys) + 5; y < Math.max(...ys) - 5; y += 23) {
+      for (let x = 3; x < Math.max(...xs) - 5; x += 17) {
+        if (!pointInPolygon(new Pt(x, y), f.loop)) continue;
+        const inner = innerSurfaceZAt(p, 'top', x, y)!;
+        expect(inner).toBeLessThan(surfaceZAt(surface, x, y)!);
+        expect(innerSurfaceZAt(p, 'top', -x, y)!).toBeCloseTo(inner, 3);
+        read++;
+      }
+    }
+    expect(read).toBeGreaterThan(10);
+    expect(innerSurfaceZAt(p, 'top', p.body.width, p.body.height / 2)).toBeNull();
   });
 });
 

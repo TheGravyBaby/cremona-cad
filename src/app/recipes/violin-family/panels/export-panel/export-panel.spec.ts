@@ -594,7 +594,7 @@ describe('the fingerboard solid', () => {
   it('sinks each position mark as a flat pocket 2 mm under the surface at its centre, leaving the rest of the top untouched', () => {
     const p = strung();
     const s = StringSetupPanelSolve(p);
-    const marks = solvePositionMarks(p, s, { semitones: [12], offset: 6, diameter: 4 }).marks;
+    const marks = solvePositionMarks(p, s, [{ semitone: 12, offset: 6, diameter: 4, shape: 'circle' }]).marks;
     const gridMm = 0.5;
     const topOf = (m: typeof marks) => {
       const top = new Map<string, number>();
@@ -632,7 +632,7 @@ describe('the fingerboard solid', () => {
     const floorArea = nearby.filter(t => t.n[2] > 0 && t.v.every(onFloor)).reduce((sum, t) => sum + footprint(t.v), 0);
     expect(Math.abs(floorArea - Math.PI * r * r) / (Math.PI * r * r)).toBeLessThan(0.02);
     // a half circle over the edge still builds a closed, finite solid, its rim wall stopping at the edge
-    const overEdge = solvePositionMarks(p, s, { semitones: [12], offset: p.neck!.topWidth / 2, diameter: 4 }).marks;
+    const overEdge = solvePositionMarks(p, s, [{ semitone: 12, offset: p.neck!.topWidth / 2, diameter: 4, shape: 'circle' }]).marks;
     const edgeTris = stlTriangles(fingerboardStl(p, gridMm, overEdge)!);
     expect(edgeTris.length).toBeGreaterThan(0);
     expect(edgeTris.every(t => t.v.every(v => v.every(Number.isFinite)))).toBe(true);

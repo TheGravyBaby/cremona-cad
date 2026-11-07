@@ -302,6 +302,7 @@
     "stringSetup": {
       "bodyStop": 219,
       "bridgeHeight": 38,
+      "bridgeWidth": 50,
       "nutThickness": 8.5,
       "fingerboardLength": 305,
       "fingerboardThickness": 5,
@@ -309,7 +310,12 @@
       "fingerboardEndRadius": 39,
       "scoopAt": 152.5,
       "scoopBass": 1,
-      "scoopTreble": 0.75
+      "scoopTreble": 0.75,
+      "soundPostOffset": {
+        "x": -6,
+        "y": -9
+      },
+      "soundPostDiameter": 6.5
     },
     "graduation": {
       "lining": 2.5,

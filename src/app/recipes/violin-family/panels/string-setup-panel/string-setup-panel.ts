@@ -5,10 +5,10 @@ import { dist, moveInVectorSpace, pointAtDistanceToward, TURN, vectorFromSlope }
 import { applyMatrix, pathFromPolygon, pathFromPolyline } from '../../../../helpers/math/pathMath';
 import { occludePath } from '../../../../helpers/math/pathVibes';
 import {
-  renderDashedLine, renderGuideBaseline, renderGuideKnot, renderPath, renderPolygon, renderSegment, renderSegmentHalo, renderSolveFailures, renderStroke, renderText, renderTranslatedLayers,
+  renderCircle, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo, renderSolveFailures, renderStroke, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
 import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
-import { Pt, Vect2D } from '../../../../models/types';
+import { Circle, Pt, Vect2D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
@@ -34,7 +34,7 @@ import { neckHalfWidthAt, defineNeckInPlan, renderNeck, calcScrollOnNeck, solveN
 import { buildScrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
 
 export type StringSetupHighlightKey =
-  'length' | 'angle' | 'bodyStop' | 'bridgeHeight' | 'nutThickness' | 'fbLength' | 'fbThickness' | 'fbRadius' | 'fbNutRadius' | 'fbEndRadius' | 'scoopAt' | 'scoopBass' | 'scoopTreble';
+  'length' | 'angle' | 'bodyStop' | 'bridgeHeight' | 'bridgeWidth' | 'nutThickness' | 'fbLength' | 'fbThickness' | 'fbNutRadius' | 'fbEndRadius' | 'soundPost' | 'soundPostDiameter';
 
 @Component({
   selector: 'app-vf-string-setup-panel',
@@ -58,12 +58,6 @@ export class StringSetupPanel extends PanelComponentBase<StringSetupHighlightKey
     return this.s?.nutTop && this.s.bridgeTop ? dist(this.s.nutTop, this.s.bridgeTop) : null;
   }
 
-  // the one radius sets the board's crown the same at both ends
-  radiusEdited(r: number): void {
-    this.params.stringSetup!.fingerboardNutRadius = this.params.stringSetup!.fingerboardEndRadius = r;
-    this.recordEditAndRedraw();
-  }
-
   // the neck's length is edited here too, so its failures are this panel's to report
   reportSolveFailures(): void {
     reportFailures([...this.s.neck.failures, ...this.s.failures], 'String Setup');
@@ -82,7 +76,7 @@ export function renderStringSetupViews(
   p: ViolinFamilyParams,
   s: StringSetupSolve,
   pal: PanelPalette,
-  opts: { fingerboard: boolean; scoopGuide?: boolean; highlighted?: { key: StringSetupHighlightKey; color: string } | null; front?: RenderLayer[]; side?: RenderLayer[] },
+  opts: { fingerboard: boolean; highlighted?: { key: StringSetupHighlightKey; color: string } | null; front?: RenderLayer[]; side?: RenderLayer[] },
 ): RenderLayer[] {
   let a = solveLongArching(p)!;
   let o = solvePlateContour(p)!;
@@ -93,13 +87,16 @@ export function renderStringSetupViews(
   let side = [
     renderBodySideProfile(p, a, o, pal, false, { ground: true }),
     renderNeck(p, s.neck, pal, { ground: true, scroll }),
-    renderStringSetup(p, s, pal, { fingerboard: opts.fingerboard, scoopGuide: opts.scoopGuide }),
+    renderStringSetup(p, s, pal, { fingerboard: opts.fingerboard }),
     ...(opts.side ?? []),
     renderStringSetupHighlight(p, s, opts.highlighted ?? null),
     renderSolveFailures([...s.neck.failures, ...s.failures], pal.alert),
   ];
   return [
-    renderStringSetupFrontView(p, s, o, scrollInPlan, pal, { fingerboard: opts.fingerboard, scoopStation: !!opts.scoopGuide }),
+    renderStringSetupFrontView(p, s, o, scrollInPlan, pal, {
+      fingerboard: opts.fingerboard,
+      highlighted: opts.highlighted ?? null,
+    }),
     ...(opts.front ?? []),
     renderTranslatedLayers(side, sideX),
   ];
@@ -107,7 +104,6 @@ export function renderStringSetupViews(
 
 const FINGERBOARD_CROWN_SAMPLES = 24;
 const FINGERBOARD_CROWN_OPACITY = 0.45;
-const SCOOP_GUIDE_LABEL_SIZE = 4;
 // how many semitones up the string to tick, and how far each tick reaches either side of it. Plain
 // semitones stay small so they read as a scale beside the landmarks: the fourth, fifth and octave
 // here, the position marks in the dev fingerboard panel
@@ -152,7 +148,7 @@ export const renderStringSetup = (
   p: ViolinFamilyParams,
   s: StringSetupSolve,
   pal: PanelPalette,
-  opts: { fingerboard?: boolean; scoopGuide?: boolean } = {},
+  opts: { fingerboard?: boolean } = {},
 ) => (g: any, ui: any): void => {
   let n = s.neck;
   if (!n.neckTop || !n.root || !n.bottomFront) return;
@@ -163,12 +159,12 @@ export const renderStringSetup = (
   if (s.bridge) renderPolygon(s.bridge, pal.ink(1), STROKE_WEIGHT.section)(g, ui);
 
   if (opts.fingerboard && s.fingerboardEnd) {
-    // the board's edge solid, the crown above it faded so the two read apart. The bass edge, the
-    // deeper scooped, stands for the edge in this view
-    renderPolygon([n.neckTop, ...calcFingerboardEdgeLine(p, s, -1), s.fingerboardEnd], pal.ink(0), STROKE_WEIGHT.section)(g, ui);
+    // the board's edge solid, the crown above it faded so the two read apart
+    let edgeAtNut = moveInVectorSpace(n.neckTop, [{ ...normal, mag: ss.fingerboardThickness }]);
+    let edgeAtEnd = moveInVectorSpace(s.fingerboardEnd, [{ ...normal, mag: ss.fingerboardThickness }]);
+    renderPolygon([n.neckTop, edgeAtNut, edgeAtEnd, s.fingerboardEnd], pal.ink(0), STROKE_WEIGHT.section)(g, ui);
     let crown = calcFingerboardCrownLine(p, s);
     if (crown) renderPath(pathFromPolyline(crown), pal.ink(0), STROKE_WEIGHT.section, FINGERBOARD_CROWN_OPACITY)(g, ui);
-    if (opts.scoopGuide) renderScoopGuide(p, s, pal)(g, ui);
   }
 
   if (s.nutTop) {
@@ -208,88 +204,18 @@ const renderStringSetupHighlight = (
         renderSegmentHalo(end, moveInVectorSpace(end, [{ ...normal, mag: ss.fingerboardThickness }]), color)(g, ui);
       }
       break;
-    // each radius lights its own half of the crown, the one radius all of it
-    case 'fbRadius':
+    // each radius lights its own half of the crown
     case 'fbNutRadius':
     case 'fbEndRadius': {
       let crown = calcFingerboardCrownLine(p, s);
       if (!crown) break;
       let mid = Math.ceil(crown.length / 2);
-      let half = key === 'fbRadius' ? crown : key === 'fbNutRadius' ? crown.slice(0, mid) : crown.slice(mid - 1);
+      let half = key === 'fbNutRadius' ? crown.slice(0, mid) : crown.slice(mid - 1);
       for (let i = 1; i < half.length; i++) renderSegmentHalo(half[i - 1], half[i], color)(g, ui);
       break;
     }
-    // the scoop fields light the guide
-    case 'scoopAt':
-    case 'scoopBass':
-    case 'scoopTreble': {
-      let guide = calcScoopGuideGeometry(p, s);
-      if (!guide) break;
-      let run = key === 'scoopAt' ? guide.station : key === 'scoopBass' ? guide.bass : guide.treble;
-      for (let i = 1; i < run.length; i++) renderSegmentHalo(run[i - 1], run[i], color)(g, ui);
-      break;
-    }
   }
 };
-
-function calcOffPlane(pt: Pt, root: Pt, normal: Vect2D): number {
-  return (pt.x - root.x) * normal.a + (pt.y - root.y) * normal.b;
-}
-
-// the text is centred, so each label moves out by half its own width to start past the string
-const renderScoopLabel = (at: Pt, normal: Vect2D, up: Vect2D, lift: number, stagger: number, text: string, color: string) => (g: any, ui: any): void => {
-  let raised = moveInVectorSpace(at, [{ ...normal, mag: lift + text.length * SCOOP_GUIDE_LABEL_SIZE * 0.28 }]);
-  renderText(moveInVectorSpace(raised, [{ ...up, mag: stagger }]), text, color, SCOOP_GUIDE_LABEL_SIZE)(g, ui);
-};
-
-// the scoop at scale: a dashed straightedge laid along the board's top from nut to end, the treble
-// edge drawn beneath it beside the bass edge the board already shows, knots on the two deepest
-// points and the depths written above. A hair at scale, but the true shape
-export const renderScoopGuide = (p: ViolinFamilyParams, s: StringSetupSolve, pal: PanelPalette) => (g: any, ui: any): void => {
-  let guide = calcScoopGuideGeometry(p, s);
-  if (!guide) return;
-  let ss = p.stringSetup!;
-  let normal = vectorFromSlope(p.neck!.angle * TURN.degree);
-  let up = vectorFromSlope(p.neck!.angle * TURN.degree + TURN.quarter);
-  renderGuideBaseline(guide.straightedge[0], guide.straightedge[1], pal.ink(0))(g, ui);
-  renderPath(pathFromPolyline(guide.treble), pal.ink(0).faint(-3), STROKE_WEIGHT.guide)(g, ui);
-  let [deepestBass, onStraightedge] = guide.station;
-  renderGuideKnot(deepestBass, pal.ink(0))(g, ui);
-  renderGuideKnot(guide.deepestTreble, pal.ink(0).faint(-3))(g, ui);
-  // the labels sit clear of the string where it passes the station, staggered along the board,
-  // treble toward the nut and bass toward the end
-  let gap = SCOOP_GUIDE_LABEL_SIZE * 1.5;
-  let root = s.neck.root!;
-  let lift = gap;
-  if (s.nutTop && s.bridgeTop) {
-    let share = dist(s.nutTop, onStraightedge) / dist(s.nutTop, s.bridgeTop);
-    lift = Math.max(gap, calcOffPlane(s.nutTop, root, normal) + (calcOffPlane(s.bridgeTop, root, normal) - calcOffPlane(s.nutTop, root, normal)) * share - calcOffPlane(onStraightedge, root, normal) + gap);
-  }
-  renderScoopLabel(onStraightedge, normal, up, lift, -gap, `bass ${ss.scoopBass} mm`, pal.ink(0))(g, ui);
-  renderScoopLabel(onStraightedge, normal, up, lift, gap, `treble ${ss.scoopTreble} mm`, pal.ink(0).faint(-3))(g, ui);
-};
-
-// where the scoop guide's lines fall, all at scale. `straightedge` runs along the board's top edge
-// from nut to end, where the edges would be with no scoop; `bass` and `treble` are the scooped
-// edges beneath it; `station` runs from the bass edge's deepest point up to the straightedge, and
-// `deepestTreble` is the treble edge's. Null while the board or the scoop doesn't solve
-export function calcScoopGuideGeometry(p: ViolinFamilyParams, s: StringSetupSolve):
-  { straightedge: [Pt, Pt]; bass: Pt[]; treble: Pt[]; station: [Pt, Pt]; deepestTreble: Pt } | null {
-  let neckTop = s.neck.neckTop;
-  let end = s.fingerboardEnd;
-  if (!neckTop || !end || s.failures.some(f => f.unsolved.includes('fingerboard') || f.unsolved.includes('scoop'))) return null;
-  let ss = p.stringSetup!;
-  let normal = vectorFromSlope(p.neck!.angle * TURN.degree);
-  let deepestAt = pointAtDistanceToward(neckTop, end, ss.scoopAt);
-  let onStraightedge = moveInVectorSpace(deepestAt, [{ ...normal, mag: ss.fingerboardThickness }]);
-  return {
-    straightedge: [moveInVectorSpace(neckTop, [{ ...normal, mag: ss.fingerboardThickness }]), moveInVectorSpace(end, [{ ...normal, mag: ss.fingerboardThickness }])],
-    bass: calcFingerboardEdgeLine(p, s, -1),
-    treble: calcFingerboardEdgeLine(p, s, 1),
-    station: [moveInVectorSpace(deepestAt, [{ ...normal, mag: ss.fingerboardThickness - fingerboardScoopAt(p, s, deepestAt.y, -1) }]), onStraightedge],
-    deepestTreble: moveInVectorSpace(deepestAt, [{ ...normal, mag: ss.fingerboardThickness - fingerboardScoopAt(p, s, deepestAt.y, 1) }]),
-  };
-}
 
 // the board in plan, nut to end, over the neck it covers. Null while the board doesn't solve
 export function defineFingerboardInPlan(p: ViolinFamilyParams, s: StringSetupSolve): string | null {
@@ -310,7 +236,7 @@ const renderStringSetupFrontView = (
   o: PlateContourSolve,
   scroll: ScrollSolve | null,
   pal: PanelPalette,
-  opts: { fingerboard: boolean; scoopStation: boolean },
+  opts: { fingerboard: boolean; highlighted: { key: StringSetupHighlightKey; color: string } | null },
 ): RenderLayer => {
   let n = s.neck;
   if (!n.neckTop) return () => {};
@@ -319,13 +245,6 @@ const renderStringSetupFrontView = (
   let onNeck = calcScrollOnNeck(p, n);
   let neck = defineNeckInPlan(p, n);
   let board = opts.fingerboard ? defineFingerboardInPlan(p, s) : null;
-  // the scoop's deepest station across the board
-  let station: [Pt, Pt] | null = null;
-  if (board && opts.scoopStation && calcScoopGuideGeometry(p, s)) {
-    let y = pointAtDistanceToward(n.neckTop, s.fingerboardEnd!, p.stringSetup!.scoopAt).y;
-    let half = neckHalfWidthAt(p, n, y);
-    station = [new Pt(-half, y), new Pt(half, y)];
-  }
   let nutY = applyMatrix(onNeck, new Pt(0, nk.nutHeight)).y;
   let nut = [new Pt(-nk.nutWidth / 2, topY), new Pt(nk.nutWidth / 2, topY), new Pt(nk.nutWidth / 2, nutY), new Pt(-nk.nutWidth / 2, nutY)];
 
@@ -340,9 +259,12 @@ const renderStringSetupFrontView = (
   let bridge: Pt[] | null = null;
   if (s.bridge) {
     let [neckFoot, tailFoot] = s.bridge;
-    let half = familyStandards(p.body.height).bridge.footWidth / 2;
+    let half = p.stringSetup!.bridgeWidth / 2;
     bridge = [new Pt(-half, tailFoot.y), new Pt(half, tailFoot.y), new Pt(half, neckFoot.y), new Pt(-half, neckFoot.y)];
   }
+  let post = s.soundPost;
+  let anchor = calcSoundPostAnchor(p, s);
+  let halo = opts.highlighted;
 
   // the scroll's frame seen from the front: across stays across, up the neck foreshortens by the angle
   let head: ReturnType<typeof buildScrollFrontViewStrokes> | null = null;
@@ -352,8 +274,12 @@ const renderStringSetupFrontView = (
     renderPath(plate, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
     for (let d of lines) renderPath(d, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
     if (bridge) renderPolygon(bridge, pal.ink(1), STROKE_WEIGHT.section)(g, ui);
+    // under the top, so hidden
+    if (post) renderCircle(post, pal.ink(3), false, '2 2')(g, ui);
+    if (bridge && halo?.key === 'bridgeWidth') renderSegmentHalo(bridge[0], bridge[1], halo.color)(g, ui);
+    if (post && anchor && halo?.key === 'soundPost') renderSegmentHalo(anchor, post, halo.color)(g, ui);
+    if (post && halo?.key === 'soundPostDiameter') renderPointHalo(post, halo.color, post.r)(g, ui);
     renderPath(board ?? neck, board ? pal.ink(0) : pal.neutral, STROKE_WEIGHT.section)(g, ui);
-    if (station) renderDashedLine(station[0], station[1], pal.ink(0), '2 3', STROKE_WEIGHT.guide, 0.5)(g, ui);
     renderPolygon(nut, pal.ink(0).faint(-3), STROKE_WEIGHT.section)(g, ui);
     // the nut and the neck below it are this view's own
     if (head) {
@@ -363,8 +289,14 @@ const renderStringSetupFrontView = (
   };
 };
 
+// what the soundpost's offset is measured from: the bridge's treble edge, across the middle of its
+// feet, in plan. Null while the bridge doesn't solve
+export function calcSoundPostAnchor(p: ViolinFamilyParams, s: StringSetupSolve): Pt | null {
+  return s.bridgeFoot ? new Pt(p.stringSetup!.bridgeWidth / 2, s.bridgeFoot.y) : null;
+}
+
 // where y stands along the board: 0 at the nut, 1 at the end, held past either
-function calcAlongBoard(s: StringSetupSolve, y: number): number {
+export function calcAlongBoard(s: StringSetupSolve, y: number): number {
   let topY = s.neck.neckTop!.y, endY = s.fingerboardEnd!.y;
   return Math.min(1, Math.max(0, (topY - y) / (topY - endY)));
 }
@@ -375,39 +307,6 @@ export function fingerboardRadiusAt(p: ViolinFamilyParams, s: StringSetupSolve, 
   return nut + (end - nut) * calcAlongBoard(s, y);
 }
 
-function calcScoopDip(depth: number, run: number, x: number): number {
-  if (!(depth > 0)) return 0;
-  let r = (run * run + depth * depth) / (2 * depth);
-  return Math.max(0, depth - (r - Math.sqrt(r * r - x * x)));
-}
-
-// how deep the scoop runs under a straightedge laid along the board's top at y, at `side` across
-// it: -1 the bass edge, 1 the treble edge, 0 the centre. Each edge dips to its own depth at the
-// same station, as two arcs meeting there on a shared tangent, one up to the nut and one to the
-// end; the depth runs linearly between the edges. Zero while the scoop doesn't solve
-export function fingerboardScoopAt(p: ViolinFamilyParams, s: StringSetupSolve, y: number, side = 0): number {
-  if (!s.fingerboardEnd || s.failures.some(f => f.unsolved.includes('scoop'))) return 0;
-  let ss = p.stringSetup!;
-  let length = dist(s.neck.neckTop!, s.fingerboardEnd);
-  let d = calcAlongBoard(s, y) * length;
-  let run = d < ss.scoopAt ? ss.scoopAt : length - ss.scoopAt;
-  let x = Math.min(run, Math.abs(d - ss.scoopAt));
-  let t = (side + 1) / 2;
-  return calcScoopDip(ss.scoopBass, run, x) * (1 - t) + calcScoopDip(ss.scoopTreble, run, x) * t;
-}
-
-// the board's top edge at `side` (-1 bass, 1 treble), nut to end: its thickness off the neck, less
-// the scoop. Straight while the board is flat; a curve too slight to see otherwise
-export function calcFingerboardEdgeLine(p: ViolinFamilyParams, s: StringSetupSolve, side: -1 | 1): Pt[] {
-  let neckTop = s.neck.neckTop!, end = s.fingerboardEnd!;
-  let thickness = p.stringSetup!.fingerboardThickness;
-  let normal = vectorFromSlope(p.neck!.angle * TURN.degree);
-  return Array.from({ length: FINGERBOARD_CROWN_SAMPLES + 1 }, (_, i) => {
-    let at = pointAtDistanceToward(neckTop, end, i * dist(neckTop, end) / FINGERBOARD_CROWN_SAMPLES);
-    return moveInVectorSpace(at, [{ ...normal, mag: thickness - fingerboardScoopAt(p, s, at.y, side) }]);
-  });
-}
-
 // how far the board's conical crown stands above its edges, over its width and radius at y
 export function fingerboardCrownAt(p: ViolinFamilyParams, s: StringSetupSolve, y: number): number {
   let r = fingerboardRadiusAt(p, s, y);
@@ -416,8 +315,8 @@ export function fingerboardCrownAt(p: ViolinFamilyParams, s: StringSetupSolve, y
 }
 
 // the board's top along the centre, from its edge at the nut over the crown to its edge at the end.
-// The crown's rise follows the board's width and radius, both growing linearly, less the scoop
-// down the middle. Null while a radius can't span the board
+// The crown's rise follows the board's width and radius, both growing linearly. Null while a radius
+// can't span the board
 export function calcFingerboardCrownLine(p: ViolinFamilyParams, s: StringSetupSolve): Pt[] | null {
   let neckTop = s.neck.neckTop;
   let end = s.fingerboardEnd;
@@ -427,7 +326,7 @@ export function calcFingerboardCrownLine(p: ViolinFamilyParams, s: StringSetupSo
   let line = [moveInVectorSpace(neckTop, [{ ...normal, mag: thickness }])];
   for (let i = 0; i <= FINGERBOARD_CROWN_SAMPLES; i++) {
     let at = pointAtDistanceToward(neckTop, end, i * dist(neckTop, end) / FINGERBOARD_CROWN_SAMPLES);
-    line.push(moveInVectorSpace(at, [{ ...normal, mag: thickness + fingerboardCrownAt(p, s, at.y) - fingerboardScoopAt(p, s, at.y) }]));
+    line.push(moveInVectorSpace(at, [{ ...normal, mag: thickness + fingerboardCrownAt(p, s, at.y) }]));
   }
   line.push(moveInVectorSpace(end, [{ ...normal, mag: thickness }]));
   return line;
@@ -446,18 +345,19 @@ export function solveStringSetup(p: ViolinFamilyParams): StringSetupSolve | null
   if (!p.stringSetup || !p.neck) return null;
   let ss = p.stringSetup;
   let neck = solveNeck(p)!;
-  let s: StringSetupSolve = { neck, bridgeFoot: null, bridge: null, bridgeTop: null, nutTop: null, fingerboardEnd: null, failures: [] };
+  let s: StringSetupSolve = { neck, bridgeFoot: null, bridge: null, bridgeTop: null, nutTop: null, fingerboardEnd: null, soundPost: null, failures: [] };
   let { neckTop, root } = neck;
   if (!neckTop || !root) {
-    s.failures.push(buildMiss('String setup: the neck has to solve first; everything here stands on it.', ['bridge', 'nut', 'fingerboard']));
+    s.failures.push(buildMiss('String setup: the neck has to solve first; everything here stands on it.', ['bridge', 'nut', 'fingerboard', 'soundPost']));
     return s;
   }
   let normal = vectorFromSlope(p.neck.angle * TURN.degree);
 
   solveSection(s.failures, 'Bridge', ['bridge'], () => {
-    if (![ss.bodyStop, ss.bridgeHeight].every(Number.isFinite)) return buildMiss('Bridge: the stop and the height need values.', ['bridge']);
+    if (![ss.bodyStop, ss.bridgeHeight, ss.bridgeWidth].every(Number.isFinite)) return buildMiss('Bridge: the stop, height and width need values.', ['bridge']);
     if (!(ss.bodyStop > 0 && ss.bodyStop < p.body.height)) return buildMiss(`Bridge: the stop has to land on the body, between 0 and ${p.body.height} mm.`, ['bridge']);
     if (!(ss.bridgeHeight > 0)) return buildMiss('Bridge: the height needs a value above 0.', ['bridge']);
+    if (!(ss.bridgeWidth > 0)) return buildMiss('Bridge: the width needs a value above 0.', ['bridge']);
     let a = solveLongArching(p)!;
     let y = p.body.height - ss.bodyStop;
     let blank = familyStandards(p.body.height).bridge;
@@ -465,6 +365,16 @@ export function solveStringSetup(p: ViolinFamilyParams): StringSetupSolve | null
     let foot = s.bridgeFoot = calcPointOnArch(p, a, y);
     let top = s.bridgeTop = new Pt(foot.x + ss.bridgeHeight, foot.y);
     s.bridge = [neckFoot, tailFoot, new Pt(top.x, top.y - blank.topThickness / 2), new Pt(top.x, top.y + blank.topThickness / 2)];
+    return null;
+  });
+
+  solveSection(s.failures, 'Soundpost', ['soundPost'], () => {
+    let anchor = calcSoundPostAnchor(p, s);
+    if (!anchor) return buildMiss('Soundpost: the bridge has to solve first; the post is set from its treble foot.', ['soundPost']);
+    let offset = ss.soundPostOffset;
+    if (![offset?.x, offset?.y, ss.soundPostDiameter].every(Number.isFinite)) return buildMiss('Soundpost: the offset and the diameter need values.', ['soundPost']);
+    if (!(ss.soundPostDiameter > 0)) return buildMiss('Soundpost: the diameter needs a value above 0.', ['soundPost']);
+    s.soundPost = new Circle(anchor.x + offset.x, anchor.y + offset.y, ss.soundPostDiameter / 2);
     return null;
   });
 
@@ -486,16 +396,6 @@ export function solveStringSetup(p: ViolinFamilyParams): StringSetupSolve | null
         return buildMiss(`Fingerboard: the radius at the ${name} has to span the board's half width there, ${half.toFixed(1)} mm.`, ['fingerboard'],
           [moveInVectorSpace(at, [{ ...normal, mag: ss.fingerboardThickness }])]);
       }
-    }
-    return null;
-  });
-
-  solveSection(s.failures, 'Scoop', ['scoop'], () => {
-    if (!s.fingerboardEnd) return buildMiss('Scoop: the board has to solve first; it\'s planed into its top.', ['scoop']);
-    if (![ss.scoopAt, ss.scoopBass, ss.scoopTreble].every(Number.isFinite)) return buildMiss('Scoop: the deepest station and both depths need values.', ['scoop']);
-    if (ss.scoopBass < 0 || ss.scoopTreble < 0) return buildMiss('Scoop: a depth can\'t be negative.', ['scoop']);
-    if (!(ss.scoopAt > 0 && ss.scoopAt < ss.fingerboardLength)) {
-      return buildMiss(`Scoop: its deepest point has to lie along the board, between 0 and ${ss.fingerboardLength} mm from the nut.`, ['scoop']);
     }
     return null;
   });

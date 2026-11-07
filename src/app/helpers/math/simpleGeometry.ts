@@ -358,6 +358,14 @@ export function vectorFromSlope(theta: number): Vect2D {
   return { a: Math.cos(theta), b: Math.sin(theta), mag: 1 };
 }
 
+export function normalVectorFromSlope(theta: number): Vect2D {
+  return { a: -Math.sin(theta), b: Math.cos(theta), mag: 1 };
+}
+
+export function vectorFromSlopeAndMag(theta: number, mag: number): Vect2D {
+  return { a: Math.cos(theta), b: Math.sin(theta), mag };
+}
+
 // ===== Arcs =====
 
 /** True when `angle` lies on the CCW sweep from startAngle to endAngle — the arcPathData

@@ -1,70 +1,53 @@
 @let ss = params.stringSetup!;
 
 <section class="ui-group">
-    <div class="ui-group-title">Fingerboard</div>
+    <div class="ui-group-title">Scoop</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Length <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="ss.fingerboardLength" (input)="recordEditAndRedraw()" (focus)="highlightPart('fbLength', pal.ink(0))" (blur)="clearHighlight()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Nut Thickness <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0).faint(-3)"
-                [(ngModel)]="ss.nutThickness" (input)="recordEditAndRedraw()" (focus)="highlightPart('nutThickness', pal.ink(0).faint(-3))" (blur)="clearHighlight()" />
-        </label>
-    </div>
-
-     <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Deepest At <span class="unit-label">mm</span></span>
+            <span class="field-title">Scoop At <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="ss.scoopAt" (input)="recordEditAndRedraw()" (focus)="highlightPart('scoopAt', pal.ink(0))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Bass Depth <span class="unit-label">mm</span></span>
+            <span class="field-title">Depth Bass; Treble<span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.05" min="0" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="ss.scoopBass" (input)="recordEditAndRedraw()" (focus)="highlightPart('scoopBass', pal.ink(0))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Treble Depth <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.05" min="0" [style.border-color]="pal.ink(0).faint(-3)"
                 [(ngModel)]="ss.scoopTreble" (input)="recordEditAndRedraw()" (focus)="highlightPart('scoopTreble', pal.ink(0).faint(-3))" (blur)="clearHighlight()" />
-        </label>
-    </div>
-     <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">At Nut <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="ss.fingerboardNutRadius" (input)="recordEditAndRedraw()" (focus)="highlightPart('fbNutRadius', pal.ink(0))" (blur)="clearHighlight()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">At End <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="ss.fingerboardEndRadius" (input)="recordEditAndRedraw()" (focus)="highlightPart('fbEndRadius', pal.ink(0))" (blur)="clearHighlight()" />
         </label>
     </div>
 </section>
 
 <section class="ui-group">
     <div class="ui-group-title">Position Marks</div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell field-cell--wide">
-            <span class="field-title">Semitones</span>
-            <input type="text" class="basic-input" placeholder="5, 7, 12" [style.border-color]="pal.ink(3)"
-                [ngModel]="semitonesText" (ngModelChange)="semitonesEdited($event)" (focus)="highlightPart('marks', pal.ink(3))" (blur)="clearHighlight()" />
-        </label>
+    <div class="spline-points">
+        <div class="input-group basic-row spline-row spline-row--header">
+            <span class="field-cell">Semitone</span>
+            <span class="field-cell">X Offset <span class="unit-label">mm</span></span>
+            <span class="field-cell">Diameter <span class="unit-label">mm</span></span>
+        </div>
+        @for (marker of markers; track $index; let i = $index) {
+        <div class="input-group basic-row field-row spline-row" role="group">
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(3)"
+                    [(ngModel)]="marker.semitone" (input)="stateEdited()" (focus)="focusMarker(i)" (blur)="clearHighlight()" />
+            </div>
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="0.5" [style.border-color]="pal.ink(3)"
+                    [(ngModel)]="marker.offset" (input)="stateEdited()" (focus)="focusMarker(i)" (blur)="clearHighlight()" />
+            </div>
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(3)"
+                    [(ngModel)]="marker.diameter" (input)="stateEdited()" (focus)="focusMarker(i)" (blur)="clearHighlight()" />
+            </div>
+            <button type="button" class="info-icon" (click)="removeMarker(i)" title="Remove marker" aria-label="Remove marker">×</button>
+        </div>
+        }
     </div>
     <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">X Offset <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.5" [style.border-color]="pal.ink(3)"
-                [(ngModel)]="marks.offset" (input)="stateEdited()" (focus)="highlightPart('marks', pal.ink(3))" (blur)="clearHighlight()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Diameter <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(3)"
-                [(ngModel)]="marks.diameter" (input)="stateEdited()" (focus)="highlightPart('marks', pal.ink(3))" (blur)="clearHighlight()" />
-        </label>
+        <button type="button" class="panel-nav-btn" (click)="addMarker()">+ Add Marker</button>
+        <button type="button" class="panel-nav-btn" (click)="sortMarkers()">Sort by Semitone</button>
     </div>
 </section>

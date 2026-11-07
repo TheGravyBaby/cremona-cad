@@ -262,6 +262,15 @@
         </app-vf-dev-graduation-panel>
         }
 
+        @if (openPanel === 'devBassBar') {
+        <app-vf-dev-bassbar-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-dev-bassbar-panel>
+        }
+
         @if (openPanel === 'devExport') {
         @defer {
         <app-vf-dev-export-panel #panelRef

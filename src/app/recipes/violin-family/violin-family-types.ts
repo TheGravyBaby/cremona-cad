@@ -23,6 +23,7 @@ export interface ViolinFamilyParams {
   fHoleContours?: FholeContourParams;
   arching?: ArchingParams;
   graduation?: GraduationParams;
+  bassBar?: BassBarParams;
   neck?: NeckParams;
   scroll?: ScrollParams;
   stringSetup?: StringSetupParams;
@@ -309,6 +310,16 @@ export interface GraduationPoint {
   label?: string;
 }
 
+// the bass bar, glued under the top's bass side once the top is graduated. A placeholder: its
+// length, its width across, and its height at the middle
+export interface BassBarParams {
+  length: number;
+  width: number;
+  height: number;
+  xOffset: number;
+  angle: number;
+}
+
 // the neck set in the side elevation and its widths in plan. Length runs along the fingerboard
 // plane from the mortise floor to the nut's foot, which it places; the angle is the fingerboard
 // plane's tilt off the top plate's square, in degrees. The thicknesses are the wood alone, the upper
@@ -333,15 +344,19 @@ export interface NeckParams {
 }
 
 // the string setup, reference geometry over the neck that never shapes it. The bridge stands on the
-// top's arch the body stop down from the neck end, its height off the arch; the nut stands its
-// thickness off the neck's front at the nut; the board runs its length down the neck from the nut,
-// its thickness off the neck at the edges and its crown a cone across its width: one radius at the
-// nut, another at the end, the radius between them running linearly along the board. The scoop is
-// planed along the top under the strings: how far from the nut it's deepest, and how deep under a
-// straightedge at the bass edge and at the treble edge, the depth running linearly across
+// top's arch the body stop down from the neck end, its height off the arch, its width across the
+// feet; the nut stands its thickness off the neck's front at the nut; the board runs its length down
+// the neck from the nut, its thickness off the neck at the edges and its crown a cone across its
+// width: one radius at the nut, another at the end, the radius between them running linearly along
+// the board. The scoop is planed along the top under the strings: how far from the nut it's deepest,
+// and how deep under a straightedge at the bass edge and at the treble edge, the depth running
+// linearly across. Only the dev fingerboard panel and the fingerboard STL read it. The soundpost
+// stands its offset from the bridge's treble foot, across (+ toward the treble edge) and along
+// (+ toward the neck), in plan
 export interface StringSetupParams {
   bodyStop: number;
   bridgeHeight: number;
+  bridgeWidth: number;
   nutThickness: number;
   fingerboardLength: number;
   fingerboardThickness: number;
@@ -350,6 +365,8 @@ export interface StringSetupParams {
   scoopAt: number;
   scoopBass: number;
   scoopTreble: number;
+  soundPostOffset: Pt;
+  soundPostDiameter: number;
 }
 
 // the inside mould: the rib outline with the blocks cut out of it. Only the blocks' sizes are typed;
@@ -502,7 +519,7 @@ export const VIOLIN_FAMILY_RECIPE_NAME = 'violin-family-recipe';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'plateContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'pegbox', 'scrollWidths', 'stringSetup', 'mould', 'export', 'devFingerboard', 'devGraduation', 'devExport'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'plateContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'pegbox', 'scrollWidths', 'stringSetup', 'mould', 'export', 'devFingerboard', 'devGraduation', 'devBassBar', 'devExport'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface<ViolinFamilyParams> {

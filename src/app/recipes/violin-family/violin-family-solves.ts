@@ -300,12 +300,13 @@ export interface NeckSolve {
   failures: NeckFailure[];
 }
 
-export type StringSetupKey = 'bridge' | 'nut' | 'fingerboard' | 'scoop';
+export type StringSetupKey = 'bridge' | 'nut' | 'fingerboard' | 'soundPost';
 export type StringSetupFailure = SolveFailure<StringSetupKey>;
 
 // the string setup in the side elevation, over the neck it was solved on: the bridge's foot on the
 // arch, its blank (neck-side foot, tail-side foot, tail-side top, neck-side top) and the string's
-// point on its top, the string's point on the nut, and the board's end on the fingerboard plane
+// point on its top, the string's point on the nut, and the board's end on the fingerboard plane.
+// The soundpost is in plan, as the front view draws it
 export interface StringSetupSolve {
   neck: NeckSolve;
   bridgeFoot: Pt | null;
@@ -313,6 +314,7 @@ export interface StringSetupSolve {
   bridgeTop: Pt | null;
   nutTop: Pt | null;
   fingerboardEnd: Pt | null;
+  soundPost: Circle | null;
   failures: StringSetupFailure[];
 }
 
@@ -389,3 +391,14 @@ export interface GraduationSolve {
 }
 
 export interface GraduationGround { loop: Pt[]; minX: number; maxX: number; minY: number; maxY: number }
+
+export type BassBarKey = 'bar';
+export type BassBarFailure = SolveFailure<BassBarKey>;
+
+export interface BassBarSolve {
+  upperLeft: Pt | null;
+  upperRight: Pt | null;
+  lowerLeft: Pt | null;
+  lowerRight: Pt | null;
+  failures: BassBarFailure[];
+}

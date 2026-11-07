@@ -1,0 +1,28 @@
+<section class="ui-group">
+    <div class="ui-group-title">Bass Bar Position</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Length <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="bb.length" (input)="recordEditAndRedraw()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="bb.width" (input)="recordEditAndRedraw()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">XOffset <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="bb.xOffset" (input)="recordEditAndRedraw()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Angle <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step=".1" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="bb.angle" (input)="recordEditAndRedraw()" />
+        </label>    
+    </div>  
+
+</section>

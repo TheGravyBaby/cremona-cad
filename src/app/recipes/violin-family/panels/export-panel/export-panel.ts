@@ -39,8 +39,8 @@ import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fho
 import { defineArchPath, solveLongArching } from '../long-arching-panel/long-arching-panel';
 import { calcBodyLandmarks, rowAt, calcSectionRuns, solveCrossArching, STATION_MERGE_EPS_MM, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { calcMortiseFloorY, neckHalfWidthAt, calcScrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
-import { fingerboardRadiusAt, fingerboardScoopAt, solveStringSetup } from '../string-setup-panel/string-setup-panel';
-import type { PositionMarkSolve } from '../dev-fingerboard-panel/dev-fingerboard-panel';
+import { fingerboardRadiusAt, solveStringSetup } from '../string-setup-panel/string-setup-panel';
+import { fingerboardScoopAt, PositionMarkSolve, solveScoop } from '../dev-fingerboard-panel/dev-fingerboard-panel';
 import { defineSideScrollPath } from '../pegbox-panel/pegbox-panel';
 import { buildScrollBackStrip, buildScrollBackViewStrokes, buildScrollCompassWalk, buildScrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
 import { buildBlockLayout, MOULD_EXPORT_STEP, solveMould } from '../mould-panel/mould-panel';
@@ -845,7 +845,7 @@ function plateZAt(surface: PlateSurface): (x: number, y: number) => number | nul
 // the string setup with its board and scoop standing, or null
 function solvedFingerboard(p: ViolinFamilyParams): StringSetupSolve | null {
   let s = p.stringSetup && p.neck ? solveStringSetup(p) : null;
-  if (!s?.fingerboardEnd || s.failures.some(f => f.unsolved.includes('fingerboard') || f.unsolved.includes('scoop'))) return null;
+  if (!s?.fingerboardEnd || s.failures.some(f => f.unsolved.includes('fingerboard')) || solveScoop(p, s).failures.length) return null;
   return s;
 }
 

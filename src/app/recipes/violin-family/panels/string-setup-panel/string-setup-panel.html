@@ -36,10 +36,17 @@
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="ss.fingerboardThickness" (input)="recordEditAndRedraw()" (focus)="highlightPart('fbThickness', pal.ink(0))" (blur)="clearHighlight()" />
         </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Radius <span class="unit-label">mm</span></span>
+            <span class="field-title">Nut Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
-                [ngModel]="ss.fingerboardNutRadius" (ngModelChange)="radiusEdited($event)" (focus)="highlightPart('fbRadius', pal.ink(0))" (blur)="clearHighlight()" />
+                [(ngModel)]="ss.fingerboardNutRadius" (input)="recordEditAndRedraw()" (focus)="highlightPart('fbNutRadius', pal.ink(0))" (blur)="clearHighlight()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">End Radius <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
+                [(ngModel)]="ss.fingerboardEndRadius" (input)="recordEditAndRedraw()" (focus)="highlightPart('fbEndRadius', pal.ink(0))" (blur)="clearHighlight()" />
         </label>
     </div>
 </section>
@@ -53,13 +60,41 @@
                 [(ngModel)]="ss.bodyStop" (input)="recordEditAndRedraw()" (focus)="highlightPart('bodyStop', pal.ink(1))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
+            <span class="field-title">String Length <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="String length value">{{ stringLength == null ? '–' : (stringLength | number:'1.1-1') }}</div>
+        </label>
+       
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1)"
                 [(ngModel)]="ss.bridgeHeight" (input)="recordEditAndRedraw()" (focus)="highlightPart('bridgeHeight', pal.ink(1))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">String Length <span class="unit-label">mm</span></span>
-            <div class="basic-display" aria-label="String length value">{{ stringLength == null ? '–' : (stringLength | number:'1.1-1') }}</div>
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="1" [style.border-color]="pal.ink(1)"
+                [(ngModel)]="ss.bridgeWidth" (input)="recordEditAndRedraw()" (focus)="highlightPart('bridgeWidth', pal.ink(1))" (blur)="clearHighlight()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">Post X <span class="unit-label">mm</span></span>
+                <span class="field-title">Post Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Soundpost offset from the treble foot"
+                [style.borderColor]="pal.ink(3)" title="Off the bridge's treble foot; arrow keys move the post from either box">
+                <input type="number" class="basic-input" step="0.5" data-xy="x" aria-label="Soundpost offset X"
+                    [(ngModel)]="ss.soundPostOffset.x" (input)="recordEditAndRedraw()" (focus)="highlightPart('soundPost', pal.ink(3))" (blur)="clearHighlight()" />
+                <input type="number" class="basic-input" step="0.5" data-xy="y" aria-label="Soundpost offset Y"
+                    [(ngModel)]="ss.soundPostOffset.y" (input)="recordEditAndRedraw()" (focus)="highlightPart('soundPost', pal.ink(3))" (blur)="clearHighlight()" />
+            </div>
+        </div>
+        <label class="field-cell">
+            <span class="field-title">Post Diameter <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(3)"
+                [(ngModel)]="ss.soundPostDiameter" (input)="recordEditAndRedraw()" (focus)="highlightPart('soundPostDiameter', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
     </div>
 </section>

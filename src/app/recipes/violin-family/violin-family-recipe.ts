@@ -31,6 +31,7 @@ import { MouldPanel } from './panels/mould-panel/mould-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
 import { DevFingerboardPanel } from './panels/dev-fingerboard-panel/dev-fingerboard-panel';
 import { DevGraduationPanel } from './panels/dev-graduation-panel/dev-graduation-panel';
+import { DevBassBarPanel } from './panels/dev-bassbar-panel/dev-bassbar-panel';
 import { DevExportPanel } from './panels/dev-export-panel/dev-export-panel';
 import { CORPUS_TEMPLATES, isLocSourced, thumbnailHref } from './templates/corpus';
 import { IconDirective } from '../../icons/icon.directive';
@@ -45,7 +46,7 @@ import { IconDirective } from '../../icons/icon.directive';
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, PlateContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, PegboxPanel, ScrollWidthsPanel, StringSetupPanel, MouldPanel, ExportPanel, DevFingerboardPanel, DevGraduationPanel, DevExportPanel, IconDirective],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, PlateContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, PegboxPanel, ScrollWidthsPanel, StringSetupPanel, MouldPanel, ExportPanel, DevFingerboardPanel, DevGraduationPanel, DevBassBarPanel, DevExportPanel, IconDirective],
   templateUrl: './violin-family.html',
   styleUrls: ['../../sidebar.css', './violin-family.css'],
 })
@@ -79,6 +80,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
     // features on trial, never offered off localhost
     ...(isLocalHost() ? [{ id: 'devFingerboard', label: 'Dev Fingerboard', toggles: DevFingerboardPanel.renderToggles, seed: StringSetupPanel.seed } as const] : []),
     ...(isLocalHost() ? [{ id: 'devGraduation', label: 'Dev Graduation', toggles: DevGraduationPanel.renderToggles, seed: DevGraduationPanel.seed } as const] : []),
+    ...(isLocalHost() ? [{ id: 'devBassBar', label: 'Dev Bass Bar', toggles: DevBassBarPanel.renderToggles, seed: DevBassBarPanel.seed } as const] : []),
     // drives the maker's own CNC, so it is never offered off localhost; its component is only named
     // inside @defer, so its planner is a separate chunk that is fetched only when the tab opens
     ...(isLocalHost() ? [{ id: 'devExport', label: 'Dev Export', toggles: [] } as const] : []),
@@ -207,6 +209,7 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
       case 'stringSetup': return !!p.neck;
       case 'devFingerboard': return isLocalHost() && !!p.neck;
       case 'devGraduation': return isLocalHost() && !!p.arching;
+      case 'devBassBar': return isLocalHost() && !!p.graduation;
       case 'devExport': return isLocalHost() && !!p.mould;
       default: return false;
     }

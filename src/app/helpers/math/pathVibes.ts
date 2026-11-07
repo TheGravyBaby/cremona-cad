@@ -1424,6 +1424,40 @@ export interface RowSampledField<R> {
   zAt: (x: number, y: number, row: R) => number | null;
 }
 
+// a height field's surface carried in square to itself by a depth read where it's carried from, as
+// a shell's inside stands under its outside: the inside's height over (x, y), or null off the field.
+// The carried point lands beside the one it left, so the start is walked back by each miss; on the
+// slopes of a carved plate the miss is under a millimetre and a few steps settle it
+export function normalOffsetZAt(zAt: (x: number, y: number) => number | null, depthAt: (x: number, y: number) => number, x: number, y: number, h = 0.25, tolerance = 1e-3, maxSteps = 8): number | null {
+  let ux = x, uy = y, innerZ: number | null = null;
+  for (let step = 0; step < maxSteps; step++) {
+    let z = zAt(ux, uy);
+    if (z === null) return null;
+    let n = heightFieldNormalAt(zAt, ux, uy, z, h);
+    let t = depthAt(ux, uy);
+    let missX = ux - t * n.x - x, missY = uy - t * n.y - y;
+    innerZ = z - t * n.z;
+    if (Math.hypot(missX, missY) < tolerance) break;
+    ux -= missX;
+    uy -= missY;
+  }
+  return innerZ;
+}
+
+// the unit normal, pointing up, by central differences; one-sided where a neighbour falls off the
+// field, level along an axis where both do
+function heightFieldNormalAt(zAt: (x: number, y: number) => number | null, x: number, y: number, z: number, h: number): Pt3D {
+  let slope = (plus: number | null, minus: number | null): number =>
+    plus !== null && minus !== null ? (plus - minus) / (2 * h)
+      : plus !== null ? (plus - z) / h
+        : minus !== null ? (z - minus) / h
+          : 0;
+  let zx = slope(zAt(x + h, y), zAt(x - h, y));
+  let zy = slope(zAt(x, y + h), zAt(x, y - h));
+  let len = Math.hypot(zx, zy, 1);
+  return new Pt3D(-zx / len, -zy / len, 1 / len);
+}
+
 // the field's contour map: heights on a grid, marching squares, every ring clipped to the outline.
 // Positive levels never reach the outline (a flat margin always separates them from the edge), so
 // only the levels at or below zero are clipped. Off the surface the grid reads far below for the
