@@ -381,6 +381,8 @@ export interface MouldParams {
   endBlock: BlockParams;
   bitDiameter: number;
   clampBox: boolean;
+  // how far the clamp windows stand in from the rib outline: the mould's wall
+  windowInset: number;
 }
 
 export interface BlockParams {

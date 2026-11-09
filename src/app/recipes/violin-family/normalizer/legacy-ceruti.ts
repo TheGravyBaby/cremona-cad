@@ -329,6 +329,7 @@ function legacyMould(c: any): MouldParams | undefined {
     endBlock: { width: b.L.width, height: b.L.height },
     bitDiameter: c.bitDiameter ?? 6.35,
     clampBox: true,
+    windowInset: 1.1 * (Math.max(b.U.height, b.L.height) + 4),
   };
 }
 

@@ -54,6 +54,8 @@ export class MouldPanel extends PanelComponentBase {
       // Carbide's 1/4", the bit the moulds are cut with
       bitDiameter: 6.35,
       clampBox: true,
+      // a wall a little more than the end blocks and the channel behind them
+      windowInset: MOULD_WALL * (size.end + MOULD_CHANNEL_DEPTH),
     };
   }
 
@@ -80,7 +82,7 @@ export class MouldPanel extends PanelComponentBase {
 
 // used to be a user-facing param; in practice one depth suited every instrument, so it's fixed
 const MOULD_CHANNEL_DEPTH = 4;
-const MOULD_WALL = 1.1; // scales the thickness of the mould walls
+const MOULD_WALL = 1.1;
 // the export samples the outline ten times finer than the panel's preview
 export const MOULD_EXPORT_STEP = 0.1;
 
@@ -190,10 +192,8 @@ export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
   if (mo.clampBox && s.blocks) solveSection(s.failures, 'Clamp box', ['clampBox'], () => {
     let b = s.blocks!;
     if (!rib.U2 || !rib.L2) return buildMiss('Clamp box: the bouts have to turn into their corners for the windows to follow them.', ['clampBox']);
-    let clampOffset = MOULD_WALL * (Math.max(mo.neckBlock.height, mo.endBlock.height) + MOULD_CHANNEL_DEPTH);
-    if (p.bouts!.useViolNeck)
-      clampOffset = MOULD_WALL * (mo.endBlock.height + MOULD_CHANNEL_DEPTH);
-
+    let clampOffset = mo.windowInset;
+    if (!(clampOffset > 0)) return buildMiss('Clamp box: the window inset needs a value above 0.', ['clampBox']);
     if ([rib.U1, rib.U2, rib.L1, rib.L2].some(arc => arc.r <= clampOffset))
       return buildMiss("Clamp box: the walls are thicker than the bouts are round, so no window can follow them, and it's left uncut.", []);
 

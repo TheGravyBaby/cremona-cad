@@ -115,7 +115,7 @@ describe('the mould solve', () => {
     expect(nearest([corner], points(solved(p, MOULD_EXPORT_STEP).outline!))).toBeLessThan(0.1);
   });
 
-  it('cuts each clamp window as a closed loop inside the mould, clear of every block, one wall thick in from the ribs, more than the blocks and channel', () => {
+  it('cuts each clamp window as a closed loop inside the mould, clear of every block, the window inset in from the ribs', () => {
     const p = seeded();
     const s = solved(p);
     const outline = points(s.outline!);
@@ -129,7 +129,7 @@ describe('the mould solve', () => {
       return nearest(q, ribs);
     });
     for (const wall of walls) expect(wall).toBeCloseTo(walls[0], 3);
-    expect(walls[0]).toBeGreaterThan(Math.max(p.mould!.neckBlock.height, p.mould!.endBlock.height) + 4);
+    expect(walls[0]).toBeCloseTo(p.mould!.windowInset, 1);
   });
 
   it('leaves the clamp box off for a maker who cuts their own, the outline untouched', () => {
@@ -141,9 +141,26 @@ describe('the mould solve', () => {
     expect(without.outline).toBe(withBox.outline);
   });
 
-  it('leaves a window uncut and says so when the blocks leave it no room, the mould still drawn', () => {
+  it('thickens the walls with the window inset', () => {
     const p = seeded();
-    p.mould!.endBlock.height = 90;
+    const thin = nearest(points(solved(p).clampBox[0]), points(solved(p).ribOutline!));
+    p.mould!.windowInset += 5;
+    const thick = nearest(points(solved(p).clampBox[0]), points(solved(p).ribOutline!));
+    expect(thick).toBeCloseTo(thin + 5, 1);
+  });
+
+  it('fails the clamp box on a cleared inset, the mould still drawn', () => {
+    const p = seeded();
+    p.mould!.windowInset = null as unknown as number;
+    const s = solveMould(p)!;
+    expect(s.failures[0].unsolved).toEqual(['clampBox']);
+    expect(s.clampBox).toEqual([]);
+    expect(s.outline).toBeTruthy();
+  });
+
+  it('leaves a window uncut and says so when the inset leaves it no room, the mould still drawn', () => {
+    const p = seeded();
+    p.mould!.windowInset = 90;
     const s = solveMould(p)!;
     expect(s.failures.length).toBe(1);
     expect(s.failures[0].unsolved).toEqual([]);

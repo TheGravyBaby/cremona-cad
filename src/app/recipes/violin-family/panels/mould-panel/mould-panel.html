@@ -106,4 +106,13 @@
             <input type="checkbox" [(ngModel)]="mo.clampBox" (change)="recordEditAndRedraw()" /><span>Clamp Box</span>
         </div>
     </div>
+    @if (mo.clampBox) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Window Inset <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.5" min="0"
+                [(ngModel)]="mo.windowInset" (input)="recordEditAndRedraw()" />
+        </label>
+    </div>
+    }
 </section>

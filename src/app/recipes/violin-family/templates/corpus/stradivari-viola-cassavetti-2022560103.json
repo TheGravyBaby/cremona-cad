@@ -231,7 +231,8 @@
         "height": 25
       },
       "bitDiameter": 6.35,
-      "clampBox": true
+      "clampBox": true,
+      "windowInset": 31.9
     },
     "neck": {
       "length": 160,
