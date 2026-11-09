@@ -1,9 +1,9 @@
 import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { buildGcode, downloadGcodeFile, GcodeJob } from '../../../../helpers/gcodeExporter';
+import { buildGcode, downloadGcodeFile } from '../../../../helpers/gcodeExporter';
 import { angleFromCenter, angleWithinSweep, closestPointOnSegment, dist, flipPointAboutY, normalizeRadians, pointInPolygon, pointOnCircle, signedPolygonArea, TURN } from '../../../../helpers/math/simpleGeometry';
 import { Matrix2D, pathFromPolyline, pathsBounds, samplePathToPolyline, transformPath } from '../../../../helpers/math/pathMath';
-import { buildPolylineIndex, distPointToPolylineIndexed, pointAtPolylineLength, polylineCumulativeLengths, polylineSlice, simplifyPolyline3D } from '../../../../helpers/math/vibeMath';
+import { buildPolylineIndex, distPointToPolylineIndexed, polylineCumulativeLengths, simplifyPolyline3D } from '../../../../helpers/math/vibeMath';
 import { erodePolygon, flattenPath, offsetPath } from '../../../../helpers/math/pathVibes';
 import { inchFraction } from '../../../../helpers/nearestFraction';
 import { renderCrosshair, renderPath, renderRect, renderText, renderTranslatedLayers } from '../../../../helpers/renderFuncs';
@@ -14,6 +14,8 @@ import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
+import { Bit, CRADLE, CradleSettings, CradleSpec, DEFAULT_SETTINGS, DevExportSettings, EXPORTS, FHOLE, FholeSettings, Feeds, MACHINE, MACHINE_HELP, MOULD_TABS, PLATE_TABS, PlateSettings, PREVIEW_GRID, readSettings, SCROLL, ScrollSettings, Stage, STAGE_SHAPE, StageKey, stageOf, STOCK_OF, StockSettings, SURFACE, Tool, toolFor, TOOLS, ToolShape, Wood, writeSettings } from './dev-export-shop';
+import { Bounds, boundsOf, centreInSheet, climbingLoop, emptyToolpaths, evenStations, fail, gcodeJob, jobNotes, placeInSheet, serpentine, SHEET_MARGIN, tabsAlong, terrainGrid, tipHeights, Toolpaths, withTabs } from './dev-export-toolpaths';
 import { FholeContoursSolve, MouldRelief, MouldSolve, NeckSolve, PlateContourSolve, Plate, PlateSurface, ScrollSolve } from '../../violin-family-solves';
 import { buildSurfaceContours, calcContourSampleSteps, rowAt, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { BACK_ARCH_INK, CHANNEL_INK, TOP_ARCH_INK } from '../long-arching-panel/long-arching-panel';
@@ -35,353 +37,13 @@ import { solveScroll } from '../pegbox-panel/pegbox-panel';
 // the wood is hard. The plate, its purfling and its contour are one setup, in that order: all read
 // the plate's blank and where the plate sits in it, so every file agrees, and the contour comes
 // last since the waste round it is what holds the blank down. The cradle is its own slab. The
-// shop's settings are not the instrument's, so they live in this browser's localStorage, not on
-// the recipe. The ⓘ's text is kept here, not in docs/, for the same reason.
+// shop's settings, constants and bits are in dev-export-shop.ts; what the planners share, in
+// dev-export-toolpaths.ts. This file holds the component, the plan per export and its renders.
 //
 // Adding an export: a row in EXPORTS and STOCK_OF, a bit slot in StageKey if it takes its own, and
 // a case in planExport that solves the part, plans its toolpaths and lists its layers. The sheet,
 // the tabs' lifts and the writer are shared, and the plan the panel shows is the file's own header
 
-export type ExportId = 'mould' | 'plate' | 'purfling' | 'contour' | 'cradle' | 'fholes' | 'scroll';
-
-export interface ExportKind {
-  id: ExportId;
-  label: string;
-}
-
-export const EXPORTS: readonly ExportKind[] = [
-  { id: 'mould', label: 'Mould' }, { id: 'plate', label: 'Plate' }, { id: 'purfling', label: 'Purfling' }, { id: 'contour', label: 'Contour' }, { id: 'cradle', label: 'Cradle' }, { id: 'fholes', label: 'F-holes' }, { id: 'scroll', label: 'Scroll' },
-];
-
-// whose stock an export cuts: the purfling and the contour are cut in the plate's blank, in the
-// plate's setup; the cradle in a slab of its own, and the f-holes in the plate held in that slab;
-// the scroll in the neck blank
-export type StockId = 'mould' | 'plate' | 'cradle' | 'scroll';
-export const STOCK_OF: Record<ExportId, StockId> = { mould: 'mould', plate: 'plate', purfling: 'plate', contour: 'plate', cradle: 'cradle', fholes: 'cradle', scroll: 'scroll' };
-
-export type Wood = 'soft' | 'hard';
-
-export interface StockSettings {
-  stock: { thickness: number; width: number; length: number };
-  wood: Wood;
-}
-
-// the arching's stages, in cutting order
-export type Stage = 'rough' | 'finish';
-
-// a plate blank, bookmatched: planed flat on the joint face, which goes down on the bed, and a
-// roof above it from `thickness` at the seam to `edge` at the blank's long edges. It sits in the
-// harness, pushed into the corner of its two fences: `fence` is where they stand from the
-// machine's zero, the vertical fence's X and the horizontal fence's Y, so the file's XY0 is the
-// harness's zero and the blank's lower-left corner is at `fence`, the same for every file cut in
-// it. The plate's centre line goes on the seam, measured from the blank's left edge as it sits
-// against the fence (the two halves need not be the same width), and the plate is centred along
-// the blank. The purfling strip is the shop's too: `purflingDepth` is how deep its channel goes
-// under the plate's edge
-export interface PlateSettings extends StockSettings {
-  stock: StockSettings['stock'] & { edge: number };
-  fence: Pt;
-  seam: number;
-  plate: Plate;
-  stage: Stage;
-  purflingDepth: number;
-}
-
-// the cradle's stages: the pocket the plate's outline sits in, its floor the lip, then the hole
-// through the slab inside the lip. Both with the plate's roughing bit
-export type CradleStage = 'pocket' | 'hole';
-
-// a flat, square slab (MDF or ply) the plate is held in for its inside, either way up; it borrows
-// the plate's roughing bit. The plate is centred in it, so no placement is typed. Cut to the
-// back's outline it takes the top too
-export interface CradleSettings extends StockSettings {
-  plate: Plate;
-  stage: CradleStage;
-}
-
-// the f-holes' stages, in cutting order: the eyes through the plate, then the outline scribed
-export type FholeStage = 'eyes' | 'scribe';
-
-// the top's f-holes, cut with the graduated plate face up in its cradle: `thickness` is the
-// plate's at the f-holes once graduated, which the recipe does not know, and sets how far the
-// eyes go through; `scribeDepth` how far under the surface the V bit draws the outline
-export interface FholeSettings {
-  stage: FholeStage;
-  thickness: number;
-  scribeDepth: number;
-}
-
-// the neck blank's side profile, roughed from a maple billet lying cheek down: the billet's planed
-// face, the fingerboard plane, against the stem of a T fence and its heel end on the crossbar,
-// the head out to the stem's left. Rolled over onto the stem's right for the second file, the two
-// kerfs meeting in the middle, so no bit has to reach through the cheeks
-export type ScrollSide = 'left' | 'right';
-
-// `stock` is the billet: `thickness` across the cheeks (the file's Z), `width` back from the face,
-// `length` along the neck. The harness board stands from XY0 at its lower-left corner; the T
-// fence on it has its stem's left face at `fence.x`, `thickness` thick, running `reach` up from
-// the crossbar's face at `fence.y`: along the neck only, since the head may stand proud of the
-// face. `faceInset` is the fingerboard plane in from the billet's face: 0 puts the face on the
-// stem and leaves it uncut; a chin past the plane needs that much, planed off the face after;
-// a bit's width and more lets the file cut the face too. `endMargin` is the heel's lowest point
-// up from the billet's end on the crossbar
-export interface ScrollSettings extends StockSettings {
-  harness: { width: number; length: number };
-  fence: { x: number; y: number; thickness: number; reach: number };
-  side: ScrollSide;
-  faceInset: number;
-  endMargin: number;
-}
-
-// the bit slots, one per thing cut with a bit of its own, each the number of a row in TOOLS. The
-// cradle borrows the roughing bit; the mould's bit is the Mould panel's param
-export type StageKey = Stage | 'purfling' | 'contour' | FholeStage | 'scroll';
-export const STAGE_SHAPE: Record<StageKey, ToolShape> = { rough: 'flat', finish: 'ball', purfling: 'flat', contour: 'flat', eyes: 'flat', scribe: 'v', scroll: 'flat' };
-
-// one stock per setup: a mould comes out of a ply sheet, a plate and its purfling and contour out
-// of a blank, a cradle out of a slab, a scroll out of the neck blank
-export interface DevExportSettings {
-  job: ExportId;
-  tools: Record<StageKey, number>;
-  mould: StockSettings;
-  plate: PlateSettings;
-  cradle: CradleSettings;
-  fholes: FholeSettings;
-  scroll: ScrollSettings;
-}
-
-export const DEFAULT_SETTINGS: DevExportSettings = {
-  job: 'mould',
-  tools: { rough: 2, finish: 3, purfling: 7, contour: 1, eyes: 6, scribe: 9, scroll: 2 },
-  mould: { stock: { thickness: 19, width: 300, length: 400 }, wood: 'soft' },
-  plate: { stock: { thickness: 22, edge: 10, width: 230, length: 420 }, fence: { x: 25, y: 25 }, seam: 115, wood: 'soft', plate: 'top', stage: 'rough', purflingDepth: 2 },
-  cradle: { stock: { thickness: 25, width: 230, length: 420 }, wood: 'soft', plate: 'back', stage: 'pocket' },
-  fholes: { stage: 'eyes', thickness: 2.8, scribeDepth: 0.3 },
-  scroll: {
-    stock: { thickness: 46, width: 65, length: 280 }, wood: 'hard', harness: { width: 300, length: 400 }, fence: { x: 150, y: 25, thickness: 19, reach: 170 },
-    side: 'left', faceInset: 0, endMargin: 10,
-  },
-};
-
-// the slot the open job cuts with; none for the mould, whose bit is the recipe's
-export function stageOf(s: DevExportSettings): StageKey | null {
-  let job = s.job;
-  return job === 'mould' ? null : job === 'plate' ? s.plate.stage : job === 'cradle' ? 'rough' : job === 'fholes' ? s.fholes.stage : job;
-}
-
-// what never changes between jobs, so it is never asked. Z zero is the spoilboard, so a sheet
-// thinner than typed still cuts through; XY zero is the sheet's lower left, where a BitZero finds
-// it, and the part is centred in the sheet. The router's dial sets its speed, but Carbide Motion
-// still expects an M3 with an S word. mm and mm/min
-export const MACHINE = {
-  overcut: 0.2,
-  // above the stock's top
-  safeZ: 12.7,
-  // along the path, bit included
-  tabWidth: 18,
-  tabHeight: 3,
-  spindleRpm: 18000,
-} as const;
-
-// how the sheet holds the mould while its loops are cut through
-export const MOULD_TABS = { outline: 4, window: 2 } as const;
-
-// how the blank holds the plate while its contour is cut through: a tab at the widest of each
-// bout and the waist of each C, low enough to saw off a 4 mm edge
-export const PLATE_TABS = { height: 1.5, width: 12 } as const;
-
-// the cradle: a pocket of the plate's outline `wall` deep, a hair of `clearance` outside the
-// outline so the plate registers against its side; a `lip` left standing inside it for the plate's
-// land to rest on, wider than the land since face down the fluting channel sits above it; and a
-// hole through the slab inside the lip, held by `tabs` until it drops. Face down the crown hangs in
-// the hole, `crownClearance` off the bed at least. mm
-export const CRADLE = { wall: 3, clearance: 0.15, lip: 8, crownClearance: 2, tabs: 4 } as const;
-export type CradleSpec = { [K in keyof typeof CRADLE]: number };
-
-// the f-holes: the eyes stop `allowance` short of the drawn circle, left for the knife, and go
-// `exitMargin` past the typed thickness, since the graduated inside is the maker's own. mm
-export const FHOLE = { allowance: 0.5, exitMargin: 1 } as const;
-
-// how the neck blank is cut: each side goes `overlap` past the middle so the kerfs meet; tabs
-// stand `tabHeight` off each side's floor, leaving twice that less the overlaps in the middle;
-// the throat is bridged where the pocket narrows to the bit plus `bridge` either side, left for
-// the gouge; and the bit keeps `fenceClearance` off the fence. mm
-export const SCROLL = { overlap: 0.5, tabHeight: 2.5, tabWidth: 12, bridge: 1.5, fenceClearance: 1 } as const;
-
-// how a plate's surface is carved: lines along the length, the roughing in terraces that leave a
-// skin for the ball, the finishing one pass at the scallop's stepover. mm
-export const SURFACE = {
-  // over the finished surface, after roughing
-  leave: 0.5,
-  // between neighbouring finishing lines
-  scallop: 0.05,
-  // the flat bit's stepover, of its diameter
-  roughStepover: 0.5,
-  // the carved area past the outline, so the outline cut later lands on finished land
-  skirt: 8,
-  // the height field's sample spacing for the file
-  grid: 0.5,
-  // a vertex this close to its neighbours' chord is dropped from the file
-  chordTolerance: 0.01,
-} as const;
-
-// the preview's height field, coarse enough to sample on every edit
-const PREVIEW_GRID = 4;
-
-const MACHINE_HELP = {
-  title: 'Dev Export: the fixed plan',
-  text:
-    'Everything the panel does not ask you for is a constant, fixed so that no visit to the shop can drift it. The first mould was cut with exactly these numbers.\n\n' +
-    'ZERO\n' +
-    'Z0 is the spoilboard, so the file reads the top of the stock as Z = thickness. A sheet thinner than typed still cuts through, and a reference set on the stock top (which once ruined a sheet) cannot creep. ' +
-    'XY0 is the sheet\'s lower-left corner, the point the BitZero finds. The part is centred in the sheet, so there is no margin to set; the sheet only has to be the part, plus one bit width, plus 5 mm a side.\n\n' +
-    'OVERCUT\n' +
-    `${MACHINE.overcut} mm. The last pass goes this far into the spoilboard. Ply is only nominal in thickness and the spoilboard is never quite flat, and a skin left under the part is worse than a scratch in the spoilboard.\n\n` +
-    'SAFE Z\n' +
-    `${MACHINE.safeZ} mm above the stock (half an inch). It is the only height the bit travels at rapid, clear of clamps and tabs. Every drop into the work is at plunge feed.\n\n` +
-    'TABS\n' +
-    `${MACHINE.tabWidth} mm along the path and ${MACHINE.tabHeight} mm high. The mould takes ${MOULD_TABS.outline} on the outline and ${MOULD_TABS.window} per window. ` +
-    'They mirror across the centre line. The outline\'s tabs sit out on the bouts so none lands in a block notch. The windows are cut first, so the full sheet is still holding the mould while they are cut. ' +
-    `A plate\'s contour takes six, ${PLATE_TABS.width} mm long and ${PLATE_TABS.height} mm high, at the widest of each bout and the waist of each C, clear of the corners.\n\n` +
-    'DIRECTION\n' +
-    'Climb cutting, for a router turning clockwise: counterclockwise round the outside, clockwise inside a window. It leaves a cleaner edge in ply with less tear-out.\n\n' +
-    'NOTCH CORNERS\n' +
-    'Each block notch is cut as a dog-bone. The bit runs to the corner, then presses into it along the diagonal exactly as far as the drawn relief circle reaches, so the block seats square.\n\n' +
-    'FEEDS\n' +
-    'Set per bit and wood, from the bit maker\'s chart or a job cut here, with the source of each row noted beside it in the code. Amana\'s charts run at 18,000 rpm and a depth of one diameter, with a ramp-down of the feed over the flutes: the feed and the ramp are taken as printed, the depth halved for this router. Only the 1/4" downcut in soft wood has been cut here; cut scrap before trusting any other row.\n\n' +
-    'SPINDLE\n' +
-    `S${MACHINE.spindleRpm}. The router's own dial sets the real speed, but Carbide Motion still wants an M3 with an S word. Before it, the file pauses (M0) with a message naming the bit and the speed; the spindle starts and the cut begins only once you resume.\n\n` +
-    'PLATE\n' +
-    'The blank goes joint face down, pushed into the corner of the harness\'s two fences, so Z0 is the bed it lies on and the plate\'s edge comes out at Z = its edge thickness; the floor the file never crosses is the bottom of the fluting channel, a little under that. XY0 is the harness\'s zero; the fences stand at the X and Y typed, and the blank\'s lower-left corner is in their angle. ' +
-    'Type the blank\'s size and its thickness at the seam and at its long edges, and the seam\'s distance from the blank\'s left edge as it sits against the fence. The plate\'s centre line goes on the seam, and the plate is centred along the blank. The plan refuses a blank the surface would stand proud of, or that the carved area runs off. The margin past the carved area is where the screws go.\n\n' +
-    `The carved area runs ${SURFACE.skirt} mm past the outline, so the outline cut later lands on finished land. Lines run along the length, bass side first, each pair joined at their ends so the bit never lifts between them. ` +
-    `Roughing takes a flat bit in terraces one step down apart, riding over whatever still stands above a terrace, and leaves ${SURFACE.leave} mm for the ball. ` +
-    `Finishing takes a ball bit in one pass, its lines spaced for a ${SURFACE.scallop} mm scallop; the tip stands off the surface wherever the ball would touch it first. ` +
-    'A run diving steeper than 30° is fed at the plunge rate.\n\n' +
-    'PURFLING\n' +
-    'Cut in the plate\'s blank after its finishing pass, so it reads the blank and plate typed under Plate. The channel is the strip\'s width between the two purfling lines the Plate Contour panel draws, its floor one flat depth under the plate\'s edge, the strip\'s height: the channel is gouged flush afterwards, so its depth is held against the edge rather than the carved surface. A bit the channel\'s width takes it in one pass; a narrower one in passes across it; a bit wider than the channel is refused. Each pass goes round once per step down, diving to the next round where it closes. The corners come to the bee sting\'s point in plan and are finished with the knife.\n\n' +
-    'CONTOUR\n' +
-    'Cut last in the plate\'s blank, after the purfling, since the waste round the plate is what holds it down. The bit runs a radius outside the plate\'s outline, the button included on the back, counterclockwise for a climb cut, in passes from the land the arching left down through the bed\'s overcut, lifting over the tabs on the passes below them. The safe height still clears the blank\'s seam, which stands well above the land.\n\n' +
-    'CRADLE\n' +
-    `A slab of MDF or ply, flat and square, the plate held in it for its inside either way up: a pocket of the plate\'s outline ${CRADLE.wall} mm deep and ${CRADLE.clearance} mm clear of it, so the outline registers against the pocket\'s side; a lip ${CRADLE.lip} mm wide left standing inside the pocket for the plate\'s land to rest on, wider than the land because face down the fluting channel sits above it, and the plan refuses a lip the arch would reach; and a hole through the slab inside the lip, so face down the crown hangs free, at least ${CRADLE.crownClearance} mm off the bed. ` +
-    `Two files with the plate\'s roughing bit: the pocket, loops clearing the ring from the wall to the lip\'s inner edge, and the hole, cut through in passes and held by ${CRADLE.tabs} tabs until it drops. Cut to the back\'s outline the cradle takes the top too. The slab needs no harness: clamp it to the table and set XY0 at its lower-left corner with the probe; the plate is centred in it. The dome is unsupported: pad under it for the graduation.\n\n` +
-    'F-HOLES\n' +
-    'Cut with the graduated top face up in its cradle, resting on the lip, so they read the slab typed under Cradle and the plate is where the cradle put it. The router never cuts the f-hole\'s edge: the passage round a wing\'s tip is narrower than any bit, and the edge is the most looked-at line on the plate. ' +
-    `Two files. The eyes, cleared through the plate with a small flat bit in loops from the centre out, clockwise, stopping ${FHOLE.allowance} mm inside the drawn circle for the knife, down to the thickness you type plus ${FHOLE.exitMargin} mm, since the recipe has no map of the inside; below the eye is the cradle\'s hole, and an eye over its lip is refused. ` +
-    'Then the outline, both holes as drawn with wing tips and nicks, scribed with a V bit a few tenths under the surface: its point is as fine as its depth, and the groove\'s centre is the drawn line whatever the depth, so the knife has a line to follow and the eyes drilled and sawn by hand are already done. ' +
-    'Either way Z follows the surface along the loop, the outside at that point less the depth, so a small bit is never buried past its flutes at the high end of a hole that falls across the arch, and the safe height clears the crown, not the slab.\n\n' +
-    'SCROLL\n' +
-    'The neck blank\'s side profile, the one true outline a scroll has, roughed from the maple billet lying cheek down in the harness against a T fence: the planed face, which is the fingerboard plane, on the stem\'s left side and the heel end on the crossbar. The bit cannot reach through the cheeks, so the profile is cut from both faces, each file going half way and a little over; for the second the billet is rolled over onto the stem\'s other side, the same face on the stem, the same end on the crossbar, and the file is the first mirrored across the stem. The harness has to leave room for the head on both sides. ' +
-    `Tabs stand ${SCROLL.tabHeight} mm off each file\'s floor on the straight stretches of the neck\'s back, the pegbox\'s back and the top of the head, so what is left in the middle is a saw cut. ` +
-    `The throat, where the pegbox front dives under the first turn, is narrower than any bit that could reach it: the file bridges it where the pocket narrows to the bit plus ${SCROLL.bridge} mm a side and leaves it for the gouge, the maker\'s cut. ` +
-    'The stem runs along the neck only, ending under the head, since a volute\'s front may stand proud of the fingerboard plane. With the face inset at 0 the face sits on the stem and is never cut: the kerf runs from near the heel\'s front corner round to the top of the flat above the nut, and the two slivers left at the stem are sawn. A chin past the plane needs the face inset by at least that much: the chin is then cut flush with the billet\'s face beyond the stem, and the face is planed down to the plane after, the pass made anyway when the fingerboard is fitted. A face inset of a bit\'s width and more cuts the whole outline, face included.\n\n' +
-    'PLANNING\n' +
-    'The download plans the cut again from the fine solve that the sheet exports use, so the coarser sampling of the preview never reaches the file.',
-};
-
-export interface Feeds {
-  cutFeed: number;
-  plungeFeed: number;
-  stepDown: number;
-}
-
-export type ToolShape = 'flat' | 'ball' | 'v';
-
-// the shop's bits, one slot each (the number the file's tool change and its prompt name): the
-// recipe's mould bit has to match one by diameter to get feeds. A row is cut here, or read off the
-// maker's chart, the source beside it. Amana's charts (18,000 rpm, a depth of one diameter) give
-// the feed and a ramp-down of the feed over the flutes, which is the plunge here; their depth is
-// halved below, the ceiling this router is trusted with until scrap says otherwise. The ball
-// charts split soft and hard wood, the spiral plunge chart does not. A null row is one nobody has
-// looked up yet. 1 ipm = 25.4 mm/min
-export interface Tool {
-  number: number;
-  name: string;
-  diameter: number;
-  shape: ToolShape;
-  // a V bit's included angle, degrees
-  angle?: number;
-  feeds: Record<Wood, Feeds | null>;
-}
-
-export const TOOLS: readonly Tool[] = [
-  {
-    number: 1, name: '1/4" downcut (Carbide #251)', diameter: 6.35, shape: 'flat',
-    feeds: {
-      // cut the first mould, 19 mm ply (75 ipm, 15 ipm, 0.06")
-      soft: { cutFeed: 1905, plungeFeed: 381, stepDown: 1.524 },
-      // Carbide Create's library default for the 1/4" #201 in hardwood (60 ipm, 12 ipm, 0.04"),
-      // the #251 being its downcut twin; not yet cut here
-      hard: { cutFeed: 1524, plungeFeed: 305, stepDown: 1.016 },
-    },
-  },
-  {
-    // Amana spiral plunge chart, 1/4" (46102 and kin): 180 ipm, ramp 90; not yet cut here
-    number: 2, name: '1/4" upcut spiral', diameter: 6.35, shape: 'flat',
-    feeds: { soft: { cutFeed: 4572, plungeFeed: 2286, stepDown: 3.175 }, hard: { cutFeed: 4572, plungeFeed: 2286, stepDown: 3.175 } },
-  },
-  {
-    // Amana ball nose chart, 1/4", the low chip load (soft 0.007", hard 0.005", two flutes:
-    // 252 and 180 ipm); not yet cut here
-    number: 3, name: '1/4" ball nose', diameter: 6.35, shape: 'ball',
-    feeds: { soft: { cutFeed: 6401, plungeFeed: 3200, stepDown: 3.175 }, hard: { cutFeed: 4572, plungeFeed: 2286, stepDown: 3.175 } },
-  },
-  {
-    // Amana ball nose chart, 1/8" (soft 0.005", hard 0.003": 180 and 108 ipm); not yet cut here
-    number: 4, name: '1/8" ball nose', diameter: 3.175, shape: 'ball',
-    feeds: { soft: { cutFeed: 4572, plungeFeed: 2286, stepDown: 1.5875 }, hard: { cutFeed: 2743, plungeFeed: 1372, stepDown: 1.5875 } },
-  },
-  {
-    // Amana spiral plunge chart, 1/8" (46200 and kin): 145 ipm, ramp 72.5; not yet cut here
-    number: 5, name: '1/8" downcut spiral', diameter: 3.175, shape: 'flat',
-    feeds: { soft: { cutFeed: 3683, plungeFeed: 1842, stepDown: 1.5875 }, hard: { cutFeed: 3683, plungeFeed: 1842, stepDown: 1.5875 } },
-  },
-  {
-    // Amana spiral plunge chart, 1/16" (46237): 70 ipm, ramp 35; not yet cut here. Amana does not
-    // guarantee bits this small against breakage
-    number: 6, name: '1/16" downcut spiral', diameter: 1.5875, shape: 'flat',
-    feeds: { soft: { cutFeed: 1778, plungeFeed: 889, stepDown: 0.79 }, hard: { cutFeed: 1778, plungeFeed: 889, stepDown: 0.79 } },
-  },
-  {
-    // a luthier's purfling end mill, the width of a violin's strip; feeds from the nearest row of
-    // Amana's spiral plunge chart, 3/64" (1.19 mm): 40 ipm, ramp 20; not yet cut here
-    number: 7, name: '1.2 mm purfling end mill', diameter: 1.2, shape: 'flat',
-    feeds: { soft: { cutFeed: 1016, plungeFeed: 508, stepDown: 0.6 }, hard: { cutFeed: 1016, plungeFeed: 508, stepDown: 0.6 } },
-  },
-  {
-    // the same, for a violin or viola strip; between Amana's 3/64" and 1/16" rows, the smaller taken
-    number: 8, name: '1.4 mm purfling end mill', diameter: 1.4, shape: 'flat',
-    feeds: { soft: { cutFeed: 1016, plungeFeed: 508, stepDown: 0.7 }, hard: { cutFeed: 1016, plungeFeed: 508, stepDown: 0.7 } },
-  },
-  {
-    // Amana's 15-60-90° V-groove engraving chart (45782 and kin, two flutes): 50 to 125 ipm in
-    // soft and hard wood alike, the low end taken, ramp half; not yet cut here. The scribe is a
-    // few tenths deep, nowhere near the chart's depth of one diameter
-    number: 9, name: '60° V engraving bit', diameter: 6.35, shape: 'v', angle: 60,
-    feeds: { soft: { cutFeed: 1270, plungeFeed: 635, stepDown: 3.175 }, hard: { cutFeed: 1270, plungeFeed: 635, stepDown: 3.175 } },
-  },
-];
-
-export function toolFor(diameter: number): Tool | null {
-  return TOOLS.find(t => t.shape === 'flat' && Math.abs(t.diameter - diameter) < 0.01) ?? null;
-}
-
-// what a planner is told about the bit: the mould's comes from the recipe and may match no row
-export interface Bit {
-  diameter: number;
-  shape: ToolShape;
-  angle?: number;
-  feeds: Feeds | null;
-}
-
-const STORAGE_KEY = 'devExport';
-const WOODS: readonly Wood[] = ['soft', 'hard'];
-const PLATES: readonly Plate[] = ['top', 'back'];
-const STAGES: readonly Stage[] = ['rough', 'finish'];
-const CRADLE_STAGES: readonly CradleStage[] = ['pocket', 'hole'];
-const FHOLE_STAGES: readonly FholeStage[] = ['eyes', 'scribe'];
-const SIDES: readonly ScrollSide[] = ['left', 'right'];
-const STOCKS: readonly StockId[] = ['mould', 'plate', 'cradle', 'scroll'];
 const MIRROR: Matrix2D = [-1, 0, 0, 1, 0, 0];
 
 @Component({
@@ -672,94 +334,6 @@ export const renderSeam = (g: PlateSettings, tp: Toolpaths, pal: PanelPalette) =
   renderText({ x: seamX, y: yHigh - 8 }, 'seam', pal.neutral, SHEET_LABEL_SIZE)(gr, ui);
 };
 
-export interface CutPlan {
-  // where the passes start, and the floor in the file's own Z below which the writer refuses to move
-  topZ: number;
-  floorZ: number;
-  passes: number;
-  // how far the bit cuts
-  metres: number;
-}
-
-// what the file steps through: the passes a surfacing planner counted, or a profile job's steps
-// down from where its cut starts to the floor; and the cutting length, each loop once per pass
-// and each run as it lies, or a raster's estimate while it has no runs yet
-export function cutPlan(tp: Toolpaths, feeds: Feeds): CutPlan {
-  let top = tp.cutTopZ ?? tp.stockTopZ;
-  let passes = tp.passes ?? (feeds.stepDown > 0 ? Math.ceil((top - tp.floorZ) / feeds.stepDown) : 0);
-  let length = (pts: Pt[]) => polylineCumulativeLengths(pts)[pts.length - 1] ?? 0;
-  let mm = tp.paths.reduce((sum, path) => sum + length(path.loop) * passes, 0) + tp.surfaces.reduce((sum, run) => sum + length(run.pts), 0);
-  return { topZ: top, floorZ: tp.floorZ, passes, metres: tp.paths.length || tp.surfaces.length ? mm / 1000 : tp.metres ?? 0 };
-}
-
-// the file's header, and the plan the panel shows: what the planner said of the zero, the stock
-// and the cut, then the feeds and the passes
-export function jobNotes(tp: Toolpaths, feeds: Feeds, machine = MACHINE): string[] {
-  let plan = cutPlan(tp, feeds);
-  let minutes = Math.round((plan.metres * 1000) / feeds.cutFeed);
-  return [
-    ...(tp.caution ? [tp.caution] : []),
-    ...tp.notes,
-    `Feeds ${feeds.cutFeed} cut, ${feeds.plungeFeed} plunge, ${feeds.stepDown} per pass`,
-    `Z${plan.topZ.toFixed(3)} to Z${plan.floorZ.toFixed(3)} in ${plan.passes} pass${plan.passes === 1 ? '' : 'es'}, safe Z${(tp.stockTopZ + machine.safeZ).toFixed(3)}; about ${plan.metres.toFixed(1)} m, ${minutes} min at the cut feed`,
-    'Air cut first',
-  ];
-}
-
-// a key missing or mistyped reads as its default, as SettingsService reads its own
-export function readSettings(): DevExportSettings {
-  let stored: any = {};
-  try {
-    let parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
-    if (parsed && typeof parsed === 'object') stored = parsed;
-  } catch {
-    // unreadable reads as defaults
-  }
-  let out: DevExportSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
-  let positive = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0;
-  if (EXPORTS.some(e => e.id === stored.job)) out.job = stored.job;
-  for (let key of Object.keys(out.tools) as StageKey[]) {
-    if (TOOLS.some(t => t.number === stored.tools?.[key])) out.tools[key] = stored.tools[key];
-  }
-  for (let id of STOCKS) {
-    let mine = stored[id];
-    let stock: Record<string, number> = out[id].stock;
-    for (let key of Object.keys(stock)) if (positive(mine?.stock?.[key])) stock[key] = mine.stock[key];
-    if (WOODS.includes(mine?.wood)) out[id].wood = mine.wood;
-  }
-  let b = stored.plate;
-  if (PLATES.includes(b?.plate)) out.plate.plate = b.plate;
-  if (STAGES.includes(b?.stage)) out.plate.stage = b.stage;
-  for (let key of ['purflingDepth', 'seam'] as const) if (positive(b?.[key])) out.plate[key] = b[key];
-  for (let key of ['x', 'y'] as const) {
-    let n = b?.fence?.[key];
-    if (positive(n) || n === 0) out.plate.fence[key] = n;
-  }
-  let c = stored.cradle;
-  if (PLATES.includes(c?.plate)) out.cradle.plate = c.plate;
-  if (CRADLE_STAGES.includes(c?.stage)) out.cradle.stage = c.stage;
-  let f = stored.fholes;
-  if (FHOLE_STAGES.includes(f?.stage)) out.fholes.stage = f.stage;
-  for (let key of ['thickness', 'scribeDepth'] as const) if (positive(f?.[key])) out.fholes[key] = f[key];
-  let sc = stored.scroll;
-  if (SIDES.includes(sc?.side)) out.scroll.side = sc.side;
-  if (positive(sc?.faceInset) || sc?.faceInset === 0) out.scroll.faceInset = sc.faceInset;
-  if (positive(sc?.endMargin)) out.scroll.endMargin = sc.endMargin;
-  for (let key of ['width', 'length'] as const) if (positive(sc?.harness?.[key])) out.scroll.harness[key] = sc.harness[key];
-  for (let key of ['x', 'y', 'thickness', 'reach'] as const) {
-    let n = sc?.fence?.[key];
-    if (positive(n) || (n === 0 && (key === 'x' || key === 'y'))) out.scroll.fence[key] = n;
-  }
-  return out;
-}
-
-function writeSettings(settings: DevExportSettings): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch {
-    // a blocked store keeps the settings for this visit
-  }
-}
 
 // the mould's toolpaths: the windows shrunk by the bit's radius, the outline grown by it, each
 // walked the climbing way round from a point between two tabs. Every loop's stations are set out
@@ -770,8 +344,9 @@ function writeSettings(settings: DevExportSettings): void {
 // no sampling follows) but cut as a dog-bone: the edges run to the corner, the bit presses in
 // along the diagonal as far as the drawn relief reaches, and comes back out
 export function mouldToolpaths(s: MouldSolve, bitDiameter: number, g: StockSettings, tabs = MOULD_TABS, machine = MACHINE): Toolpaths {
-  let out = emptyToolpaths(g.stock.thickness, -machine.overcut, [
-    `Z0 = SPOILBOARD, stock top Z${g.stock.thickness.toFixed(3)}`,
+  let bed = -g.stock.thickness;
+  let out = emptyToolpaths(0, bed - machine.overcut, [
+    `Z0 = SHEET TOP, spoilboard Z${bed.toFixed(3)}`,
     `XY0 = SHEET LOWER LEFT, sheet ${g.stock.width} x ${g.stock.length}`,
     `Stock ${g.stock.thickness} mm, ${g.wood} wood`,
   ]);
@@ -786,6 +361,7 @@ export function mouldToolpaths(s: MouldSolve, bitDiameter: number, g: StockSetti
   let d = offsetPath(s.notchOutline ?? s.outline, r);
   if (!d) return fail(out, 'The outline would not offset for the bit.');
   out.paths.push(withTabs('Outline', climbingLoop(d, 'outside', ring => withDogBones(ring, s.reliefs, r)), evenStations(tabs.outline, 0.5), machine.tabWidth, out.failures));
+  out.tabTop = bed + machine.tabHeight;
   out.notes.push(`Windows then the outline, through the sheet by ${machine.overcut}; ${tabs.outline} tabs on the outline and ${tabs.window} per window, ${machine.tabHeight} high`);
   let b = pathsBounds(out.paths.map(path => pathFromPolyline(path.loop)));
   centreInSheet(out, { minX: b.minX - r, maxX: b.maxX + r, minY: b.minY - r, maxY: b.maxY + r }, g);
@@ -914,21 +490,21 @@ function insideOutline(outline: string, distance: number): string | null {
 // wall follows the outline itself, button and cutoffs included, so the plate registers. The lip
 // is wider than the land, which is sound face down only while the fluting channel sits above it:
 // the plan reads the arching over the lip and refuses a lip the arch would reach. The slab needs
-// no harness: it is clamped to the table and zeroed at its own corner with the probe, the plate
-// centred in it
+// no harness: it is clamped to the table and zeroed on its own top corner with the probe, the
+// plate centred in it
 export function cradleToolpaths(p: ViolinFamilyParams, surface: PlateSurface, o: PlateContourSolve, bit: Bit, g: CradleSettings, cradle: CradleSpec = CRADLE, machine = MACHINE): Toolpaths {
-  let top = g.stock.thickness;
-  let land = top - cradle.wall;
+  let bed = -g.stock.thickness;
+  let land = -cradle.wall;
   let archHeight = p.arching![g.plate].long.height;
-  let out = emptyToolpaths(top, land, [
-    `Z0 = BED, slab top Z${top.toFixed(3)}`,
+  let out = emptyToolpaths(0, land, [
+    `Z0 = SLAB TOP, bed Z${bed.toFixed(3)}`,
     `XY0 = SLAB LOWER LEFT, slab ${g.stock.width} x ${g.stock.length}`,
-    `Slab ${top} mm, ${g.wood} wood`,
+    `Slab ${g.stock.thickness} mm, ${g.wood} wood`,
     `${g.plate === 'top' ? 'Top' : 'Back'} plate cradle, ${g.stage}; lip Z${land.toFixed(3)}, ${cradle.lip} wide, pocket ${cradle.clearance} clear of the outline`,
   ]);
   if (!(bit.diameter > 0)) fail(out, 'The bit diameter has to be above 0.');
   if (bit.shape !== 'flat') fail(out, 'The cradle takes a flat bit.');
-  if (land < archHeight + cradle.crownClearance) fail(out, `The slab is too thin: face down the crown hangs ${archHeight.toFixed(1)} mm below the lip, and the slab leaves ${(land - archHeight).toFixed(1)} mm under it.`);
+  if (land - bed < archHeight + cradle.crownClearance) fail(out, `The slab is too thin: face down the crown hangs ${archHeight.toFixed(1)} mm below the lip, and the slab leaves ${(land - bed - archHeight).toFixed(1)} mm under it.`);
   let outline = o[g.plate];
   if (!outline) return fail(out, 'The outline has to solve first.');
   // the arch over the lip: nothing may stand above the land plane there
@@ -957,8 +533,8 @@ export function cradleToolpaths(p: ViolinFamilyParams, surface: PlateSurface, o:
   let d = insideOutline(outline, cradle.lip - r);
   if (!d) return fail(out, 'The lip\'s edge would not offset for the bit.');
   out.paths.push(withTabs('Hole', climbingLoop(d, 'inside'), evenStations(cradle.tabs, 0.5), machine.tabWidth, out.failures));
-  out.floorZ = -machine.overcut;
-  out.tabTop = machine.tabHeight;
+  out.floorZ = bed - machine.overcut;
+  out.tabTop = bed + machine.tabHeight;
   out.notes.push(`Hole through along the lip's edge, through the bed by ${machine.overcut}; ${cradle.tabs} tabs ${machine.tabHeight} high`);
   return out;
 }
@@ -1094,11 +670,11 @@ export function purflingToolpaths(p: ViolinFamilyParams, surface: PlateSurface, 
 export const GRADUATED_PLATE = 'EXPECTS THE GRADUATED TOP, FACE UP IN ITS CRADLE.';
 
 export function fholeToolpaths(p: ViolinFamilyParams, s: FholeContoursSolve, surface: PlateSurface, seat: PlateSurface, o: PlateContourSolve, bit: Bit, g: CradleSettings, fh: FholeSettings, fine = false, cradle: CradleSpec = CRADLE): Toolpaths {
-  let top = g.stock.thickness, lipZ = top - cradle.wall;
+  let lipZ = -cradle.wall;
   let edge = p.arching!.top.thickness;
   let crown = lipZ + edge + p.arching!.top.long.height;
   let out = emptyToolpaths(crown, lipZ, [
-    `Z0 = BED, slab top Z${top.toFixed(3)}; the top face up on the lip Z${lipZ.toFixed(3)}, its edge Z${(lipZ + edge).toFixed(3)}, its crown Z${crown.toFixed(3)}`,
+    `Z0 = SLAB TOP, bed Z${(-g.stock.thickness).toFixed(3)}; the top face up on the lip Z${lipZ.toFixed(3)}, its edge Z${(lipZ + edge).toFixed(3)}, its crown Z${crown.toFixed(3)}`,
     `XY0 = SLAB LOWER LEFT, slab ${g.stock.width} x ${g.stock.length}, cut to the ${g.plate}`,
     `Top plate f-holes, ${fh.stage}; plate ${fh.thickness} mm at the f-holes`,
   ]);
@@ -1446,284 +1022,4 @@ export function scrollToolpaths(p: ViolinFamilyParams, n: NeckSolve, s: ScrollSo
   let tabs = out.paths.reduce((sum, path) => sum + path.tabs.length, 0);
   out.notes.push(`Side profile in ${runs.length} run${runs.length === 1 ? '' : 's'}, ${tabs} tabs ${spec.tabHeight} high off the floor; the throat bridged for the gouge where it narrows to ${width.toFixed(1)}; the face ${g.faceInset ? `inset ${g.faceInset}` : 'on the stem, uncut'}; the bit reaches ${(top - floor).toFixed(1)} deep`);
   return out;
-}
-
-interface Bounds {
-  minX: number;
-  maxX: number;
-  minY: number;
-  maxY: number;
-}
-
-// the points' box, `pad` out on every side
-function boundsOf(pts: Pt[], pad: number): Bounds {
-  let xs = pts.map(pt => pt.x), ys = pts.map(pt => pt.y);
-  return { minX: Math.min(...xs) - pad, maxX: Math.max(...xs) + pad, minY: Math.min(...ys) - pad, maxY: Math.max(...ys) + pad };
-}
-
-// a height field over the bed on a grid, a row at a time
-interface Terrain {
-  x0: number;
-  y0: number;
-  nx: number;
-  ny: number;
-  step: number;
-  z: Float64Array;
-}
-
-function terrainGrid(area: Bounds, pad: number, step: number, rowZ: (y: number) => (x: number) => number): Terrain {
-  let x0 = area.minX - pad, y0 = area.minY - pad;
-  let nx = Math.ceil((area.maxX + pad - x0) / step) + 1, ny = Math.ceil((area.maxY + pad - y0) / step) + 1;
-  let z = new Float64Array(nx * ny);
-  for (let j = 0; j < ny; j++) {
-    let zAt = rowZ(y0 + j * step);
-    for (let i = 0; i < nx; i++) z[j * nx + i] = zAt(x0 + i * step);
-  }
-  return { x0, y0, nx, ny, step, z };
-}
-
-// the tip's height down one line at x, at every row of the grid: the highest the bit's footprint
-// finds, a flat bit's being the terrain under its whole face, a ball's the terrain lifted by how
-// far the ball curves away from its tip there, and never under the terrain read between the
-// columns at the tip itself. The footprint's cells are set out once per line, from the column
-// nearest it
-function tipHeights(t: Terrain, r: number, x: number, ball: boolean): Float64Array {
-  let ci = Math.round((x - t.x0) / t.step);
-  let fx = x - (t.x0 + ci * t.step);
-  let i0 = Math.min(Math.max(Math.floor((x - t.x0) / t.step), 0), t.nx - 2), f = (x - (t.x0 + i0 * t.step)) / t.step;
-  let m = Math.ceil(r / t.step) + 1;
-  let cells: { di: number; dj: number; lift: number }[] = [];
-  for (let dj = -m; dj <= m; dj++) for (let di = -m; di <= m; di++) {
-    let dx = di * t.step - fx, dy = dj * t.step;
-    let d2 = dx * dx + dy * dy;
-    if (d2 > r * r) continue;
-    cells.push({ di, dj, lift: ball ? Math.sqrt(r * r - d2) - r : 0 });
-  }
-  let out = new Float64Array(t.ny).fill(-Infinity);
-  for (let j = 0; j < t.ny; j++) {
-    let best = t.z[j * t.nx + i0] * (1 - f) + t.z[j * t.nx + i0 + 1] * f;
-    for (let { di, dj, lift } of cells) {
-      let i = ci + di, jj = j + dj;
-      if (i < 0 || i >= t.nx || jj < 0 || jj >= t.ny) continue;
-      let z = t.z[jj * t.nx + i] + lift;
-      if (z > best) best = z;
-    }
-    out[j] = best;
-  }
-  return out;
-}
-
-// the lines joined end to end, the first up the length and the next back down it, each line
-// thinned to what the file needs; the joins between lines are kept, so the run never lifts
-function serpentine(lineXs: number[], j0: number, j1: number, t: Terrain, zAt: (x: number) => (j: number) => number): Pt3D[] {
-  let out: Pt3D[] = [];
-  lineXs.forEach((x, l) => {
-    let z = zAt(x);
-    let line: Pt3D[] = [];
-    let up = l % 2 === 0;
-    for (let k = j0; k <= j1; k++) {
-      let j = up ? k : j1 - (k - j0);
-      line.push(new Pt3D(x, t.y0 + j * t.step, z(j)));
-    }
-    out.push(...simplifyPolyline3D(line, SURFACE.chordTolerance));
-  });
-  return out;
-}
-
-// what any export's planner builds: closed loops for the cutter's centre, the climbing way round
-// (counterclockwise outside, clockwise inside, for a router turning clockwise), each with the tabs
-// the sheet holds it by; or runs for the cutter's tip over a surface; and where the part sits in
-// the sheet and what Z the file works between
-export interface Tab {
-  // along the loop, from its first point
-  from: number;
-  to: number;
-  pts: Pt[];
-  centre: Pt;
-}
-
-export interface Toolpath {
-  name: string;
-  // closed: its first point repeated last
-  loop: Pt[];
-  tabs: Tab[];
-}
-
-export interface SurfacePath {
-  name: string;
-  // the tip's run, Z over the bed
-  pts: Pt3D[];
-}
-
-export interface Raster {
-  // the x of every line, and the y they run between
-  xs: number[];
-  yMin: number;
-  yMax: number;
-  // the roughing's terraces, top first; none for finishing
-  levels: number[];
-}
-
-export interface Toolpaths {
-  paths: Toolpath[];
-  surfaces: SurfacePath[];
-  // world to the file: where the part lies from XY0
-  sheetOffset: Pt;
-  // the stock's lower-left corner from XY0: the origin for a sheet zeroed at its own corner, the
-  // fences' corner for a blank or slab pushed into them
-  stockOrigin: Pt;
-  stockTopZ: number;
-  // where a profile job's passes start, when not the stock top; and how high its tabs stand
-  cutTopZ?: number;
-  tabTop?: number;
-  // the file's own Z below which nothing moves
-  floorZ: number;
-  // header comments naming the zero and the stock, and what the file assumes has been cut
-  // already, said again at the machine's pause
-  notes: string[];
-  caution?: string;
-  // the harness and its fences, drawn round the stock, in the file's own coordinates
-  fixture?: string;
-  // a surfacing job's lines, known before any height is, and its cutting length in metres
-  // estimated from them, for the preview that has no runs yet
-  raster?: Raster;
-  metres?: number;
-  // how many times the file goes down, where the planner counted
-  passes?: number;
-  failures: string[];
-}
-
-const SHEET_MARGIN = 5;
-
-const ORIGIN: Pt = { x: 0, y: 0 };
-
-function emptyToolpaths(stockTopZ: number, floorZ: number, notes: string[]): Toolpaths {
-  return { paths: [], surfaces: [], sheetOffset: ORIGIN, stockOrigin: ORIGIN, stockTopZ, floorZ, notes, failures: [] };
-}
-
-function fail(out: Toolpaths, message: string): Toolpaths {
-  out.failures.push(message);
-  return out;
-}
-
-// the part centred in the stock by the extent of what it cuts, with a failure if it will not fit
-function centreInSheet(out: Toolpaths, b: Bounds, g: StockSettings, origin: Pt = ORIGIN): void {
-  out.stockOrigin = origin;
-  out.sheetOffset = { x: origin.x + g.stock.width / 2 - (b.minX + b.maxX) / 2, y: origin.y + g.stock.length / 2 - (b.minY + b.maxY) / 2 };
-  let needW = b.maxX - b.minX + 2 * SHEET_MARGIN;
-  let needL = b.maxY - b.minY + 2 * SHEET_MARGIN;
-  if (needW > g.stock.width || needL > g.stock.length) fail(out, `The sheet is too small: this part needs ${Math.ceil(needW)} × ${Math.ceil(needL)} mm.`);
-}
-
-// the part where the user put it in the stock (`offset` from the stock's corner), the stock where
-// it sits from XY0, with a failure naming each side what it cuts runs off, the margin included
-function placeInSheet(out: Toolpaths, b: Bounds, g: StockSettings, offset: Pt, origin: Pt): void {
-  out.stockOrigin = origin;
-  out.sheetOffset = { x: origin.x + offset.x, y: origin.y + offset.y };
-  let short = [
-    ['left', SHEET_MARGIN - (b.minX + offset.x)],
-    ['right', b.maxX + offset.x - (g.stock.width - SHEET_MARGIN)],
-    ['bottom', SHEET_MARGIN - (b.minY + offset.y)],
-    ['top', b.maxY + offset.y - (g.stock.length - SHEET_MARGIN)],
-  ].filter(([, by]) => (by as number) > 0);
-  if (short.length) fail(out, `The carved area runs off the blank: ${short.map(([side, by]) => `${Math.ceil(by as number)} mm at the ${side}`).join(', ')}.`);
-}
-
-// a loop sampled from a path the climbing way round, closed and restarted at its top centre-line
-// crossing; `detail` edits the sampled ring before any of that
-function climbingLoop(d: string, side: 'inside' | 'outside', detail = (ring: Pt[]) => ring): Pt[] {
-  let ring = detail(samplePathToPolyline(d, 1));
-  if ((signedPolygonArea(ring) > 0) !== (side === 'outside')) ring.reverse();
-  return fromTopCentre(ring);
-}
-
-// `count` stations evenly round the loop, the first `phase` stations in from its top centre
-function evenStations(count: number, phase: number): number[] {
-  return Array.from({ length: count }, (_, i) => (i + phase) / count);
-}
-
-// the loop as a toolpath with a tab `width` long centred on each station, a fraction of the way
-// round from the loop's top centre; the loop is restarted midway between the last station and
-// the first, so no tab wraps its ends
-function withTabs(name: string, loop: Pt[], stations: number[], width: number, failures: string[]): Toolpath {
-  let cum = polylineCumulativeLengths(loop);
-  let total = cum[cum.length - 1];
-  let tabs: Tab[] = [];
-  let count = stations.length;
-  if (count > 0 && total / count <= width) failures.push(`${name} is too short for ${count} tabs.`);
-  else if (count > 0) {
-    let f = [...stations].sort((a, b) => a - b);
-    let start = ((((f[0] + f[count - 1] - 1) / 2) % 1) * total + total) % total;
-    if (start > 1e-9) {
-      loop = [...polylineSlice(loop, cum, start, total), ...polylineSlice(loop, cum, 0, start).slice(1)];
-      cum = polylineCumulativeLengths(loop);
-    }
-    for (let fr of f) {
-      let station = ((fr * total - start) % total + total) % total;
-      let from = station - width / 2, to = station + width / 2;
-      tabs.push({ from, to, pts: polylineSlice(loop, cum, from, to), centre: pointAtPolylineLength(loop, cum, station) });
-    }
-  }
-  return { name, loop, tabs };
-}
-
-// a run as a toolpath with a tab `width` long centred at each length along it; a tab that would
-// reach either end is left out, since the run is cut from end to end
-function tabsAlong(name: string, run: Pt[], at: number[], width: number): Toolpath {
-  let cum = polylineCumulativeLengths(run);
-  let total = cum[cum.length - 1];
-  let tabs: Tab[] = [];
-  for (let s of [...at].sort((a, b) => a - b)) {
-    let from = s - width / 2, to = s + width / 2;
-    if (from <= 0 || to >= total) continue;
-    tabs.push({ from, to, pts: polylineSlice(run, cum, from, to), centre: pointAtPolylineLength(run, cum, s) });
-  }
-  return { name, loop: run, tabs };
-}
-
-// the ring closed and restarted at its highest crossing of x = 0, the crossing itself a vertex
-function fromTopCentre(ring: Pt[]): Pt[] {
-  let n = ring.length;
-  let best = -1;
-  let top: Pt | null = null;
-  for (let i = 0; i < n; i++) {
-    let a = ring[i], b = ring[(i + 1) % n];
-    if (a.x === b.x || a.x * b.x > 0) continue;
-    let t = a.x / (a.x - b.x);
-    let y = a.y + (b.y - a.y) * t;
-    if (!top || y > top.y) {
-      top = { x: 0, y };
-      best = i;
-    }
-  }
-  if (!top) return [...ring, ring[0]];
-  return [top, ...ring.slice(best + 1), ...ring.slice(0, best + 1), top];
-}
-
-// the job for the writer: a profile job stepping down from the stock top to the floor, a surfacing
-// job's runs as planned, either with the sheet offset applied so XY zero is the stock's lower left
-export function gcodeJob(tp: Toolpaths, tool: Tool, feeds: Feeds, machine = MACHINE): GcodeJob {
-  let plan = cutPlan(tp, feeds);
-  let passes = tp.paths.length ? Array.from({ length: plan.passes }, (_, i) => Math.max(plan.floorZ, plan.topZ - (i + 1) * feeds.stepDown)) : [];
-  let { x: dx, y: dy } = tp.sheetOffset;
-  return {
-    notes: jobNotes(tp, feeds, machine),
-    caution: tp.caution,
-    tool: { number: tool.number, name: tool.name },
-    spindleRpm: machine.spindleRpm,
-    safeZ: tp.stockTopZ + machine.safeZ,
-    floorZ: plan.floorZ,
-    passes,
-    tabTop: tp.tabTop ?? machine.tabHeight,
-    cutFeed: feeds.cutFeed,
-    plungeFeed: feeds.plungeFeed,
-    cuts: [
-      ...tp.paths.map(path => ({
-        name: path.name,
-        loop: path.loop.map(p => ({ x: p.x + dx, y: p.y + dy })),
-        tabs: path.tabs.map(t => ({ from: t.from, to: t.to })),
-      })),
-      ...tp.surfaces.map(s => ({ name: s.name, pts: s.pts.map(p => new Pt3D(p.x + dx, p.y + dy, p.z)) })),
-    ],
-  };
 }

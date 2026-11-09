@@ -77,6 +77,24 @@ describe('offsetPath', () => {
     expect(corners(offsetPath(d, -3)!)).toContainEqual([+(10 - Math.sqrt(13 * 13 - 9)).toFixed(9), 3]);
   });
 
+  // a notch edge landing a hair inside the outline leaves a step thinner than the bit: the grown
+  // loop meets past both neighbours' ends, cuts the step's tip back by no more than its width, and
+  // still runs around everything else. Drawn both ways round, so the step comes before and after
+  // the inside turn
+  it('swallows a sliver step at an inside turn', () => {
+    const step = 0.05;
+    const ccw = `M 0 0 L 20 0 L 20 10 L ${20 + step} 10 L 15 20 L 0 20 Z`;
+    const cw = `M 0 0 L 0 20 L 15 20 L ${20 + step} 10 L 20 10 L 20 0 Z`;
+    for (const d of [ccw, cw]) {
+      const grown = offsetPath(d, 2);
+      expect(grown).not.toBeNull();
+      const a = sample(d), b = sample(grown!);
+      const aCum = polylineCumulativeLengths(a);
+      for (const p of b) expect(projectOntoPolyline(p, a, aCum).dist).toBeGreaterThan(2 - step - 1e-6);
+      for (const p of a) expect(pointInPolygon(p, b)).toBe(true);
+    }
+  });
+
   it('declines what it cannot read rather than offsetting it wrongly', () => {
     expect(offsetPath('m 0 0 l 10 0', 1)).toBeNull();
     expect(offsetPath('M 0 0 A 10 5 0 0 1 20 0', 1)).toBeNull();

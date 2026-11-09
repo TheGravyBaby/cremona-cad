@@ -1112,6 +1112,22 @@ function trimAtCrossing(x: PathPiece[], y: PathPiece[]): [PathPiece[], PathPiece
 
 const MITRE_LIMIT = 4;
 
+// a chain run on past its end, or back before its start, by `len` the way it was heading: two
+// offsets at an inside turn can meet just beyond where either piece stops
+function runOn(chain: PathPiece[], atEnd: boolean, len: number): PathPiece[] {
+  const p = atEnd ? chain[chain.length - 1] : chain[0];
+  let more: PathPiece;
+  if (p.kind === 'arc') {
+    const dt = Math.sign(p.dt) * Math.min(len / p.r, TURN.quarter);
+    more = { ...p, t0: atEnd ? p.t0 + p.dt : p.t0 - dt, dt };
+  } else {
+    const q = pieceAt(p, atEnd ? 1 : 0), t = pieceTangent(p, atEnd ? 1 : 0), s = atEnd ? len : -len;
+    const far = { x: q.x + t.x * s, y: q.y + t.y * s };
+    more = atEnd ? { kind: 'line', a: q, b: far } : { kind: 'line', a: far, b: q };
+  }
+  return atEnd ? [...chain, more] : [more, ...chain];
+}
+
 function offsetSubpath(pieces: PathPiece[], closed: boolean, left: number): PathPiece[] | null {
   const chains: PathPiece[][] = [];
   for (const p of pieces) {
@@ -1119,19 +1135,48 @@ function offsetSubpath(pieces: PathPiece[], closed: boolean, left: number): Path
     if (!chain) return null;
     chains.push(chain);
   }
+  const n = pieces.length;
   const joins: PathPiece[][] = chains.map(() => []);
-  const corners = closed ? pieces.length : pieces.length - 1;
+  const dropped = new Set<number>(), trimmedCorners = new Set<number>();
+  const corners = closed ? n : n - 1;
+  const meet = (x: PathPiece[], y: PathPiece[]) =>
+    trimAtCrossing(x, y) ?? trimAtCrossing(runOn(x, true, MITRE_LIMIT * Math.abs(left)), runOn(y, false, MITRE_LIMIT * Math.abs(left)));
+  const sliver = (p: PathPiece) => (p.kind === 'arc' ? p.r * Math.abs(p.dt) : dist(pieceAt(p, 0), pieceAt(p, 1))) < Math.abs(left) / 4;
   for (let i = 0; i < corners; i++) {
-    const j = (i + 1) % pieces.length;
+    if (dropped.has(i)) continue;
+    const j = (i + 1) % n;
     const tA = pieceTangent(pieces[i], 1), tB = pieceTangent(pieces[j], 0);
     const cross = tA.x * tB.y - tA.y * tB.x, dot = tA.x * tB.x + tA.y * tB.y;
     if (Math.abs(Math.atan2(cross, dot)) < 1e-3) continue;
     // the offset on the inside of a turn overlaps itself, and is cut back to where its two sides cross
     if (cross * left > 0 && Math.abs(cross) > 1e-9) {
       if (i === j) return null;
-      const trimmed = trimAtCrossing(chains[i], chains[j]);
-      if (!trimmed) return null;
-      [chains[i], chains[j]] = trimmed;
+      const trimmed = meet(chains[i], chains[j]);
+      if (trimmed) {
+        [chains[i], chains[j]] = trimmed;
+        trimmedCorners.add(i);
+        continue;
+      }
+      // a sliver of a piece beside an inside turn is swallowed whole, its offset lying past where
+      // its neighbours' offsets meet: the step a mould's block notch leaves where it lands just
+      // inside the outline. The neighbours are trimmed against each other instead, which takes
+      // off no more than the sliver's length, so only one well under the offset is let go
+      const k = (j + 1) % n, h = (i - 1 + n) % n;
+      const ahead = sliver(pieces[j]) && j !== 0 && k !== i && (closed || j + 1 < n) ? meet(chains[i], chains[k]) : null;
+      if (ahead) {
+        [chains[i], chains[k]] = ahead;
+        chains[j] = [];
+        dropped.add(j);
+        trimmedCorners.add(i);
+        continue;
+      }
+      const behind = sliver(pieces[i]) && i > 0 && h !== j && !trimmedCorners.has(h) && !dropped.has(h) ? meet(chains[h], chains[j]) : null;
+      if (!behind) return null;
+      [chains[h], chains[j]] = behind;
+      chains[i] = [];
+      joins[h] = [];
+      dropped.add(i);
+      trimmedCorners.add(h);
       continue;
     }
     const corner = pieceAt(pieces[i], 1);
@@ -1147,7 +1192,7 @@ function offsetSubpath(pieces: PathPiece[], closed: boolean, left: number): Path
       : [{ kind: 'line', a: from, b: to }];
   }
   // a side trimmed away to nothing means the offset has shrunk through itself
-  if (chains.some(chain => chain.every(p => p.kind === 'arc' ? p.r * Math.abs(p.dt) < 1e-9 : dist(pieceAt(p, 0), pieceAt(p, 1)) < 1e-9))) return null;
+  if (chains.some((chain, i) => !dropped.has(i) && chain.every(p => p.kind === 'arc' ? p.r * Math.abs(p.dt) < 1e-9 : dist(pieceAt(p, 0), pieceAt(p, 1)) < 1e-9))) return null;
   return chains.flatMap((chain, i) => [...chain, ...joins[i]]);
 }
 
@@ -1155,8 +1200,9 @@ function offsetSubpath(pieces: PathPiece[], closed: boolean, left: number): Path
  * A parallel copy of a path `distance` away: positive grows a closed loop (one ending with Z, or
  * drawn back to its start) and moves an open run to the right of its travel, the same side a
  * positive offset takes an arc drawn counterclockwise.
- * Corners are mitred. Null when the offset would fold over itself — an inward step deeper than
- * a bend or past a corner's neighbours — or when the path holds something it can't offset.
+ * Corners are mitred. A sliver of a piece at an inside turn, under a quarter of the distance, is
+ * swallowed. Null when the offset would fold over itself — an inward step deeper than a bend or
+ * past a corner's neighbours — or when the path holds something it can't offset.
  */
 export function offsetPath(d: string, distance: number): string | null {
   const subpaths = pathPieces(d);

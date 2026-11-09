@@ -20,7 +20,9 @@ import { MOULD_EXPORT_STEP, MouldPanel, solveMould } from '../mould-panel/mould-
 import { NeckPanel, solveNeck } from '../neck-panel/neck-panel';
 import { VolutePanel } from '../volute-panel/volute-panel';
 import { solveScroll } from '../pegbox-panel/pegbox-panel';
-import { archingToolpaths, Bit, contourToolpaths, CRADLE, CradleSettings, cradleToolpaths, cutPlan, DEFAULT_SETTINGS, EXPORTS, ExportId, FHOLE, FholeSettings, fholeToolpaths, gcodeJob, jobNotes, MACHINE, MOULD_TABS, mouldToolpaths, planExport, PLATE_TABS, PlateSettings, purflingToolpaths, SCROLL, ScrollSettings, scrollToolpaths, sideOutline, SURFACE, Tab, TOOLS } from './dev-export-panel';
+import { archingToolpaths, contourToolpaths, cradleToolpaths, fholeToolpaths, mouldToolpaths, planExport, purflingToolpaths, scrollToolpaths, sideOutline } from './dev-export-panel';
+import { Bit, CRADLE, CradleSettings, DEFAULT_SETTINGS, EXPORTS, ExportId, FHOLE, FholeSettings, MACHINE, MOULD_TABS, PLATE_TABS, PlateSettings, SCROLL, ScrollSettings, SURFACE, TOOLS } from './dev-export-shop';
+import { cutPlan, gcodeJob, jobNotes, Tab } from './dev-export-toolpaths';
 import { ThemeService } from '../../../../theme/theme.service';
 
 // what a maker would check before cutting: the bit's centre runs a bit's radius off the cut line,
@@ -213,14 +215,15 @@ describe('the mould G-code job', () => {
   const tp = mouldToolpaths(s, p.mould!.bitDiameter, g);
   const job = gcodeJob(tp, tool, feeds);
 
-  it('steps down from the stock top to the floor', () => {
-    expect(job.passes[0]).toBeCloseTo(g.stock.thickness - feeds.stepDown, 6);
-    expect(job.passes.at(-1)).toBeCloseTo(-MACHINE.overcut, 6);
+  it('steps down from the stock top, its zero, through the sheet', () => {
+    expect(job.passes[0]).toBeCloseTo(-feeds.stepDown, 6);
+    expect(job.passes.at(-1)).toBeCloseTo(-g.stock.thickness - MACHINE.overcut, 6);
+    expect(job.tabTop).toBeCloseTo(-g.stock.thickness + MACHINE.tabHeight, 6);
     for (let i = 1; i < job.passes.length; i++) {
       expect(job.passes[i]).toBeLessThan(job.passes[i - 1]);
       expect(job.passes[i - 1] - job.passes[i]).toBeLessThanOrEqual(feeds.stepDown + 1e-9);
     }
-    expect(job.safeZ).toBeCloseTo(g.stock.thickness + MACHINE.safeZ, 6);
+    expect(job.safeZ).toBeCloseTo(MACHINE.safeZ, 6);
   });
 
   it('keeps every cut inside the sheet and names the zero', () => {
@@ -230,7 +233,7 @@ describe('the mould G-code job', () => {
       expect(pt.y).toBeGreaterThan(0);
       expect(pt.y).toBeLessThan(g.stock.length);
     }
-    expect(job.notes.join('\n')).toMatch(/SPOILBOARD/);
+    expect(job.notes.join('\n')).toMatch(/SHEET TOP/);
     expect(job.notes.join('\n')).toMatch(/LOWER LEFT/);
   });
 
@@ -565,8 +568,8 @@ describe('the cradle toolpaths', () => {
   const p = seeded();
   const o = solvePlateContour(p)!;
   const cradle = (over: Partial<CradleSettings> = {}): CradleSettings => ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.cradle)), ...over });
-  const top = DEFAULT_SETTINGS.cradle.stock.thickness;
-  const lip = top - CRADLE.wall;
+  const bed = -DEFAULT_SETTINGS.cradle.stock.thickness;
+  const lip = -CRADLE.wall;
   const r = flat.diameter / 2;
 
   for (const plate of ['top', 'back'] as const) {
@@ -594,7 +597,7 @@ describe('the cradle toolpaths', () => {
         }
         expect(outermost).toBeGreaterThan(CRADLE.lip - r - 0.5);
         const job = gcodeJob(tp, tool, feeds);
-        expect(job.passes[0]).toBeCloseTo(top - feeds.stepDown, 6);
+        expect(job.passes[0]).toBeCloseTo(-feeds.stepDown, 6);
         expect(job.passes.at(-1)).toBeCloseTo(lip, 6);
       });
 
@@ -617,9 +620,9 @@ describe('the cradle toolpaths', () => {
           expect(twin ?? (Math.abs(tab.centre.x) < 1 ? tab : null), `tab at ${tab.centre.x.toFixed(1)}, ${tab.centre.y.toFixed(1)}`).toBeTruthy();
         }
         const job = gcodeJob(tp, tool, feeds);
-        expect(job.passes[0]).toBeCloseTo(top - feeds.stepDown, 6);
-        expect(job.passes.at(-1)).toBeCloseTo(-MACHINE.overcut, 6);
-        expect(job.tabTop).toBe(MACHINE.tabHeight);
+        expect(job.passes[0]).toBeCloseTo(-feeds.stepDown, 6);
+        expect(job.passes.at(-1)).toBeCloseTo(bed - MACHINE.overcut, 6);
+        expect(job.tabTop).toBeCloseTo(bed + MACHINE.tabHeight, 6);
         expect(buildGcode(job)).toMatch(/\(Cut Hole\)/);
       });
 
@@ -654,7 +657,7 @@ describe('the f-hole toolpaths', () => {
   const cradle = (over: Partial<CradleSettings> = {}): CradleSettings => ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.cradle)), ...over });
   const fholes = (over: Partial<FholeSettings> = {}): FholeSettings => ({ ...DEFAULT_SETTINGS.fholes, ...over });
   const seat = (c: CradleSettings) => arching[c.plate]!;
-  const lipZ = DEFAULT_SETTINGS.cradle.stock.thickness - CRADLE.wall;
+  const lipZ = -CRADLE.wall;
   const edge = p.arching!.top.thickness;
   // the outside of the plate as it rests face up on the lip
   const zAt = (pt: Pt) => lipZ + edge + (surfaceZAt(surface, pt.x, pt.y) ?? 0);
