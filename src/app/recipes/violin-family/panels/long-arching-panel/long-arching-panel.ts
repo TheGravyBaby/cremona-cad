@@ -48,7 +48,7 @@ export class LongArchingPanel extends PanelComponentBase<{ plate: Plate; source:
   static seed(p: ViolinFamilyParams): void {
     if (p.arching || !p.fluting) return;
     let s = familyStandards(p.body.height);
-    let [topH, backH] = { violin: [15, 14], viola: [20, 18], cello: [27, 25], bass: [55, 50] }[s.family];
+    let [topH, backH] = { violin: [13, 12], viola: [20, 18], cello: [27, 25], bass: [55, 50] }[s.family];
     p.arching = { ribHeightLower: s.ribHeightLower, ribHeightUpper: s.ribHeightUpper, top: seedPlateArch(topH, s.edgeThickness), back: seedPlateArch(backH, s.edgeThickness) };
   }
 

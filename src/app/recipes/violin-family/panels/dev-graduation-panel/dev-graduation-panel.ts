@@ -94,12 +94,11 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
   }
 
   // the linings by size class, the gouge held off them by two rib thicknesses, the f-hole thickness
-  // at the top's edge thickness, and a coarse grid of readings on each plate
+  // at the top's edge thickness, and no readings: the user lays or picks their own
   static seed(p: ViolinFamilyParams): void {
     if (p.graduation || !p.plateContour) return;
     let lining = familyStandards(p.body.height).lining;
     p.graduation = { lining, edgeInset: lining + 2 * p.body.rib, blockMargin: 0, fHoleThickness: edgeThicknessOf(p, 'top'), top: { points: [] }, back: { points: [] } };
-    for (let plate of GRADUATION_PLATES) p.graduation[plate].points = gridPoints(p, DEFAULT_SPACING, plate);
   }
 
   ngOnDestroy(): void {
@@ -640,8 +639,10 @@ export function thicknessField(p: ViolinFamilyParams, plate: GraduationPlate): T
   let solve = solveGraduation(p);
   let s = p.graduation;
   if (!solve?.ground || !s) return null;
-  let edge = edgeThicknessOf(p, plate);
   let points = s[plate].points.filter(pt => Number.isFinite(pt.thickness));
+  // with no readings the boundary alone would make up a plate nobody read
+  if (!points.length) return null;
+  let edge = edgeThicknessOf(p, plate);
   let holes = plate === 'top' && Number.isFinite(s.fHoleThickness) ? solve.holes : [];
   let key = JSON.stringify([edge, p.fluting, p.arching?.[plate], s.fHoleThickness, points.map(pt => [pt.x, pt.y, pt.thickness])]);
   let hit = fieldCache[plate];
