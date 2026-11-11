@@ -1,7 +1,7 @@
 {
   "recipeName": "violin-family-recipe",
   "fileName": "Violin - Nicolo Amati - Brookings",
-  "description": "Cremona, 1654. No dimensions published; height and width are placeholders.",
+  "description": "Cremona, 1654.",
   "source": "https://www.loc.gov/item/2022560097/",
   "version": "0.9.0",
   "params": {
