@@ -97,22 +97,25 @@ export interface ScrollSettings extends StockSettings {
 }
 
 // the fingerboard's stages, in cutting order: its top roughed and finished as a plate's arching
-// is, the position dots' pockets sunk in it, then its outline cut through
-export type FingerboardStage = Stage | 'dots' | 'contour';
+// is, the position dots' pockets sunk in it, a layer drawn on its face in the Dev Fingerboard
+// panel cut into it, then its outline cut through
+export type FingerboardStage = Stage | 'dots' | 'inlay' | 'contour';
 
 // a fingerboard blank, square and true, its gluing face down on the harness's bed and pushed into
 // the corner of the two fences at `fence` from the machine's zero, as a plate's blank is. The
 // board is centred in it. `dotDepth` is the inlay's: how far a dot's flat floor lies under the
-// lowest point of the surface round its rim
+// lowest point of the surface round its rim. `layer` is the canvas layer the inlay stage cuts, by
+// id; one that is gone reads as the first there is
 export interface FingerboardSettings extends StockSettings {
   fence: Pt;
   stage: FingerboardStage;
   dotDepth: number;
+  layer: string;
 }
 
 // the bit slots, one per thing cut with a bit of its own, each the number of a row in TOOLS. The
-// cradle borrows the roughing bit, the fingerboard the roughing, finishing and contour bits; the
-// mould's bit is the Mould panel's param
+// cradle borrows the roughing bit, the fingerboard the roughing, finishing and contour bits, and
+// its inlay layers the dots' bit; the mould's bit is the Mould panel's param
 export type StageKey = Stage | 'purfling' | 'contour' | FholeStage | 'scroll' | 'dots';
 export const STAGE_SHAPE: Record<StageKey, ToolShape> = { rough: 'flat', finish: 'ball', purfling: 'flat', contour: 'flat', eyes: 'flat', scribe: 'v', scroll: 'flat', dots: 'flat' };
 
@@ -140,13 +143,13 @@ export const DEFAULT_SETTINGS: DevExportSettings = {
     stock: { thickness: 46, width: 65, length: 280 }, wood: 'hard', harness: { width: 300, length: 400 }, fence: { x: 150, y: 25, thickness: 19, reach: 170 },
     side: 'left', faceInset: 0, endMargin: 10,
   },
-  fingerboard: { stock: { thickness: 12, width: 75, length: 300 }, wood: 'hard', fence: { x: 25, y: 25 }, stage: 'rough', dotDepth: 1.5 },
+  fingerboard: { stock: { thickness: 12, width: 75, length: 300 }, wood: 'hard', fence: { x: 25, y: 25 }, stage: 'rough', dotDepth: 1.5, layer: '' },
 };
 
 // the slot the open job cuts with; none for the mould, whose bit is the recipe's
 export function stageOf(s: DevExportSettings): StageKey | null {
   let job = s.job;
-  return job === 'mould' ? null : job === 'plate' ? s.plate.stage : job === 'cradle' ? 'rough' : job === 'fholes' ? s.fholes.stage : job === 'fingerboard' ? s.fingerboard.stage : job;
+  return job === 'mould' ? null : job === 'plate' ? s.plate.stage : job === 'cradle' ? 'rough' : job === 'fholes' ? s.fholes.stage : job === 'fingerboard' ? (s.fingerboard.stage === 'inlay' ? 'dots' : s.fingerboard.stage) : job;
 }
 
 // what never changes between jobs, so it is never asked. Zero is where the BitZero sits, on the
@@ -262,8 +265,9 @@ export const MACHINE_HELP = {
     'The stem runs along the neck only, ending under the head, since a volute\'s front may stand proud of the fingerboard plane. With the face inset at 0 the face sits on the stem and is never cut: the kerf runs from near the heel\'s front corner round to the top of the flat above the nut, and the two slivers left at the stem are sawn. A chin past the plane needs the face inset by at least that much: the chin is then cut flush with the billet\'s face beyond the stem, and the face is planed down to the plane after, the pass made anyway when the fingerboard is fitted. A face inset of a bit\'s width and more cuts the whole outline, face included.\n\n' +
     'FINGERBOARD\n' +
     'Cut from a square, true blank lying gluing face down, pushed into the corner of the harness\'s two fences as a plate\'s blank is, so Z0 is the bed and the board\'s edge comes out at Z = its thickness. The board is centred in the blank, the nut end up. ' +
-    `Four files. The top is roughed and finished as a plate\'s arching is, lines along the length: the crown at each station\'s radius standing on the two edges, the scoop planed into them, level land ${SURFACE.skirt} mm past the long edges and the crown carried on past both ends. ` +
+    `The top is roughed and finished as a plate\'s arching is, lines along the length: the crown at each station\'s radius standing on the two edges, the scoop planed into them, level land ${SURFACE.skirt} mm past the long edges and the crown carried on past both ends. ` +
     'The dots are flat-floored pockets, cleared in loops from the centre out, their floor the inlay depth under the lowest point of the surface round the rim, so the inlay stands proud on the crown\'s side and is levelled to it; a dot over the edge is cut whole, into the waste. ' +
+    'An inlay layer is one drawn on the board\'s face in the Dev Fingerboard panel, cut as that panel\'s row says, with the dots\' bit, after the finishing. Follow runs the bit down every line, its depth held under the surface along the way, a channel wider than the bit taken in passes across. Outline does the same a bit radius inside every closed shape, so the cut\'s edge is the drawn line. Pocket clears every closed shape in loops from the middle out to a flat floor, the depth under the lowest of the surface round the shape; a shape inside another is not left standing yet, and is refused. Lines that meet end to end are cut as one. ' +
     `The contour comes last, a bit radius outside the outline, from the crown\'s height at the ends down through the bed\'s overcut, held by ${FINGERBOARD.tabs} tabs on the long edges, the plate\'s size.\n\n` +
     'PLANNING\n' +
     'The download plans the cut again from the fine solve that the sheet exports use, so the coarser sampling of the preview never reaches the file.',
@@ -371,7 +375,7 @@ const STAGES: readonly Stage[] = ['rough', 'finish'];
 const CRADLE_STAGES: readonly CradleStage[] = ['pocket', 'hole'];
 const FHOLE_STAGES: readonly FholeStage[] = ['eyes', 'scribe'];
 const SIDES: readonly ScrollSide[] = ['left', 'right'];
-const FINGERBOARD_STAGES: readonly FingerboardStage[] = ['rough', 'finish', 'dots', 'contour'];
+const FINGERBOARD_STAGES: readonly FingerboardStage[] = ['rough', 'finish', 'dots', 'inlay', 'contour'];
 const STOCKS: readonly StockId[] = ['mould', 'plate', 'cradle', 'scroll', 'fingerboard'];
 
 // a key missing or mistyped reads as its default, as SettingsService reads its own
@@ -421,6 +425,7 @@ export function readSettings(): DevExportSettings {
   let fb = stored.fingerboard;
   if (FINGERBOARD_STAGES.includes(fb?.stage)) out.fingerboard.stage = fb.stage;
   if (positive(fb?.dotDepth)) out.fingerboard.dotDepth = fb.dotDepth;
+  if (typeof fb?.layer === 'string') out.fingerboard.layer = fb.layer;
   for (let key of ['x', 'y'] as const) {
     let n = fb?.fence?.[key];
     if (positive(n) || n === 0) out.fingerboard.fence[key] = n;

@@ -4,7 +4,7 @@ import { TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../../models/types';
 import { pathsBounds } from '../../../../helpers/math/pathMath';
 import {
-  calcFingerboardFaceOrigin, calcScoopedEdgeLine, calcScoopGuideGeometry, defaultPositionMarks, defineFingerboardFace, fingerboardScoopAt, PositionMarker,
+  buildFaceJobs, calcFingerboardFaceOrigin, calcScoopedEdgeLine, DEFAULT_FACE_CUT, FINGERBOARD_FACE, calcScoopGuideGeometry, defaultPositionMarks, defineFingerboardFace, fingerboardScoopAt, PositionMarker,
   solvePositionMarks, solveScoop,
 } from './dev-fingerboard-panel';
 import { calcSemitoneStop, solveStringSetup, StringSetupPanel } from '../string-setup-panel/string-setup-panel';
@@ -282,5 +282,44 @@ describe('the scoop', () => {
       expect(k.failures.some(f => f.unsolved.includes('scoop'))).toBe(true);
       expect(calcScoopGuideGeometry(p, s, k)).toBeNull();
     }
+  });
+});
+
+// what is drawn on the board's face reaches the exporter in the face's own frame, whatever the
+// canvas origin the layer holds
+describe('the face layers', () => {
+  const layers = [
+    { id: 'plain', name: 'Layer 1', locked: false },
+    { id: 'vine', name: 'Vine', locked: false, face: { id: FINGERBOARD_FACE, origin: { x: 300, y: 420 } } },
+    { id: 'other', name: 'Top', locked: false, face: { id: 'top', origin: { x: 0, y: 0 } } },
+  ];
+  const shapes: any[] = [
+    { id: 'a', type: 'line', start: { x: 298, y: 400 }, end: { x: 303, y: 380 }, layerId: 'vine' },
+    { id: 'b', type: 'circle', center: { x: 300, y: 350 }, radius: 3, layerId: 'vine' },
+    { id: 'c', type: 'dimension', start: { x: 298, y: 400 }, end: { x: 303, y: 380 }, layerId: 'vine' },
+    { id: 'd', type: 'line', start: { x: 0, y: 0 }, end: { x: 1, y: 1 }, layerId: 'plain' },
+    { id: 'e', type: 'line', start: { x: 0, y: 0 }, end: { x: 1, y: 1 }, layerId: 'other' },
+    { id: 'f', type: 'line', start: { x: 0, y: 0 }, end: { x: 1, y: 1 } },
+  ];
+
+  it('become one job per layer bound to the board, its lines less the layer\'s origin, marks and measurements left out', () => {
+    const cut = { kind: 'pocket' as const, depth: 2, width: 1 };
+    const jobs = buildFaceJobs(layers, shapes, { vine: cut });
+    expect(jobs.map(j => j.layerId)).toEqual(['vine']);
+    expect(jobs[0].name).toBe('Vine');
+    expect(jobs[0].cut).toEqual(cut);
+    expect(jobs[0].lines.length).toBe(2);
+    const numbers = (d: string) => d.match(/-?\d+(\.\d+)?/g)!.map(Number);
+    expect(numbers(jobs[0].lines[0])).toEqual([-2, -20, 3, -40]);
+    const [x0, y0] = numbers(jobs[0].lines[1]);
+    expect([x0, y0]).toEqual([-3, -70]);
+  });
+
+  it('take the default cut until the panel sets one, and move with the layer\'s origin', () => {
+    const [job] = buildFaceJobs(layers, shapes, {});
+    expect(job.cut).toEqual(DEFAULT_FACE_CUT);
+    const carried = layers.map(l => l.id === 'vine' ? { ...l, face: { id: FINGERBOARD_FACE, origin: { x: 310, y: 400 } } } : l);
+    const moved = shapes.map(sh => sh.layerId === 'vine' && sh.type === 'line' ? { ...sh, start: { x: sh.start.x + 10, y: sh.start.y - 20 }, end: { x: sh.end.x + 10, y: sh.end.y - 20 } } : sh);
+    expect(buildFaceJobs(carried, moved, {})[0].lines[0]).toBe(job.lines[0]);
   });
 });

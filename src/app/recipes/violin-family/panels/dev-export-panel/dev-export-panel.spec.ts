@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildGcode } from '../../../../helpers/gcodeExporter';
 import { dist, normalizeRadians, pointInPolygon, pointOnCircle, signedPolygonArea } from '../../../../helpers/math/simpleGeometry';
-import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
+import { pathFromCircle, samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed, polylineCumulativeLengths } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
 import { ViolinFamilyParams } from '../../violin-family-types';
@@ -21,8 +21,8 @@ import { NeckPanel, solveNeck } from '../neck-panel/neck-panel';
 import { VolutePanel } from '../volute-panel/volute-panel';
 import { solveScroll } from '../pegbox-panel/pegbox-panel';
 import { solveStringSetup, StringSetupPanel } from '../string-setup-panel/string-setup-panel';
-import { defaultPositionMarks, defineFingerboardFace, fingerboardSurfaceZAt, solvePositionMarks } from '../dev-fingerboard-panel/dev-fingerboard-panel';
-import { archingToolpaths, contourToolpaths, cradleToolpaths, fholeToolpaths, fingerboardToolpaths, mouldToolpaths, planExport, purflingToolpaths, scrollToolpaths, sideOutline } from './dev-export-panel';
+import { defaultPositionMarks, defineFingerboardFace, FaceCut, FaceJob, fingerboardSurfaceZAt, solvePositionMarks } from '../dev-fingerboard-panel/dev-fingerboard-panel';
+import { archingToolpaths, contourToolpaths, cradleToolpaths, fholeToolpaths, fingerboardToolpaths, inlayToolpaths, mouldToolpaths, planExport, purflingToolpaths, scrollToolpaths, sideOutline } from './dev-export-panel';
 import { Bit, CRADLE, CradleSettings, DEFAULT_SETTINGS, EXPORTS, ExportId, FHOLE, FholeSettings, FINGERBOARD, FingerboardSettings, MACHINE, MOULD_TABS, PLATE_TABS, PlateSettings, SCROLL, ScrollSettings, SURFACE, TOOLS } from './dev-export-shop';
 import { cutPlan, gcodeJob, jobNotes, Tab } from './dev-export-toolpaths';
 import { ThemeService } from '../../../../theme/theme.service';
@@ -1043,5 +1043,104 @@ describe('the fingerboard toolpaths', () => {
     const { stock, fence } = DEFAULT_SETTINGS.fingerboard;
     expect(offsets[0].x).toBeCloseTo(fence.x + stock.width / 2, 3);
     expect(offsets[0].y - length / 2).toBeCloseTo(fence.y + stock.length / 2, 3);
+  });
+
+  // a layer drawn on the face: the bit stays on what was drawn, a radius inside a closed shape's
+  // line, no deeper under the surface than the row says, and never steps down more than the feeds'
+  describe('an inlay layer', () => {
+    const bit = hard(DEFAULT_SETTINGS.tools.dots);
+    const r = bit.diameter / 2;
+    const job = (kind: FaceCut['kind'], lines: string[], edit: Partial<FaceCut> = {}): FaceJob =>
+      ({ layerId: 'l', name: 'Vine', cut: { kind, depth: 1.5, width: bit.diameter, ...edit }, lines });
+    const mid = -length / 2;
+    const circle = pathFromCircle({ x: 2, y: mid, r: 5 } as any);
+    const plan = (j: FaceJob | null, fine = true) => inlayToolpaths(p, s, j, bit, g('inlay'), fine);
+    const stepsWithin = (pts: { z: number }[], drop: number) => {
+      for (let k = 1; k < pts.length; k++) expect(pts[k - 1].z - pts[k].z).toBeLessThanOrEqual(drop + 0.05);
+    };
+
+    it('follows lines that meet end to end as one run, the depth held under the surface, walked back and forth', () => {
+      const a = { x: -6, y: mid }, b = { x: 0, y: mid - 10 }, c = { x: 7, y: mid - 12 };
+      const tp = plan(job('follow', [`M ${a.x} ${a.y} L ${b.x} ${b.y}`, `M ${c.x} ${c.y} L ${b.x} ${b.y}`]));
+      expect(tp.failures).toEqual([]);
+      expect(tp.surfaces.length).toBe(1);
+      const pts = tp.surfaces[0].pts;
+      const idx = buildPolylineIndex([a, b, c]);
+      for (const pt of pts) {
+        expect(distPointToPolylineIndexed(pt, idx)).toBeLessThan(1e-6);
+        expect(zAt(pt) - pt.z).toBeLessThanOrEqual(1.5 + 1e-9);
+        expect(zAt(pt) - pt.z).toBeGreaterThan(0);
+      }
+      expect(Math.max(...pts.map(pt => zAt(pt) - pt.z))).toBeCloseTo(1.5, 9);
+      // every round reaches both ends, the bit staying down between them
+      for (const end of [a, c]) expect(pts.filter(pt => dist(pt, end) < 1e-6).length).toBeGreaterThanOrEqual(tp.passes!);
+      expect(pts.some(pt => dist(pt, b) < 1e-6)).toBe(true);
+      stepsWithin(pts, bit.feeds!.stepDown);
+      expect(tp.floorZ).toBeCloseTo(Math.min(...pts.map(pt => pt.z)), 9);
+      expect(tp.caution).toBeTruthy();
+      expect(() => buildGcode(gcodeJob(tp, TOOLS.find(t => t.number === DEFAULT_SETTINGS.tools.dots)!, bit.feeds!))).not.toThrow();
+    });
+
+    it('takes a channel wider than the bit in passes across, its edges on the width, and refuses a bit wider than the channel', () => {
+      const a = { x: -6, y: mid }, b = { x: 6, y: mid - 15 };
+      const width = 4;
+      const tp = plan(job('follow', [`M ${a.x} ${a.y} L ${b.x} ${b.y}`], { width }));
+      expect(tp.failures).toEqual([]);
+      expect(tp.surfaces.length).toBeGreaterThan(1);
+      const idx = buildPolylineIndex([a, b]);
+      const off = tp.surfaces.flatMap(run => run.pts).map(pt => distPointToPolylineIndexed(pt, idx));
+      expect(Math.max(...off)).toBeLessThanOrEqual(width / 2 - r + 1e-6);
+      expect(Math.max(...off)).toBeGreaterThan(width / 2 - r - 0.01);
+      expect(plan(job('follow', [`M ${a.x} ${a.y} L ${b.x} ${b.y}`], { width: bit.diameter / 2 })).failures.join(' ')).toMatch(/wider than the channel/);
+    });
+
+    it('outlines a closed shape a bit radius inside its line, clockwise', () => {
+      const tp = plan(job('outline', [circle]));
+      expect(tp.failures).toEqual([]);
+      expect(tp.surfaces.length).toBe(1);
+      const pts = tp.surfaces[0].pts;
+      for (const pt of pts) {
+        expect(dist(pt, { x: 2, y: mid })).toBeLessThanOrEqual(5 - r + 0.02);
+        expect(dist(pt, { x: 2, y: mid })).toBeGreaterThan(5 - r - 0.05);
+        expect(zAt(pt) - pt.z).toBeLessThanOrEqual(1.5 + 1e-9);
+      }
+      const round = pts.filter(pt => Math.abs(zAt(pt) - pt.z - bit.feeds!.stepDown) < 1e-6);
+      expect(signedPolygonArea(round)).toBeLessThan(0);
+    });
+
+    it('pockets a closed shape to a flat floor under the lowest of its rim, loops from the middle out reaching the whole of it', () => {
+      const tp = plan(job('pocket', [circle]));
+      expect(tp.failures).toEqual([]);
+      const pts = tp.surfaces[0].pts;
+      const centre = { x: 2, y: mid };
+      for (const pt of pts) expect(dist(pt, centre)).toBeLessThanOrEqual(5 - r + 0.02);
+      expect(Math.max(...pts.map(pt => dist(pt, centre)))).toBeGreaterThan(5 - r - 0.05);
+      expect(Math.min(...pts.map(pt => dist(pt, centre)))).toBeLessThan(r);
+      const floor = Math.min(...pts.map(pt => pt.z));
+      const rim = Array.from({ length: 36 }, (_, k) => pointOnCircle({ ...centre, r: 5 } as any, k * Math.PI / 18));
+      expect(Math.min(...rim.map(zAt)) - floor).toBeCloseTo(1.5, 2);
+      expect(tp.floorZ).toBeCloseTo(floor, 9);
+      const levels = [...new Set(pts.map(pt => +pt.z.toFixed(6)))].sort((a, b) => b - a);
+      for (let k = 1; k < levels.length; k++) expect(levels[k - 1] - levels[k]).toBeLessThanOrEqual(bit.feeds!.stepDown + 1e-6);
+      expect(Math.max(...pts.map(zAt)) - levels[0]).toBeLessThanOrEqual(bit.feeds!.stepDown + 1e-6);
+      stepsWithin(pts, bit.feeds!.stepDown);
+    });
+
+    it('refuses what it cannot cut and says why', () => {
+      const line = `M -5 ${mid} L 5 ${mid}`;
+      expect(plan(null).failures.join(' ')).toMatch(/No inlay layer/);
+      expect(plan(job('follow', [])).failures.join(' ')).toMatch(/Nothing is drawn/);
+      expect(plan(job('pocket', [line])).failures.join(' ')).toMatch(/not a closed shape/);
+      expect(plan(job('outline', [line])).failures.join(' ')).toMatch(/not a closed shape/);
+      expect(plan(job('pocket', [circle, pathFromCircle({ x: 2, y: mid, r: 2 } as any)])).failures.join(' ')).toMatch(/inside another/);
+      expect(plan(job('pocket', [pathFromCircle({ x: 2, y: mid, r: r / 2 } as any)])).failures.join(' ')).toMatch(/too wide/);
+      expect(plan(job('follow', [`M 0 ${mid} L 200 ${mid}`])).failures.join(' ')).toMatch(/runs off the carved area/);
+      expect(plan(job('follow', [line], { depth: 0 })).failures.join(' ')).toMatch(/depth/);
+      expect(inlayToolpaths(p, s, job('follow', [line]), ball, g('inlay')).failures.join(' ')).toMatch(/flat bit/);
+    });
+
+    it('sits in the blank as every other stage does', () => {
+      expect(plan(job('follow', [`M -5 ${mid} L 5 ${mid}`]), false).sheetOffset).toEqual(fingerboardToolpaths(p, s, marks, flat, g('contour')).sheetOffset);
+    });
   });
 });

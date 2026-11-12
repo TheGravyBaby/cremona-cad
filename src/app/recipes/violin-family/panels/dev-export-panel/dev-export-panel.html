@@ -66,10 +66,26 @@
                 <option value="rough">Roughing</option>
                 <option value="finish">Finishing</option>
                 <option value="dots">Dots</option>
+                <option value="inlay">Inlay layer</option>
                 <option value="contour">Contour</option>
             </select>
         </label>
     </div>
+    @if (fingerboard.stage === 'inlay') {
+    @if (inlay; as job) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Layer</span>
+            <select [ngModel]="job.layerId" (ngModelChange)="fingerboard.layer = $event; saveSettingsAndRedraw()">
+                @for (each of faceJobs; track each.layerId) {
+                <option [value]="each.layerId">{{ each.name }}</option>
+                }
+            </select>
+        </label>
+    </div>
+    <p class="hint">{{ job.cut.kind === 'follow' ? 'Follow' : job.cut.kind === 'pocket' ? 'Pocket' : 'Outline' }}, {{ job.cut.depth }} mm deep{{ job.cut.kind === 'follow' ? ', ' + job.cut.width + ' mm wide' : '' }}; {{ job.lines.length }} line{{ job.lines.length === 1 ? '' : 's' }} drawn. Set on the Dev Fingerboard panel.</p>
+    }
+    }
     <p class="hint">Gluing face down, the nut end up. The dots are the Dev Fingerboard panel's position marks.</p>
     }
 </section>

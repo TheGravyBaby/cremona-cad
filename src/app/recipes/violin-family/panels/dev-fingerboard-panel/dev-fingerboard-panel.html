@@ -51,3 +51,45 @@
         <button type="button" class="panel-nav-btn" (click)="sortMarkers()">Sort by Semitone</button>
     </div>
 </section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Inlay Layers</div>
+    @if (faceLayers.length) {
+    <div class="spline-points">
+        <div class="input-group basic-row spline-row spline-row--header">
+            <span class="field-cell">Cut</span>
+            <span class="field-cell">Depth <span class="unit-label">mm</span></span>
+            <span class="field-cell">Width <span class="unit-label">mm</span></span>
+        </div>
+        @for (layer of faceLayers; track layer.id) {
+        @let cut = cutFor(layer);
+        <div class="input-group basic-row field-row" role="group">
+            <label class="field-cell field-cell--full">
+                <input type="radio" name="faceLayer" [checked]="toolbox.activeLayerId === layer.id" (change)="toolbox.setActiveLayer(layer.id)" />
+                <span class="field-title">{{ layer.name }}{{ layer.locked ? ' (locked)' : '' }}</span>
+            </label>
+        </div>
+        <div class="input-group basic-row field-row spline-row" role="group">
+            <div class="field-cell">
+                <select [(ngModel)]="cut.kind" (change)="cutsEdited()">
+                    <option value="follow">Follow</option>
+                    <option value="pocket">Pocket</option>
+                    <option value="outline">Outline</option>
+                </select>
+            </div>
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(3)"
+                    [(ngModel)]="cut.depth" (input)="cutsEdited()" />
+            </div>
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(3)"
+                    [(ngModel)]="cut.width" (input)="cutsEdited()" [disabled]="cut.kind !== 'follow'" />
+            </div>
+        </div>
+        }
+    </div>
+    }
+    <div class="input-group basic-row field-row" role="group">
+        <button type="button" class="panel-nav-btn" [disabled]="!faceOrigin" (click)="addFaceLayer()">+ Add Inlay Layer</button>
+    </div>
+</section>

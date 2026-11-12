@@ -1,18 +1,22 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { dist, moveInVectorSpace, pointAtDistanceToward, TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
-import { pathFromCircle, pathFromPolygon, pathFromPolyline } from '../../../../helpers/math/pathMath';
+import { pathFromCircle, pathFromPolygon, pathFromPolyline, translatePath } from '../../../../helpers/math/pathMath';
 import { intersectionFromTwoPaths } from '../../../../helpers/math/pathVibes';
 import {
   renderDashedLine, renderFilledPath, renderGuideKnot, renderPath, renderPointHalo, renderSegmentHalo, renderSolveFailures, renderText, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
 import { buildMiss, reportFailures, solveSection, SolveFailure } from '../../../../helpers/validators';
 import { readWorkingState, writeWorkingState } from '../../../../helpers/workingStorage';
+import { DEFAULT_LAYER_ID, Layer } from '../../../../draft-canvas/tools/layer';
+import { DraftShape, pathFromShape } from '../../../../draft-canvas/tools/toolbox-shape';
+import { scopeOnly } from '../../../../draft-canvas/tools/panel-scope';
+import { ToolboxStore } from '../../../../draft-canvas/tools/toolbox-store';
 import { Circle, Pt, Vect2D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
+import { RenderLayer, ViolinFamilyPanelId, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
 import { StringSetupSolve } from '../../violin-family-solves';
 import { familyStandards, FamilyStandards } from '../../violin-family-seed';
@@ -57,7 +61,25 @@ export interface ScoopSolve {
   failures: ScoopFailure[];
 }
 
+// what a layer drawn on the board's face is to be cut as: `follow` runs the cutter down every line,
+// a channel `width` wide; `pocket` clears the inside of every closed shape, one inside another
+// left standing; `outline` cuts round every closed shape. `depth` is under the board's surface
+export type FaceCutKind = 'follow' | 'pocket' | 'outline';
+
+export interface FaceCut {
+  kind: FaceCutKind;
+  depth: number;
+  width: number;
+}
+
+// the id a canvas layer's face carries to say its shapes are drawn on the board's face, in the true
+// view; the layer's own origin is the face's as of its shapes, which the exporter subtracts
+export const FINGERBOARD_FACE = 'fingerboard';
+const PANEL_ID: ViolinFamilyPanelId = 'devFingerboard';
+export const DEFAULT_FACE_CUT: FaceCut = { kind: 'follow', depth: 1.5, width: 1.5 };
+
 const STATE_KEY = 'violinFamilyDevFingerboard';
+const CUTS_KEY = 'violinFamilyDevFingerboardCuts';
 const SCOOP_EDGE_SAMPLES = 24;
 const SCOOP_GUIDE_LABEL_SIZE = 4;
 
@@ -88,10 +110,52 @@ export class DevFingerboardPanel extends PanelComponentBase<DevFingerboardHighli
   m!: PositionMarksSolve;
   // the row whose field has focus; only read while 'marks' is highlighted
   focusedMarker = 0;
+  // each face layer's cut, by layer id; a layer deleted on the canvas leaves its entry unread
+  cuts!: Record<string, FaceCut>;
+  protected readonly toolbox = inject(ToolboxStore);
 
   override ngOnInit(): void {
     this.markers = readMarkers() ?? defaultPositionMarks(this.params);
+    this.cuts = readFaceCuts();
     super.ngOnInit();
+  }
+
+  get faceLayers(): Layer[] {
+    return this.toolbox.layers.filter(layer => layer.face?.id === FINGERBOARD_FACE);
+  }
+
+  // a layer the canvas added to since the cuts were last read takes the default
+  cutFor(layer: Layer): FaceCut {
+    return this.cuts[layer.id] ??= { ...DEFAULT_FACE_CUT };
+  }
+
+  get faceOrigin(): Pt | null {
+    return calcFingerboardFaceOrigin(this.params, this.s);
+  }
+
+  // the new layer is the one drawn on next, and shows on this panel alone
+  addFaceLayer(): void {
+    let origin = this.faceOrigin;
+    if (!origin) return;
+    let id = this.toolbox.addLayer({
+      name: `Fingerboard inlay ${this.faceLayers.length + 1}`, scope: scopeOnly(PANEL_ID), face: { id: FINGERBOARD_FACE, origin: { x: origin.x, y: origin.y } },
+    });
+    this.cuts[id] = { ...DEFAULT_FACE_CUT };
+    this.cutsEdited();
+  }
+
+  cutsEdited(): void {
+    writeWorkingState(CUTS_KEY, JSON.stringify(this.cuts));
+  }
+
+  // the true view moves on the canvas with the neck, the bridge and the body, and what is drawn on
+  // the face goes with it. After the draw, clear of the change detection pass a first draw runs in
+  override drawCanvas(): void {
+    super.drawCanvas();
+    queueMicrotask(() => {
+      let origin = this.s && this.faceOrigin;
+      if (origin) this.toolbox.moveFace(FINGERBOARD_FACE, origin);
+    });
   }
 
   // the panel's own settings, kept for the tab alone
@@ -151,6 +215,35 @@ export class DevFingerboardPanel extends PanelComponentBase<DevFingerboardHighli
     let origin = calcFingerboardFaceOrigin(p, s);
     if (origin) views.push(renderTranslatedLayers(face, origin.x, origin.y));
     return views;
+  }
+}
+
+// one layer drawn on the board's face, ready to cut: its lines in the face's own frame, each shape
+// less the origin the layer holds for it, and the cut the panel set for it
+export interface FaceJob {
+  layerId: string;
+  name: string;
+  cut: FaceCut;
+  lines: string[];
+}
+
+// every layer bound to the board's face as a job, in layer order. Marks and measurements on a
+// layer draw no line and are left out
+export function buildFaceJobs(layers: Layer[], shapes: DraftShape[], cuts: Record<string, FaceCut>): FaceJob[] {
+  return layers.filter(layer => layer.face?.id === FINGERBOARD_FACE).map(layer => {
+    let { x, y } = layer.face!.origin;
+    let lines = shapes.filter(shape => (shape.layerId ?? DEFAULT_LAYER_ID) === layer.id).map(pathFromShape).filter((d): d is string => !!d);
+    return { layerId: layer.id, name: layer.name, cut: cuts[layer.id] ?? DEFAULT_FACE_CUT, lines: lines.map(d => translatePath(d, -x, -y)) };
+  });
+}
+
+// the tab's own cuts for the layers drawn on the board's face, by layer id; none before any is set
+export function readFaceCuts(): Record<string, FaceCut> {
+  try {
+    let parsed = JSON.parse(readWorkingState(CUTS_KEY) ?? '{}');
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
   }
 }
 

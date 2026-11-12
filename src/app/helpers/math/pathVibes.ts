@@ -844,9 +844,15 @@ function strokeSegCrossings(seg: StrokeSeg, q0: Pt, q1: Pt): number[] {
 
 // a closed subpath as a polygon: lines by their own ends, curves cut into chords of at most stepMm
 // a path's subpaths as polylines, every command's endpoint a vertex and its curves flattened to
-// `stepMm`: the corners stay exact, which sampling by length alone cuts
-export function flattenPath(d: string, stepMm: number): Pt[][] {
-  return parseStrokeSubpaths(d).map(sub => flattenSubpath(sub, stepMm));
+// `stepMm`: the corners stay exact, which sampling by length alone cuts. Each comes back as a ring,
+// its last point left off; `withEnds` adds it, a closed subpath's being its first again, for
+// telling an open run from a loop and walking either to its end
+export function flattenPath(d: string, stepMm: number, withEnds = false): Pt[][] {
+  return parseStrokeSubpaths(d).map(sub => {
+    const poly = flattenSubpath(sub, stepMm);
+    if (withEnds && sub.segs.length) poly.push(sub.closed ? poly[0] : strokeSegAt(sub.segs[sub.segs.length - 1], 1));
+    return poly;
+  });
 }
 
 function flattenSubpath(sub: StrokeSubpath, stepMm: number): Pt[] {

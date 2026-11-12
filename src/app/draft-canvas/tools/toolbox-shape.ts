@@ -1,5 +1,6 @@
 import { ImageCredit, ImageCrop, Pt } from '../../models/types';
 import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, rotatePointAbout } from '../../helpers/math/simpleGeometry';
+import { arcPathData, pathFromCircle, pathFromPolygon, pathFromPolyline } from '../../helpers/math/pathMath';
 import { battenPath, catenaryBetween, cycloidBetween } from '../../helpers/math/pathVibes';
 import { PanelScope } from './panel-scope';
 import { CANVAS_COLORS } from '../../theme/palettes';
@@ -275,6 +276,20 @@ export const DEFAULT_IMAGE_OPACITY = 0.75;
 export type DraftShape =
   | LineShape | ArcShape | CircleShape | DimensionShape | AngleShape | CurveLengthShape | CurveTicksShape | RectShape | SectionShape | TicksShape | TextShape | PointShape
   | FreehandShape | PathShape | ImageShape;
+
+/** The line a shape draws, as path data in world mm — what a recipe follows when it cuts what was
+ * drawn. Null for a mark, a measurement or a picture, which draw no line of their own. */
+export function pathFromShape(shape: DraftShape): string | null {
+  switch (shape.type) {
+    case 'line': return `M ${shape.start.x} ${shape.start.y} L ${shape.end.x} ${shape.end.y}`;
+    case 'arc': return arcPathData(shape.center, shape.radius, shape.startAngle, shape.endAngle);
+    case 'circle': return pathFromCircle({ x: shape.center.x, y: shape.center.y, r: shape.radius });
+    case 'rect': return pathFromPolygon([shape.p1, { x: shape.p2.x, y: shape.p1.y }, shape.p2, { x: shape.p1.x, y: shape.p2.y }]);
+    case 'freehand': return shape.points.length > 1 ? pathFromPolyline(shape.points) : null;
+    case 'path': return shape.d;
+    default: return null;
+  }
+}
 
 /** An image's box center, about which `rotationDeg` turns it. */
 export function imageCenter(shape: ImageShape): Pt {

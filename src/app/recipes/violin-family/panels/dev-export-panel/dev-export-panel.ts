@@ -1,12 +1,13 @@
-import { Component, Input } from '@angular/core';
+import { Component, inject, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { buildGcode, downloadGcodeFile } from '../../../../helpers/gcodeExporter';
 import { angleFromCenter, angleWithinSweep, closestPointOnSegment, dist, flipPointAboutY, normalizeRadians, pointInPolygon, pointOnCircle, signedPolygonArea, TURN } from '../../../../helpers/math/simpleGeometry';
 import { Matrix2D, pathFromCircle, pathFromPolyline, pathsBounds, samplePathToPolyline, transformPath } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed, polylineCumulativeLengths, simplifyPolyline3D } from '../../../../helpers/math/vibeMath';
-import { erodePolygon, flattenPath, offsetPath } from '../../../../helpers/math/pathVibes';
+import { erodePolygon, flattenPath, offsetPath, unifyConnectedSvgPathGroups } from '../../../../helpers/math/pathVibes';
 import { inchFraction } from '../../../../helpers/nearestFraction';
 import { renderCrosshair, renderPath, renderRect, renderText, renderTranslatedLayers } from '../../../../helpers/renderFuncs';
+import { ToolboxStore } from '../../../../draft-canvas/tools/toolbox-store';
 import { Arc, Circle, Pt, Pt3D, Rectangle } from '../../../../models/types';
 import { info } from '../../../../shared/message-emitter';
 import { MmInchField } from '../../../../shared/mm-inch-field';
@@ -28,14 +29,14 @@ import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fho
 import { calcScrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
 import { solveScroll } from '../pegbox-panel/pegbox-panel';
 import { solveStringSetup } from '../string-setup-panel/string-setup-panel';
-import { defaultPositionMarks, defineFingerboardFace, fingerboardSurfaceZAt, PositionMarkSolve, readMarkers, solvePositionMarks, solveScoop } from '../dev-fingerboard-panel/dev-fingerboard-panel';
+import { buildFaceJobs, defaultPositionMarks, defineFingerboardFace, FaceJob, fingerboardSurfaceZAt, PositionMarkSolve, readFaceCuts, readMarkers, solvePositionMarks, solveScoop } from '../dev-fingerboard-panel/dev-fingerboard-panel';
 
 // G-code for the maker's own machine, offered on localhost only: the files drive a CNC, and nobody
 // else's machine is ours to answer for. The recipe names this panel only inside @defer, so a
 // visitor's browser never fetches it. Not a CAM program: each export is one thing the shop cuts
 // from the recipe (the mould; a plate's arching, purfling channel and contour; the cradle the plate
 // is turned over into; the top's f-holes cut in that cradle; the neck blank's side profile; the
-// fingerboard's top, dots and outline),
+// fingerboard's top, dots, drawn inlay layers and outline),
 // planned by code that knows that part, with the user saying only what the stock is and whether
 // the wood is hard. The plate, its purfling and its contour are one setup, in that order: all read
 // the plate's blank and where the plate sits in it, so every file agrees, and the contour comes
@@ -65,6 +66,7 @@ export class DevExportPanel extends PanelComponentBase {
   @Input() fileName = '';
 
   settings: DevExportSettings = readSettings();
+  private readonly toolbox = inject(ToolboxStore);
   // what the last draw planned; the template reads its failures
   toolpaths: Toolpaths | null = null;
 
@@ -90,7 +92,7 @@ export class DevExportPanel extends PanelComponentBase {
 
   protected buildCanvasLayers(): RenderLayer[] {
     let bit = this.bit;
-    let plan = bit ? planExport(this.params, this.settings, bit, this.pal, this.flags) : null;
+    let plan = bit ? planExport(this.params, this.settings, bit, this.pal, this.flags, false, this.inlay) : null;
     this.toolpaths = plan?.toolpaths ?? null;
     return plan ? [inSheet(plan.toolpaths, plan.layers)] : [];
   }
@@ -136,6 +138,17 @@ export class DevExportPanel extends PanelComponentBase {
 
   get isFingerboard(): boolean {
     return this.settings.job === 'fingerboard';
+  }
+
+  // the layers drawn on the board's face in the Dev Fingerboard panel, as that panel's rows cut them
+  get faceJobs(): FaceJob[] {
+    return buildFaceJobs(this.toolbox.layers, this.toolbox.getShapes(), readFaceCuts());
+  }
+
+  // the one the inlay stage cuts: the layer chosen, or the first while that one is gone
+  get inlay(): FaceJob | null {
+    let jobs = this.faceJobs;
+    return jobs.find(job => job.layerId === this.fingerboard.layer) ?? jobs[0] ?? null;
   }
 
   // the settings naming the plate the job is cut to
@@ -194,11 +207,11 @@ export class DevExportPanel extends PanelComponentBase {
   download(): void {
     let tool = this.tool, feeds = this.feeds, bit = this.bit;
     if (!tool || !feeds || !bit) return;
-    let plan = planExport(this.params, this.settings, bit, this.pal, this.flags, true);
+    let plan = planExport(this.params, this.settings, bit, this.pal, this.flags, true, this.inlay);
     if (!plan || plan.toolpaths.failures.length) return;
     let text = buildGcode(gcodeJob(plan.toolpaths, tool, feeds));
     let job = this.settings.job;
-    let part = job === 'plate' ? `plate-${this.blank.plate}-${this.blank.stage}` : job === 'cradle' ? `cradle-${this.cradle.plate}-${this.cradle.stage}` : job === 'fholes' ? `fholes-${this.fholes.stage}` : job === 'scroll' ? `scroll-${this.scroll.side}` : job === 'fingerboard' ? `fingerboard-${this.fingerboard.stage}` : job === 'mould' ? job : `${job}-${this.blank.plate}`;
+    let part = job === 'plate' ? `plate-${this.blank.plate}-${this.blank.stage}` : job === 'cradle' ? `cradle-${this.cradle.plate}-${this.cradle.stage}` : job === 'fholes' ? `fholes-${this.fholes.stage}` : job === 'scroll' ? `scroll-${this.scroll.side}` : job === 'fingerboard' ? `fingerboard-${this.fingerboard.stage}${this.fingerboard.stage === 'inlay' && this.inlay ? `-${this.inlay.name.trim().replace(/\s+/g, '-').toLowerCase()}` : ''}` : job === 'mould' ? job : `${job}-${this.blank.plate}`;
     downloadGcodeFile(`${this.fileName.trim() || 'violin-family'}-${part}.nc`, text);
   }
 }
@@ -210,8 +223,9 @@ export interface ExportPlan {
 }
 
 // one case per export: solve the part (finely for the file, coarsely for the preview), plan its
-// toolpaths and say what to draw. Null when the recipe has not reached that part yet
-export function planExport(p: ViolinFamilyParams, settings: DevExportSettings, bit: Bit, pal: PanelPalette, flags: ViolinFamilyViewFlags, fine = false): ExportPlan | null {
+// toolpaths and say what to draw. Null when the recipe has not reached that part yet. `inlay` is the
+// drawn layer the fingerboard's inlay stage cuts, which only the canvas holds
+export function planExport(p: ViolinFamilyParams, settings: DevExportSettings, bit: Bit, pal: PanelPalette, flags: ViolinFamilyViewFlags, fine = false, inlay: FaceJob | null = null): ExportPlan | null {
   let { plate: b, cradle: c } = settings;
   switch (settings.job) {
     case 'mould': {
@@ -270,9 +284,10 @@ export function planExport(p: ViolinFamilyParams, settings: DevExportSettings, b
       if (!s || !board) return null;
       let g = settings.fingerboard;
       let marks = solvePositionMarks(p, s, readMarkers() ?? defaultPositionMarks(p)).marks;
-      let toolpaths = fingerboardToolpaths(p, s, marks, bit, g, fine);
+      let toolpaths = g.stage === 'inlay' ? inlayToolpaths(p, s, inlay, bit, g, fine) : fingerboardToolpaths(p, s, marks, bit, g, fine);
       let dots = marks.flatMap(mark => mark.faceDots.map(dot => pathFromCircle(dot)));
-      return { toolpaths, layers: [renderLines([board, ...dots], pal), renderRaster(toolpaths, pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, g, pal)] };
+      let drawn = g.stage === 'inlay' && inlay ? inlay.lines : [];
+      return { toolpaths, layers: [renderLines([board, ...dots, ...drawn], pal), renderRaster(toolpaths, pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, g, pal)] };
     }
   }
 }
@@ -1070,19 +1085,9 @@ export function fingerboardToolpaths(
   let ss = p.stringSetup!;
   let edge = ss.fingerboardThickness;
   let top = g.stock.thickness;
-  let stage = g.stage === 'rough' ? 'top roughing' : g.stage === 'finish' ? 'top finishing' : g.stage === 'dots' ? 'position dots' : 'contour';
-  let out = emptyToolpaths(top, edge, [
-    `Z0 = BED, the board's gluing face; blank top Z${top.toFixed(3)}`,
-    `XY0 = HARNESS ZERO, fences at X${g.fence.x} Y${g.fence.y}, blank ${g.stock.width} x ${g.stock.length} in their corner`,
-    `Blank ${top} mm, ${g.wood} wood`,
-    `Fingerboard, ${stage}; edge Z${edge.toFixed(3)}, nut end up`,
-  ]);
-  if (!(bit.diameter > 0)) fail(out, 'The bit diameter has to be above 0.');
-  let board = defineFingerboardFace(p, s);
-  if (!board || s.failures.some(f => f.unsolved.includes('fingerboard')) || solveScoop(p, s).failures.length) return fail(out, 'The board and its scoop have to solve first.');
+  let { out, board, area } = boardToolpaths(p, s, g, g.stage === 'rough' ? 'top roughing' : g.stage === 'finish' ? 'top finishing' : g.stage === 'dots' ? 'position dots' : 'contour', bit);
+  if (!board || !area) return out;
   let b = pathsBounds([board]);
-  let area: Bounds = { minX: b.minX - SURFACE.skirt, maxX: b.maxX + SURFACE.skirt, minY: b.minY - SURFACE.skirt, maxY: b.maxY + SURFACE.skirt };
-  placeInSheet(out, area, g, { x: g.stock.width / 2 - (area.minX + area.maxX) / 2, y: g.stock.length / 2 - (area.minY + area.maxY) / 2 }, g.fence);
   let zAt = (x: number, y: number) => fingerboardSurfaceZAt(p, s, x, -y);
   let r = bit.diameter / 2;
 
@@ -1150,5 +1155,141 @@ export function fingerboardToolpaths(
   out.floorZ = -machine.overcut;
   out.tabTop = PLATE_TABS.height;
   out.notes.push(`Contour a bit radius outside the outline, counterclockwise, from the crown at the ends Z${out.cutTopZ.toFixed(3)} through the bed by ${machine.overcut}; ${FINGERBOARD.tabs} tabs ${PLATE_TABS.width} long and ${PLATE_TABS.height} high on the long edges. Cut last: once through, only the tabs hold the board`);
+  return out;
+}
+
+// what the fingerboard's files share: the blank, its zero, the board centred in it by the one
+// carved area, a skirt past its outline, and the check that the board stands. `board` and `area`
+// are null while it does not
+function boardToolpaths(p: ViolinFamilyParams, s: StringSetupSolve, g: FingerboardSettings, stage: string, bit: Bit): { out: Toolpaths; board: string | null; area: Bounds | null } {
+  let edge = p.stringSetup!.fingerboardThickness;
+  let top = g.stock.thickness;
+  let out = emptyToolpaths(top, edge, [
+    `Z0 = BED, the board's gluing face; blank top Z${top.toFixed(3)}`,
+    `XY0 = HARNESS ZERO, fences at X${g.fence.x} Y${g.fence.y}, blank ${g.stock.width} x ${g.stock.length} in their corner`,
+    `Blank ${top} mm, ${g.wood} wood`,
+    `Fingerboard, ${stage}; edge Z${edge.toFixed(3)}, nut end up`,
+  ]);
+  if (!(bit.diameter > 0)) fail(out, 'The bit diameter has to be above 0.');
+  let board = defineFingerboardFace(p, s);
+  if (!board || s.failures.some(f => f.unsolved.includes('fingerboard')) || solveScoop(p, s).failures.length) {
+    fail(out, 'The board and its scoop have to solve first.');
+    return { out, board: null, area: null };
+  }
+  let b = pathsBounds([board]);
+  let area: Bounds = { minX: b.minX - SURFACE.skirt, maxX: b.maxX + SURFACE.skirt, minY: b.minY - SURFACE.skirt, maxY: b.maxY + SURFACE.skirt };
+  placeInSheet(out, area, g, { x: g.stock.width / 2 - (area.minX + area.maxX) / 2, y: g.stock.length / 2 - (area.minY + area.maxY) / 2 }, g.fence);
+  return { out, board, area };
+}
+
+// a layer drawn on the board's face, cut into the finished top as its row in the Dev Fingerboard
+// panel says. Lines that meet end to end are one run; a drawing that branches is cut line by
+// line. Follow runs the bit's centre down every run, the depth held under the surface along it, a
+// round per step down, an open run walked back and forth so the bit stays in the cut; a channel
+// wider than the bit is passes set evenly between its edges a radius in. Outline does the same a
+// radius inside every closed shape, clockwise, so the cut's edge is the drawn line. Pocket clears
+// every closed shape in loops from the middle out, clockwise, a level at a time, to a flat floor
+// the depth under the lowest of the surface round the shape, as a dot's is; a shape inside
+// another would be an island, which is not cut yet. Nothing may leave the carved area
+export function inlayToolpaths(p: ViolinFamilyParams, s: StringSetupSolve, job: FaceJob | null, bit: Bit, g: FingerboardSettings, fine = false): Toolpaths {
+  let { out, board, area } = boardToolpaths(p, s, g, job ? `inlay layer ${job.name}, ${job.cut.kind}` : 'inlay layer', bit);
+  if (!board || !area) return out;
+  if (!job) return fail(out, 'No inlay layer: the Dev Fingerboard panel adds one.');
+  let { cut } = job;
+  if (bit.shape !== 'flat') fail(out, 'An inlay layer takes a flat bit.');
+  if (!bit.feeds) fail(out, 'No feeds for this bit.');
+  if (!(cut.depth > 0)) fail(out, 'The cut\'s depth has to be above 0.');
+  if (!job.lines.length) fail(out, 'Nothing is drawn on this layer.');
+  if (out.failures.length) return out;
+  out.caution = SURFACED_BOARD;
+  let r = bit.diameter / 2;
+  let step = fine ? 0.1 : 0.5;
+  let zAt = (pt: Pt) => fingerboardSurfaceZAt(p, s, pt.x, -pt.y);
+  let joined: string;
+  try {
+    joined = unifyConnectedSvgPathGroups(job.lines);
+  } catch {
+    joined = job.lines.join(' ');
+  }
+  let runs = flattenPath(joined, step, true).filter(run => run.length > 1);
+  if (runs.some(run => run.some(pt => pt.x < area!.minX || pt.x > area!.maxX || pt.y < area!.minY || pt.y > area!.maxY))) {
+    return fail(out, `The drawing runs off the carved area, ${SURFACE.skirt} mm past the board.`);
+  }
+  let add = (name: string, pts: Pt3D[]) => {
+    out.surfaces.push({ name, pts: simplifyPolyline3D(pts, SURFACE.chordTolerance) });
+    out.floorZ = pts.reduce((z, pt) => Math.min(z, pt.z), out.floorZ);
+  };
+  out.floorZ = Infinity;
+
+  if (cut.kind === 'follow') {
+    if (!(cut.width > 0)) return fail(out, 'The channel\'s width has to be above 0.');
+    if (bit.diameter > cut.width + 0.05) return fail(out, `The bit is wider than the channel: ${cut.width} mm.`);
+    let span = Math.max(0, cut.width - bit.diameter);
+    let across = span < 0.05 ? 1 : Math.ceil(span / (0.6 * bit.diameter)) + 1;
+    let rounds = roundsTo(cut.depth, bit.feeds!.stepDown);
+    for (let i = 0; i < across; i++) {
+      let off = across > 1 ? -span / 2 + (span * i) / (across - 1) : 0;
+      let d = Math.abs(off) < 1e-9 ? joined : offsetPath(joined, off);
+      if (!d) return fail(out, 'A line would not offset for the channel\'s width: a bend is tighter than the channel, or the line is too rough.');
+      flattenPath(d, step, true).filter(run => run.length > 1).forEach((run, k) => {
+        let closed = dist(run[0], run[run.length - 1]) < 1e-3;
+        let pts: Pt3D[] = [];
+        rounds.forEach((depth, n) => {
+          for (let pt of closed || n % 2 === 0 ? run : [...run].reverse()) pts.push(new Pt3D(pt.x, pt.y, zAt(pt) - depth));
+        });
+        add(`Follow ${k + 1}${across > 1 ? `, pass ${i + 1}` : ''}`, pts);
+      });
+    }
+    out.passes = rounds.length;
+    out.notes.push(`${runs.length} run${runs.length === 1 ? '' : 's'} followed ${cut.depth} under the surface, the channel ${Math.max(cut.width, bit.diameter).toFixed(2)} wide in ${across} pass${across === 1 ? '' : 'es'} across, ${rounds.length} round${rounds.length === 1 ? '' : 's'} down`);
+    return out;
+  }
+
+  let open = runs.filter(run => dist(run[0], run[run.length - 1]) >= 1e-3).length;
+  if (open) return fail(out, `${open} line${open === 1 ? ' is' : 's are'} not a closed shape: join the ends, or cut the layer as Follow.`);
+  let rings = runs.map(run => run.slice(0, -1));
+
+  if (cut.kind === 'outline') {
+    let rounds = roundsTo(cut.depth, bit.feeds!.stepDown);
+    for (let [k, ring] of rings.entries()) {
+      let inside = insideOutline(pathFromPolyline(ring, true), r);
+      let loop = inside ? flattenPath(inside, step)[0] ?? [] : [];
+      if (loop.length > 1 && dist(loop[0], loop[loop.length - 1]) < 1e-6) loop.pop();
+      if (loop.length < 3) return fail(out, 'The bit is too wide for a shape on this layer.');
+      if (signedPolygonArea(loop) > 0) loop.reverse();
+      let pts: Pt3D[] = [];
+      for (let depth of rounds) for (let pt of [...loop, loop[0]]) pts.push(new Pt3D(pt.x, pt.y, zAt(pt) - depth));
+      add(`Outline ${k + 1}`, pts);
+    }
+    out.passes = rounds.length;
+    out.notes.push(`${rings.length} shape${rings.length === 1 ? '' : 's'} outlined a bit radius inside the line, ${cut.depth} under the surface, ${rounds.length} round${rounds.length === 1 ? '' : 's'} down`);
+    return out;
+  }
+
+  if (rings.some((ring, i) => rings.some((other, j) => i !== j && pointInPolygon(ring[0], other)))) {
+    return fail(out, 'A shape lies inside another: a pocket cannot leave an island standing yet. Cut the inner shape on a layer of its own.');
+  }
+  out.passes = 0;
+  for (let [k, ring] of rings.entries()) {
+    let d = pathFromPolyline(ring, true);
+    let loops: Pt[][] = [];
+    for (let inset = r; loops.length < 500; inset += SURFACE.roughStepover * bit.diameter) {
+      let inside = insideOutline(d, inset);
+      let loop = inside ? flattenPath(inside, step)[0] ?? [] : [];
+      if (loop.length > 1 && dist(loop[0], loop[loop.length - 1]) < 1e-6) loop.pop();
+      if (loop.length < 3) break;
+      if (signedPolygonArea(loop) > 0) loop.reverse();
+      loops.unshift([...loop, loop[0]]);
+    }
+    if (!loops.length) return fail(out, 'The bit is too wide for a shape on this layer.');
+    let rim = ring.map(zAt);
+    let high = Math.max(...rim, ...loops.flatMap(loop => loop.map(zAt))), floor = Math.min(...rim) - cut.depth;
+    let rounds = roundsTo(high - floor, bit.feeds!.stepDown);
+    let pts: Pt3D[] = [];
+    for (let depth of rounds) for (let loop of loops) for (let pt of loop) pts.push(new Pt3D(pt.x, pt.y, high - depth));
+    add(`Pocket ${k + 1}`, pts);
+    out.passes = Math.max(out.passes, rounds.length);
+  }
+  out.notes.push(`${rings.length} pocket${rings.length === 1 ? '' : 's'}, flat floors ${cut.depth} under the lowest of the surface round each shape, in up to ${out.passes} round${out.passes === 1 ? '' : 's'}`);
   return out;
 }
