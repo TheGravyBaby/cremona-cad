@@ -97,27 +97,28 @@ export interface ScrollSettings extends StockSettings {
 }
 
 // the fingerboard's stages, in cutting order: its top roughed and finished as a plate's arching
-// is, the position dots' pockets sunk in it, a layer drawn on its face in the Dev Fingerboard
-// panel cut into it, then its outline cut through
-export type FingerboardStage = Stage | 'dots' | 'inlay' | 'contour';
+// is, the position marks sunk in it, a layer drawn on its face in the Dev Fingerboard panel cut
+// into it, then its outline cut through
+export type FingerboardStage = Stage | 'marks' | 'inlay' | 'contour';
 
 // a fingerboard blank, square and true, its gluing face down on the harness's bed and pushed into
 // the corner of the two fences at `fence` from the machine's zero, as a plate's blank is. The
-// board is centred in it. `dotDepth` is the inlay's: how far a dot's flat floor lies under the
-// lowest point of the surface round its rim. `layer` is the canvas layer the inlay stage cuts, by
+// board is centred in it. `markDepth` is the position marks' inlay: how far a dot's flat floor
+// lies under the lowest point of the surface round its rim, and a fret line's under the surface
+// along it. `layer` is the canvas layer the inlay stage cuts, by
 // id; one that is gone reads as the first there is
 export interface FingerboardSettings extends StockSettings {
   fence: Pt;
   stage: FingerboardStage;
-  dotDepth: number;
+  markDepth: number;
   layer: string;
 }
 
 // the bit slots, one per thing cut with a bit of its own, each the number of a row in TOOLS. The
 // cradle borrows the roughing bit, the fingerboard the roughing, finishing and contour bits, and
-// its inlay layers the dots' bit; the mould's bit is the Mould panel's param
-export type StageKey = Stage | 'purfling' | 'contour' | FholeStage | 'scroll' | 'dots';
-export const STAGE_SHAPE: Record<StageKey, ToolShape> = { rough: 'flat', finish: 'ball', purfling: 'flat', contour: 'flat', eyes: 'flat', scribe: 'v', scroll: 'flat', dots: 'flat' };
+// its inlay layers the position marks' bit; the mould's bit is the Mould panel's param
+export type StageKey = Stage | 'purfling' | 'contour' | FholeStage | 'scroll' | 'marks';
+export const STAGE_SHAPE: Record<StageKey, ToolShape> = { rough: 'flat', finish: 'ball', purfling: 'flat', contour: 'flat', eyes: 'flat', scribe: 'v', scroll: 'flat', marks: 'flat' };
 
 // one stock per setup: a mould comes out of a ply sheet, a plate and its purfling and contour out
 // of a blank, a cradle out of a slab, a scroll out of the neck blank, a fingerboard out of its own
@@ -134,7 +135,7 @@ export interface DevExportSettings {
 
 export const DEFAULT_SETTINGS: DevExportSettings = {
   job: 'mould',
-  tools: { rough: 2, finish: 3, purfling: 7, contour: 1, eyes: 6, scribe: 9, scroll: 2, dots: 6 },
+  tools: { rough: 2, finish: 3, purfling: 7, contour: 1, eyes: 6, scribe: 9, scroll: 2, marks: 6 },
   mould: { stock: { thickness: 19, width: 300, length: 400 }, wood: 'soft' },
   plate: { stock: { thickness: 22, edge: 10, width: 230, length: 420 }, fence: { x: 25, y: 25 }, seam: 115, wood: 'soft', plate: 'top', stage: 'rough', purflingDepth: 2 },
   cradle: { stock: { thickness: 25, width: 230, length: 420 }, wood: 'soft', plate: 'back', stage: 'pocket' },
@@ -143,13 +144,13 @@ export const DEFAULT_SETTINGS: DevExportSettings = {
     stock: { thickness: 46, width: 65, length: 280 }, wood: 'hard', harness: { width: 300, length: 400 }, fence: { x: 150, y: 25, thickness: 19, reach: 170 },
     side: 'left', faceInset: 0, endMargin: 10,
   },
-  fingerboard: { stock: { thickness: 12, width: 75, length: 300 }, wood: 'hard', fence: { x: 25, y: 25 }, stage: 'rough', dotDepth: 1.5, layer: '' },
+  fingerboard: { stock: { thickness: 12, width: 75, length: 300 }, wood: 'hard', fence: { x: 25, y: 25 }, stage: 'rough', markDepth: 1.5, layer: '' },
 };
 
 // the slot the open job cuts with; none for the mould, whose bit is the recipe's
 export function stageOf(s: DevExportSettings): StageKey | null {
   let job = s.job;
-  return job === 'mould' ? null : job === 'plate' ? s.plate.stage : job === 'cradle' ? 'rough' : job === 'fholes' ? s.fholes.stage : job === 'fingerboard' ? (s.fingerboard.stage === 'inlay' ? 'dots' : s.fingerboard.stage) : job;
+  return job === 'mould' ? null : job === 'plate' ? s.plate.stage : job === 'cradle' ? 'rough' : job === 'fholes' ? s.fholes.stage : job === 'fingerboard' ? (s.fingerboard.stage === 'inlay' ? 'marks' : s.fingerboard.stage) : job;
 }
 
 // what never changes between jobs, so it is never asked. Zero is where the BitZero sits, on the
@@ -215,63 +216,6 @@ export const SURFACE = {
 
 // the preview's height field, coarse enough to sample on every edit
 export const PREVIEW_GRID = 4;
-
-export const MACHINE_HELP = {
-  title: 'Dev Export: the fixed plan',
-  text:
-    'Everything the panel does not ask you for is a constant, fixed so that no visit to the shop can drift it. The first mould was cut with exactly these numbers.\n\n' +
-    'ZERO\n' +
-    'XYZ0 is where the BitZero sits, on the lower-left corner of the plywood on the table. A mould sheet and a cradle slab are zeroed on their own top corner, so Z0 is the top of the stock and the cut goes down to minus its thickness. ' +
-    'A harness is zeroed on its board\'s corner, so Z0 is the bed the blank lies on. The part is centred in a loose sheet, so there is no margin to set; the sheet only has to be the part, plus one bit width, plus 5 mm a side.\n\n' +
-    'OVERCUT\n' +
-    `${MACHINE.overcut} mm. The last pass goes this far below the stock typed. Zeroed on the top, the floor is the typed thickness down: measure the sheet, since ply is only nominal. A sheet thinner than typed cuts that much deeper into the spoilboard, and one thicker leaves a skin under the part.\n\n` +
-    'SAFE Z\n' +
-    `${MACHINE.safeZ} mm above the stock (half an inch). It is the only height the bit travels at rapid, clear of clamps and tabs. Every drop into the work is at plunge feed.\n\n` +
-    'TABS\n' +
-    `${MACHINE.tabWidth} mm along the path and ${MACHINE.tabHeight} mm high. The mould takes ${MOULD_TABS.outline} on the outline and ${MOULD_TABS.window} per window. ` +
-    'They mirror across the centre line. The outline\'s tabs sit out on the bouts so none lands in a block notch. The windows are cut first, so the full sheet is still holding the mould while they are cut. ' +
-    `A plate\'s contour takes six, ${PLATE_TABS.width} mm long and ${PLATE_TABS.height} mm high, at the widest of each bout and the waist of each C, clear of the corners.\n\n` +
-    'DIRECTION\n' +
-    'Climb cutting, for a router turning clockwise: counterclockwise round the outside, clockwise inside a window. It leaves a cleaner edge in ply with less tear-out.\n\n' +
-    'NOTCH CORNERS\n' +
-    'Each block notch is cut as a dog-bone. The bit runs to the corner, then presses into it along the diagonal exactly as far as the drawn relief circle reaches, so the block seats square.\n\n' +
-    'FEEDS\n' +
-    'Set per bit and wood, from the bit maker\'s chart or a job cut here, with the source of each row noted beside it in the code. Amana\'s charts run at 18,000 rpm and a depth of one diameter, with a ramp-down of the feed over the flutes: the feed and the ramp are taken as printed, the depth halved for this router. Only the 1/4" downcut in soft wood has been cut here; cut scrap before trusting any other row.\n\n' +
-    'SPINDLE\n' +
-    `S${MACHINE.spindleRpm}. The router's own dial sets the real speed, but Carbide Motion still wants an M3 with an S word. Before it, the file pauses (M0) with a message naming the bit and the speed; the spindle starts and the cut begins only once you resume.\n\n` +
-    'PLATE\n' +
-    'The blank goes joint face down, pushed into the corner of the harness\'s two fences, so Z0 is the bed it lies on and the plate\'s edge comes out at Z = its edge thickness; the floor the file never crosses is the bottom of the fluting channel, a little under that. XY0 is the harness\'s zero; the fences stand at the X and Y typed, and the blank\'s lower-left corner is in their angle. ' +
-    'Type the blank\'s size and its thickness at the seam and at its long edges, and the seam\'s distance from the blank\'s left edge as it sits against the fence. The plate\'s centre line goes on the seam, and the plate is centred along the blank. The plan refuses a blank the surface would stand proud of, or that the carved area runs off. The margin past the carved area is where the screws go.\n\n' +
-    `The carved area runs ${SURFACE.skirt} mm past the outline, so the outline cut later lands on finished land. Lines run along the length, bass side first, each pair joined at their ends so the bit never lifts between them. ` +
-    `Roughing takes a flat bit in terraces one step down apart, riding over whatever still stands above a terrace, and leaves ${SURFACE.leave} mm for the ball. ` +
-    `Finishing takes a ball bit in one pass, its lines spaced for a ${SURFACE.scallop} mm scallop; the tip stands off the surface wherever the ball would touch it first. ` +
-    'A run diving steeper than 30° is fed at the plunge rate.\n\n' +
-    'PURFLING\n' +
-    'Cut in the plate\'s blank after its finishing pass, so it reads the blank and plate typed under Plate. The channel is the strip\'s width between the two purfling lines the Plate Contour panel draws, its floor one flat depth under the plate\'s edge, the strip\'s height: the channel is gouged flush afterwards, so its depth is held against the edge rather than the carved surface. A bit the channel\'s width takes it in one pass; a narrower one in passes across it; a bit wider than the channel is refused. Each pass goes round once per step down, diving to the next round where it closes. The corners come to the bee sting\'s point in plan and are finished with the knife.\n\n' +
-    'CONTOUR\n' +
-    'Cut last in the plate\'s blank, after the purfling, since the waste round the plate is what holds it down. The bit runs a radius outside the plate\'s outline, the button included on the back, counterclockwise for a climb cut, in passes from the land the arching left down through the bed\'s overcut, lifting over the tabs on the passes below them. The safe height still clears the blank\'s seam, which stands well above the land.\n\n' +
-    'CRADLE\n' +
-    `A slab of MDF or ply, flat and square, the plate held in it for its inside either way up: a pocket of the plate\'s outline ${CRADLE.wall} mm deep and ${CRADLE.clearance} mm clear of it, so the outline registers against the pocket\'s side; a lip ${CRADLE.lip} mm wide left standing inside the pocket for the plate\'s land to rest on, wider than the land because face down the fluting channel sits above it, and the plan refuses a lip the arch would reach; and a hole through the slab inside the lip, so face down the crown hangs free, at least ${CRADLE.crownClearance} mm off the bed. ` +
-    `Two files with the plate\'s roughing bit: the pocket, loops clearing the ring from the wall to the lip\'s inner edge, and the hole, cut through in passes and held by ${CRADLE.tabs} tabs until it drops. Cut to the back\'s outline the cradle takes the top too. The slab needs no harness: clamp it to the table and zero it on its lower-left corner with the probe, so Z0 is its top; the plate is centred in it. The dome is unsupported: pad under it for the graduation.\n\n` +
-    'F-HOLES\n' +
-    'Cut with the graduated top face up in its cradle, resting on the lip, so they read the slab typed under Cradle and the plate is where the cradle put it. The router never cuts the f-hole\'s edge: the passage round a wing\'s tip is narrower than any bit, and the edge is the most looked-at line on the plate. ' +
-    `Two files. The eyes, cleared through the plate with a small flat bit in loops from the centre out, clockwise, stopping ${FHOLE.allowance} mm inside the drawn circle for the knife, down to the thickness you type plus ${FHOLE.exitMargin} mm, since the recipe has no map of the inside; below the eye is the cradle\'s hole, and an eye over its lip is refused. ` +
-    'Then the outline, both holes as drawn with wing tips and nicks, scribed with a V bit a few tenths under the surface: its point is as fine as its depth, and the groove\'s centre is the drawn line whatever the depth, so the knife has a line to follow and the eyes drilled and sawn by hand are already done. ' +
-    'Either way Z follows the surface along the loop, the outside at that point less the depth, so a small bit is never buried past its flutes at the high end of a hole that falls across the arch, and the safe height clears the crown, not the slab.\n\n' +
-    'SCROLL\n' +
-    'The neck blank\'s side profile, the one true outline a scroll has, roughed from the maple billet lying cheek down in the harness against a T fence: the planed face, which is the fingerboard plane, on the stem\'s left side and the heel end on the crossbar. The bit cannot reach through the cheeks, so the profile is cut from both faces, each file going half way and a little over; for the second the billet is rolled over onto the stem\'s other side, the same face on the stem, the same end on the crossbar, and the file is the first mirrored across the stem. The harness has to leave room for the head on both sides. ' +
-    `Tabs stand ${SCROLL.tabHeight} mm off each file\'s floor on the straight stretches of the neck\'s back, the pegbox\'s back and the top of the head, so what is left in the middle is a saw cut. ` +
-    `The throat, where the pegbox front dives under the first turn, is narrower than any bit that could reach it: the file bridges it where the pocket narrows to the bit plus ${SCROLL.bridge} mm a side and leaves it for the gouge, the maker\'s cut. ` +
-    'The stem runs along the neck only, ending under the head, since a volute\'s front may stand proud of the fingerboard plane. With the face inset at 0 the face sits on the stem and is never cut: the kerf runs from near the heel\'s front corner round to the top of the flat above the nut, and the two slivers left at the stem are sawn. A chin past the plane needs the face inset by at least that much: the chin is then cut flush with the billet\'s face beyond the stem, and the face is planed down to the plane after, the pass made anyway when the fingerboard is fitted. A face inset of a bit\'s width and more cuts the whole outline, face included.\n\n' +
-    'FINGERBOARD\n' +
-    'Cut from a square, true blank lying gluing face down, pushed into the corner of the harness\'s two fences as a plate\'s blank is, so Z0 is the bed and the board\'s edge comes out at Z = its thickness. The board is centred in the blank, the nut end up. ' +
-    `The top is roughed and finished as a plate\'s arching is, lines along the length: the crown at each station\'s radius standing on the two edges, the scoop planed into them, level land ${SURFACE.skirt} mm past the long edges and the crown carried on past both ends. ` +
-    'The dots are flat-floored pockets, cleared in loops from the centre out, their floor the inlay depth under the lowest point of the surface round the rim, so the inlay stands proud on the crown\'s side and is levelled to it; a dot over the edge is cut whole, into the waste. ' +
-    'An inlay layer is one drawn on the board\'s face in the Dev Fingerboard panel, cut as that panel\'s row says, with the dots\' bit, after the finishing. Follow runs the bit down every line, its depth held under the surface along the way, a channel wider than the bit taken in passes across. Outline does the same a bit radius inside every closed shape, so the cut\'s edge is the drawn line. Pocket clears every closed shape in loops from the middle out to a flat floor, the depth under the lowest of the surface round the shape; a shape inside another is not left standing yet, and is refused. Lines that meet end to end are cut as one. ' +
-    `The contour comes last, a bit radius outside the outline, from the crown\'s height at the ends down through the bed\'s overcut, held by ${FINGERBOARD.tabs} tabs on the long edges, the plate\'s size.\n\n` +
-    'PLANNING\n' +
-    'The download plans the cut again from the fine solve that the sheet exports use, so the coarser sampling of the preview never reaches the file.',
-};
 
 export interface Feeds {
   cutFeed: number;
@@ -375,7 +319,7 @@ const STAGES: readonly Stage[] = ['rough', 'finish'];
 const CRADLE_STAGES: readonly CradleStage[] = ['pocket', 'hole'];
 const FHOLE_STAGES: readonly FholeStage[] = ['eyes', 'scribe'];
 const SIDES: readonly ScrollSide[] = ['left', 'right'];
-const FINGERBOARD_STAGES: readonly FingerboardStage[] = ['rough', 'finish', 'dots', 'inlay', 'contour'];
+const FINGERBOARD_STAGES: readonly FingerboardStage[] = ['rough', 'finish', 'marks', 'inlay', 'contour'];
 const STOCKS: readonly StockId[] = ['mould', 'plate', 'cradle', 'scroll', 'fingerboard'];
 
 // a key missing or mistyped reads as its default, as SettingsService reads its own
@@ -424,7 +368,7 @@ export function readSettings(): DevExportSettings {
   }
   let fb = stored.fingerboard;
   if (FINGERBOARD_STAGES.includes(fb?.stage)) out.fingerboard.stage = fb.stage;
-  if (positive(fb?.dotDepth)) out.fingerboard.dotDepth = fb.dotDepth;
+  if (positive(fb?.markDepth)) out.fingerboard.markDepth = fb.markDepth;
   if (typeof fb?.layer === 'string') out.fingerboard.layer = fb.layer;
   for (let key of ['x', 'y'] as const) {
     let n = fb?.fence?.[key];

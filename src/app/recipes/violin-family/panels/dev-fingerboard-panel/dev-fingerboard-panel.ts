@@ -26,17 +26,27 @@ import {
   calcAlongBoard, defineFingerboardInPlan, fingerboardRadiusAt, renderFretTicks, renderStringSetupViews, calcSemitoneStop, solveStringSetup,
 } from '../string-setup-panel/string-setup-panel';
 
+// a dot inlaid `offset` across the board, or a fret line across the whole of it, `diameter` then
+// its width and the offset unread
 export interface PositionMarker {
   semitone: number;
   diameter: number;
   offset: number;
-  shape: 'circle'
+  shape: 'circle' | 'line';
+}
+
+// a fret line at a mark's station, edge to edge: in plan, on the board's face, and how wide it is
+export interface PositionLine {
+  plan: [Pt, Pt];
+  face: [Pt, Pt];
+  width: number;
+  marker: number;
 }
 
 // one position mark: how far down the string it sounds, its station on the fingerboard plane in the
 // side elevation, and its dots in plan (x across the board, y along it), one per marker at that
 // semitone; `faceDots` are the same dots on the board's face, at their true distance from the nut;
-// `markers` holds each dot's index in the marker list
+// `markers` holds each dot's index in the marker list; `lines` are the fret lines there
 export interface PositionMarkSolve {
   semitone: number;
   alongString: number;
@@ -44,6 +54,7 @@ export interface PositionMarkSolve {
   dots: Circle[];
   faceDots: Circle[];
   markers: number[];
+  lines: PositionLine[];
 }
 
 export type PositionMarksFailure = SolveFailure<'marks'>;
@@ -259,23 +270,33 @@ export function readMarkers(): PositionMarker[] | null {
 
 const MARK_HALO_RADIUS = 3;
 
-// the dots over `board`, the front view's or the face's, each the part of it that lands on the board
+// the dots and fret lines over `board`, the front view's or the face's, each the part of it that
+// lands on the board
 const renderPositionMarks = (
   board: string | null, m: PositionMarksSolve, onFace: boolean, pal: PanelPalette, halo: { marker: number; color: string } | null,
 ): RenderLayer => {
   let dots = board ? m.marks.flatMap(mark => (onFace ? mark.faceDots : mark.dots).map((dot, i) => ({ dot, marker: mark.markers[i], inlay: intersectionFromTwoPaths(pathFromCircle(dot), board!) }))) : [];
+  let lines = board ? m.marks.flatMap(mark => mark.lines.map(line => {
+    let [a, b] = onFace ? line.face : line.plan;
+    let band = pathFromPolygon([new Pt(a.x, a.y - line.width / 2), new Pt(b.x, b.y - line.width / 2), new Pt(b.x, b.y + line.width / 2), new Pt(a.x, a.y + line.width / 2)]);
+    return { a, b, marker: line.marker, inlay: intersectionFromTwoPaths(band, board!) };
+  })) : [];
   return (g: any, ui: any): void => {
     for (let { dot, marker, inlay } of dots) {
       renderFilledPath(inlay, pal.ink(3), 1, 'nonzero')(g, ui);
       if (halo?.marker === marker) renderPointHalo(dot, halo.color, dot.r + MARK_HALO_RADIUS)(g, ui);
+    }
+    for (let { a, b, marker, inlay } of lines) {
+      renderFilledPath(inlay, pal.ink(3), 1, 'nonzero')(g, ui);
+      if (halo?.marker === marker) renderSegmentHalo(a, b, halo.color)(g, ui);
     }
   };
 };
 
 // each interval stops the string a share of its length down from the nut; that point drops square
 // onto the fingerboard plane for its station, and every marker at that interval sits across the board
-// there, its offset scaled by the board's width. A mark past the board's end is left out and said so,
-// the rest drawn
+// there, its offset scaled by the board's width; a line marker runs across the board from edge to
+// edge there. A mark past the board's end is left out and said so, the rest drawn
 export function solvePositionMarks(p: ViolinFamilyParams, s: StringSetupSolve, markers: PositionMarker[]): PositionMarksSolve {
   let out: PositionMarksSolve = { marks: [], failures: [] };
   let fail = (message: string, unsolved: PositionMarksFailure['unsolved']): PositionMarksFailure => ({ message, unsolved, circles: [], segments: [], points: [] });
@@ -287,7 +308,8 @@ export function solvePositionMarks(p: ViolinFamilyParams, s: StringSetupSolve, m
     for (let [i, marker] of markers.entries()) {
       let name = `Position mark ${i + 1}`;
       if (!(Number.isInteger(marker.semitone) && marker.semitone > 0)) return fail(`${name}: the interval is a whole number of semitones above the open string, 1 or more.`, ['marks']);
-      if (!(marker.diameter > 0)) return fail(`${name}: the diameter needs a value above 0.`, ['marks']);
+      if (!(marker.diameter > 0)) return fail(`${name}: the ${marker.shape === 'line' ? 'width' : 'diameter'} needs a value above 0.`, ['marks']);
+      if (marker.shape === 'line') continue;
       if (!Number.isFinite(marker.offset) || Math.abs(marker.offset) - marker.diameter / 2 >= halfAtNut) {
         return fail(`${name}: the dot has to reach the board, which is ${(2 * halfAtNut).toFixed(1)} mm wide at the nut.`, ['marks']);
       }
@@ -304,9 +326,15 @@ export function solvePositionMarks(p: ViolinFamilyParams, s: StringSetupSolve, m
       let station = moveInVectorSpace(neckTop, [{ ...board, mag: alongBoard }]);
       // the share of the board scales with its width; an overhang past the edge is carried as is
       let half = neckHalfWidthAt(p, s.neck, station.y);
-      let mark: PositionMarkSolve = { semitone, alongString, station, dots: [], faceDots: [], markers: [] };
+      let mark: PositionMarkSolve = { semitone, alongString, station, dots: [], faceDots: [], markers: [], lines: [] };
       for (let [i, marker] of markers.entries()) {
         if (marker.semitone !== semitone) continue;
+        if (marker.shape === 'line') {
+          mark.lines.push({
+            plan: [new Pt(-half, station.y), new Pt(half, station.y)], face: [new Pt(-half, -alongBoard), new Pt(half, -alongBoard)], width: marker.diameter, marker: i,
+          });
+          continue;
+        }
         let reach = Math.abs(marker.offset);
         let x = Math.sign(marker.offset) * (Math.min(reach, halfAtNut) * half / halfAtNut + Math.max(0, reach - halfAtNut));
         mark.dots.push(new Circle(x, station.y, marker.diameter / 2));

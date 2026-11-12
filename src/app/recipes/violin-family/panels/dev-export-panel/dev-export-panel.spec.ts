@@ -979,8 +979,8 @@ describe('the fingerboard toolpaths', () => {
   });
 
   it('sinks each dot inside its circle, a level at a time, to a flat floor the inlay\'s depth under the lowest of its rim', () => {
-    const bit = hard(DEFAULT_SETTINGS.tools.dots);
-    const settings = g('dots');
+    const bit = hard(DEFAULT_SETTINGS.tools.marks);
+    const settings = g('marks');
     const tp = fingerboardToolpaths(p, s, marks, bit, settings, true);
     expect(tp.failures).toEqual([]);
     const dots = marks.flatMap(m => m.faceDots);
@@ -990,8 +990,8 @@ describe('the fingerboard toolpaths', () => {
       for (const pt of pts) expect(dist(pt, dot) + bit.diameter / 2).toBeLessThanOrEqual(dot.r + 1e-6);
       const floor = Math.min(...pts.map(pt => pt.z));
       const rim = Array.from({ length: 36 }, (_, k) => pointOnCircle(dot, k * Math.PI / 18));
-      for (const pt of rim) expect(zAt(pt) - floor).toBeGreaterThanOrEqual(settings.dotDepth - 1e-3);
-      expect(Math.min(...rim.map(zAt)) - floor).toBeLessThan(settings.dotDepth + 0.05);
+      for (const pt of rim) expect(zAt(pt) - floor).toBeGreaterThanOrEqual(settings.markDepth - 1e-3);
+      expect(Math.min(...rim.map(zAt)) - floor).toBeLessThan(settings.markDepth + 0.05);
       // never deeper than a step under what stood there, nor starting in the air above the crown
       const levels = [...new Set(pts.map(pt => +pt.z.toFixed(6)))].sort((a, b) => b - a);
       const high = Math.max(zAt(dot), ...rim.map(zAt));
@@ -1000,12 +1000,49 @@ describe('the fingerboard toolpaths', () => {
       expect(floor).toBeGreaterThanOrEqual(tp.floorZ - 1e-9);
     });
     expect(tp.caution).toBeTruthy();
-    expect(() => buildGcode(gcodeJob(tp, TOOLS.find(t => t.number === DEFAULT_SETTINGS.tools.dots)!, bit.feeds!))).not.toThrow();
+    expect(() => buildGcode(gcodeJob(tp, TOOLS.find(t => t.number === DEFAULT_SETTINGS.tools.marks)!, bit.feeds!))).not.toThrow();
+  });
+
+  it('cuts a fret line as a channel its width across the board, out past both edges, the inlay\'s depth under the surface', () => {
+    const bit = hard(DEFAULT_SETTINGS.tools.marks);
+    const r = bit.diameter / 2;
+    const width = 2.5;
+    const fretted = solvePositionMarks(p, s, [{ ...defaultPositionMarks(p)[0], semitone: 7, shape: 'line', diameter: width }]);
+    expect(fretted.failures).toEqual([]);
+    const [mark] = fretted.marks;
+    expect(mark.dots).toEqual([]);
+    const [line] = mark.lines;
+    // edge to edge at the station, the same distance from the nut as a dot there
+    expect(line.face[0].x).toBeCloseTo(-line.face[1].x, 9);
+    expect(line.face[1].x).toBeCloseTo(line.plan[1].x, 9);
+    expect(pointInPolygon({ x: line.face[1].x - 0.05, y: line.face[1].y }, face)).toBe(true);
+    expect(pointInPolygon({ x: line.face[1].x + 0.05, y: line.face[1].y }, face)).toBe(false);
+    expect(-line.face[0].y).toBeCloseTo(dist(s.neck.neckTop!, mark.station), 9);
+
+    const settings = g('marks');
+    const tp = fingerboardToolpaths(p, s, fretted.marks, bit, settings, true);
+    expect(tp.failures).toEqual([]);
+    expect(tp.surfaces.length).toBeGreaterThan(1);
+    const pts = tp.surfaces.flatMap(run => run.pts);
+    for (const pt of pts) {
+      expect(Math.abs(pt.y - line.face[0].y)).toBeLessThanOrEqual(width / 2 - r + 1e-6);
+      expect(zAt(pt) - pt.z).toBeLessThanOrEqual(settings.markDepth + 1e-9);
+      expect(zAt(pt) - pt.z).toBeGreaterThan(0);
+    }
+    expect(Math.max(...pts.map(pt => Math.abs(pt.y - line.face[0].y)))).toBeGreaterThan(width / 2 - r - 0.01);
+    expect(Math.max(...pts.map(pt => zAt(pt) - pt.z))).toBeCloseTo(settings.markDepth, 9);
+    for (const run of tp.surfaces) {
+      expect(Math.min(...run.pts.map(pt => pt.x))).toBeLessThan(line.face[0].x - r);
+      expect(Math.max(...run.pts.map(pt => pt.x))).toBeGreaterThan(line.face[1].x + r);
+    }
+    expect(tp.floorZ).toBeCloseTo(Math.min(...pts.map(pt => pt.z)), 9);
+    expect(fingerboardToolpaths(p, s, fretted.marks, flat, settings).failures.join(' ')).toMatch(/wider than the channel/);
+    expect(() => buildGcode(gcodeJob(tp, TOOLS.find(t => t.number === DEFAULT_SETTINGS.tools.marks)!, bit.feeds!))).not.toThrow();
   });
 
   it('refuses a bit wider than a dot, and a board with no marks', () => {
-    expect(fingerboardToolpaths(p, s, marks, flat, g('dots')).failures.join(' ')).toMatch(/too wide/);
-    expect(fingerboardToolpaths(p, s, [], hard(DEFAULT_SETTINGS.tools.dots), g('dots')).failures.join(' ')).toMatch(/No position marks/);
+    expect(fingerboardToolpaths(p, s, marks, flat, g('marks')).failures.join(' ')).toMatch(/too wide/);
+    expect(fingerboardToolpaths(p, s, [], hard(DEFAULT_SETTINGS.tools.marks), g('marks')).failures.join(' ')).toMatch(/No position marks/);
   });
 
   it('contours a bit radius outside the outline, counterclockwise, from above what stands there through the bed, tabs mirrored on the long edges', () => {
@@ -1037,8 +1074,8 @@ describe('the fingerboard toolpaths', () => {
   });
 
   it('centres the board in the blank the same for every stage', () => {
-    const offsets = (['rough', 'finish', 'dots', 'contour'] as const).map(stage =>
-      fingerboardToolpaths(p, s, marks, stage === 'finish' ? hard(3) : stage === 'dots' ? hard(DEFAULT_SETTINGS.tools.dots) : flat, g(stage)).sheetOffset);
+    const offsets = (['rough', 'finish', 'marks', 'contour'] as const).map(stage =>
+      fingerboardToolpaths(p, s, marks, stage === 'finish' ? hard(3) : stage === 'marks' ? hard(DEFAULT_SETTINGS.tools.marks) : flat, g(stage)).sheetOffset);
     for (const o of offsets) expect(o).toEqual(offsets[0]);
     const { stock, fence } = DEFAULT_SETTINGS.fingerboard;
     expect(offsets[0].x).toBeCloseTo(fence.x + stock.width / 2, 3);
@@ -1048,7 +1085,7 @@ describe('the fingerboard toolpaths', () => {
   // a layer drawn on the face: the bit stays on what was drawn, a radius inside a closed shape's
   // line, no deeper under the surface than the row says, and never steps down more than the feeds'
   describe('an inlay layer', () => {
-    const bit = hard(DEFAULT_SETTINGS.tools.dots);
+    const bit = hard(DEFAULT_SETTINGS.tools.marks);
     const r = bit.diameter / 2;
     const job = (kind: FaceCut['kind'], lines: string[], edit: Partial<FaceCut> = {}): FaceJob =>
       ({ layerId: 'l', name: 'Vine', cut: { kind, depth: 1.5, width: bit.diameter, ...edit }, lines });
@@ -1078,7 +1115,7 @@ describe('the fingerboard toolpaths', () => {
       stepsWithin(pts, bit.feeds!.stepDown);
       expect(tp.floorZ).toBeCloseTo(Math.min(...pts.map(pt => pt.z)), 9);
       expect(tp.caution).toBeTruthy();
-      expect(() => buildGcode(gcodeJob(tp, TOOLS.find(t => t.number === DEFAULT_SETTINGS.tools.dots)!, bit.feeds!))).not.toThrow();
+      expect(() => buildGcode(gcodeJob(tp, TOOLS.find(t => t.number === DEFAULT_SETTINGS.tools.marks)!, bit.feeds!))).not.toThrow();
     });
 
     it('takes a channel wider than the bit in passes across, its edges on the width, and refuses a bit wider than the channel', () => {

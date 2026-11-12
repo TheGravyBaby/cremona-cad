@@ -9,13 +9,12 @@ import { inchFraction } from '../../../../helpers/nearestFraction';
 import { renderCrosshair, renderPath, renderRect, renderText, renderTranslatedLayers } from '../../../../helpers/renderFuncs';
 import { ToolboxStore } from '../../../../draft-canvas/tools/toolbox-store';
 import { Arc, Circle, Pt, Pt3D, Rectangle } from '../../../../models/types';
-import { info } from '../../../../shared/message-emitter';
 import { MmInchField } from '../../../../shared/mm-inch-field';
 import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
-import { Bit, CRADLE, CradleSettings, CradleSpec, DEFAULT_SETTINGS, DevExportSettings, EXPORTS, FHOLE, FholeSettings, Feeds, FINGERBOARD, FingerboardSettings, MACHINE, MACHINE_HELP, MOULD_TABS, PLATE_TABS, PlateSettings, PREVIEW_GRID, readSettings, SCROLL, ScrollSettings, Stage, STAGE_SHAPE, StageKey, stageOf, STOCK_OF, StockSettings, SURFACE, Tool, toolFor, TOOLS, ToolShape, Wood, writeSettings } from './dev-export-shop';
+import { Bit, CRADLE, CradleSettings, CradleSpec, DEFAULT_SETTINGS, DevExportSettings, EXPORTS, FHOLE, FholeSettings, Feeds, FINGERBOARD, FingerboardSettings, MACHINE, MOULD_TABS, PLATE_TABS, PlateSettings, PREVIEW_GRID, readSettings, SCROLL, ScrollSettings, Stage, STAGE_SHAPE, StageKey, stageOf, STOCK_OF, StockSettings, SURFACE, Tool, toolFor, TOOLS, ToolShape, Wood, writeSettings } from './dev-export-shop';
 import { Bounds, boundsOf, centreInSheet, climbingLoop, emptyToolpaths, evenStations, fail, gcodeJob, jobNotes, placeInSheet, serpentine, SHEET_MARGIN, tabsAlong, terrainGrid, tipHeights, Toolpaths, withTabs } from './dev-export-toolpaths';
 import { FholeContoursSolve, MouldRelief, MouldSolve, NeckSolve, PlateContourSolve, Plate, PlateSurface, ScrollSolve, StringSetupSolve } from '../../violin-family-solves';
 import { buildSurfaceContours, calcContourSampleSteps, rowAt, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
@@ -36,7 +35,7 @@ import { buildFaceJobs, defaultPositionMarks, defineFingerboardFace, FaceJob, fi
 // visitor's browser never fetches it. Not a CAM program: each export is one thing the shop cuts
 // from the recipe (the mould; a plate's arching, purfling channel and contour; the cradle the plate
 // is turned over into; the top's f-holes cut in that cradle; the neck blank's side profile; the
-// fingerboard's top, dots, drawn inlay layers and outline),
+// fingerboard's top, position marks, drawn inlay layers and outline),
 // planned by code that knows that part, with the user saying only what the stock is and whether
 // the wood is hard. The plate, its purfling and its contour are one setup, in that order: all read
 // the plate's blank and where the plate sits in it, so every file agrees, and the contour comes
@@ -82,10 +81,6 @@ export class DevExportPanel extends PanelComponentBase {
     if (!this.params.mould) return;
     this.params.mould.bitDiameter = diameter;
     this.recordEditAndRedraw();
-  }
-
-  showMachineHelp(): void {
-    info(MACHINE_HELP.text, MACHINE_HELP.title, 60000, true);
   }
 
   reportSolveFailures(): void {}
@@ -286,8 +281,9 @@ export function planExport(p: ViolinFamilyParams, settings: DevExportSettings, b
       let marks = solvePositionMarks(p, s, readMarkers() ?? defaultPositionMarks(p)).marks;
       let toolpaths = g.stage === 'inlay' ? inlayToolpaths(p, s, inlay, bit, g, fine) : fingerboardToolpaths(p, s, marks, bit, g, fine);
       let dots = marks.flatMap(mark => mark.faceDots.map(dot => pathFromCircle(dot)));
+      let frets = marks.flatMap(mark => mark.lines.map(line => pathFromPolyline(line.face)));
       let drawn = g.stage === 'inlay' && inlay ? inlay.lines : [];
-      return { toolpaths, layers: [renderLines([board, ...dots, ...drawn], pal), renderRaster(toolpaths, pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, g, pal)] };
+      return { toolpaths, layers: [renderLines([board, ...dots, ...frets, ...drawn], pal), renderRaster(toolpaths, pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, g, pal)] };
     }
   }
 }
@@ -1072,10 +1068,12 @@ export const SURFACED_BOARD = 'EXPECTS A SURFACED BOARD: run the roughing and fi
 // fences, in the board's own face frame: x across it, the nut at y = 0 and the end down at minus
 // its length, centred in the blank. Its top is carved as a plate's arching is, the height field
 // the crown and scoop over the bed, level land past the long edges and the crown carried on past
-// both ends. `marks` are the position dots: each a flat-floored pocket cleared in loops from the
-// centre out, clockwise, a level at a time from the highest the surface stands in it down to the
-// inlay's depth under the lowest point round its rim, so the inlay is at least that deep all
-// round; a dot over the edge is cut whole, into the waste. The contour runs a bit radius outside
+// both ends. `marks` are the position marks. A dot is a flat-floored pocket cleared in loops from
+// the centre out, clockwise, a level at a time from the highest the surface stands in it down to
+// the inlay's depth under the lowest point round its rim, so the inlay is at least that deep all
+// round; a dot over the edge is cut whole, into the waste. A fret line is a channel its width
+// across the board, followed as an inlay layer's line is and run out a bit's width past both
+// edges. The contour runs a bit radius outside
 // the outline, counterclockwise, from the crown's height at the ends, where the land was never
 // cut down, through the bed's overcut, held by tabs on the long edges
 export function fingerboardToolpaths(
@@ -1085,7 +1083,7 @@ export function fingerboardToolpaths(
   let ss = p.stringSetup!;
   let edge = ss.fingerboardThickness;
   let top = g.stock.thickness;
-  let { out, board, area } = boardToolpaths(p, s, g, g.stage === 'rough' ? 'top roughing' : g.stage === 'finish' ? 'top finishing' : g.stage === 'dots' ? 'position dots' : 'contour', bit);
+  let { out, board, area } = boardToolpaths(p, s, g, g.stage === 'rough' ? 'top roughing' : g.stage === 'finish' ? 'top finishing' : g.stage === 'marks' ? 'position marks' : 'contour', bit);
   if (!board || !area) return out;
   let b = pathsBounds([board]);
   let zAt = (x: number, y: number) => fingerboardSurfaceZAt(p, s, x, -y);
@@ -1105,14 +1103,15 @@ export function fingerboardToolpaths(
     }, bit, g.stage, fine, grid);
   }
 
-  if (bit.shape !== 'flat') fail(out, g.stage === 'dots' ? 'The dots take a flat bit.' : 'The contour takes a flat bit.');
+  if (bit.shape !== 'flat') fail(out, g.stage === 'marks' ? 'The position marks take a flat bit.' : 'The contour takes a flat bit.');
   out.caution = SURFACED_BOARD;
 
-  if (g.stage === 'dots') {
+  if (g.stage === 'marks') {
     if (!bit.feeds) fail(out, 'No feeds for this bit.');
-    if (!(g.dotDepth > 0)) fail(out, 'The inlay depth has to be above 0.');
+    if (!(g.markDepth > 0)) fail(out, 'The inlay depth has to be above 0.');
     let dots = marks.flatMap(mark => mark.faceDots.map(dot => ({ dot, semitone: mark.semitone })));
-    if (!dots.length) fail(out, 'No position marks to cut: the Dev Fingerboard panel sets them.');
+    let lines = marks.flatMap(mark => mark.lines.map(line => ({ line, semitone: mark.semitone })));
+    if (!dots.length && !lines.length) fail(out, 'No position marks to cut: the Dev Fingerboard panel sets them.');
     for (let { dot, semitone } of dots) {
       if (dot.r < r) fail(out, `The bit is too wide for the ${(2 * dot.r).toFixed(1)} mm dot at semitone ${semitone}.`);
     }
@@ -1122,7 +1121,7 @@ export function fingerboardToolpaths(
     out.passes = 0;
     for (let { dot, semitone } of dots) {
       let heights = [dot, ...Array.from({ length: 24 }, (_, k) => pointOnCircle(dot, (k * TURN.full) / 24))].map(pt => zAt(pt.x, pt.y));
-      let high = Math.max(...heights), floor = Math.min(...heights) - g.dotDepth;
+      let high = Math.max(...heights), floor = Math.min(...heights) - g.markDepth;
       let rounds = roundsTo(high - floor, bit.feeds!.stepDown);
       let reach = dot.r - r;
       let n = Math.max(1, Math.ceil(reach / (SURFACE.roughStepover * bit.diameter)));
@@ -1143,7 +1142,14 @@ export function fingerboardToolpaths(
       out.floorZ = Math.min(out.floorZ, floor);
       out.passes = Math.max(out.passes, rounds.length);
     }
-    out.notes.push(`${dots.length} dot${dots.length === 1 ? '' : 's'}, flat floors ${g.dotDepth} under the lowest of the surface round each rim, in up to ${out.passes} round${out.passes === 1 ? '' : 's'}`);
+    for (let { line, semitone } of lines) {
+      let [a, b] = line.face;
+      let across = followRuns(out, `M ${a.x - bit.diameter} ${a.y} L ${b.x + bit.diameter} ${b.y}`, { width: line.width, depth: g.markDepth }, `Fret line, semitone ${semitone}`, bit, step, pt => zAt(pt.x, pt.y));
+      if (!across) return out;
+      out.passes = Math.max(out.passes, roundsTo(g.markDepth, bit.feeds!.stepDown).length);
+    }
+    out.floorZ = out.surfaces.reduce((z, run) => run.pts.reduce((low, pt) => Math.min(low, pt.z), z), out.floorZ);
+    out.notes.push(`${dots.length} dot${dots.length === 1 ? '' : 's'}, flat floors ${g.markDepth} under the lowest of the surface round each rim, and ${lines.length} fret line${lines.length === 1 ? '' : 's'}, ${g.markDepth} under the surface, in up to ${out.passes} round${out.passes === 1 ? '' : 's'}`);
     return out;
   }
 
@@ -1156,6 +1162,38 @@ export function fingerboardToolpaths(
   out.tabTop = PLATE_TABS.height;
   out.notes.push(`Contour a bit radius outside the outline, counterclockwise, from the crown at the ends Z${out.cutTopZ.toFixed(3)} through the bed by ${machine.overcut}; ${FINGERBOARD.tabs} tabs ${PLATE_TABS.width} long and ${PLATE_TABS.height} high on the long edges. Cut last: once through, only the tabs hold the board`);
   return out;
+}
+
+// a channel `width` wide down every run of `d`, added to `out` as surface runs: the bit's centre on
+// the line when the channel is its own width, else passes set evenly between the channel's edges
+// a radius in; the depth held under the surface along the way, a round per step down, an open run
+// walked back and forth so the bit stays in the cut. Returns the passes across, or 0 with the
+// reason on `out`
+function followRuns(out: Toolpaths, d: string, cut: { width: number; depth: number }, name: string, bit: Bit, step: number, zAt: (pt: Pt) => number): number {
+  let reason = !(cut.width > 0) ? 'The channel\'s width has to be above 0.' : bit.diameter > cut.width + 0.05 ? `The bit is wider than the channel: ${cut.width} mm.` : null;
+  let span = Math.max(0, cut.width - bit.diameter);
+  let across = span < 0.05 ? 1 : Math.ceil(span / (0.6 * bit.diameter)) + 1;
+  let rounds = roundsTo(cut.depth, bit.feeds!.stepDown);
+  let sides: string[] = [];
+  for (let i = 0; i < across && !reason; i++) {
+    let off = across > 1 ? -span / 2 + (span * i) / (across - 1) : 0;
+    let side = Math.abs(off) < 1e-9 ? d : offsetPath(d, off);
+    if (side) sides.push(side);
+    else reason = 'A line would not offset for the channel\'s width: a bend is tighter than the channel, or the line is too rough.';
+  }
+  if (reason) {
+    fail(out, reason);
+    return 0;
+  }
+  sides.forEach((side, i) => flattenPath(side, step, true).filter(run => run.length > 1).forEach((run, k) => {
+    let closed = dist(run[0], run[run.length - 1]) < 1e-3;
+    let pts: Pt3D[] = [];
+    rounds.forEach((depth, n) => {
+      for (let pt of closed || n % 2 === 0 ? run : [...run].reverse()) pts.push(new Pt3D(pt.x, pt.y, zAt(pt) - depth));
+    });
+    out.surfaces.push({ name: `${name}${k ? ` ${k + 1}` : ''}${across > 1 ? `, pass ${i + 1}` : ''}`, pts: simplifyPolyline3D(pts, SURFACE.chordTolerance) });
+  }));
+  return across;
 }
 
 // what the fingerboard's files share: the blank, its zero, the board centred in it by the one
@@ -1222,26 +1260,12 @@ export function inlayToolpaths(p: ViolinFamilyParams, s: StringSetupSolve, job: 
   out.floorZ = Infinity;
 
   if (cut.kind === 'follow') {
-    if (!(cut.width > 0)) return fail(out, 'The channel\'s width has to be above 0.');
-    if (bit.diameter > cut.width + 0.05) return fail(out, `The bit is wider than the channel: ${cut.width} mm.`);
-    let span = Math.max(0, cut.width - bit.diameter);
-    let across = span < 0.05 ? 1 : Math.ceil(span / (0.6 * bit.diameter)) + 1;
-    let rounds = roundsTo(cut.depth, bit.feeds!.stepDown);
-    for (let i = 0; i < across; i++) {
-      let off = across > 1 ? -span / 2 + (span * i) / (across - 1) : 0;
-      let d = Math.abs(off) < 1e-9 ? joined : offsetPath(joined, off);
-      if (!d) return fail(out, 'A line would not offset for the channel\'s width: a bend is tighter than the channel, or the line is too rough.');
-      flattenPath(d, step, true).filter(run => run.length > 1).forEach((run, k) => {
-        let closed = dist(run[0], run[run.length - 1]) < 1e-3;
-        let pts: Pt3D[] = [];
-        rounds.forEach((depth, n) => {
-          for (let pt of closed || n % 2 === 0 ? run : [...run].reverse()) pts.push(new Pt3D(pt.x, pt.y, zAt(pt) - depth));
-        });
-        add(`Follow ${k + 1}${across > 1 ? `, pass ${i + 1}` : ''}`, pts);
-      });
-    }
-    out.passes = rounds.length;
-    out.notes.push(`${runs.length} run${runs.length === 1 ? '' : 's'} followed ${cut.depth} under the surface, the channel ${Math.max(cut.width, bit.diameter).toFixed(2)} wide in ${across} pass${across === 1 ? '' : 'es'} across, ${rounds.length} round${rounds.length === 1 ? '' : 's'} down`);
+    let across = followRuns(out, joined, cut, 'Follow', bit, step, zAt);
+    if (!across) return out;
+    let rounds = roundsTo(cut.depth, bit.feeds!.stepDown).length;
+    out.passes = rounds;
+    out.floorZ = out.surfaces.reduce((z, run) => run.pts.reduce((low, pt) => Math.min(low, pt.z), z), out.floorZ);
+    out.notes.push(`${runs.length} run${runs.length === 1 ? '' : 's'} followed ${cut.depth} under the surface, the channel ${cut.width.toFixed(2)} wide in ${across} pass${across === 1 ? '' : 'es'} across, ${rounds} round${rounds === 1 ? '' : 's'} down`);
     return out;
   }
 

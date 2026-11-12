@@ -23,19 +23,27 @@
 <section class="ui-group">
     <div class="ui-group-title">Position Marks</div>
     <div class="spline-points">
-        <div class="input-group basic-row spline-row spline-row--header">
+        <div class="input-group basic-row marker-row marker-row--header">
+            <span class="field-cell">Mark</span>
             <span class="field-cell">Semitone</span>
             <span class="field-cell">X Offset <span class="unit-label">mm</span></span>
-            <span class="field-cell">Diameter <span class="unit-label">mm</span></span>
+            <span class="field-cell">Size <span class="unit-label">mm</span></span>
+            <span></span>
         </div>
         @for (marker of markers; track $index; let i = $index) {
-        <div class="input-group basic-row field-row spline-row" role="group">
+        <div class="input-group basic-row field-row marker-row" role="group">
+            <div class="field-cell">
+                <select [(ngModel)]="marker.shape" (change)="stateEdited()" (focus)="focusMarker(i)" (blur)="clearHighlight()">
+                    <option value="circle">Dot</option>
+                    <option value="line">Fret line</option>
+                </select>
+            </div>
             <div class="field-cell">
                 <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(3)"
                     [(ngModel)]="marker.semitone" (input)="stateEdited()" (focus)="focusMarker(i)" (blur)="clearHighlight()" />
             </div>
             <div class="field-cell">
-                <input type="number" class="basic-input" step="0.5" [style.border-color]="pal.ink(3)"
+                <input type="number" class="basic-input" step="0.5" [style.border-color]="pal.ink(3)" [disabled]="marker.shape === 'line'"
                     [(ngModel)]="marker.offset" (input)="stateEdited()" (focus)="focusMarker(i)" (blur)="clearHighlight()" />
             </div>
             <div class="field-cell">
@@ -54,40 +62,43 @@
 
 <section class="ui-group">
     <div class="ui-group-title">Inlay Layers</div>
-    @if (faceLayers.length) {
-    <div class="spline-points">
-        <div class="input-group basic-row spline-row spline-row--header">
-            <span class="field-cell">Cut</span>
-            <span class="field-cell">Depth <span class="unit-label">mm</span></span>
-            <span class="field-cell">Width <span class="unit-label">mm</span></span>
-        </div>
-        @for (layer of faceLayers; track layer.id) {
-        @let cut = cutFor(layer);
-        <div class="input-group basic-row field-row" role="group">
-            <label class="field-cell field-cell--full">
-                <input type="radio" name="faceLayer" [checked]="toolbox.activeLayerId === layer.id" (change)="toolbox.setActiveLayer(layer.id)" />
-                <span class="field-title">{{ layer.name }}{{ layer.locked ? ' (locked)' : '' }}</span>
-            </label>
-        </div>
-        <div class="input-group basic-row field-row spline-row" role="group">
-            <div class="field-cell">
-                <select [(ngModel)]="cut.kind" (change)="cutsEdited()">
-                    <option value="follow">Follow</option>
-                    <option value="pocket">Pocket</option>
-                    <option value="outline">Outline</option>
-                </select>
-            </div>
-            <div class="field-cell">
-                <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(3)"
-                    [(ngModel)]="cut.depth" (input)="cutsEdited()" />
-            </div>
-            <div class="field-cell">
-                <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(3)"
-                    [(ngModel)]="cut.width" (input)="cutsEdited()" [disabled]="cut.kind !== 'follow'" />
-            </div>
-        </div>
+    @for (layer of faceLayers; track layer.id) {
+    @let cut = cutFor(layer);
+    <div class="input-group basic-row field-row" role="group">
+        <span class="field-cell field-cell--full field-title">{{ layer.name }}{{ layer.locked ? ' (locked)' : '' }}</span>
+        <button type="button" class="panel-nav-btn" [class.active]="toolbox.activeLayerId === layer.id" (click)="toolbox.setActiveLayer(layer.id)">
+            {{ toolbox.activeLayerId === layer.id ? 'Drawing here' : 'Draw here' }}
+        </button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Cut as</span>
+            <select [(ngModel)]="cut.kind" (change)="cutsEdited()">
+                <option value="follow">Follow</option>
+                <option value="pocket">Pocket</option>
+                <option value="outline">Outline</option>
+            </select>
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Depth <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(3)"
+                [(ngModel)]="cut.depth" (input)="cutsEdited()" />
+        </label>
+        @if (cut.kind === 'follow') {
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(3)"
+                [(ngModel)]="cut.width" (input)="cutsEdited()" />
+        </label>
         }
     </div>
+    @if (cut.kind === 'follow') {
+    <p class="hint">Follow: the bit runs down the middle of every line, open or closed, the depth held under the surface along the way. The width is the channel's; wider than the bit, it is taken in passes side by side. For lines, vines and borders.</p>
+    } @else if (cut.kind === 'pocket') {
+    <p class="hint">Pocket: every closed shape is cleared out to a flat floor, for a piece of inlay to sit in. The depth is under the lowest point of the surface round the shape. A shape inside another is refused for now.</p>
+    } @else {
+    <p class="hint">Outline: the bit runs once round the inside of every closed shape, its outer edge on the drawn line and the middle left standing. The depth is held under the surface along the way.</p>
+    }
     }
     <div class="input-group basic-row field-row" role="group">
         <button type="button" class="panel-nav-btn" [disabled]="!faceOrigin" (click)="addFaceLayer()">+ Add Inlay Layer</button>

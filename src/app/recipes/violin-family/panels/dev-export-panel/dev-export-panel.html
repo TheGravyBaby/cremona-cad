@@ -65,7 +65,7 @@
             <select [(ngModel)]="fingerboard.stage" (change)="saveSettingsAndRedraw()">
                 <option value="rough">Roughing</option>
                 <option value="finish">Finishing</option>
-                <option value="dots">Dots</option>
+                <option value="marks">Position marks</option>
                 <option value="inlay">Inlay layer</option>
                 <option value="contour">Contour</option>
             </select>
@@ -86,7 +86,7 @@
     <p class="hint">{{ job.cut.kind === 'follow' ? 'Follow' : job.cut.kind === 'pocket' ? 'Pocket' : 'Outline' }}, {{ job.cut.depth }} mm deep{{ job.cut.kind === 'follow' ? ', ' + job.cut.width + ' mm wide' : '' }}; {{ job.lines.length }} line{{ job.lines.length === 1 ? '' : 's' }} drawn. Set on the Dev Fingerboard panel.</p>
     }
     }
-    <p class="hint">Gluing face down, the nut end up. The dots are the Dev Fingerboard panel's position marks.</p>
+    <p class="hint">Gluing face down, the nut end up. The position marks, dots and fret lines, are the Dev Fingerboard panel's.</p>
     }
 </section>
 
@@ -109,14 +109,14 @@
 </section>
 }
 
-@if (isFingerboard && fingerboard.stage === 'dots') {
+@if (isFingerboard && fingerboard.stage === 'marks') {
 <section class="ui-group">
-    <div class="ui-group-title">Dots</div>
+    <div class="ui-group-title">Position marks</div>
     <div class="input-group basic-row field-row" role="group">
-        <app-mm-inch label="Inlay depth" [step]="0.1" [min]="0" [value]="fingerboard.dotDepth"
-            (valueChange)="fingerboard.dotDepth = $event; saveSettingsAndRedraw()"></app-mm-inch>
+        <app-mm-inch label="Inlay depth" [step]="0.1" [min]="0" [value]="fingerboard.markDepth"
+            (valueChange)="fingerboard.markDepth = $event; saveSettingsAndRedraw()"></app-mm-inch>
     </div>
-    <p class="hint">Under the lowest point of the surface round the dot's rim. The floor is flat, so the inlay stands proud toward the crown.</p>
+    <p class="hint">A dot's floor is flat, this far under the lowest point of the surface round its rim, so the inlay stands proud toward the crown. A fret line's channel is this far under the surface all the way across.</p>
 </section>
 }
 
@@ -265,8 +265,6 @@
 <section class="ui-group">
     <div class="ui-group-title">
         Plan
-        <button type="button" class="info-icon" (click)="showMachineHelp()" title="Why these defaults"
-            aria-label="Information">ⓘ</button>
     </div>
     @if (!toolpaths) {
     <p class="hint">The part has to solve first.</p>

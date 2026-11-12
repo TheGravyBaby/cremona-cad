@@ -212,6 +212,33 @@
   margin-bottom: 1px;
 }
 
+/* the fingerboard's position marks: shape, semitone, offset, size and a remove button on one line,
+   the four fields sharing what the sidebar leaves after the button */
+.marker-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr 1fr 26px;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.marker-row > .field-cell {
+  width: auto;
+  min-width: 0;
+}
+
+.marker-row--header > .field-cell {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.marker-row select {
+  width: 100%;
+  min-width: 0;
+}
+
 /* the reorder handle (shared/row-reorder.ts), full row height so the whole left edge grabs */
 .row-grip {
   position: absolute;
