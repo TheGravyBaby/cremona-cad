@@ -2,7 +2,7 @@ import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { buildGcode, downloadGcodeFile } from '../../../../helpers/gcodeExporter';
 import { angleFromCenter, angleWithinSweep, closestPointOnSegment, dist, flipPointAboutY, normalizeRadians, pointInPolygon, pointOnCircle, signedPolygonArea, TURN } from '../../../../helpers/math/simpleGeometry';
-import { Matrix2D, pathFromPolyline, pathsBounds, samplePathToPolyline, transformPath } from '../../../../helpers/math/pathMath';
+import { Matrix2D, pathFromCircle, pathFromPolyline, pathsBounds, samplePathToPolyline, transformPath } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed, polylineCumulativeLengths, simplifyPolyline3D } from '../../../../helpers/math/vibeMath';
 import { erodePolygon, flattenPath, offsetPath } from '../../../../helpers/math/pathVibes';
 import { inchFraction } from '../../../../helpers/nearestFraction';
@@ -14,9 +14,9 @@ import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
-import { Bit, CRADLE, CradleSettings, CradleSpec, DEFAULT_SETTINGS, DevExportSettings, EXPORTS, FHOLE, FholeSettings, Feeds, MACHINE, MACHINE_HELP, MOULD_TABS, PLATE_TABS, PlateSettings, PREVIEW_GRID, readSettings, SCROLL, ScrollSettings, Stage, STAGE_SHAPE, StageKey, stageOf, STOCK_OF, StockSettings, SURFACE, Tool, toolFor, TOOLS, ToolShape, Wood, writeSettings } from './dev-export-shop';
+import { Bit, CRADLE, CradleSettings, CradleSpec, DEFAULT_SETTINGS, DevExportSettings, EXPORTS, FHOLE, FholeSettings, Feeds, FINGERBOARD, FingerboardSettings, MACHINE, MACHINE_HELP, MOULD_TABS, PLATE_TABS, PlateSettings, PREVIEW_GRID, readSettings, SCROLL, ScrollSettings, Stage, STAGE_SHAPE, StageKey, stageOf, STOCK_OF, StockSettings, SURFACE, Tool, toolFor, TOOLS, ToolShape, Wood, writeSettings } from './dev-export-shop';
 import { Bounds, boundsOf, centreInSheet, climbingLoop, emptyToolpaths, evenStations, fail, gcodeJob, jobNotes, placeInSheet, serpentine, SHEET_MARGIN, tabsAlong, terrainGrid, tipHeights, Toolpaths, withTabs } from './dev-export-toolpaths';
-import { FholeContoursSolve, MouldRelief, MouldSolve, NeckSolve, PlateContourSolve, Plate, PlateSurface, ScrollSolve } from '../../violin-family-solves';
+import { FholeContoursSolve, MouldRelief, MouldSolve, NeckSolve, PlateContourSolve, Plate, PlateSurface, ScrollSolve, StringSetupSolve } from '../../violin-family-solves';
 import { buildSurfaceContours, calcContourSampleSteps, rowAt, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { BACK_ARCH_INK, CHANNEL_INK, TOP_ARCH_INK } from '../long-arching-panel/long-arching-panel';
 import { MOULD_EXPORT_STEP, renderMould, solveMould } from '../mould-panel/mould-panel';
@@ -27,12 +27,15 @@ import { solveCenterBout, solveRibArcs } from '../center-bout-panel/center-bout-
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { calcScrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
 import { solveScroll } from '../pegbox-panel/pegbox-panel';
+import { solveStringSetup } from '../string-setup-panel/string-setup-panel';
+import { defaultPositionMarks, defineFingerboardFace, fingerboardSurfaceZAt, PositionMarkSolve, readMarkers, solvePositionMarks, solveScoop } from '../dev-fingerboard-panel/dev-fingerboard-panel';
 
 // G-code for the maker's own machine, offered on localhost only: the files drive a CNC, and nobody
 // else's machine is ours to answer for. The recipe names this panel only inside @defer, so a
 // visitor's browser never fetches it. Not a CAM program: each export is one thing the shop cuts
 // from the recipe (the mould; a plate's arching, purfling channel and contour; the cradle the plate
-// is turned over into; the top's f-holes cut in that cradle; scrolls and fingerboards to come),
+// is turned over into; the top's f-holes cut in that cradle; the neck blank's side profile; the
+// fingerboard's top, dots and outline),
 // planned by code that knows that part, with the user saying only what the stock is and whether
 // the wood is hard. The plate, its purfling and its contour are one setup, in that order: all read
 // the plate's blank and where the plate sits in it, so every file agrees, and the contour comes
@@ -127,6 +130,14 @@ export class DevExportPanel extends PanelComponentBase {
     return this.settings.job === 'scroll';
   }
 
+  get fingerboard(): FingerboardSettings {
+    return this.settings.fingerboard;
+  }
+
+  get isFingerboard(): boolean {
+    return this.settings.job === 'fingerboard';
+  }
+
   // the settings naming the plate the job is cut to
   get cutTo(): PlateSettings | CradleSettings {
     return this.onBlank ? this.blank : this.cradle;
@@ -187,7 +198,7 @@ export class DevExportPanel extends PanelComponentBase {
     if (!plan || plan.toolpaths.failures.length) return;
     let text = buildGcode(gcodeJob(plan.toolpaths, tool, feeds));
     let job = this.settings.job;
-    let part = job === 'plate' ? `plate-${this.blank.plate}-${this.blank.stage}` : job === 'cradle' ? `cradle-${this.cradle.plate}-${this.cradle.stage}` : job === 'fholes' ? `fholes-${this.fholes.stage}` : job === 'scroll' ? `scroll-${this.scroll.side}` : job === 'mould' ? job : `${job}-${this.blank.plate}`;
+    let part = job === 'plate' ? `plate-${this.blank.plate}-${this.blank.stage}` : job === 'cradle' ? `cradle-${this.cradle.plate}-${this.cradle.stage}` : job === 'fholes' ? `fholes-${this.fholes.stage}` : job === 'scroll' ? `scroll-${this.scroll.side}` : job === 'fingerboard' ? `fingerboard-${this.fingerboard.stage}` : job === 'mould' ? job : `${job}-${this.blank.plate}`;
     downloadGcodeFile(`${this.fileName.trim() || 'violin-family'}-${part}.nc`, text);
   }
 }
@@ -252,6 +263,16 @@ export function planExport(p: ViolinFamilyParams, settings: DevExportSettings, b
       let toolpaths = scrollToolpaths(p, n, s, bit, g, fine);
       let outline = sideOutline(p, n, s).d;
       return { toolpaths, layers: [renderLines([g.side === 'left' ? outline : transformPath(outline, MIRROR)], pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, g, pal)] };
+    }
+    case 'fingerboard': {
+      let s = p.stringSetup && p.neck ? solveStringSetup(p) : null;
+      let board = s && defineFingerboardFace(p, s);
+      if (!s || !board) return null;
+      let g = settings.fingerboard;
+      let marks = solvePositionMarks(p, s, readMarkers() ?? defaultPositionMarks(p)).marks;
+      let toolpaths = fingerboardToolpaths(p, s, marks, bit, g, fine);
+      let dots = marks.flatMap(mark => mark.faceDots.map(dot => pathFromCircle(dot)));
+      return { toolpaths, layers: [renderLines([board, ...dots], pal), renderRaster(toolpaths, pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, g, pal)] };
     }
   }
 }
@@ -320,6 +341,11 @@ export const renderArching = (p: ViolinFamilyParams, surface: PlateSurface, plat
     let d = rings.map(ring => `M ${ring.map(pt => `${pt.x} ${pt.y}`).join(' L ')} Z`).join(' ');
     renderPath(d, level <= 0 ? pal.ink(CHANNEL_INK) : ink, STROKE_WEIGHT.guide, level <= 0 ? 0.9 : 0.7)(gr, ui);
   }
+  renderRaster(tp, pal)(gr, ui);
+};
+
+// a surfacing job's lines, faint
+export const renderRaster = (tp: Toolpaths, pal: PanelPalette) => (gr: any, ui: any): void => {
   let raster = tp.raster;
   if (!raster) return;
   let color = tp.failures.length ? pal.alert : pal.ink(3);
@@ -1021,5 +1047,108 @@ export function scrollToolpaths(p: ViolinFamilyParams, n: NeckSolve, s: ScrollSo
   out.fixture = [rect(0, 0, g.harness.width, g.harness.length), rect(fx, fy, fx + ft, fy + reach), rect(fx - depth - 10, fy - ft, fx + ft + depth + 10, fy)].join(' ');
   let tabs = out.paths.reduce((sum, path) => sum + path.tabs.length, 0);
   out.notes.push(`Side profile in ${runs.length} run${runs.length === 1 ? '' : 's'}, ${tabs} tabs ${spec.tabHeight} high off the floor; the throat bridged for the gouge where it narrows to ${width.toFixed(1)}; the face ${g.faceInset ? `inset ${g.faceInset}` : 'on the stem, uncut'}; the bit reaches ${(top - floor).toFixed(1)} deep`);
+  return out;
+}
+
+// said by the files that start in the surface the roughing and finishing leave
+export const SURFACED_BOARD = 'EXPECTS A SURFACED BOARD: run the roughing and finishing files first.';
+
+// the fingerboard, from a square blank lying gluing face down in the corner of the harness's two
+// fences, in the board's own face frame: x across it, the nut at y = 0 and the end down at minus
+// its length, centred in the blank. Its top is carved as a plate's arching is, the height field
+// the crown and scoop over the bed, level land past the long edges and the crown carried on past
+// both ends. `marks` are the position dots: each a flat-floored pocket cleared in loops from the
+// centre out, clockwise, a level at a time from the highest the surface stands in it down to the
+// inlay's depth under the lowest point round its rim, so the inlay is at least that deep all
+// round; a dot over the edge is cut whole, into the waste. The contour runs a bit radius outside
+// the outline, counterclockwise, from the crown's height at the ends, where the land was never
+// cut down, through the bed's overcut, held by tabs on the long edges
+export function fingerboardToolpaths(
+  p: ViolinFamilyParams, s: StringSetupSolve, marks: PositionMarkSolve[], bit: Bit, g: FingerboardSettings, fine = false,
+  grid = fine ? SURFACE.grid : PREVIEW_GRID, machine = MACHINE,
+): Toolpaths {
+  let ss = p.stringSetup!;
+  let edge = ss.fingerboardThickness;
+  let top = g.stock.thickness;
+  let stage = g.stage === 'rough' ? 'top roughing' : g.stage === 'finish' ? 'top finishing' : g.stage === 'dots' ? 'position dots' : 'contour';
+  let out = emptyToolpaths(top, edge, [
+    `Z0 = BED, the board's gluing face; blank top Z${top.toFixed(3)}`,
+    `XY0 = HARNESS ZERO, fences at X${g.fence.x} Y${g.fence.y}, blank ${g.stock.width} x ${g.stock.length} in their corner`,
+    `Blank ${top} mm, ${g.wood} wood`,
+    `Fingerboard, ${stage}; edge Z${edge.toFixed(3)}, nut end up`,
+  ]);
+  if (!(bit.diameter > 0)) fail(out, 'The bit diameter has to be above 0.');
+  let board = defineFingerboardFace(p, s);
+  if (!board || s.failures.some(f => f.unsolved.includes('fingerboard')) || solveScoop(p, s).failures.length) return fail(out, 'The board and its scoop have to solve first.');
+  let b = pathsBounds([board]);
+  let area: Bounds = { minX: b.minX - SURFACE.skirt, maxX: b.maxX + SURFACE.skirt, minY: b.minY - SURFACE.skirt, maxY: b.maxY + SURFACE.skirt };
+  placeInSheet(out, area, g, { x: g.stock.width / 2 - (area.minX + area.maxX) / 2, y: g.stock.length / 2 - (area.minY + area.maxY) / 2 }, g.fence);
+  let zAt = (x: number, y: number) => fingerboardSurfaceZAt(p, s, x, -y);
+  let r = bit.diameter / 2;
+
+  if (g.stage === 'rough' || g.stage === 'finish') {
+    if (g.stage === 'rough' && bit.shape !== 'flat') fail(out, 'Roughing takes a flat bit.');
+    if (g.stage === 'finish' && bit.shape !== 'ball') fail(out, 'Finishing takes a ball bit.');
+    if (out.failures.length) return out;
+    return surfacing(out, {
+      area,
+      roof: () => top,
+      top,
+      roughFloor: edge - Math.max(ss.scoopBass, ss.scoopTreble) + SURFACE.leave,
+      rowZ: y => x => zAt(x, y),
+      proud: (_, z) => `The blank is too thin: the crown stands ${z.toFixed(1)} mm and the blank ${top.toFixed(1)} mm.`,
+    }, bit, g.stage, fine, grid);
+  }
+
+  if (bit.shape !== 'flat') fail(out, g.stage === 'dots' ? 'The dots take a flat bit.' : 'The contour takes a flat bit.');
+  out.caution = SURFACED_BOARD;
+
+  if (g.stage === 'dots') {
+    if (!bit.feeds) fail(out, 'No feeds for this bit.');
+    if (!(g.dotDepth > 0)) fail(out, 'The inlay depth has to be above 0.');
+    let dots = marks.flatMap(mark => mark.faceDots.map(dot => ({ dot, semitone: mark.semitone })));
+    if (!dots.length) fail(out, 'No position marks to cut: the Dev Fingerboard panel sets them.');
+    for (let { dot, semitone } of dots) {
+      if (dot.r < r) fail(out, `The bit is too wide for the ${(2 * dot.r).toFixed(1)} mm dot at semitone ${semitone}.`);
+    }
+    if (out.failures.length) return out;
+    let step = fine ? 0.1 : 0.5;
+    out.floorZ = Infinity;
+    out.passes = 0;
+    for (let { dot, semitone } of dots) {
+      let heights = [dot, ...Array.from({ length: 24 }, (_, k) => pointOnCircle(dot, (k * TURN.full) / 24))].map(pt => zAt(pt.x, pt.y));
+      let high = Math.max(...heights), floor = Math.min(...heights) - g.dotDepth;
+      let rounds = roundsTo(high - floor, bit.feeds!.stepDown);
+      let reach = dot.r - r;
+      let n = Math.max(1, Math.ceil(reach / (SURFACE.roughStepover * bit.diameter)));
+      // a bit the dot's own size only plunges
+      let pts: Pt3D[] = reach < 0.01 ? [new Pt3D(dot.x, dot.y, high)] : [];
+      for (let depth of rounds) {
+        if (reach < 0.01) pts.push(new Pt3D(dot.x, dot.y, high - depth));
+        else for (let i = 1; i <= n; i++) {
+          let rho = (reach * i) / n;
+          let m = Math.max(16, Math.ceil((TURN.full * rho) / step));
+          for (let j = 0; j <= m; j++) {
+            let a = -(TURN.full * j) / m;
+            pts.push(new Pt3D(dot.x + rho * Math.cos(a), dot.y + rho * Math.sin(a), high - depth));
+          }
+        }
+      }
+      out.surfaces.push({ name: `Dot, semitone ${semitone}, ${dot.x < 0 ? 'bass' : dot.x > 0 ? 'treble' : 'centre'}`, pts: simplifyPolyline3D(pts, SURFACE.chordTolerance) });
+      out.floorZ = Math.min(out.floorZ, floor);
+      out.passes = Math.max(out.passes, rounds.length);
+    }
+    out.notes.push(`${dots.length} dot${dots.length === 1 ? '' : 's'}, flat floors ${g.dotDepth} under the lowest of the surface round each rim, in up to ${out.passes} round${out.passes === 1 ? '' : 's'}`);
+    return out;
+  }
+
+  if (out.failures.length) return out;
+  let d = offsetPath(board, r);
+  if (!d) return fail(out, 'The outline would not offset for the bit.');
+  out.paths.push(withTabs('Outline', climbingLoop(d, 'outside'), evenStations(FINGERBOARD.tabs, 0.5), PLATE_TABS.width, out.failures));
+  out.cutTopZ = Math.max(zAt(0, b.maxY), zAt(0, b.minY));
+  out.floorZ = -machine.overcut;
+  out.tabTop = PLATE_TABS.height;
+  out.notes.push(`Contour a bit radius outside the outline, counterclockwise, from the crown at the ends Z${out.cutTopZ.toFixed(3)} through the bed by ${machine.overcut}; ${FINGERBOARD.tabs} tabs ${PLATE_TABS.width} long and ${PLATE_TABS.height} high on the long edges. Cut last: once through, only the tabs hold the board`);
   return out;
 }

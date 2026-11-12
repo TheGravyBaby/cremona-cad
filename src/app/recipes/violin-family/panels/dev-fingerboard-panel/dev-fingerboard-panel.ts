@@ -1,10 +1,10 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { dist, moveInVectorSpace, pointAtDistanceToward, TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
-import { pathFromCircle, pathFromPolyline } from '../../../../helpers/math/pathMath';
+import { pathFromCircle, pathFromPolygon, pathFromPolyline } from '../../../../helpers/math/pathMath';
 import { intersectionFromTwoPaths } from '../../../../helpers/math/pathVibes';
 import {
-  renderDashedLine, renderFilledPath, renderGuideKnot, renderPath, renderPointHalo, renderSegmentHalo, renderSolveFailures, renderText,
+  renderDashedLine, renderFilledPath, renderGuideKnot, renderPath, renderPointHalo, renderSegmentHalo, renderSolveFailures, renderText, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
 import { buildMiss, reportFailures, solveSection, SolveFailure } from '../../../../helpers/validators';
 import { readWorkingState, writeWorkingState } from '../../../../helpers/workingStorage';
@@ -16,9 +16,10 @@ import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../vi
 import { PanelComponentBase } from '../panel-component-base';
 import { StringSetupSolve } from '../../violin-family-solves';
 import { familyStandards, FamilyStandards } from '../../violin-family-seed';
+import { calcSideViewOffsetX } from '../long-arching-panel/long-arching-panel';
 import { neckHalfWidthAt } from '../neck-panel/neck-panel';
 import {
-  calcAlongBoard, defineFingerboardInPlan, renderFretTicks, renderStringSetupViews, calcSemitoneStop, solveStringSetup,
+  calcAlongBoard, defineFingerboardInPlan, fingerboardRadiusAt, renderFretTicks, renderStringSetupViews, calcSemitoneStop, solveStringSetup,
 } from '../string-setup-panel/string-setup-panel';
 
 export interface PositionMarker {
@@ -30,12 +31,14 @@ export interface PositionMarker {
 
 // one position mark: how far down the string it sounds, its station on the fingerboard plane in the
 // side elevation, and its dots in plan (x across the board, y along it), one per marker at that
-// semitone; `markers` holds each dot's index in the marker list
+// semitone; `faceDots` are the same dots on the board's face, at their true distance from the nut;
+// `markers` holds each dot's index in the marker list
 export interface PositionMarkSolve {
   semitone: number;
   alongString: number;
   station: Pt;
   dots: Circle[];
+  faceDots: Circle[];
   markers: number[];
 }
 
@@ -127,24 +130,32 @@ export class DevFingerboardPanel extends PanelComponentBase<DevFingerboardHighli
     let s = this.s = solveStringSetup(p)!;
     let k = this.k = solveScoop(p, s);
     let m = this.m = solvePositionMarks(p, s, this.markers);
-    let front: RenderLayer[] = [], side: RenderLayer[] = [];
+    let front: RenderLayer[] = [], side: RenderLayer[] = [], face: RenderLayer[] = [];
     let highlighted = this.highlightedPart;
     let halo = highlighted?.key === 'marks' ? { marker: this.focusedMarker, color: highlighted.color } : null;
     if (this.flags.showFingerboard) {
-      front.push(renderPositionMarks(p, s, m, this.pal, halo));
+      let board = defineFingerboardFace(p, s);
+      if (board) face.push(renderPath(board, this.pal.ink(0), STROKE_WEIGHT.section));
+      front.push(renderPositionMarks(defineFingerboardInPlan(p, s), m, false, this.pal, halo));
+      face.push(renderPositionMarks(board, m, true, this.pal, halo));
       if (this.flags.showScoopGuide) {
-        front.push(renderScoopStation(p, s, k, this.pal));
+        front.push(renderScoopStation(p, s, k, false, this.pal));
+        face.push(renderScoopStation(p, s, k, true, this.pal));
         side.push(renderScoopGuide(p, s, k, this.pal));
       }
     }
     if (this.flags.showFretMarks) side.push(renderFretTicks(s, this.markers.map(marker => marker.semitone), this.pal));
     if (highlighted && highlighted.key !== 'marks') side.push(renderScoopHighlight(p, s, k, highlighted.key, highlighted.color));
     side.push(renderSolveFailures([...k.failures, ...m.failures], this.pal.alert));
-    return renderStringSetupViews(p, s, this.pal, { fingerboard: this.flags.showFingerboard, front, side });
+    let views = renderStringSetupViews(p, s, this.pal, { fingerboard: this.flags.showFingerboard, front, side });
+    let origin = calcFingerboardFaceOrigin(p, s);
+    if (origin) views.push(renderTranslatedLayers(face, origin.x, origin.y));
+    return views;
   }
 }
 
-function readMarkers(): PositionMarker[] | null {
+// the tab's own markers, as the panel last left them; null before it has
+export function readMarkers(): PositionMarker[] | null {
   try {
     let parsed = JSON.parse(readWorkingState(STATE_KEY) ?? 'null');
     return Array.isArray(parsed) && parsed.every(m => m && typeof m === 'object' && 'semitone' in m) ? parsed : null;
@@ -155,12 +166,11 @@ function readMarkers(): PositionMarker[] | null {
 
 const MARK_HALO_RADIUS = 3;
 
-// the dots in the front view, each the part of it that lands on the board
+// the dots over `board`, the front view's or the face's, each the part of it that lands on the board
 const renderPositionMarks = (
-  p: ViolinFamilyParams, s: StringSetupSolve, m: PositionMarksSolve, pal: PanelPalette, halo: { marker: number; color: string } | null,
+  board: string | null, m: PositionMarksSolve, onFace: boolean, pal: PanelPalette, halo: { marker: number; color: string } | null,
 ): RenderLayer => {
-  let board = defineFingerboardInPlan(p, s);
-  let dots = board ? m.marks.flatMap(mark => mark.dots.map((dot, i) => ({ dot, marker: mark.markers[i], inlay: intersectionFromTwoPaths(pathFromCircle(dot), board!) }))) : [];
+  let dots = board ? m.marks.flatMap(mark => (onFace ? mark.faceDots : mark.dots).map((dot, i) => ({ dot, marker: mark.markers[i], inlay: intersectionFromTwoPaths(pathFromCircle(dot), board!) }))) : [];
   return (g: any, ui: any): void => {
     for (let { dot, marker, inlay } of dots) {
       renderFilledPath(inlay, pal.ink(3), 1, 'nonzero')(g, ui);
@@ -201,12 +211,13 @@ export function solvePositionMarks(p: ViolinFamilyParams, s: StringSetupSolve, m
       let station = moveInVectorSpace(neckTop, [{ ...board, mag: alongBoard }]);
       // the share of the board scales with its width; an overhang past the edge is carried as is
       let half = neckHalfWidthAt(p, s.neck, station.y);
-      let mark: PositionMarkSolve = { semitone, alongString, station, dots: [], markers: [] };
+      let mark: PositionMarkSolve = { semitone, alongString, station, dots: [], faceDots: [], markers: [] };
       for (let [i, marker] of markers.entries()) {
         if (marker.semitone !== semitone) continue;
         let reach = Math.abs(marker.offset);
         let x = Math.sign(marker.offset) * (Math.min(reach, halfAtNut) * half / halfAtNut + Math.max(0, reach - halfAtNut));
         mark.dots.push(new Circle(x, station.y, marker.diameter / 2));
+        mark.faceDots.push(new Circle(x, -alongBoard, marker.diameter / 2));
         mark.markers.push(i);
       }
       out.marks.push(mark);
@@ -219,6 +230,26 @@ export function solvePositionMarks(p: ViolinFamilyParams, s: StringSetupSolve, m
 
 export function defaultPositionMarks(p: ViolinFamilyParams): PositionMarker[] {
   return [5, 7, 12].map(semitone => ({ semitone, ...MARK_DEFAULTS[familyStandards(p.body.height).family], shape: 'circle' }));
+}
+
+// the board seen square to its plane, in its own frame: x across it with the bass negative, y along
+// it from the nut's middle at 0 down to the end at minus its length. Lengths along it are true, where
+// the front view shortens them by the neck's tilt. Null while the board doesn't solve
+export function defineFingerboardFace(p: ViolinFamilyParams, s: StringSetupSolve): string | null {
+  let neckTop = s.neck.neckTop, end = s.fingerboardEnd;
+  if (!neckTop || !end) return null;
+  let topHalf = p.neck!.topWidth / 2, endHalf = neckHalfWidthAt(p, s.neck, end.y), length = dist(neckTop, end);
+  return pathFromPolygon([new Pt(-endHalf, -length), new Pt(endHalf, -length), new Pt(topHalf, 0), new Pt(-topHalf, 0)]);
+}
+
+// where the face's origin sits on the canvas: level with the nut, right of the side elevation and
+// clear of whatever stands furthest off the body there. A point drawn at `at` on the canvas is at
+// (at.x - origin.x, at.y - origin.y) on the face
+export function calcFingerboardFaceOrigin(p: ViolinFamilyParams, s: StringSetupSolve): Pt | null {
+  let neckTop = s.neck.neckTop, end = s.fingerboardEnd;
+  if (!neckTop || !end) return null;
+  let reach = Math.max(neckTop.x, s.nutTop?.x ?? neckTop.x, s.bridgeTop?.x ?? neckTop.x);
+  return new Pt(calcSideViewOffsetX(p) + reach + 0.12 * p.body.height + neckHalfWidthAt(p, s.neck, end.y), neckTop.y);
 }
 
 function calcOffPlane(pt: Pt, root: Pt, normal: Vect2D): number {
@@ -257,11 +288,13 @@ const renderScoopGuide = (p: ViolinFamilyParams, s: StringSetupSolve, k: ScoopSo
   renderScoopLabel(onStraightedge, normal, up, lift, gap, `treble ${ss.scoopTreble} mm`, pal.ink(0).faint(-3))(g, ui);
 };
 
-// the deepest station across the board in the front view
-const renderScoopStation = (p: ViolinFamilyParams, s: StringSetupSolve, k: ScoopSolve, pal: PanelPalette) => (g: any, ui: any): void => {
+// the deepest station across the board, in the front view or on the face
+const renderScoopStation = (p: ViolinFamilyParams, s: StringSetupSolve, k: ScoopSolve, onFace: boolean, pal: PanelPalette) => (g: any, ui: any): void => {
   if (!calcScoopGuideGeometry(p, s, k)) return;
-  let y = pointAtDistanceToward(s.neck.neckTop!, s.fingerboardEnd!, p.stringSetup!.scoopAt).y;
-  let half = neckHalfWidthAt(p, s.neck, y);
+  let scoopAt = p.stringSetup!.scoopAt;
+  let inPlan = pointAtDistanceToward(s.neck.neckTop!, s.fingerboardEnd!, scoopAt).y;
+  let half = neckHalfWidthAt(p, s.neck, inPlan);
+  let y = onFace ? -scoopAt : inPlan;
   renderDashedLine(new Pt(-half, y), new Pt(half, y), pal.ink(0), '2 3', STROKE_WEIGHT.guide, 0.5)(g, ui);
 };
 
@@ -293,6 +326,19 @@ export function fingerboardScoopAt(p: ViolinFamilyParams, s: StringSetupSolve, y
   let x = Math.min(run, Math.abs(d - ss.scoopAt));
   let t = (side + 1) / 2;
   return calcScoopDip(ss.scoopBass, run, x) * (1 - t) + calcScoopDip(ss.scoopTreble, run, x) * t;
+}
+
+// the board's top over its gluing face, at x across the face and `along` it from the nut: the
+// edge's thickness less the scoop there, and the crown at that station's radius standing on the
+// chord between the two edges. Past either edge it holds the edge's height and past either end
+// that end's section, so a cutter's footprint finds level land beside the board and the crown
+// carried on beyond it. Read only once solveScoop has no failures
+export function fingerboardSurfaceZAt(p: ViolinFamilyParams, s: StringSetupSolve, x: number, along: number): number {
+  let neckTop = s.neck.neckTop!, end = s.fingerboardEnd!;
+  let y = pointAtDistanceToward(neckTop, end, Math.min(dist(neckTop, end), Math.max(0, along))).y;
+  let half = neckHalfWidthAt(p, s.neck, y), r = fingerboardRadiusAt(p, s, y);
+  let at = Math.max(-half, Math.min(half, x));
+  return p.stringSetup!.fingerboardThickness - fingerboardScoopAt(p, s, y, at / half) + Math.sqrt(r * r - at * at) - Math.sqrt(r * r - half * half);
 }
 
 // the board's top edge at `side` (-1 bass, 1 treble), nut to end, its thickness off the neck less

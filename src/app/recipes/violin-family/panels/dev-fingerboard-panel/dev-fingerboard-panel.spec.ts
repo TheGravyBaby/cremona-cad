@@ -2,10 +2,14 @@
 import { describe, expect, it } from 'vitest';
 import { TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../../models/types';
-import { calcScoopedEdgeLine, calcScoopGuideGeometry, defaultPositionMarks, fingerboardScoopAt, PositionMarker, solvePositionMarks, solveScoop } from './dev-fingerboard-panel';
+import { pathsBounds } from '../../../../helpers/math/pathMath';
+import {
+  calcFingerboardFaceOrigin, calcScoopedEdgeLine, calcScoopGuideGeometry, defaultPositionMarks, defineFingerboardFace, fingerboardScoopAt, PositionMarker,
+  solvePositionMarks, solveScoop,
+} from './dev-fingerboard-panel';
 import { calcSemitoneStop, solveStringSetup, StringSetupPanel } from '../string-setup-panel/string-setup-panel';
 import { NeckPanel, neckHalfWidthAt } from '../neck-panel/neck-panel';
-import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
+import { calcSideViewOffsetX, LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
@@ -100,6 +104,39 @@ describe('the position marks', () => {
     expect(treble.r).toBeCloseTo(defaultPositionMarks(p)[0].diameter / 2, 9);
     expect(dotFor(-6).x).toBeCloseTo(-treble.x, 9);
     expect(dotFor(0).x).toBe(0);
+  });
+
+  it('lay the board\'s face out at true length, each dot its station\'s distance from the nut and as far across as in plan', () => {
+    const p = seeded();
+    const s = solved(p);
+    const neckTop = s.neck.neckTop!, end = s.fingerboardEnd!;
+    // the path is written to a few decimals
+    const face = pathsBounds([defineFingerboardFace(p, s)!]);
+    expect(face.maxY).toBeCloseTo(0, 9);
+    expect(face.height).toBeCloseTo(p.stringSetup!.fingerboardLength, 3);
+    expect(face.height).toBeGreaterThan(neckTop.y - end.y);
+    expect(face.maxX).toBeCloseTo(neckHalfWidthAt(p, s.neck, end.y), 3);
+    expect(face.minX).toBeCloseTo(-face.maxX, 3);
+    const { marks } = solvePositionMarks(p, s, settings(p, [5, 7, 12], { offset: 6 }));
+    for (const m of marks) {
+      expect(m.faceDots.length).toBe(m.dots.length);
+      expect(-m.faceDots[0].y).toBeCloseTo(dist(neckTop, m.station), 9);
+      expect(m.faceDots[0].x).toBeCloseTo(m.dots[0].x, 9);
+      expect(m.faceDots[0].r).toBeCloseTo(m.dots[0].r, 9);
+      // the front view shortens the same run by the board's tilt
+      expect(neckTop.y - m.dots[0].y).toBeCloseTo(-m.faceDots[0].y * (neckTop.y - end.y) / p.stringSetup!.fingerboardLength, 9);
+    }
+  });
+
+  it('stand the face level with the nut, clear of the bridge and the nut in the side elevation', () => {
+    const p = seeded();
+    const s = solved(p);
+    const origin = calcFingerboardFaceOrigin(p, s)!;
+    const face = pathsBounds([defineFingerboardFace(p, s)!]);
+    expect(origin.y).toBeCloseTo(s.neck.neckTop!.y, 9);
+    const sideX = calcSideViewOffsetX(p);
+    expect(origin.x + face.minX).toBeGreaterThan(sideX + s.bridgeTop!.x);
+    expect(origin.x + face.minX).toBeGreaterThan(sideX + s.nutTop!.x);
   });
 
   it('gather every marker at one interval onto its station, each keeping its own size and offset', () => {

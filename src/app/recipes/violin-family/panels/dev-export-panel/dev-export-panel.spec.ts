@@ -20,8 +20,10 @@ import { MOULD_EXPORT_STEP, MouldPanel, solveMould } from '../mould-panel/mould-
 import { NeckPanel, solveNeck } from '../neck-panel/neck-panel';
 import { VolutePanel } from '../volute-panel/volute-panel';
 import { solveScroll } from '../pegbox-panel/pegbox-panel';
-import { archingToolpaths, contourToolpaths, cradleToolpaths, fholeToolpaths, mouldToolpaths, planExport, purflingToolpaths, scrollToolpaths, sideOutline } from './dev-export-panel';
-import { Bit, CRADLE, CradleSettings, DEFAULT_SETTINGS, EXPORTS, ExportId, FHOLE, FholeSettings, MACHINE, MOULD_TABS, PLATE_TABS, PlateSettings, SCROLL, ScrollSettings, SURFACE, TOOLS } from './dev-export-shop';
+import { solveStringSetup, StringSetupPanel } from '../string-setup-panel/string-setup-panel';
+import { defaultPositionMarks, defineFingerboardFace, fingerboardSurfaceZAt, solvePositionMarks } from '../dev-fingerboard-panel/dev-fingerboard-panel';
+import { archingToolpaths, contourToolpaths, cradleToolpaths, fholeToolpaths, fingerboardToolpaths, mouldToolpaths, planExport, purflingToolpaths, scrollToolpaths, sideOutline } from './dev-export-panel';
+import { Bit, CRADLE, CradleSettings, DEFAULT_SETTINGS, EXPORTS, ExportId, FHOLE, FholeSettings, FINGERBOARD, FingerboardSettings, MACHINE, MOULD_TABS, PLATE_TABS, PlateSettings, SCROLL, ScrollSettings, SURFACE, TOOLS } from './dev-export-shop';
 import { cutPlan, gcodeJob, jobNotes, Tab } from './dev-export-toolpaths';
 import { ThemeService } from '../../../../theme/theme.service';
 
@@ -44,6 +46,7 @@ const seeded = (): ViolinFamilyParams => {
   NeckPanel.seed(p);
   VolutePanel.seed(p);
   MouldPanel.seed(p);
+  StringSetupPanel.seed(p);
   return p;
 };
 
@@ -907,5 +910,138 @@ describe('the scroll side profile toolpaths', () => {
     expect(plan({ stock: { thickness: 46, width: 65, length: 150 } })).toMatch(/short/);
     expect(plan({ endMargin: 2 })).toMatch(/crossbar/);
     expect(plan({}, ball)).toMatch(/flat/);
+  });
+});
+
+// the fingerboard, from a square blank gluing face down: the roughing never cuts into the leave,
+// the ball never into the surface; each dot's pocket stays inside its circle with a flat floor
+// the inlay's depth under the lowest of its rim; the contour runs a radius off the outline,
+// starts above everything left standing and goes through, its tabs the same both sides
+describe('the fingerboard toolpaths', () => {
+  const p = seeded();
+  const s = solveStringSetup(p)!;
+  const marks = solvePositionMarks(p, s, defaultPositionMarks(p)).marks;
+  const hard = (n: number): Bit => asBit({ ...TOOLS.find(t => t.number === n)!, feeds: { soft: TOOLS.find(t => t.number === n)!.feeds.hard } });
+  const g = (stage: FingerboardSettings['stage'], edit: Partial<FingerboardSettings> = {}): FingerboardSettings =>
+    ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.fingerboard)), stage, ...edit });
+  const zAt = (pt: { x: number; y: number }) => fingerboardSurfaceZAt(p, s, pt.x, -pt.y);
+  const face = samplePathToPolyline(defineFingerboardFace(p, s)!, 1);
+  const length = p.stringSetup!.fingerboardLength;
+
+  it('solves whole, with the marks on the board', () => {
+    expect(s.failures).toEqual([]);
+    expect(marks.length).toBeGreaterThan(0);
+  });
+
+  it('reads a surface that crowns on the centre line, is the same both sides without a scoop difference, and holds its edge past the board', () => {
+    const q: ViolinFamilyParams = JSON.parse(JSON.stringify(p));
+    q.stringSetup!.scoopTreble = q.stringSetup!.scoopBass;
+    const sq = solveStringSetup(q)!;
+    for (const along of [0, length / 3, length / 2, length]) {
+      const centre = fingerboardSurfaceZAt(q, sq, 0, along);
+      for (const x of [3, 8, 12]) {
+        expect(fingerboardSurfaceZAt(q, sq, x, along)).toBeLessThan(centre);
+        expect(fingerboardSurfaceZAt(q, sq, -x, along)).toBeCloseTo(fingerboardSurfaceZAt(q, sq, x, along), 9);
+      }
+      expect(fingerboardSurfaceZAt(q, sq, 500, along)).toBeCloseTo(fingerboardSurfaceZAt(q, sq, 200, along), 9);
+    }
+    // at the ends the edge is unscooped, and past them the section carries on
+    expect(fingerboardSurfaceZAt(p, s, 500, 0)).toBeCloseTo(p.stringSetup!.fingerboardThickness, 9);
+    expect(fingerboardSurfaceZAt(p, s, 2, -20)).toBeCloseTo(fingerboardSurfaceZAt(p, s, 2, 0), 9);
+    expect(fingerboardSurfaceZAt(p, s, 2, length + 20)).toBeCloseTo(fingerboardSurfaceZAt(p, s, 2, length), 9);
+  });
+
+  it('roughs in terraces that never cut into the leave, and finishes with a ball that never cuts the surface and does reach it', () => {
+    const rough = fingerboardToolpaths(p, s, marks, hard(2), g('rough'), true, 1);
+    expect(rough.failures).toEqual([]);
+    expect(rough.surfaces.length).toBeGreaterThan(0);
+    for (const run of rough.surfaces) for (const pt of run.pts) expect(pt.z).toBeGreaterThanOrEqual(zAt(pt) + SURFACE.leave - 1e-6);
+    const finish = fingerboardToolpaths(p, s, marks, hard(3), g('finish'), true, 1);
+    expect(finish.failures).toEqual([]);
+    const tips = finish.surfaces.flatMap(run => run.pts);
+    for (const pt of tips) expect(pt.z).toBeGreaterThanOrEqual(zAt(pt) - 0.02);
+    const onCentre = tips.filter(pt => Math.abs(pt.x) < 1 && pt.y < -10 && pt.y > -length + 10);
+    expect(onCentre.length).toBeGreaterThan(0);
+    for (const pt of onCentre) expect(pt.z - zAt(pt)).toBeLessThan(0.1);
+    expect(rough.sheetOffset).toEqual(finish.sheetOffset);
+  });
+
+  it('refuses a blank the crown stands proud of, one the carved area runs off, and the wrong bit for a stage', () => {
+    const thin = g('rough');
+    thin.stock.thickness = p.stringSetup!.fingerboardThickness + 1;
+    expect(fingerboardToolpaths(p, s, marks, hard(2), thin).failures.join(' ')).toMatch(/too thin/);
+    const short = g('rough');
+    short.stock.length = length;
+    expect(fingerboardToolpaths(p, s, marks, hard(2), short).failures.join(' ')).toMatch(/runs off the blank/);
+    expect(fingerboardToolpaths(p, s, marks, ball, g('rough')).failures.join(' ')).toMatch(/flat bit/);
+    expect(fingerboardToolpaths(p, s, marks, flat, g('finish')).failures.join(' ')).toMatch(/ball bit/);
+    expect(fingerboardToolpaths(p, s, marks, ball, g('contour')).failures.join(' ')).toMatch(/flat bit/);
+  });
+
+  it('sinks each dot inside its circle, a level at a time, to a flat floor the inlay\'s depth under the lowest of its rim', () => {
+    const bit = hard(DEFAULT_SETTINGS.tools.dots);
+    const settings = g('dots');
+    const tp = fingerboardToolpaths(p, s, marks, bit, settings, true);
+    expect(tp.failures).toEqual([]);
+    const dots = marks.flatMap(m => m.faceDots);
+    expect(tp.surfaces.length).toBe(dots.length);
+    dots.forEach((dot, i) => {
+      const pts = tp.surfaces[i].pts;
+      for (const pt of pts) expect(dist(pt, dot) + bit.diameter / 2).toBeLessThanOrEqual(dot.r + 1e-6);
+      const floor = Math.min(...pts.map(pt => pt.z));
+      const rim = Array.from({ length: 36 }, (_, k) => pointOnCircle(dot, k * Math.PI / 18));
+      for (const pt of rim) expect(zAt(pt) - floor).toBeGreaterThanOrEqual(settings.dotDepth - 1e-3);
+      expect(Math.min(...rim.map(zAt)) - floor).toBeLessThan(settings.dotDepth + 0.05);
+      // never deeper than a step under what stood there, nor starting in the air above the crown
+      const levels = [...new Set(pts.map(pt => +pt.z.toFixed(6)))].sort((a, b) => b - a);
+      const high = Math.max(zAt(dot), ...rim.map(zAt));
+      expect(high - levels[0]).toBeLessThanOrEqual(bit.feeds!.stepDown + 1e-6);
+      for (let k = 1; k < levels.length; k++) expect(levels[k - 1] - levels[k]).toBeLessThanOrEqual(bit.feeds!.stepDown + 1e-6);
+      expect(floor).toBeGreaterThanOrEqual(tp.floorZ - 1e-9);
+    });
+    expect(tp.caution).toBeTruthy();
+    expect(() => buildGcode(gcodeJob(tp, TOOLS.find(t => t.number === DEFAULT_SETTINGS.tools.dots)!, bit.feeds!))).not.toThrow();
+  });
+
+  it('refuses a bit wider than a dot, and a board with no marks', () => {
+    expect(fingerboardToolpaths(p, s, marks, flat, g('dots')).failures.join(' ')).toMatch(/too wide/);
+    expect(fingerboardToolpaths(p, s, [], hard(DEFAULT_SETTINGS.tools.dots), g('dots')).failures.join(' ')).toMatch(/No position marks/);
+  });
+
+  it('contours a bit radius outside the outline, counterclockwise, from above what stands there through the bed, tabs mirrored on the long edges', () => {
+    const tp = fingerboardToolpaths(p, s, marks, flat, g('contour'));
+    expect(tp.failures).toEqual([]);
+    const [path] = tp.paths;
+    const r = flat.diameter / 2;
+    const idx = buildPolylineIndex([...face, face[0]]);
+    const ring = path.loop.slice(0, -1);
+    expect(signedPolygonArea(ring)).toBeGreaterThan(0);
+    for (const pt of ring) {
+      expect(pointInPolygon(pt, face)).toBe(false);
+      expect(distPointToPolylineIndexed(pt, idx)).toBeGreaterThan(r - 0.05);
+      // the offset comes to a point past each corner, so the cut corner is square; between them it holds the radius
+      if (pt.y < -r && pt.y > -length + r) expect(distPointToPolylineIndexed(pt, idx)).toBeLessThan(r + 0.05);
+      expect(tp.cutTopZ!).toBeGreaterThanOrEqual(zAt(pt) - 1e-9);
+    }
+    expect(tp.floorZ).toBeCloseTo(-MACHINE.overcut, 9);
+    expect(path.tabs.length).toBe(FINGERBOARD.tabs);
+    for (const tab of path.tabs) {
+      expect(runLength(tab)).toBeCloseTo(PLATE_TABS.width, 1);
+      expect(tab.centre.y).toBeLessThan(-r);
+      expect(tab.centre.y).toBeGreaterThan(-length + r);
+      expect(path.tabs.some(other => Math.abs(other.centre.x + tab.centre.x) < 0.5 && Math.abs(other.centre.y - tab.centre.y) < 0.5)).toBe(true);
+    }
+    const job = gcodeJob(tp, tool, tool.feeds.hard!);
+    expect(job.passes[job.passes.length - 1]).toBeCloseTo(-MACHINE.overcut, 9);
+    expect(() => buildGcode(job)).not.toThrow();
+  });
+
+  it('centres the board in the blank the same for every stage', () => {
+    const offsets = (['rough', 'finish', 'dots', 'contour'] as const).map(stage =>
+      fingerboardToolpaths(p, s, marks, stage === 'finish' ? hard(3) : stage === 'dots' ? hard(DEFAULT_SETTINGS.tools.dots) : flat, g(stage)).sheetOffset);
+    for (const o of offsets) expect(o).toEqual(offsets[0]);
+    const { stock, fence } = DEFAULT_SETTINGS.fingerboard;
+    expect(offsets[0].x).toBeCloseTo(fence.x + stock.width / 2, 3);
+    expect(offsets[0].y - length / 2).toBeCloseTo(fence.y + stock.length / 2, 3);
   });
 });

@@ -58,6 +58,20 @@
     </div>
     <p class="hint">Cheek down, the planed face on the stem, the heel end on the crossbar. Rolled over onto the stem's other side for the second file.</p>
     }
+    @if (isFingerboard) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Stage</span>
+            <select [(ngModel)]="fingerboard.stage" (change)="saveSettingsAndRedraw()">
+                <option value="rough">Roughing</option>
+                <option value="finish">Finishing</option>
+                <option value="dots">Dots</option>
+                <option value="contour">Contour</option>
+            </select>
+        </label>
+    </div>
+    <p class="hint">Gluing face down, the nut end up. The dots are the Dev Fingerboard panel's position marks.</p>
+    }
 </section>
 
 @if (settings.job === 'fholes') {
@@ -76,6 +90,30 @@
     </div>
     <p class="hint">Under the surface. The groove's centre is the drawn line at any depth.</p>
     }
+</section>
+}
+
+@if (isFingerboard && fingerboard.stage === 'dots') {
+<section class="ui-group">
+    <div class="ui-group-title">Dots</div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Inlay depth" [step]="0.1" [min]="0" [value]="fingerboard.dotDepth"
+            (valueChange)="fingerboard.dotDepth = $event; saveSettingsAndRedraw()"></app-mm-inch>
+    </div>
+    <p class="hint">Under the lowest point of the surface round the dot's rim. The floor is flat, so the inlay stands proud toward the crown.</p>
+</section>
+}
+
+@if (isFingerboard) {
+<section class="ui-group">
+    <div class="ui-group-title">Harness</div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Fence X" [step]="0.5" [min]="0" [value]="fingerboard.fence.x"
+            (valueChange)="fingerboard.fence.x = $event; saveSettingsAndRedraw()"></app-mm-inch>
+        <app-mm-inch label="Fence Y" [step]="0.5" [min]="0" [value]="fingerboard.fence.y"
+            (valueChange)="fingerboard.fence.y = $event; saveSettingsAndRedraw()"></app-mm-inch>
+    </div>
+    <p class="hint">Where the fences stand from the harness's zero, the file's XY0. The blank is pushed into their corner, the board centred in it.</p>
 </section>
 }
 
@@ -116,7 +154,7 @@
 }
 
 <section class="ui-group">
-    <div class="ui-group-title">{{ onBlank || isScroll ? 'Blank' : inCradle ? 'Slab' : 'Sheet' }}</div>
+    <div class="ui-group-title">{{ onBlank || isScroll || isFingerboard ? 'Blank' : inCradle ? 'Slab' : 'Sheet' }}</div>
     @if (onBlank) {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="At the seam" [step]="0.1" [min]="0" [value]="blank.stock.thickness"

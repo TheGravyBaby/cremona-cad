@@ -39,8 +39,8 @@ import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fho
 import { defineArchPath, solveLongArching } from '../long-arching-panel/long-arching-panel';
 import { calcBodyLandmarks, rowAt, calcSectionRuns, solveCrossArching, STATION_MERGE_EPS_MM, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { calcMortiseFloorY, neckHalfWidthAt, calcScrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
-import { fingerboardRadiusAt, solveStringSetup } from '../string-setup-panel/string-setup-panel';
-import { fingerboardScoopAt, PositionMarkSolve, solveScoop } from '../dev-fingerboard-panel/dev-fingerboard-panel';
+import { solveStringSetup } from '../string-setup-panel/string-setup-panel';
+import { fingerboardSurfaceZAt, PositionMarkSolve, solveScoop } from '../dev-fingerboard-panel/dev-fingerboard-panel';
 import { defineSideScrollPath } from '../pegbox-panel/pegbox-panel';
 import { buildScrollBackStrip, buildScrollBackViewStrokes, buildScrollCompassWalk, buildScrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
 import { buildBlockLayout, MOULD_EXPORT_STEP, solveMould } from '../mould-panel/mould-panel';
@@ -865,18 +865,11 @@ const MARK_RIM_SEGMENTS = 48;
 export function fingerboardStl(p: ViolinFamilyParams, gridMm = 0.5, marks: PositionMarkSolve[] = []): ArrayBuffer | null {
   let s = solvedFingerboard(p);
   if (!s) return null;
-  let ss = p.stringSetup!;
   let neckTop = s.neck.neckTop!, end = s.fingerboardEnd!;
   let length = dist(neckTop, end);
   let worldY = (d: number) => pointAtDistanceToward(neckTop, end, d).y;
   let halfAt = (d: number) => neckHalfWidthAt(p, s.neck, worldY(d));
-  let topZ = (x: number, d: number) => {
-    let y = worldY(d), half = halfAt(d);
-    let side = Math.max(-1, Math.min(1, -x / half));
-    let edge = ss.fingerboardThickness - fingerboardScoopAt(p, s, y, side);
-    let r = fingerboardRadiusAt(p, s, y);
-    return edge + Math.sqrt(Math.max(0, r * r - x * x)) - Math.sqrt(Math.max(0, r * r - half * half));
-  };
+  let topZ = (x: number, d: number) => fingerboardSurfaceZAt(p, s, -x, d);
   let onBoard = (d: number) => Math.max(0, Math.min(length, d));
   let cuts: HeightFieldCut[] = marks.flatMap(m => m.dots.map(dot => {
     let x = -dot.x, d = dist(neckTop, m.station);
