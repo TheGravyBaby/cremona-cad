@@ -1,7 +1,7 @@
 {
   "recipeName": "violin-family-recipe",
   "fileName": "Violin - Nicolo Amati - Brookings",
-  "description": "Cremona, 1654. No dimensions published; height and width are placeholders.",
+  "description": "Cremona, 1654.",
   "source": "https://www.loc.gov/item/2022560097/",
   "version": "0.9.0",
   "params": {
@@ -56,8 +56,8 @@
     },
     "plateContour": {
       "button": {
-        "width": 20,
-        "height": 10.5
+        "width": 19,
+        "height": 11
       },
       "purflingOffset": 4.5,
       "purflingChannelDepth": 1,
@@ -99,7 +99,7 @@
         "y": 140,
         "r": 5
       },
-      "URise": 4.8,
+      "URise": 4.7,
       "LRise": 6.1,
       "stem": {
         "center": {
@@ -113,17 +113,17 @@
     },
     "fHoleContours": {
       "U1R": 9,
-      "U1End": 90,
-      "U2R": 10,
+      "U1End": 60,
+      "U2R": 13,
       "U21DoubleArc": false,
       "U21R": 12,
       "U2Sweep": 33.45,
-      "U3R": 12,
-      "U3Angle": 63,
+      "U3R": 11,
+      "U3Angle": 66,
       "UCut": {
-        "angleOnEye": 75,
-        "slope": 48,
-        "length": 4.25
+        "angleOnEye": 71,
+        "slope": 54,
+        "length": 4
       },
       "L1R": 10,
       "L1End": 270,
@@ -131,14 +131,14 @@
       "L21DoubleArc": false,
       "L21R": 14,
       "L2Sweep": 31.81,
-      "L3R": 14,
+      "L3R": 13,
       "L3Angle": 105,
       "LCut": {
-        "angleOnEye": 259,
-        "slope": -112,
+        "angleOnEye": 257,
+        "slope": -109,
         "length": 4.5
       },
-      "stemArcR": 31
+      "stemArcR": 34
     },
     "arching": {
       "ribHeightLower": 31,
@@ -349,28 +349,28 @@
     "C21toLBW": 0.06965174129353234,
     "C1toLBW": 0.1044776119402985,
     "C11toLBW": 0.0945273631840796,
-    "BWtoLBW": 0.09569377990430622,
-    "BHtoBW": 0.525,
+    "BWtoLBW": 0.09090909090909091,
+    "BHtoBW": 0.5789473684210527,
     "LEyetoW": 0.023923444976076555,
     "UEyetoLEye": 0.6799999999999999,
-    "URisetoUEye": 1.411764705882353,
+    "URisetoUEye": 1.3823529411764708,
     "LRisetoLEye": 1.22,
     "StemXtoFrame": 0.4586636466591167,
-    "StemYtoFrame": 0.45967166309778706,
+    "StemYtoFrame": 0.4603288062902072,
     "StemWtoUEye": 1.6911764705882353,
     "LEyeXtoLCX": 0.645879732739421,
     "LEyeYtoLCY": 0.9481882831019302,
     "UEyeGuidetoWaist": 0.5711829829397932,
-    "EyeSpantoWaist": 1.0693100945621286,
-    "UCuttoUEye": 1.25,
+    "EyeSpantoWaist": 1.0693100945621283,
+    "UCuttoUEye": 1.1764705882352942,
     "LCuttoLEye": 0.9,
-    "StoEyeSpan": 0.4993751975423534,
-    "U1toS": 0.2903225806451613,
-    "U2toS": 0.3225806451612903,
-    "U3toS": 0.3870967741935484,
-    "L1toS": 0.3225806451612903,
-    "L2toS": 0.45161290322580644,
-    "L3toS": 0.45161290322580644
+    "StoEyeSpan": 0.5477018295625812,
+    "U1toS": 0.2647058823529412,
+    "U2toS": 0.38235294117647056,
+    "U3toS": 0.3235294117647059,
+    "L1toS": 0.29411764705882354,
+    "L2toS": 0.4117647058823529,
+    "L3toS": 0.38235294117647056
   },
   "referenceImages": [
     {
@@ -458,5 +458,38 @@
       }
     }
   ],
-  "key": "amati-violin-brookings"
+  "key": "amati-violin-brookings",
+  "toolboxState": {
+    "shapes": [],
+    "currentColor": "#1d4ed8",
+    "currentDashed": false,
+    "currentTextSize": 9.3,
+    "currentStrokeWidth": 1.5,
+    "currentOpacity": 1,
+    "currentSectionColor2": "#93c5fd",
+    "currentSectionWeights": [
+      1,
+      1,
+      1
+    ],
+    "currentTickWeights": [
+      1,
+      1,
+      1
+    ],
+    "currentCycloidFactor": 1,
+    "currentCycloidPct": 1,
+    "currentFilletRadius": 5,
+    "layers": [
+      {
+        "id": "layer-default",
+        "name": "Layer 1",
+        "locked": false
+      }
+    ],
+    "activeLayerId": "layer-default",
+    "showImages": false,
+    "showShapes": true,
+    "recipeLocked": true
+  }
 }
