@@ -345,12 +345,12 @@ export interface ScrollWidthsSolve {
   failures: ScrollWidthsFailure[];
 }
 
-export type MouldKey = 'neckBlock' | 'upperCornerBlock' | 'lowerCornerBlock' | 'endBlock' | 'clampBox';
+export type MouldKey = 'neckBlock' | 'upperCornerBlock' | 'lowerCornerBlock' | 'endBlock' | 'clampBox' | 'alignmentHoles';
 export type MouldFailure = SolveFailure<MouldKey>;
 
 // the blocks placed (the corner blocks on the right; renders mirror them), the rib outline they are
-// cut from, the mould that leaves, and the clamp box's windows. A window that can't be cut between
-// its blocks is left out and said so
+// cut from, the mould that leaves, and the clamp box's cutouts, windows or holes. One that can't be
+// cut between its blocks is left out and said so
 export interface MouldSolve {
   blocks: Record<'neck' | 'upperCorner' | 'lowerCorner' | 'end', Rectangle> | null;
   ribOutline: string | null;
@@ -359,6 +359,8 @@ export interface MouldSolve {
   notchOutline: string | null;
   reliefs: MouldRelief[];
   clampBox: string[];
+  // the bit's own size, one behind the neck block and one behind the end block
+  alignmentHoles: Circle[];
   failures: MouldFailure[];
 }
 

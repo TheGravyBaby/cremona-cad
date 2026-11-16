@@ -81,6 +81,14 @@ export function projectedPath(proj: (x: number, y: number, z: number) => [number
   return closed ? d + ' Z' : d;
 }
 
+// a slot: the round-ended cut a bit of radius r leaves running from a to b
+export function pathFromSlot(a: Pt, b: Pt, r: number): string {
+  const length = Math.hypot(b.x - a.x, b.y - a.y);
+  const nx = -(b.y - a.y) / length * r;
+  const ny = (b.x - a.x) / length * r;
+  return `M ${a.x - nx} ${a.y - ny} L ${b.x - nx} ${b.y - ny} A ${r} ${r} 0 0 1 ${b.x + nx} ${b.y + ny} L ${a.x + nx} ${a.y + ny} A ${r} ${r} 0 0 1 ${a.x - nx} ${a.y - ny} Z`;
+}
+
 export function pathFromPolygon(points: Pt[]): string {
   return pathFromPolyline(points, true);
 }

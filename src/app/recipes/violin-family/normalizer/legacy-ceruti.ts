@@ -328,8 +328,9 @@ function legacyMould(c: any): MouldParams | undefined {
     lowerCornerBlock: { width: b.CL.width, height: b.CL.height, pad: { x: b.CLPad, y: b.CLPad } },
     endBlock: { width: b.L.width, height: b.L.height },
     bitDiameter: c.bitDiameter ?? 6.35,
-    clampBox: true,
+    clampBox: 'windows',
     windowInset: 1.1 * (Math.max(b.U.height, b.L.height) + 4),
+    alignmentHoles: false,
   };
 }
 

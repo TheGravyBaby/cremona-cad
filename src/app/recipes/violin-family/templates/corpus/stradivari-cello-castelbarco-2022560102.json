@@ -247,8 +247,9 @@
         "height": 45
       },
       "bitDiameter": 6.35,
-      "clampBox": true,
-      "windowInset": 53.9
+      "clampBox": "windows",
+      "windowInset": 53.9,
+      "alignmentHoles": false
     },
     "neck": {
       "length": 296,

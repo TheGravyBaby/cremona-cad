@@ -353,16 +353,28 @@ export function mouldToolpaths(s: MouldSolve, bitDiameter: number, g: StockSetti
   if (!s.outline) return fail(out, 'The mould has to solve first.');
   if (!(bitDiameter > 0)) return fail(out, 'The bit diameter has to be above 0.');
   let r = bitDiameter / 2;
+  // a hole the bit's own size is a plunge: a loop of no length, taken down pass by pass
+  s.alignmentHoles.forEach((hole, i) => {
+    let centre = new Pt(hole.x, hole.y);
+    if (Math.abs(hole.r - r) < 1e-6) out.paths.push({ name: `Alignment hole ${i + 1}`, loop: [centre, centre], tabs: [] });
+    else fail(out, `Alignment hole ${i + 1} is drawn for another bit.`);
+  });
   s.clampBox.forEach((window, i) => {
     let d = offsetPath(window, -r);
-    if (d) out.paths.push(withTabs(`Window ${i + 1}`, climbingLoop(d, 'inside'), evenStations(tabs.window, 0), machine.tabWidth, out.failures));
-    else fail(out, `Window ${i + 1} is too narrow for the bit.`);
+    if (!d) {
+      fail(out, `Window ${i + 1} is too narrow for the bit.`);
+      return;
+    }
+    let loop = climbingLoop(d, 'inside');
+    // a clamp hole's loop is too short to hold tabs: they would be most of it, so its slug drops free
+    let tabbed = polylineCumulativeLengths(loop).at(-1)! > 3 * tabs.window * machine.tabWidth;
+    out.paths.push(withTabs(`Window ${i + 1}`, loop, tabbed ? evenStations(tabs.window, 0) : [], machine.tabWidth, out.failures));
   });
   let d = offsetPath(s.notchOutline ?? s.outline, r);
   if (!d) return fail(out, 'The outline would not offset for the bit.');
   out.paths.push(withTabs('Outline', climbingLoop(d, 'outside', ring => withDogBones(ring, s.reliefs, r)), evenStations(tabs.outline, 0.5), machine.tabWidth, out.failures));
   out.tabTop = bed + machine.tabHeight;
-  out.notes.push(`Windows then the outline, through the sheet by ${machine.overcut}; ${tabs.outline} tabs on the outline and ${tabs.window} per window, ${machine.tabHeight} high`);
+  out.notes.push(`${s.alignmentHoles.length ? 'Alignment holes, windows' : 'Windows'} then the outline, through the sheet by ${machine.overcut}; ${tabs.outline} tabs on the outline and ${tabs.window} per window long enough to hold them, ${machine.tabHeight} high`);
   let b = pathsBounds(out.paths.map(path => pathFromPolyline(path.loop)));
   centreInSheet(out, { minX: b.minX - r, maxX: b.maxX + r, minY: b.minY - r, maxY: b.maxY + r }, g);
   return out;

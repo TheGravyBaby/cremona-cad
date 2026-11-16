@@ -278,7 +278,8 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
   switch (type) {
     case 'innerContour': {
       let inner = ribOutline(p);
-      return inner ? sheet([black(inner)]) : null;
+      let holes = solveMould(p)?.alignmentHoles ?? [];
+      return inner ? sheet([black(inner), ...holes.map(hole => cutFirst(pathFromCircle(hole)))]) : null;
     }
     case 'topPlate':
     case 'backPlate': {
@@ -292,7 +293,7 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
     }
     case 'mould': {
       let m = solveMould(p, MOULD_EXPORT_STEP);
-      return m?.outline ? sheet([black(combinePathStrings([...m.clampBox, m.outline]))]) : null;
+      return m?.outline ? sheet([black(combinePathStrings([...m.clampBox, m.outline])), ...m.alignmentHoles.map(hole => cutFirst(pathFromCircle(hole)))]) : null;
     }
     case 'blocks': {
       let m = solveMould(p);
