@@ -373,16 +373,21 @@ export interface StringSetupParams {
 // where they sit follows from the outline. The neck and end blocks stand on the centreline against
 // the outline's ends; each corner block's outer corner stands `pad` off its corner tip, out past it
 // and toward the waist, so the outline clips the block to the corner's shape. The clamp box is the
-// windows a clamp reaches through to hold each block home; off, the mould is its outline alone
+// cutouts a clamp reaches through to hold each block home: windows, a frame with the window inset
+// for its wall, bumped in behind the neck and end blocks to keep that much wood there too; holes, a round hole inboard of each corner block and a slot behind the neck and end
+// blocks, each sized from its own block; or none, the mould its outline alone. The
+// alignment holes are two holes on the centre line, plunged with the bit, that the inner contour
+// carries too, so a template of it pins down over the mould
 export interface MouldParams {
   neckBlock: BlockParams;
   upperCornerBlock: CornerBlockParams;
   lowerCornerBlock: CornerBlockParams;
   endBlock: BlockParams;
   bitDiameter: number;
-  clampBox: boolean;
+  clampBox: 'windows' | 'holes' | 'none';
   // how far the clamp windows stand in from the rib outline: the mould's wall
   windowInset: number;
+  alignmentHoles: boolean;
 }
 
 export interface BlockParams {

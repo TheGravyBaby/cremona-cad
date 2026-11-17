@@ -151,6 +151,37 @@ describe('the mould toolpaths', () => {
     }
   });
 
+  it('plunge each alignment hole at its centre before any window is cut', () => {
+    const q = seeded();
+    q.mould!.alignmentHoles = true;
+    const holed = solveMould(q)!;
+    const plunged = mouldToolpaths(holed, q.mould!.bitDiameter, settings());
+    expect(plunged.failures).toEqual([]);
+    expect(holed.alignmentHoles.length).toBe(2);
+    holed.alignmentHoles.forEach((hole, i) => {
+      for (const pt of plunged.paths[i].loop) expect(Math.hypot(pt.x - hole.x, pt.y - hole.y)).toBeLessThan(1e-9);
+      expect(plunged.paths[i].tabs).toEqual([]);
+    });
+    expect(buildGcode(gcodeJob(plunged, tool, feeds))).toContain('Alignment hole 2');
+  });
+
+  it('cut the hole pattern inside each hole, tabs only on the slots long enough to hold them', () => {
+    const q = seeded();
+    q.mould!.clampBox = 'holes';
+    const holed = solveMould(q)!;
+    const cut = mouldToolpaths(holed, q.mould!.bitDiameter, settings());
+    expect(cut.failures).toEqual([]);
+    expect(cut.paths.length).toBe(holed.clampBox.length + 1);
+    holed.clampBox.forEach((hole, i) => {
+      const edge = samplePathToPolyline(hole, 0.25);
+      const path = cut.paths[i];
+      for (const pt of path.loop) expect(pointInPolygon(pt, edge), path.name).toBe(true);
+      const total = polylineCumulativeLengths(path.loop).at(-1)!;
+      expect(path.tabs.length * MACHINE.tabWidth).toBeLessThan(total / 3);
+    });
+    expect(cut.paths.some(path => path.name !== 'Outline' && path.tabs.length)).toBe(true);
+  });
+
   it('keep the tabs clear of the block notches', () => {
     const b = s.blocks!;
     const notches: Pt[][] = [b.neck, b.end, b.upperCorner, b.lowerCorner].flatMap(rect => {

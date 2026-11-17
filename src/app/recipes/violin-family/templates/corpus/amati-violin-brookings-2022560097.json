@@ -330,8 +330,9 @@
         "height": 20
       },
       "bitDiameter": 6.35,
-      "clampBox": true,
-      "windowInset": 26.4
+      "clampBox": "windows",
+      "windowInset": 26.4,
+      "alignmentHoles": false
     }
   },
   "ratios": {
