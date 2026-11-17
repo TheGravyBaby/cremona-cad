@@ -97,10 +97,10 @@ const SCOOP_GUIDE_LABEL_SIZE = 4;
 // a dot's size and its offset toward the bass on the bigger instruments, where the player looks
 // down the other side of the board
 const MARK_DEFAULTS: Record<FamilyStandards['family'], Pick<PositionMarker, 'diameter' | 'offset'>> = {
-  violin: { diameter: 2, offset: 9 },
-  viola: { diameter: 2.5, offset: 9 },
-  cello: { diameter: 3, offset: -10.5 },
-  bass: { diameter: 4, offset: -14 },
+  violin: { diameter: 2, offset: 0 },
+  viola: { diameter: 2.5, offset: 0 },
+  cello: { diameter: 3, offset: 0 },
+  bass: { diameter: 4, offset: 0 },
 };
 
 type DevFingerboardHighlightKey = 'scoopAt' | 'scoopBass' | 'scoopTreble' | 'marks';

@@ -42,13 +42,20 @@ export interface BodyParams {
 
 // widths are outer measurements; radii are of the rib outline, inside the inset. The lower bout's
 // width is the body's (`body.width`), so the two panels can't disagree about it. The center bout
-// is a bout, so C0 lives here too, seeded with the others and edited on the Center Bout panel
+// is a bout, so C0 lives here too, seeded with the others and edited on the Center Bout panel.
+// The join arcs (U2, L2) are bout arcs: the width binds all three, so they are solved here and the
+// corners only say where they end. A join height is how far above the bout's widest point the
+// vesica arc hands over to the join arc; 0 is level with it
 export interface MainBoutsParams {
   UBW: number;
   U0R: number;
   U1R: number;
+  U2R: number;
+  UJoinY: number;
   L0R: number;
   L1R: number;
+  L2R: number;
+  LJoinY: number;
   useViolNeck: boolean;
   // kept when the toggle goes off, so turning it back on returns the same neck
   viol: ViolNeckParams | null;
@@ -79,17 +86,11 @@ export interface ViolNeckParams {
 export interface CornersParams {
   UCr: Pt;
   LCr: Pt;
-  // the join arcs' centre heights, where they're let off their bout arc's; absent, level with it.
-  // Read only while the solve's height flex is on
-  U2Y?: number;
-  L2Y?: number;
-  U2R: number;
   U3R: number;
   U31R: number;
   U31Sweep: number;
   U31DoubleArc: boolean;
   useViolCornerUC: boolean;
-  L2R: number;
   L3R: number;
   L31R: number;
   L31Sweep: number;

@@ -58,7 +58,7 @@ export class BaseMeasurementsPanel extends PanelComponentBase<never, ViolinFamil
       layers.push(renderFholes(p, this.pal));
     } else {
       if (m) {
-        layers.push(renderMainBouts(p, c ? { ...m, U1: c.U1, L1: c.L1 } : m, this.pal, { showModuleArcs: false, showAllArcs: false, renderOuterPath: false }, false, null));
+        layers.push(renderMainBouts(p, c ? { ...m, U2: c.U2 ?? m.U2, L2: c.L2 ?? m.L2 } : m, this.pal, { showModuleArcs: false, showAllArcs: false, renderOuterPath: false }, false, null));
         layers.push(renderSolveFailures(m.failures, this.pal.alert, true));
       }
       if (c) {

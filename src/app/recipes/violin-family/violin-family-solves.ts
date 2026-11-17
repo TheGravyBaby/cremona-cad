@@ -18,15 +18,18 @@ export interface BodySolve {
   failures: BodyFailure[];
 }
 
-export type MainBoutKey = 'U0' | 'U1' | 'L0' | 'L1';
+export type MainBoutKey = 'U0' | 'U1' | 'U2' | 'L0' | 'L1' | 'L2';
 export type MainBoutFailure = SolveFailure<MainBoutKey>;
 
-// the right half of the rib outline; renders mirror it. A bout whose section failed is null
+// the right half of the rib outline; renders mirror it. A bout whose section failed is null. The
+// join arcs start at their join and run a short sweep on: the corners give them their real end
 export interface MainBoutsSolve {
   U0: Arc | null;
   U1: Arc | null;
+  U2: Arc | null;
   L0: Arc | null;
   L1: Arc | null;
+  L2: Arc | null;
   V0: Arc | null;
   // the neck's top face and join, at the rib line and at the plate edge
   violCap: ViolNeckCap | null;
@@ -52,10 +55,9 @@ export interface ViolNeckJoin {
 export type CornerKey = 'U2' | 'U3' | 'U31' | 'U4' | 'L2' | 'L3' | 'L31' | 'L4';
 export type CornerFailure = SolveFailure<CornerKey>;
 
-// the right-hand corners; renders mirror them. U1 and L1 are the main bouts' arcs with their ends
-// moved to where U2 and L2 take over: a render under or after this stage draws the bouts with
-// these in place of the main bouts' own. A corner whose section failed leaves its arcs null and
-// its bout arc untrimmed
+// the right-hand corners; renders mirror them. U1 and L1 are the main bouts' own arcs, and U2 and
+// L2 the main bouts' join arcs ended where the corner arc takes over. A corner whose section
+// failed leaves its arcs null
 export interface CornersSolve {
   U1: Arc | null;
   U2: Arc | null;

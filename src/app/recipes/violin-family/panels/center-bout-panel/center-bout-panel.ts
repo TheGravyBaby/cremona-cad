@@ -80,7 +80,7 @@ export class CenterBoutPanel extends PanelComponentBase<CenterBoutHighlightKey, 
 
     // the bouts and the corners in grey under this panel's C bout
     layers.push(
-      renderMainBouts(p, { ...m, U1: c.U1, L1: c.L1 }, this.pal, this.flags, false, null),
+      renderMainBouts(p, { ...m, U2: c.U2 ?? m.U2, L2: c.L2 ?? m.L2 }, this.pal, this.flags, false, null),
       renderCorners(p, c, this.pal, this.flags, false, null),
       renderCenterBout(p, cb, this.pal, this.flags, true, this.highlightedPart),
       renderSolveFailures(cb.failures, this.pal.alert, true),

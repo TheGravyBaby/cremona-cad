@@ -111,8 +111,8 @@ describe('a Cremonese corner', () => {
 
   it('still solves when the join arc is the bout arc itself', () => {
     const q = seeded();
-    q.corners!.U2R = q.bouts!.U1R;
-    q.corners!.L2R = q.bouts!.L1R;
+    q.bouts!.U2R = q.bouts!.U1R;
+    q.bouts!.L2R = q.bouts!.L1R;
     const s = solveCorners(q)!;
     expect(s.failures).toEqual([]);
     expect(dist(s.U2!, s.U1!)).toBeCloseTo(0, 9);
@@ -120,6 +120,43 @@ describe('a Cremonese corner', () => {
     expect(s.U1!.end).toBe(0);
     expect(s.L1!.end).toBe(0);
     expect(dist(end(s.U2!), start(s.U3!))).toBeCloseTo(0, 6);
+  });
+});
+
+describe('corners on a join off the widest point', () => {
+  it('ends the join arc on its corner arc, single or compound, from where the bout hands it over', () => {
+    for (const h of [-8, 8]) for (const compound of [false, true]) {
+      const p = seeded();
+      p.bouts!.UJoinY = h;
+      p.bouts!.LJoinY = h;
+      p.corners!.U31DoubleArc = compound;
+      p.corners!.L31DoubleArc = compound;
+      const s = solveCorners(p)!;
+      expect(s.failures).toEqual([]);
+      expect(dist(end(s.U1!), start(s.U2!))).toBeCloseTo(0, 9);
+      expect(dist(end(s.L1!), start(s.L2!))).toBeCloseTo(0, 9);
+      expect(dist(end(s.U2!), start(s.U3!))).toBeCloseTo(0, MEETS);
+      expect(dist(end(s.L2!), start(s.L3!))).toBeCloseTo(0, MEETS);
+    }
+  });
+
+  it('leaves a viol corner the way the bout was heading at the join', () => {
+    for (const h of [-8, 0, 8]) {
+      const p = seeded();
+      p.bouts!.UJoinY = h;
+      p.bouts!.LJoinY = h;
+      p.corners!.useViolCornerUC = true;
+      p.corners!.useViolCornerLC = true;
+      const s = solveCorners(p)!;
+      expect(s.failures).toEqual([]);
+      for (const [bout, corner, tip] of [[s.U1!, s.U4!, p.corners!.UCr], [s.L1!, s.L4!, p.corners!.LCr]] as const) {
+        // the two centres and the join in one line: the arcs share a tangent there
+        const J = end(bout);
+        expect(((corner.x - J.x) * (bout.y - J.y) - (corner.y - J.y) * (bout.x - J.x)) / (corner.r * bout.r)).toBeCloseTo(0, 9);
+        expect(dist(corner, J)).toBeCloseTo(corner.r, 6);
+        expect(dist(corner, tip)).toBeCloseTo(corner.r, 6);
+      }
+    }
   });
 });
 
@@ -351,11 +388,9 @@ describe('ratios', () => {
     const p = seeded();
     const r = calcCornersRatios(p);
     const inset = p.body.overhang + p.body.rib;
-    const UBWI = p.bouts!.UBW - 2 * inset;
     const LBWI = p.body.width - 2 * inset;
 
-    expect(Math.abs(r.U2toUBW! - SEED_RATIOS.U2toUBW)).toBeLessThanOrEqual(0.5 / UBWI + 1e-12);
-    for (const key of ['U3toLBW', 'U31toLBW', 'L2toLBW', 'L3toLBW', 'L31toLBW'] as const) {
+    for (const key of ['U3toLBW', 'U31toLBW', 'L3toLBW', 'L31toLBW'] as const) {
       expect(Math.abs(r[key]! - SEED_RATIOS[key]), key).toBeLessThanOrEqual(0.5 / LBWI + 1e-12);
     }
     expect(Math.abs(r.UCYtoH! - SEED_RATIOS.UCYtoH)).toBeLessThanOrEqual(0.05 / p.body.height + 1e-12);
@@ -374,7 +409,6 @@ describe('ratios', () => {
     const r = calcCornersRatios(p);
     const c = solveCorners(p)!;
     const inset = p.body.overhang + p.body.rib;
-    expect(r.U2toUBW).toBeCloseTo(c.U2!.r / (p.bouts!.UBW - 2 * inset), 12);
     expect(r.L3toLBW).toBeCloseTo(c.L3!.r / (p.body.width - 2 * inset), 12);
     expect(r.UCYtoH).toBeCloseTo(end(c.U3!).y / p.body.height, 6);
   });

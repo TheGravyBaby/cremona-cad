@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections } from '../../../../helpers/math/draftMath';
 import { angleFromCenter, flipArcAboutY, lineCircleIntersection, offsetArcRadius, pointOnCircle, spanArcAboutY, TURN } from '../../../../helpers/math/simpleGeometry';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderMirroredArc, renderMirroredArcFancy, renderRect, renderSegment, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { buildBlankMiss, reportFailures, solveSection } from '../../../../helpers/validators';
+import { buildBlankMiss, buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { violNeckJoinExceeded } from '../../../../docs/conditions';
 import { Arc, arcFromCircle, Pt, Rectangle } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
@@ -16,9 +16,11 @@ import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
 import { renderCornerCircles, renderCorners, solveCorners } from '../corners-panel/corners-panel';
 import { renderCenterBout, renderCenterBoutCircles, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 
-// The main bouts: the upper and lower bouts' two arcs each, set by their widths and radii, and the
-// viol neck that can take the place of the upper bout's top. Panel and renders, then solve and ratios.
-type MainBoutArcKey = 'U0' | 'U1' | 'L0' | 'L1' | 'V0';
+// The main bouts: the upper and lower bouts' three arcs each, set by their widths and radii, and the
+// viol neck that can take the place of the upper bout's top. The third arc of each, the join arc,
+// is drawn here for a short sweep; the corners end it. Panel and renders, then solve and ratios.
+const JOIN_STUB_SWEEP = 25 * TURN.degree;
+type MainBoutArcKey = 'U0' | 'U1' | 'U2' | 'L0' | 'L1' | 'L2' | 'V0';
 
 @Component({
   selector: 'app-vf-main-bouts-panel',
@@ -46,6 +48,8 @@ export class MainBoutsPanel extends PanelComponentBase<MainBoutArcKey, ViolinFam
       let U1R = Math.round(UBWI * SEED_RATIOS.U1toUBW * 10) / 10;
       let L0R = Math.round(LBWI * SEED_RATIOS.L0toLBW * 10) / 10;
       let L1R = Math.round(LBWI * SEED_RATIOS.L1toLBW * 10) / 10;
+      let U2R = Math.round(UBWI * SEED_RATIOS.U2toUBW);
+      let L2R = Math.round(LBWI * SEED_RATIOS.L2toLBW);
 
       let CBW = Math.round(LBW * SEED_RATIOS.CBWtoLBW);
       let C0R = Math.round(LBWI * SEED_RATIOS.C0toLBW);
@@ -55,7 +59,7 @@ export class MainBoutsPanel extends PanelComponentBase<MainBoutArcKey, ViolinFam
       let lowerBoutHigh = p.body.width
       let C0Y = lowerBoutHigh + (upperBoutLow - lowerBoutHigh) / 2 
       
-      p.bouts = { UBW, U0R, U1R, L0R, L1R, useViolNeck: false, viol: null, CBW, C0R, C0Y, useKellyC0: false };
+      p.bouts = { UBW, U0R, U1R, U2R, UJoinY: 0, L0R, L1R, L2R, LJoinY: 0, useViolNeck: false, viol: null, CBW, C0R, C0Y, useKellyC0: false };
     }
 
     if (p.bouts.useViolNeck && !p.bouts.viol) {
@@ -85,8 +89,10 @@ export class MainBoutsPanel extends PanelComponentBase<MainBoutArcKey, ViolinFam
     let b = p.bouts!;
     let m = this.m = solveMainBouts(p)!;
     this.ratios = calcMainBoutsRatios(p);
-    let arc = this.highlightedPart ? m[this.highlightedPart.key] : null;
     let c = solveCorners(p);
+    // the join arcs end on their corner once there is one
+    let joins = { U2: c?.U2 ?? m.U2, L2: c?.L2 ?? m.L2 };
+    let arc = this.highlightedPart ? { ...m, ...joins }[this.highlightedPart.key] : null;
     let cb = solveCenterBout(p);
     let layers: RenderLayer[] = [];
 
@@ -99,7 +105,7 @@ export class MainBoutsPanel extends PanelComponentBase<MainBoutArcKey, ViolinFam
     if (c) layers.push(renderCorners(p, c, this.pal, this.flags, false, null));
     if (cb) layers.push(renderCenterBout(p, cb, this.pal, this.flags, false, null));
     layers.push(
-      renderMainBouts(p, m, this.pal, this.flags, true, arc ? { arc, color: this.highlightedPart!.color } : null),
+      renderMainBouts(p, { ...m, ...joins }, this.pal, this.flags, true, arc ? { arc, color: this.highlightedPart!.color } : null),
       renderSolveFailures(m.failures, this.pal.alert, true),
     );
     return layers;
@@ -135,10 +141,12 @@ export const renderMainBoutCircles = (m: MainBoutsSolve, pal: PanelPalette) => (
     // U0 only leaves the centreline to follow a viol neck
     renderCircle(m.U0, pal.ink(1), !!m.V0)(g, ui);
     renderCircle(m.U1, pal.ink(1).faint(-2), true)(g, ui);
+    if (m.U2) renderCircle(m.U2, pal.ink(1).faint(-2), true)(g, ui);
   }
   if (m.L0 && m.L1) {
     renderCircle(m.L0, pal.ink(0))(g, ui);
     renderCircle(m.L1, pal.ink(0).faint(-2), true)(g, ui);
+    if (m.L2) renderCircle(m.L2, pal.ink(0).faint(-2), true)(g, ui);
   }
 };
 
@@ -161,6 +169,9 @@ export const renderMainBouts = (
 ) => (g: any, ui: any): void => {
   let inset = p.body.overhang + p.body.rib;
   let viol = p.bouts!.useViolNeck && !!m.V0;
+  // a viol corner takes the bout to its tip in one arc, with no join arc
+  let U2 = p.corners?.useViolCornerUC ? null : m.U2;
+  let L2 = p.corners?.useViolCornerLC ? null : m.L2;
   let moduleArcs = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
 
   if (highlighted) {
@@ -180,10 +191,12 @@ export const renderMainBouts = (
       if (viol) renderMirroredArcFancy(m.U0, pal.ink(1))(g, ui);
       else renderArcFromArcFancy(spanArcAboutY(m.U0), pal.ink(1))(g, ui);
       renderMirroredArcFancy(m.U1, pal.ink(1).faint(-2))(g, ui);
+      if (U2) renderMirroredArcFancy(U2, pal.ink(1).faint(-2))(g, ui);
     }
     if (m.L0 && m.L1) {
       renderArcFromArcFancy(spanArcAboutY(m.L0), pal.ink(0))(g, ui);
       renderMirroredArcFancy(m.L1, pal.ink(0).faint(-2))(g, ui);
+      if (L2) renderMirroredArcFancy(L2, pal.ink(0).faint(-2))(g, ui);
     }
   }
 
@@ -208,10 +221,12 @@ export const renderMainBouts = (
       if (viol) renderMirroredArc(offsetArcRadius(m.U0, d), top, STROKE_WEIGHT.trace)(g, ui);
       else renderArcFromArc(offsetArcRadius(spanArcAboutY(m.U0), d), top, STROKE_WEIGHT.trace)(g, ui);
       renderMirroredArc(offsetArcRadius(m.U1, d), topSide, STROKE_WEIGHT.trace)(g, ui);
+      if (U2) renderMirroredArc(offsetArcRadius(U2, d), topSide, STROKE_WEIGHT.trace)(g, ui);
     }
     if (m.L0 && m.L1) {
       renderArcFromArc(offsetArcRadius(spanArcAboutY(m.L0), d), bottom, STROKE_WEIGHT.trace)(g, ui);
       renderMirroredArc(offsetArcRadius(m.L1, d), bottomSide, STROKE_WEIGHT.trace)(g, ui);
+      if (L2) renderMirroredArc(offsetArcRadius(L2, d), bottomSide, STROKE_WEIGHT.trace)(g, ui);
     }
   }
 };
@@ -226,7 +241,7 @@ export function solveMainBouts(p: ViolinFamilyParams): MainBoutsSolve | null {
   let LBWI = LBW - 2 * inset;
 
   let s: MainBoutsSolve = {
-    U0: null, U1: null, L0: null, L1: null,
+    U0: null, U1: null, U2: null, L0: null, L1: null, L2: null,
     V0: null, violCap: null, violOuterCap: null, violJoin: null,
     failures: [],
   };
@@ -254,13 +269,15 @@ export function solveMainBouts(p: ViolinFamilyParams): MainBoutsSolve | null {
     };
   };
 
-  solveSection(s.failures, 'Lower bout', ['L0', 'L1'], () => {
-    let missing = buildBlankMiss('Lower bout', ['L0', 'L1'], [inset, LBW, b.L0R, b.L1R]);
+  solveSection(s.failures, 'Lower bout', ['L0', 'L1', 'L2'], () => {
+    let missing = buildBlankMiss('Lower bout', ['L0', 'L1', 'L2'], [inset, LBW, b.L0R, b.L1R, b.L2R, b.LJoinY]);
     if (missing) return missing;
+    let join = calcBoutJoin(LBWI / 2, b.L1R, b.L2R, b.LJoinY, b.LJoinY >= 0);
+    if (!join) return buildMiss(`L1/L2: the join can't sit ${Math.abs(b.LJoinY).toFixed(1)}mm off the lower bout's widest point. Bring it closer.`, ['L0', 'L1', 'L2']);
     let L0 = new Arc(0, inset + b.L0R, b.L0R);
-    // we know the second circle intersects the outer edge where theta = 0
+    // with the join level, the second circle meets the outer edge where theta = 0
     // thus its x position MUST be R away from the edge
-    let L1 = new Arc(LBW / 2 - b.L1R - inset, b.L1R, b.L1R);
+    let L1 = new Arc(join.x, b.L1R, b.L1R);
     // therefore we have a vertical line where the circle could be
     // in order to cleanly intersect L0 we know the center of L1 must be along a circle
     // which is defined by being L1.r inset from L0
@@ -277,15 +294,23 @@ export function solveMainBouts(p: ViolinFamilyParams): MainBoutsSolve | null {
     let L0Angle = angleFromCenter(L0, lowerIntersect[0]);
     let L1Angle = angleFromCenter(L1, lowerIntersect[0]);
 
+    // L2 touches L1 at the join, so its centre lies on the join's ray; it runs a short way on,
+    // enough to show its turn before a corner ends it
+    let L2 = new Arc(L1.x + (L1.r - b.L2R) * Math.cos(join.angle), L1.y + (L1.r - b.L2R) * Math.sin(join.angle), b.L2R);
+
     s.L0 = arcFromCircle(L0, 3 * TURN.quarter, L0Angle);
-    s.L1 = arcFromCircle(L1, L1Angle, 0);
+    s.L1 = arcFromCircle(L1, L1Angle, join.angle);
+    s.L2 = arcFromCircle(L2, join.angle, join.angle + JOIN_STUB_SWEEP);
     return null;
   });
 
-  solveSection(s.failures, 'Upper bout', ['U0', 'U1'], () => {
+  solveSection(s.failures, 'Upper bout', ['U0', 'U1', 'U2'], () => {
     let viol = b.useViolNeck && b.viol ? [b.viol.width, b.viol.neckRadius, b.viol.V0R, b.viol.joinTurn, b.viol.V0Sweep] : [];
-    let missing = buildBlankMiss('Upper bout', ['U0', 'U1'], [inset, p.body.height, b.UBW, b.U0R, b.U1R, ...viol]);
+    let missing = buildBlankMiss('Upper bout', ['U0', 'U1', 'U2'], [inset, p.body.height, b.UBW, b.U0R, b.U1R, b.U2R, b.UJoinY, ...viol]);
     if (missing) return missing;
+    let join = calcBoutJoin(UBWI / 2, b.U1R, b.U2R, b.UJoinY, b.UJoinY <= 0);
+    if (!join) return buildMiss(`U1/U2: the join can't sit ${Math.abs(b.UJoinY).toFixed(1)}mm off the upper bout's widest point. Bring it closer.`, ['U0', 'U1', 'U2']);
+    let U1: Arc;
     if (b.useViolNeck && b.viol) {
       let v = b.viol;
       // the flat top face runs out to width/2, then a join of neckRadius turns the corner into
@@ -312,7 +337,7 @@ export function solveMainBouts(p: ViolinFamilyParams): MainBoutsSolve | null {
       let U0XDiff = Math.cos(U0start) * b.U0R;
       let U0 = new Arc(V0End.x - U0XDiff, V0End.y - U0YDiff, b.U0R, U0start);
 
-      let U1x = b.UBW / 2 - b.U1R - inset;
+      let U1x = join.x;
       let U1Ys = lineCircleIntersection(
         { m: Infinity, y: NaN, x: U1x },
         { x: U0.x, y: U0.y, r: Math.abs(U0.r - b.U1R) },
@@ -320,20 +345,19 @@ export function solveMainBouts(p: ViolinFamilyParams): MainBoutsSolve | null {
       if (!U1Ys.length)
         return boutMiss('U0', 'U1', 'upper bout', U0, new Arc(U1x, 0, b.U1R), UBWI / 2, p.body.height - b.UBW, p.body.height);
 
-      let U1 = new Arc(U1x, U1Ys[0].y, b.U1R);
+      U1 = new Arc(U1x, U1Ys[0].y, b.U1R);
       let U1U0Int = circleCircleIntersections(U1, U0)[0];
       let U1start = angleFromCenter(U1, U1U0Int);
       let U0End = angleFromCenter(U0, U1U0Int);
       U0.end = U0End;
       U1.start = U1start;
-      U1.end = 0;
+      U1.end = join.angle;
 
       s.U0 = U0;
-      s.U1 = U1;
     }
     else {
       let U0 = new Arc(0, p.body.height - inset - b.U0R, b.U0R);
-      let U1 = new Arc(b.UBW / 2 - b.U1R - inset, 0, b.U1R);
+      U1 = new Arc(join.x, 0, b.U1R);
       let U1Ys = lineCircleIntersection(
         { m: Infinity, y: NaN, x: U1.x },
         { x: U0.x, y: U0.y, r: Math.abs(U0.r - U1.r) },
@@ -347,12 +371,28 @@ export function solveMainBouts(p: ViolinFamilyParams): MainBoutsSolve | null {
       let U1Angle = angleFromCenter(U1, upperIntersect[0]);
 
       s.U0 = arcFromCircle(U0, TURN.quarter, U0Angle);
-      s.U1 = arcFromCircle(U1, U1Angle, 0);
+      U1 = arcFromCircle(U1, U1Angle, join.angle);
     }
+    let U2 = new Arc(U1.x + (U1.r - b.U2R) * Math.cos(join.angle), U1.y + (U1.r - b.U2R) * Math.sin(join.angle), b.U2R);
+
+    s.U1 = U1;
+    s.U2 = arcFromCircle(U2, join.angle, join.angle - JOIN_STUB_SWEEP);
     return null;
   });
 
   return s;
+}
+
+// where a bout's vesica arc (r1) hands over to its join arc (r2), joinY above the bout's widest
+// point: the join's angle on both arcs, and the vesica arc's centre x. Whichever of the two arcs
+// crosses the widest point is the one stood on the width line at edgeX, so the width holds
+// wherever the join goes; the other is fitted to it. Level, both stand there. Null where the join
+// is further off than that arc reaches
+export function calcBoutJoin(edgeX: number, r1: number, r2: number, joinY: number, vesicaCarries: boolean): { angle: number; x: number } | null {
+  let carrier = vesicaCarries ? r1 : r2;
+  if (Math.abs(joinY) >= carrier) return null;
+  let angle = Math.asin(joinY / carrier);
+  return { angle, x: edgeX - carrier + (carrier - r1) * Math.cos(angle) };
 }
 
 /**
@@ -374,7 +414,9 @@ export function calcViolNeckJoinLimit(p: ViolinFamilyParams): ViolNeckJoin | nul
   let end = start + v.V0Sweep * TURN.degree;
 
   let reach = v.width / 2 - (v.V0R + v.neckRadius) * Math.cos(start) + v.V0R * Math.cos(end);
-  let limit = b.UBW / 2 - inset - b.U1R * (1 + Math.cos(end));
+  let join = calcBoutJoin(b.UBW / 2 - inset, b.U1R, b.U2R, b.UJoinY, b.UJoinY <= 0);
+  if (!join) return null;
+  let limit = join.x - b.U1R * Math.cos(end);
 
   return { reach, limit, headroom: limit - reach };
 }
@@ -423,5 +465,7 @@ export function calcMainBoutsRatios(p: ViolinFamilyParams): Partial<ViolinFamily
     LBtoH: LBW / p.body.height,
     L0toLBW: b.L0R / LBWI,
     L1toLBW: b.L1R / LBWI,
+    U2toUBW: b.U2R / UBWI,
+    L2toLBW: b.L2R / LBWI,
   };
 }

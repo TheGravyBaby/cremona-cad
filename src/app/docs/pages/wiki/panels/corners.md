@@ -5,7 +5,7 @@ kind: panel
 panel: corners
 image: wiki/corners.svg
 ---
-This panel defines the positions of the corners as well as the arcs that join them to the upper and lower bouts.
+This panel defines the positions of the corners and the arcs that run into them. The join arcs that carry each bout toward its corner, U2 and L2, are set on the main bouts panel; here they are given their end.
 
 The corner position is set using an XY point. This represents the "inner" corner of the rib line. When tracing an instrument, this means it will be inside the plate rather than on its edge. Two arcs are then drawn to shape the corner and the bout. 
 
@@ -27,12 +27,6 @@ The Default button places the corner point using a rule of thumb from David Bear
 Many viols and double basses do not feature small arcs which flare out their corners. Rather, they simply smoothly join the bout to a corner point using a single arc. You may toggle this simple geometry on and off.
 
 ## Fields
-**Upper Bout**
-
-| Field | Description |
-|---|---|
-| U2 Join Radius | The arc that leaves the upper bout and turns in toward the corner. |
-
 **Upper Corner**
 
 | Field | Description |
@@ -56,9 +50,3 @@ Many viols and double basses do not feature small arcs which flare out their cor
 | L31 Radius | The second, smaller arc of a compound corner, which finishes at the tip. |
 | L31 Sweep | How far L31 turns, in degrees, from where it takes over to the tip. |
 | Use Viol Corner | Draws a single arc from the bout straight to the corner tip, replacing L2 and L3. |
-
-**Lower Bout**
-
-| Field | Description |
-|---|---|
-| L2 Join Radius | The arc that leaves the lower bout and turns in toward the corner. |

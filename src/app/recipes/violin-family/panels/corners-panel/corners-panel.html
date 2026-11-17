@@ -1,24 +1,6 @@
 @let k = params.corners!;
 
 <section class="ui-group">
-    <div class="ui-group-title">Upper Bout</div>
-    <div class="input-group basic-row field-row" role="group"
-        [style.opacity]="k.useViolCornerUC ? 0.5 : 1" [style.pointerEvents]="k.useViolCornerUC ? 'none' : 'auto'">
-        <label class="field-cell">
-            <span class="field-title">U2 Join Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U2R" (input)="recordEditAndRedraw()"
-                [style.borderColor]="pal.ink(1).faint(-2)"
-                (focus)="highlightPart('U2', pal.ink(1).faint(-2))" (blur)="clearHighlight()" />
-        </label>
-        <label class="field-cell"></label>
-        <label class="field-cell">
-            <span class="field-title">U2 to UBW</span>
-            <div class="basic-display" aria-label="U2 to upper bout width ratio value">{{ formatRatio('U2toUBW') }}</div>
-        </label>
-    </div>
-</section>
-
-<section class="ui-group">
     <div class="ui-group-title">Upper Corner</div>
     <div class="input-group basic-row field-row" role="group">
         <div class="field-cell field-cell--xy">
@@ -173,23 +155,5 @@
             <button type="button" class="info-icon" (click)="showFieldHelp('violCorner')" title="More information"
                 aria-label="Information">ⓘ</button>
         </div>
-    </div>
-</section>
-
-<section class="ui-group">
-    <div class="ui-group-title">Lower Bout</div>
-    <div class="input-group basic-row field-row" role="group"
-        [style.opacity]="k.useViolCornerLC ? 0.5 : 1" [style.pointerEvents]="k.useViolCornerLC ? 'none' : 'auto'">
-        <label class="field-cell">
-            <span class="field-title">L2 Join Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L2R" (input)="recordEditAndRedraw()"
-                [style.borderColor]="pal.ink(0).faint(-2)"
-                (focus)="highlightPart('L2', pal.ink(0).faint(-2))" (blur)="clearHighlight()" />
-        </label>
-        <label class="field-cell"></label>
-        <label class="field-cell">
-            <span class="field-title">L2 to LBW</span>
-            <div class="basic-display" aria-label="L2 to lower bout width ratio value">{{ formatRatio('L2toLBW') }}</div>
-        </label>
     </div>
 </section>
