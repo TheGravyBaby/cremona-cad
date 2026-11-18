@@ -139,7 +139,7 @@ export const FIELD_HELP = {
   cornerGouge: {
     title: "Gouge Corners",
     text:
-      "Left on as a default. When carving the fluting channel, usually the corners are bypassed on the first pass. The area around the corners is later smoothly joined to the fluting channel.\n\n" + 
+      "Left off as a default. When carving the fluting channel, usually the corners are bypassed on the first pass. The area around the corners is later smoothly joined to the fluting channel.\n\n" + 
       "CremonaCad supports STL exports of the top and back plates. If this toggle is on, a smooth join (as smooth as possible :P) will be made between the corner edge and the fluting channel. This can be useful for CNC making.",
   },
   notches: {
