@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompoundBySweep } from '../../../../helpers/math/draftMath';
 import { angleFromCenter, dist, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromPointAndSlope, offsetArcRadius, pointOnCircle, signedArcSweep, TURN } from '../../../../helpers/math/simpleGeometry';
-import { renderArcHalo, renderCircle, renderCrosshair, renderMirroredArc, renderMirroredArcFancy, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
+import { renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderMirroredArc, renderMirroredArcFancy, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
 import { buildBlankMiss, reportFailures, SolveFailure, solveSection } from '../../../../helpers/validators';
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
@@ -10,14 +10,16 @@ import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
-import { CornerFailure, CornerKey, CornersSolve, MainBoutsSolve } from '../../violin-family-solves';
+import { CenterBoutKey, CenterBoutSolve, CornerFailure, CornerKey, CornersSolve, MainBoutsSolve } from '../../violin-family-solves';
 import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
 import { renderBoutBounds, renderMainBoutCircles, renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
-import { renderCenterBout, renderCenterBoutCircles, solveCenterBout } from '../center-bout-panel/center-bout-panel';
+import { calcCenterBoutRatios, isCenterBoutKey, renderCenterBout, renderCenterBoutCircles, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 
 // The corners: each bout's join arc (U2, L2, the main bouts' own) is ended by a corner arc (U3, L3)
 // that runs onto the typed corner tip, or through a compound pair (U3 then U31) where one arc can't make the
-// turn, or in one sweep (U4, L4) for a viol. Panel and renders, then solve and ratios.
+// turn, or in one sweep (U4, L4) for a viol. The panel also carries the center bout's fields, since
+// its arcs leave the same tips; that stage's renders and solve stay in center-bout-panel. Panel and
+// renders, then solve and ratios.
 type CornerHighlightKey = CornerKey | 'UCr' | 'LCr';
 
 @Component({
@@ -26,7 +28,7 @@ type CornerHighlightKey = CornerKey | 'UCr' | 'LCr';
   templateUrl: './corners-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class CornersPanel extends PanelComponentBase<CornerHighlightKey, ViolinFamilyRatios> {
+export class CornersPanel extends PanelComponentBase<CornerHighlightKey | CenterBoutKey, ViolinFamilyRatios> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleCircles', 'showAllCircles', 'showModuleGuides', 'renderOuterPath'];
   protected readonly pal = ThemeService.getPalette('classicCremona');
 
@@ -67,6 +69,18 @@ export class CornersPanel extends PanelComponentBase<CornerHighlightKey, ViolinF
   // what the last draw solved; the template and reportSolveFailures() read these rather than solving again
   m!: MainBoutsSolve;
   c!: CornersSolve;
+  cb!: CenterBoutSolve;
+
+  // turning the fit off keeps the width and height it found, so the hand fields carry on from
+  // the fitted shape rather than jumping back to what was typed before it
+  fitChanged(): void {
+    let b = this.params.bouts!;
+    if (!b.useKellyC0 && this.cb.C0 && this.cb.CBW != null) {
+      b.CBW = Math.round(this.cb.CBW * 10) / 10;
+      b.C0Y = Math.round(this.cb.C0.y * 10) / 10;
+    }
+    this.recordEditAndRedraw();
+  }
 
   // the tip goes back onto its guide circle; the arcs keep their radii
   defaultCorner(corner: 'upper' | 'lower'): void {
@@ -79,29 +93,36 @@ export class CornersPanel extends PanelComponentBase<CornerHighlightKey, ViolinF
 
   reportSolveFailures(): void {
     reportFailures(this.c.failures, 'Corners');
+    reportFailures(this.cb.failures, 'Center Bout');
   }
 
   protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
     let m = this.m = solveMainBouts(p)!;
     let c = this.c = solveCorners(p)!;
-    let cb = solveCenterBout(p);
-    this.ratios = calcCornersRatios(p);
+    let cb = this.cb = solveCenterBout(p)!;
+    this.ratios = { ...calcCornersRatios(p), ...calcCenterBoutRatios(p) };
+    let h = this.highlightedPart;
+    let cornerPart = h && !isCenterBoutKey(h.key) ? { key: h.key, color: h.color } : null;
+    let boutPart = h && isCenterBoutKey(h.key) ? { key: h.key, color: h.color } : null;
     let layers: RenderLayer[] = [];
 
-    if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, this.pal));
-    if (this.flags.showModuleCircles || this.flags.showAllCircles) layers.push(renderCornerCircles(p, c, this.pal));
+    if (this.flags.showModuleGuides) {
+      let hw = p.body.width / 2;
+      layers.push(renderBoutBounds(p, this.pal));
+      // the height C0 is placed at, or was fitted to
+      if (cb.C0) layers.push(renderDashedLine(new Pt(-hw, cb.C0.y), new Pt(hw, cb.C0.y), this.pal.ink(3)));
+    }
+    if (this.flags.showModuleCircles || this.flags.showAllCircles) layers.push(renderCornerCircles(p, c, this.pal), renderCenterBoutCircles(p, cb, this.pal));
     if (this.flags.showAllCircles) layers.push(renderMainBoutCircles(m, this.pal));
-    if (this.flags.showAllCircles && cb) layers.push(renderCenterBoutCircles(p, cb, this.pal));
-    // the bouts and the center bout in grey under this panel's corners
+    // the bouts in grey under this panel's corners and C bout
     layers.push(
       renderMainBouts(p, { ...m, U2: c.U2 ?? m.U2, L2: c.L2 ?? m.L2 }, this.pal, this.flags, false, null),
       renderSolveFailures(m.failures, this.pal.alert, true),
-    );
-    if (cb) layers.push(renderCenterBout(p, cb, this.pal, this.flags, false, null));
-    layers.push(
-      renderCorners(p, c, this.pal, this.flags, true, this.highlightedPart),
+      renderCorners(p, c, this.pal, this.flags, true, cornerPart),
+      renderCenterBout(p, cb, this.pal, this.flags, true, boutPart),
       renderSolveFailures(c.failures, this.pal.alert, true),
+      renderSolveFailures(cb.failures, this.pal.alert, true),
     );
     return layers;
   }

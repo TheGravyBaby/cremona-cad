@@ -15,7 +15,7 @@ import {
 import { BaseMeasurementsPanel, calcBodyRatios } from './panels/base-measurements-panel/base-measurements-panel';
 import { MainBoutsPanel, solveMainBouts, calcMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel, calcCornersRatios } from './panels/corners-panel/corners-panel';
-import { CenterBoutPanel, solveCenterBout, calcCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
+import { solveCenterBout, calcCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
 import { PlateContourPanel, solvePlateContour, calcPlateContourRatios } from './panels/plate-contour-panel/plate-contour-panel';
 import { FlutingPanel, solveFluting } from './panels/fluting-panel/fluting-panel';
 import { FHolePlacementPanel, calcFholePlacementRatios } from './panels/fhole-placement-panel/fhole-placement-panel';
@@ -46,7 +46,7 @@ import { IconDirective } from '../../icons/icon.directive';
 
 @Component({
   selector: 'app-violin-family',
-  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, PlateContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, PegboxPanel, ScrollWidthsPanel, StringSetupPanel, MouldPanel, ExportPanel, DevFingerboardPanel, DevGraduationPanel, DevBassBarPanel, DevExportPanel, IconDirective],
+  imports: [FormsModule, RecipeToolbarComponent, BaseMeasurementsPanel, MainBoutsPanel, CornersPanel, PlateContourPanel, FlutingPanel, FHolePlacementPanel, FHoleContoursPanel, LongArchingPanel, CrossArchingPanel, NeckPanel, VolutePanel, PegboxPanel, ScrollWidthsPanel, StringSetupPanel, MouldPanel, ExportPanel, DevFingerboardPanel, DevGraduationPanel, DevBassBarPanel, DevExportPanel, IconDirective],
   templateUrl: './violin-family.html',
   styleUrls: ['../../sidebar.css', './violin-family.css'],
 })
@@ -55,9 +55,8 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
   protected readonly panelOrder: readonly PanelEntry[] = [
     { id: 'base', label: 'Base Measurements', toggles: BaseMeasurementsPanel.renderToggles },
     { id: 'mainBouts', label: 'Main Bouts', toggles: MainBoutsPanel.renderToggles, seed: MainBoutsPanel.seed },
-    { id: 'corners', label: 'Corners', toggles: CornersPanel.renderToggles, seed: CornersPanel.seed },
-    // no seed: its numbers are seeded with the bouts and the corners
-    { id: 'centerBout', label: 'Center Bout', toggles: CenterBoutPanel.renderToggles },
+    // the center bout is drafted here too: its arcs leave the same tips
+    { id: 'corners', label: 'Corners & Center Bout', toggles: CornersPanel.renderToggles, seed: CornersPanel.seed },
     { id: 'mould', label: 'Mould', toggles: MouldPanel.renderToggles, seed: MouldPanel.seed },
 
     { id: 'plateContour', label: 'Plate Contour', toggles: PlateContourPanel.renderToggles, seed: PlateContourPanel.seed },
@@ -184,7 +183,6 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
         let m = solveMainBouts(p);
         return !!(m?.U0 && m.U1 && m.L0 && m.L1);
       }
-      case 'centerBout': return !!p.corners;
       case 'plateContour':
       case 'mould':
       case 'export': {

@@ -33,7 +33,7 @@
         </div>
         <div class="input-group basic-row field-row" role="group">
             <label class='field-cell'>
-                <span class="field-title">U1 - vesica Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">U1 - Vesica Radius <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.U1R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(1).faint(-2)"
                     (focus)="highlightPart('U1', pal.ink(1).faint(-2))" (blur)="clearHighlight()" />
@@ -47,16 +47,17 @@
         <div class="input-group basic-row field-row" role="group"
             [style.opacity]="params.corners?.useViolCornerUC ? 0.5 : 1" [style.pointerEvents]="params.corners?.useViolCornerUC ? 'none' : 'auto'">
             <label class='field-cell'>
-                <span class="field-title">U2 - Join Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">U2 Radius <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.U2R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(1).faint(-2)"
                     (focus)="highlightPart('U2', pal.ink(1).faint(-2))" (blur)="clearHighlight()" />
             </label>
-            <label class='field-cell'>
+            <!-- <label class='field-cell'>
                 <span class="field-title">Join Height <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" [(ngModel)]="bouts.UJoinY" (input)="recordEditAndRedraw()"
                     (focus)="highlightPart('U2', pal.ink(1).faint(-2))" (blur)="clearHighlight()" />
-            </label>
+            </label> -->
+             <label class="field-cell"></label>
             <label class='field-cell'>
                 <span class="field-title">U2 to UBW</span>
                 <div class="basic-display" aria-label="U2 to upper bout width ratio value">{{ formatRatio('U2toUBW') }}</div>
@@ -141,7 +142,7 @@
         </div>
         <div class="input-group basic-row field-row" role="group">
             <label class='field-cell'>
-                <span class="field-title">L1 - vesica Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">L1 - Vesica Radius <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.L1R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(0).faint(-2)"
                     (focus)="highlightPart('L1', pal.ink(0).faint(-2))" (blur)="clearHighlight()" />
@@ -155,15 +156,16 @@
         <div class="input-group basic-row field-row" role="group"
             [style.opacity]="params.corners?.useViolCornerLC ? 0.5 : 1" [style.pointerEvents]="params.corners?.useViolCornerLC ? 'none' : 'auto'">
             <label class='field-cell'>
-                <span class="field-title">L2 - Join Radius; Height<span class="unit-label">mm</span></span>
+                <span class="field-title">L2 Radius<span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.L2R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(0).faint(-2)"
                     (focus)="highlightPart('L2', pal.ink(0).faint(-2))" (blur)="clearHighlight()" />
             </label>
-            <label class='field-cell'>
+            <!-- <label class='field-cell'>
                 <input type="number" class="basic-input" step="1" [(ngModel)]="bouts.LJoinY" (input)="recordEditAndRedraw()"
                     (focus)="highlightPart('L2', pal.ink(0).faint(-2))" (blur)="clearHighlight()" />
-            </label>
+            </label> -->
+            <label class="field-cell"></label>
             <label class='field-cell'>
                 <span class="field-title">L2 to LBW</span>
                 <div class="basic-display" aria-label="L2 to lower bout width ratio value">{{ formatRatio('L2toLBW') }}</div>

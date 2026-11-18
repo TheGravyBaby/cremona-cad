@@ -24,7 +24,6 @@ import wikiCanvasLayers from './wiki/cremonaCad/layers.md';
 import wikiCanvasTools from './wiki/cremonaCad/tools.md';
 import wikiPanelsBase from './wiki/panels/base.md';
 import wikiPanelsCorners from './wiki/panels/corners.md';
-import wikiPanelsCenterBout from './wiki/panels/center-bout.md';
 import wikiPanelsPlateContour from './wiki/panels/plate-contour.md';
 import wikiPanelsFluting from './wiki/panels/fluting.md';
 import wikiPanelsFHolePlacement from './wiki/panels/f-hole-placement.md';
@@ -68,7 +67,6 @@ export const WIKI: WikiCategory[] = [
       page('wiki/panels/base.md', wikiPanelsBase),
       page('wiki/panels/bouts.md', wikiPanelsBouts),
       page('wiki/panels/corners.md', wikiPanelsCorners),
-      page('wiki/panels/center-bout.md', wikiPanelsCenterBout),
       page('wiki/panels/mould.md', wikiPanelsMould),
       page('wiki/panels/plate-contour.md', wikiPanelsPlateContour),
       page('wiki/panels/fluting.md', wikiPanelsFluting),

@@ -10,10 +10,8 @@ This panel defines the size and profile of the upper and lower bouts. The bouts 
 
 A secondary smaller arc is drawn to smoothly intersect the right- and leftmost edges of the bounding box, as well as the initial large circle. These smaller circles can be called vesica, a term coined by David Beard. 
 
-A third arc, the join arc, leaves the vesica and carries the bout inward. 
+A third arc leaves the vesica and carries the bout inward. 
 
-## Join Height
-In the simplest form of this model, which often works just fine, the vesica and the join arc hand off cleanly at the width boundry. For some violins this does not quite work, and the "height" of the join arc can be offset a bit. 
 
 ## Viol Neck
 The viol family of instruments often does not have a top section defined by a single arc segment. Rather, the upper bout gradually curves vertically until it is cut off at the neck line. This geometry has been widely adopted by double basses, perhaps because it offers more room for a solid upper block. CremonaCad allows for you to toggle this kind of upper bout on and off. 
