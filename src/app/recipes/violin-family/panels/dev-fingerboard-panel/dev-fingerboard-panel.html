@@ -4,12 +4,12 @@
     <div class="ui-group-title">Scoop</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Scoop At <span class="unit-label">mm</span></span>
+            <span class="field-title">Scoop At</span>
             <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="ss.scoopAt" (input)="recordEditAndRedraw()" (focus)="highlightPart('scoopAt', pal.ink(0))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Depth Bass; Treble<span class="unit-label">mm</span></span>
+            <span class="field-title">Depth Bass; Treble</span>
             <input type="number" class="basic-input" step="0.05" min="0" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="ss.scoopBass" (input)="recordEditAndRedraw()" (focus)="highlightPart('scoopBass', pal.ink(0))" (blur)="clearHighlight()" />
         </label>
@@ -26,8 +26,8 @@
         <div class="input-group basic-row marker-row marker-row--header">
             <span class="field-cell">Mark</span>
             <span class="field-cell">Semitone</span>
-            <span class="field-cell">X Offset <span class="unit-label">mm</span></span>
-            <span class="field-cell">Size <span class="unit-label">mm</span></span>
+            <span class="field-cell">X Offset</span>
+            <span class="field-cell">Size</span>
             <span></span>
         </div>
         @for (marker of markers; track $index; let i = $index) {
@@ -80,13 +80,13 @@
             </select>
         </label>
         <label class="field-cell">
-            <span class="field-title">Depth <span class="unit-label">mm</span></span>
+            <span class="field-title">Depth</span>
             <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(3)"
                 [(ngModel)]="cut.depth" (input)="cutsEdited()" />
         </label>
         @if (cut.kind === 'follow') {
         <label class="field-cell">
-            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Width</span>
             <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(3)"
                 [(ngModel)]="cut.width" (input)="cutsEdited()" />
         </label>

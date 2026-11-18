@@ -4,7 +4,7 @@
     <div class="ui-group-title">Upper Bout</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Total Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Total Width</span>
             <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.UBW" (input)="recordEditAndRedraw()" />
         </label>
         <button type="button" class="info-icon" (click)="showFieldHelp('boutWidth')" title="More information"
@@ -20,7 +20,7 @@
     <div class="ui-group">
         <div class="input-group basic-row field-row" role="group">
             <label class='field-cell'>
-                <span class="field-title">U0 - Join Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">U0 - Join Radius</span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.U0R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(1)"
                     (focus)="highlightPart('U0', pal.ink(1))" (blur)="clearHighlight()" />
@@ -33,7 +33,7 @@
         </div>
         <div class="input-group basic-row field-row" role="group">
             <label class='field-cell'>
-                <span class="field-title">U1 - Vesica Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">U1 - Vesica Radius</span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.U1R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(1).faint(-2)"
                     (focus)="highlightPart('U1', pal.ink(1).faint(-2))" (blur)="clearHighlight()" />
@@ -47,13 +47,13 @@
         <div class="input-group basic-row field-row" role="group"
             [style.opacity]="params.corners?.useViolCornerUC ? 0.5 : 1" [style.pointerEvents]="params.corners?.useViolCornerUC ? 'none' : 'auto'">
             <label class='field-cell'>
-                <span class="field-title">U2 Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">U2 Radius</span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.U2R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(1).faint(-2)"
                     (focus)="highlightPart('U2', pal.ink(1).faint(-2))" (blur)="clearHighlight()" />
             </label>
             <!-- <label class='field-cell'>
-                <span class="field-title">Join Height <span class="unit-label">mm</span></span>
+                <span class="field-title">Join Height</span>
                 <input type="number" class="basic-input" step="1" [(ngModel)]="bouts.UJoinY" (input)="recordEditAndRedraw()"
                     (focus)="highlightPart('U2', pal.ink(1).faint(-2))" (blur)="clearHighlight()" />
             </label> -->
@@ -78,7 +78,7 @@
     <div class="ui-group">
         <div class="input-group basic-row field-row" role="group">
             <label class="field-cell">
-                <span class="field-title">V0 Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">V0 Radius</span>
                 <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="viol.V0R" (input)="recordEditAndRedraw()" [style.borderColor]="pal.ink(1)"
                     (focus)="highlightPart('V0', pal.ink(1))" (blur)="clearHighlight()" />
             </label>
@@ -95,11 +95,11 @@
         </div>
         <div class="input-group basic-row field-row" role="group">
             <label class="field-cell">
-                <span class="field-title">Width <span class="unit-label">mm</span></span>
+                <span class="field-title">Width</span>
                 <input type="number" class="basic-input" step="1" [(ngModel)]="viol.width" (input)="recordEditAndRedraw()" />
             </label>
             <label class="field-cell">
-                <span class="field-title">Join Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">Join Radius</span>
                 <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="viol.neckRadius" (input)="recordEditAndRedraw()" />
             </label>
             <button type="button" class="info-icon" (click)="showFieldHelp('violNeckJoin')" title="More information"
@@ -113,7 +113,7 @@
     <div class="ui-group-title">Lower Bout</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Total Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Total Width</span>
             <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="params.body.width" (input)="recordEditAndRedraw()" />
         </label>
         <button type="button" class="info-icon" (click)="showFieldHelp('boutWidth')" title="More information"
@@ -129,7 +129,7 @@
     <div class="ui-group">
         <div class="input-group basic-row field-row" role="group">
             <label class='field-cell'>
-                <span class="field-title">L0 - Join Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">L0 - Join Radius</span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.L0R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(0)"
                     (focus)="highlightPart('L0', pal.ink(0))" (blur)="clearHighlight()" />
@@ -142,7 +142,7 @@
         </div>
         <div class="input-group basic-row field-row" role="group">
             <label class='field-cell'>
-                <span class="field-title">L1 - Vesica Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">L1 - Vesica Radius</span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.L1R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(0).faint(-2)"
                     (focus)="highlightPart('L1', pal.ink(0).faint(-2))" (blur)="clearHighlight()" />
@@ -156,7 +156,7 @@
         <div class="input-group basic-row field-row" role="group"
             [style.opacity]="params.corners?.useViolCornerLC ? 0.5 : 1" [style.pointerEvents]="params.corners?.useViolCornerLC ? 'none' : 'auto'">
             <label class='field-cell'>
-                <span class="field-title">L2 Radius<span class="unit-label">mm</span></span>
+                <span class="field-title">L2 Radius</span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.L2R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(0).faint(-2)"
                     (focus)="highlightPart('L2', pal.ink(0).faint(-2))" (blur)="clearHighlight()" />

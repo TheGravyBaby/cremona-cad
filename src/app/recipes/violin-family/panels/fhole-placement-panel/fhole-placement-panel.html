@@ -4,7 +4,7 @@
     <div class="ui-group-title">Upper Eye</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Radius <span class="unit-label">mm</span></span>
+            <span class="field-title">Radius</span>
             <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.UEye.r" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(1)" />
         </label>
@@ -17,8 +17,8 @@
     <div class="input-group basic-row field-row" role="group">
         <div class="field-cell field-cell--xy">
             <div class="xy-titles">
-                <span class="field-title">X <span class="unit-label">mm</span></span>
-                <span class="field-title">Y <span class="unit-label">mm</span></span>
+                <span class="field-title">X</span>
+                <span class="field-title">Y</span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Upper eye position"
                 [style.borderColor]="pal.ink(1).faint(5)" title="Arrow keys move the eye from either box">
@@ -35,7 +35,7 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Rise <span class="unit-label">mm</span></span>
+            <span class="field-title">Rise</span>
             <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.URise" (input)="recordEditAndRedraw()" />
         </label>
         <label class="field-cell">
@@ -53,7 +53,7 @@
     <div class="ui-group-title">Stem</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Width</span>
             <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.stem.width" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(2)" />
         </label>
@@ -65,7 +65,7 @@
         
         @if(f.notches) {
         <label class="field-cell">
-            <span class="field-title">Notch Stop <span class="unit-label">mm</span></span>
+            <span class="field-title">Notch Stop</span>
             <div class="basic-display" aria-label="Top edge down to the notch line at the stem centre"
                 title="The notches are cut on the stem's centre line. On most instruments this is the stop the bridge stands at; the bridge itself is placed on the String Setup panel.">
                 {{ notchStop }}</div>
@@ -77,8 +77,8 @@
     <div class="input-group basic-row field-row" role="group">
         <div class="field-cell field-cell--xy">
             <div class="xy-titles">
-                <span class="field-title">X <span class="unit-label">mm</span></span>
-                <span class="field-title">Y <span class="unit-label">mm</span></span>
+                <span class="field-title">X</span>
+                <span class="field-title">Y</span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Stem centre position"
                 [style.borderColor]="pal.ink(2).faint(5)" title="Arrow keys move the stem from either box">
@@ -103,7 +103,7 @@
     <div class="ui-group-title">Lower Eye</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Radius <span class="unit-label">mm</span></span>
+            <span class="field-title">Radius</span>
             <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.LEye.r" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(0)" />
         </label>
@@ -111,8 +111,8 @@
     <div class="input-group basic-row field-row" role="group">
         <div class="field-cell field-cell--xy">
             <div class="xy-titles">
-                <span class="field-title">X <span class="unit-label">mm</span></span>
-                <span class="field-title">Y <span class="unit-label">mm</span></span>
+                <span class="field-title">X</span>
+                <span class="field-title">Y</span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Lower eye position"
                 [style.borderColor]="pal.ink(0).faint(5)" title="Arrow keys move the eye from either box">
@@ -125,7 +125,7 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Rise <span class="unit-label">mm</span></span>
+            <span class="field-title">Rise</span>
             <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="f.LRise" (input)="recordEditAndRedraw()" />
         </label>
     </div>

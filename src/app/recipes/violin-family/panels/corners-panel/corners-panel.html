@@ -6,8 +6,8 @@
     <div class="input-group basic-row field-row" role="group">
         <div class="field-cell field-cell--xy">
             <div class="xy-titles">
-                <span class="field-title">X <span class="unit-label">mm</span></span>
-                <span class="field-title">Y <span class="unit-label">mm</span></span>
+                <span class="field-title">X</span>
+                <span class="field-title">Y</span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Upper corner position"
                 [style.borderColor]="pal.ink(4).faint(5)" title="Arrow keys move the corner from either box">
@@ -31,7 +31,7 @@
         <div class="input-group basic-row field-row" role="group"
             [style.opacity]="k.useViolCornerUC ? 0.5 : 1" [style.pointerEvents]="k.useViolCornerUC ? 'none' : 'auto'">
             <label class="field-cell">
-                <span class="field-title">U3 Corner Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">U3 Corner Radius</span>
                 <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U3R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(4)"
                     (focus)="highlightPart('U3', pal.ink(4))" (blur)="clearHighlight()" />
@@ -51,7 +51,7 @@
             [style.pointerEvents]="k.useViolCornerUC ? 'none' : 'auto'">
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
-                    <span class="field-title">U31 Radius <span class="unit-label">mm</span></span>
+                    <span class="field-title">U31 Radius</span>
                     <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.U31R" (input)="recordEditAndRedraw()"
                         [style.borderColor]="pal.ink(4)"
                         (focus)="highlightPart('U31', pal.ink(4))" (blur)="clearHighlight()" />
@@ -72,7 +72,7 @@
         }
         <div class="input-group basic-row field-row" role="group">
             <label class="field-cell">
-                <span class="field-title">C2 Corner Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">C2 Corner Radius</span>
                 <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.C2R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(4)"
                     (focus)="highlightPart('C2', pal.ink(4))" (blur)="clearHighlight()" />
@@ -91,7 +91,7 @@
         <div class="ui-group">
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
-                    <span class="field-title">C21 Radius <span class="unit-label">mm</span></span>
+                    <span class="field-title">C21 Radius</span>
                     <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.C21R" (input)="recordEditAndRedraw()"
                         [style.borderColor]="pal.ink(4)"
                         (focus)="highlightPart('C21', pal.ink(4))" (blur)="clearHighlight()" />
@@ -124,7 +124,7 @@
     <div class="ui-group-title">Center Bout</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Total Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Total Width</span>
             @if (bouts.useKellyC0) {
             <div class="basic-display" aria-label="Fitted center bout width">{{ cb.CBW?.toFixed(1) ?? '–' }}</div>
             } @else {
@@ -142,13 +142,13 @@
     <div class="ui-group">
         <div class="input-group basic-row field-row" role="group">
             <label class="field-cell">
-                <span class="field-title">C0 Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">C0 Radius</span>
                 <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="bouts.C0R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(3)"
                     (focus)="highlightPart('C0', pal.ink(3))" (blur)="clearHighlight()" />
             </label>
             <label class="field-cell">
-                <span class="field-title">C0 Y <span class="unit-label">mm</span></span>
+                <span class="field-title">C0 Y</span>
                 @if (bouts.useKellyC0) {
                 <div class="basic-display" aria-label="Fitted C0 height">{{ cb.C0?.y?.toFixed(1) ?? '–' }}</div>
                 } @else {
@@ -177,8 +177,8 @@
     <div class="input-group basic-row field-row" role="group">
         <div class="field-cell field-cell--xy">
             <div class="xy-titles">
-                <span class="field-title">X <span class="unit-label">mm</span></span>
-                <span class="field-title">Y <span class="unit-label">mm</span></span>
+                <span class="field-title">X</span>
+                <span class="field-title">Y</span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Lower corner position"
                 [style.borderColor]="pal.ink(2).faint(5)" title="Arrow keys move the corner from either box">
@@ -201,7 +201,7 @@
     <div class="ui-group">
         <div class="input-group basic-row field-row" role="group">
             <label class="field-cell">
-                <span class="field-title">C1 Corner Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">C1 Corner Radius</span>
                 <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.C1R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(2)"
                     (focus)="highlightPart('C1', pal.ink(2))" (blur)="clearHighlight()" />
@@ -220,7 +220,7 @@
         <div class="ui-group">
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
-                    <span class="field-title">C11 Radius <span class="unit-label">mm</span></span>
+                    <span class="field-title">C11 Radius</span>
                     <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.C11R" (input)="recordEditAndRedraw()"
                         [style.borderColor]="pal.ink(2)"
                         (focus)="highlightPart('C11', pal.ink(2))" (blur)="clearHighlight()" />
@@ -242,7 +242,7 @@
         <div class="input-group basic-row field-row" role="group"
             [style.opacity]="k.useViolCornerLC ? 0.5 : 1" [style.pointerEvents]="k.useViolCornerLC ? 'none' : 'auto'">
             <label class="field-cell">
-                <span class="field-title">L3 Corner Radius <span class="unit-label">mm</span></span>
+                <span class="field-title">L3 Corner Radius</span>
                 <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L3R" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(2)"
                     (focus)="highlightPart('L3', pal.ink(2))" (blur)="clearHighlight()" />
@@ -262,7 +262,7 @@
             [style.pointerEvents]="k.useViolCornerLC ? 'none' : 'auto'">
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
-                    <span class="field-title">L31 Radius <span class="unit-label">mm</span></span>
+                    <span class="field-title">L31 Radius</span>
                     <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="k.L31R" (input)="recordEditAndRedraw()"
                         [style.borderColor]="pal.ink(2)"
                         (focus)="highlightPart('L31', pal.ink(2))" (blur)="clearHighlight()" />

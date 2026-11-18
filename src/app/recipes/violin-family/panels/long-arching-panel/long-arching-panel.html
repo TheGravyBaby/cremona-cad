@@ -6,11 +6,11 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Upper Rib <span class="unit-label">mm</span></span>
+            <span class="field-title">Upper Rib</span>
             <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="arching.ribHeightUpper" (input)="recordEditAndRedraw()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Lower Rib <span class="unit-label">mm</span></span>
+            <span class="field-title">Lower Rib</span>
             <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="arching.ribHeightLower" (input)="recordEditAndRedraw()" />
         </label>
          <button type="button" class="info-icon" (click)="showFieldHelp('ribHeight')" title="More information"
@@ -28,7 +28,7 @@
     </div>
      <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Thickness <span class="unit-label">mm</span></span>
+            <span class="field-title">Thickness</span>
             <input type="number" class="basic-input" step="0.5" min="0" [(ngModel)]="pa.thickness" (input)="recordEditAndRedraw()" />
         </label>
     </div>
@@ -47,7 +47,7 @@
     @if (arch.type === 'catenary') {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Arch Height <span class="unit-label">mm</span></span>
+            <span class="field-title">Arch Height</span>
             <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="arch.height" (input)="recordEditAndRedraw()"
                 [style.borderColor]="ink" (focus)="highlightArchPoint(plate, peakSource)" (blur)="clearHighlight()" />
         </label>
@@ -55,21 +55,21 @@
     } @else {
     <div class="spline-points" appRowReorder (rowReorder)="moveRow(plate, $event)">
         <div class="input-group basic-row spline-row spline-row--header">
-            <span class="field-cell">Position <span class="unit-label">%</span></span>
+            <span class="field-cell">Height</span>
             <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
-            <span class="field-cell">Height <span class="unit-label">mm</span></span>
+            <span class="field-cell">Position <span class="unit-label">%</span></span>
         </div>
         @for (row of rows(arch.points, arch.peakRow); track $index) {
         <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
             <button type="button" class="row-grip" data-reorder-handle aria-label="Reorder row" docTip="reorderRow">⠿</button>
             @if (row.item; as pt) {
             <div class="field-cell">
-                <input type="number" class="basic-input" step="1" min="1" max="99" [(ngModel)]="pt.t" (input)="recordEditAndRedraw()"
+                <input type="number" class="basic-input" step="0.1" [min]="-pa.thickness" [max]="arch.height" [(ngModel)]="pt.z" (input)="recordEditAndRedraw()"
                     (focus)="highlightArchPoint(plate, row.index)" (blur)="clearHighlight()" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
-                <input type="number" class="basic-input" step="0.1" [min]="-pa.thickness" [max]="arch.height" [(ngModel)]="pt.z" (input)="recordEditAndRedraw()"
+                <input type="number" class="basic-input" step="1" min="1" max="99" [(ngModel)]="pt.t" (input)="recordEditAndRedraw()"
                     (focus)="highlightArchPoint(plate, row.index)" (blur)="clearHighlight()" />
             </div>
             <div class="toggle">
@@ -78,13 +78,13 @@
             <button type="button" class="info-icon" (click)="removePoint(plate, row.index)" title="Remove point" aria-label="Remove point">×</button>
             } @else {
             <div class="field-cell">
-                <input type="number" class="basic-input" step="1" min="5" max="95" [(ngModel)]="arch.peak" (input)="recordEditAndRedraw()"
-                    (focus)="highlightArchPoint(plate, peakSource)" (blur)="clearHighlight()" />
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="arch.height" (input)="recordEditAndRedraw()"
+                    [style.borderColor]="ink" (focus)="highlightArchPoint(plate, peakSource)" (blur)="clearHighlight()" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
-                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="arch.height" (input)="recordEditAndRedraw()"
-                    [style.borderColor]="ink" (focus)="highlightArchPoint(plate, peakSource)" (blur)="clearHighlight()" />
+                <input type="number" class="basic-input" step="1" min="5" max="95" [(ngModel)]="arch.peak" (input)="recordEditAndRedraw()"
+                    (focus)="highlightArchPoint(plate, peakSource)" (blur)="clearHighlight()" />
             </div>
             <span>Peak</span>
             }
