@@ -753,7 +753,7 @@ function buildArchingPage(p: ViolinFamilyParams): SheetPageSpec | null {
         cursor = base + dip - 17 * scale;
       }
     }
-    marks.push({ kind: 'callout', at: new Pt(-widest - 7 * scale, cursor + 9 * scale), text: `Points (x, z), every ${step} mm from the center joint`, bare: true, anchor: 'start' });
+    marks.push({ kind: 'callout', at: new Pt(-widest - 7 * scale, cursor + 6 * scale), text: `Points (x, z)`, bare: true, anchor: 'start' });
     return { strokes, marks };
   };
 
