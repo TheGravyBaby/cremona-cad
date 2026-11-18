@@ -31,13 +31,13 @@ The scroll is drawn in its own side view, with the nut at the origin on the neck
 | Pitch | Archimedean only. How much the spiral grows per turn. |
 | Seed | Kelly only. The length of the seed the construction grows from. |
 | Fit to Neck | Solves the eye's X so the spiral's front lands flush with the neck's front. |
-| R | Four Point only. The radius of each quarter turn, in order from the eye outward. |
+| ¼ Radius … | Four Point only. The radius of each quarter turn, in order from the eye outward. |
 
 **Crown**
 
 | Field | Description |
 |---|---|
-| S0 R, S1 R, S2 R | The arcs that run on from the spiral over the back of the head, each tangent to the last. |
+| S0 Radius, S1 Radius, S2 Radius | The arcs that run on from the spiral over the back of the head, each tangent to the last. |
 | Sweep | How far each of those arcs turns, in degrees. |
 | Height, Width, H to W | Read-only. The overall size of the scroll and its proportion. |
 

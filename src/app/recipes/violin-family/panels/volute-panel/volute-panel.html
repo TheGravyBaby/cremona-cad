@@ -60,7 +60,7 @@
     <div class="input-group basic-row field-row" role="group">
         @for (i of arcs; track i) {
         <label class="field-cell field-cell--arc">
-            <span class="field-title" [style.color]="arcInk(i)">R {{ arcEnd(i) }}</span>
+            <span class="field-title">{{ arcEnd(i) }} Radius</span>
             <input type="number" class="basic-input" step="0.25" min="0.25" [style.border-color]="arcInk(i)"
                 [(ngModel)]="v.arcRadii[i]" (input)="recordEditAndRedraw()" (focus)="highlightPart(i, arcInk(i))" (blur)="clearHighlight()" />
         </label>
@@ -74,7 +74,7 @@
     <div class="ui-group-title">Crown</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).faint(3)">S0 R</span>
+            <span class="field-title">S0 Radius</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(3)"
                 [(ngModel)]="v.S0R" (input)="recordEditAndRedraw()" (focus)="highlightPart('S0', pal.ink(1).faint(3))" (blur)="clearHighlight()" />
         </label>
@@ -90,7 +90,7 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1)">S1 R</span>
+            <span class="field-title">S1 Radius</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1)"
                 [(ngModel)]="v.S1R" (input)="recordEditAndRedraw()" (focus)="highlightPart('S1', pal.ink(1))" (blur)="clearHighlight()" />
         </label>
@@ -106,7 +106,7 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).faint(-3)">S2 R</span>
+            <span class="field-title">S2 Radius</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(-3)"
                 [(ngModel)]="v.S2R" (input)="recordEditAndRedraw()" (focus)="highlightPart('S2', pal.ink(1).faint(-3))" (blur)="clearHighlight()" />
         </label>

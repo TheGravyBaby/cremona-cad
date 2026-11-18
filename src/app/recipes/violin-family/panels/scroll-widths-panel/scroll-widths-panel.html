@@ -6,14 +6,14 @@
     <div class="ui-group-title">Front</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(3).faint(1)">Throat</span>
+            <span class="field-title">Throat</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(3).faint(1)"
                 [(ngModel)]="w.throat" (input)="recordEditAndRedraw()" (focus)="highlightPart('throat', pal.ink(3).faint(1))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(3).faint(-3)">Hip</span>
+            <span class="field-title">Hip</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(3).faint(-3)"
                 [disabled]="v.hipHeight === 0" [(ngModel)]="w.hip" (input)="recordEditAndRedraw()" (focus)="highlightPart('hip', pal.ink(3).faint(-3))" (blur)="clearHighlight()" />
         </label>
@@ -29,24 +29,24 @@
     <div class="ui-group-title">Back</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).faint(5)">Crown</span>
+            <span class="field-title">Crown</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1).faint(5)"
                 [(ngModel)]="w.crown" (input)="recordEditAndRedraw()" (focus)="highlightPart('crown', pal.ink(1).faint(5))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).faint(-3)">Poll</span>
+            <span class="field-title">Poll</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1).faint(-3)"
                 [(ngModel)]="w.poll" (input)="recordEditAndRedraw()" (focus)="highlightPart('poll', pal.ink(1).faint(-3))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).faint(-4)">Foot</span>
+            <span class="field-title">Foot</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1).faint(-4)"
                 [(ngModel)]="w.foot" (input)="recordEditAndRedraw()" (focus)="highlightPart('foot', pal.ink(1).faint(-4))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).faint(3)">Duck Tail</span>
+            <span class="field-title">Duck Tail</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1).faint(3)"
                 [(ngModel)]="w.duckTail" (input)="recordEditAndRedraw()" (focus)="highlightPart('duckTail', pal.ink(1).faint(3))" (blur)="clearHighlight()" />
         </label>
@@ -62,26 +62,26 @@
     <div class="ui-group-title">Volute Turns</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(2).faint(3)">Turn 1 Bottom</span>
+            <span class="field-title">Turn 1 Bottom</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(2).faint(3)"
                 [(ngModel)]="w.turn1Bottom" (input)="recordEditAndRedraw()" (focus)="highlightPart('turn1Bottom', pal.ink(2).faint(3))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(2).faint(-3)">Turn 2 Top</span>
+            <span class="field-title">Turn 2 Top</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(2).faint(-3)"
                 [(ngModel)]="w.turn2Top" (input)="recordEditAndRedraw()" (focus)="highlightPart('turn2Top', pal.ink(2).faint(-3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(2).faint(1)">Turn 2 Bottom</span>
+            <span class="field-title">Turn 2 Bottom</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(2).faint(1)"
                 [(ngModel)]="w.turn2Bottom" (input)="recordEditAndRedraw()" (focus)="highlightPart('turn2Bottom', pal.ink(2).faint(1))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(2).faint(-4)">Eye</span>
+            <span class="field-title">Eye</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(2).faint(-4)"
                 [(ngModel)]="w.eye" (input)="recordEditAndRedraw()" (focus)="highlightPart('eye', pal.ink(2).faint(-4))" (blur)="clearHighlight()" />
         </label>
@@ -97,7 +97,7 @@
                 [(ngModel)]="nk.topWidth" (input)="recordEditAndRedraw()" (focus)="highlightPart('neck', pal.neutral)" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(3).faint(-1)">Nut</span>
+            <span class="field-title">Nut</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="nk.nutWidth" (input)="recordEditAndRedraw()" (focus)="highlightPart('nut', pal.ink(3).faint(-1))" (blur)="clearHighlight()" />
         </label>

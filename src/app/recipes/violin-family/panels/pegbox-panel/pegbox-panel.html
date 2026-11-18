@@ -5,14 +5,14 @@
     <div class="ui-group-title">Back</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).faint(-3)">Straight</span>
+            <span class="field-title">Straight</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(-3)"
                 [(ngModel)]="v.backStraight" (input)="recordEditAndRedraw()" (focus)="highlightPart('backStraight', pal.ink(1).faint(-3))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).faint(-1)">S3 R</span>
+            <span class="field-title">S3 Radius</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(-1)"
                 [(ngModel)]="v.S3R" (input)="recordEditAndRedraw()" (focus)="highlightPart('S3', pal.ink(1).faint(-1))" (blur)="clearHighlight()" />
         </label>
@@ -24,7 +24,7 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).faint(5)">Nape R</span>
+            <span class="field-title">Nape Radius</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(5)"
                 [(ngModel)]="v.napeR" (input)="recordEditAndRedraw()" (focus)="highlightPart('nape', pal.ink(1).faint(5))" (blur)="clearHighlight()" />
         </label>
@@ -40,14 +40,14 @@
     <div class="ui-group-title">Front</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(3).faint(-3)">Flat</span>
+            <span class="field-title">Flat</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3).faint(-3)"
                 [(ngModel)]="v.flat" (input)="recordEditAndRedraw()" (focus)="highlightPart('flat', pal.ink(3).faint(-3))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(3)">F0 R</span>
+            <span class="field-title">F0 Radius</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3)"
                 [(ngModel)]="v.F0R" (input)="recordEditAndRedraw()" (focus)="highlightPart('F0', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
@@ -57,14 +57,14 @@
                 [(ngModel)]="v.F0Sweep" (input)="recordEditAndRedraw()" (focus)="highlightPart('F0', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(3)">Straight</span>
+            <span class="field-title">Straight</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3)"
                 [(ngModel)]="v.frontStraight" (input)="recordEditAndRedraw()" (focus)="highlightPart('frontStraight', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(3).faint(-3)">F1 R</span>
+            <span class="field-title">F1 Radius</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(3).faint(-3)"
                 [(ngModel)]="v.F1R" (input)="recordEditAndRedraw()" (focus)="highlightPart('F1', pal.ink(3).faint(-3))" (blur)="clearHighlight()" />
         </label>
@@ -75,12 +75,12 @@
     <div class="ui-group-title">Neck</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(2)">Thickness</span>
+            <span class="field-title">Thickness</span>
             <input type="number" class="basic-input" step="0.5" min="1" [style.border-color]="pal.ink(2)"
                 [(ngModel)]="nk.upperThickness" (input)="recordEditAndRedraw()" (focus)="highlightPart('upperThickness', pal.ink(2))" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(0)">Nut Height</span>
+            <span class="field-title">Nut Height</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="nk.nutHeight" (input)="recordEditAndRedraw()" />
         </label>

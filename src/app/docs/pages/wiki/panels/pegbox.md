@@ -17,9 +17,9 @@ The duck tail is a semicircular area where the neck transitions to the scroll. O
 | Field | Description |
 |---|---|
 | Straight | The length of the straight run down the back of the pegbox, after S2. |
-| S3 R | The arc that turns the back in toward the neck at the bottom of that straight. |
+| S3 Radius | The arc that turns the back in toward the neck at the bottom of that straight. |
 | Hang | How far the duck tail drops below the lower edge of the nut. S3's end is solved from it. |
-| Nape R | The arc that joins the duck tail to the neck's back. |
+| Nape Radius | The arc that joins the duck tail to the neck's back. |
 | Nape Angle | The angle of the line from the duck tail to the nape, in degrees off square, rising toward the neck's back. |
 
 **Front**
@@ -27,10 +27,10 @@ The duck tail is a semicircular area where the neck transitions to the scroll. O
 | Field | Description |
 |---|---|
 | Flat | The length of the flat that runs up from the nut before the front begins to curve. |
-| F0 R | The arc that turns the front of the pegbox up from the flat. |
+| F0 Radius | The arc that turns the front of the pegbox up from the flat. |
 | Sweep | How far F0 turns, in degrees. |
 | Straight | The straight run up the front of the pegbox after F0. |
-| F1 R | The arc that curves the front back until it meets the spiral. |
+| F1 Radius | The arc that curves the front back until it meets the spiral. |
 
 **Neck**
 
