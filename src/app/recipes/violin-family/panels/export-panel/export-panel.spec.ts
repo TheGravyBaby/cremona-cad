@@ -717,7 +717,7 @@ describe('the schematic', () => {
     for (const st of stations(holed())) expect(st.to).toBeLessThan(planRight + p.arching!.ribHeightLower);
   });
 
-  it('reads every arch height off the solved surface: each plate\'s sections every 10 mm from the joint, each long arch every 20 mm', () => {
+  it('reads every arch height off the solved surface: each plate\'s sections edge to edge at even steps from the joint, each long arch at even steps up the body', () => {
     const p = arched();
     const c = solveCrossArching(p)!;
     const [cross, long] = pageViews(schematicPage(p, 'arching')!);
@@ -727,10 +727,15 @@ describe('the schematic', () => {
     sections.forEach((section, i) => {
       const surface = i < 3 ? c.top! : c.back!;
       const y = stations[i % 3].y;
-      expect(section.stations.length).toBeGreaterThan(3);
+      // edge to edge: as many heights left of the joint as right of it, the joint's own between
+      expect(section.stations.length % 2).toBe(1);
+      expect(section.stations.length).toBeGreaterThanOrEqual(5);
+      const joint = section.origin.x + section.stations[(section.stations.length - 1) / 2].at;
+      expect(joint).toBeCloseTo(0, 9);
       section.stations.forEach((st, k) => {
-        expect(st.at).toBe(10 * k);
-        expect(st.height).toBeCloseTo(surfaceZAt(surface, st.at, y)!, 9);
+        const x = section.origin.x + st.at;
+        if (k) expect(st.at - section.stations[k - 1].at).toBeCloseTo(section.stations[1].at - section.stations[0].at, 9);
+        expect(st.height).toBeCloseTo(surfaceZAt(surface, x, y)!, 9);
       });
     });
     const arches = marksOf(long, 'ordinates');
@@ -739,8 +744,9 @@ describe('the schematic', () => {
       const surface = i === 0 ? c.back! : c.top!;
       // the back bows to the left, as it lies in the side elevation
       expect(Math.sign(arch.normal.x)).toBe(i === 0 ? -1 : 1);
+      expect(arch.stations.length).toBeGreaterThan(3);
       arch.stations.forEach((st, k) => {
-        expect(st.at).toBe(20 * (k + 1));
+        expect(st.at).toBe(arch.stations[0].at * (k + 1));
         expect(st.height).toBeCloseTo(surfaceZAt(surface, 0, st.at)!, 9);
       });
     });
@@ -837,6 +843,31 @@ describe('the schematic', () => {
       expect(b.maxY).toBeLessThanOrEqual(297);
     }
     expect(JSON.stringify(p)).toBe(snapshot);
+  });
+});
+
+describe('the schematic\'s sections', () => {
+  it('show both halves of a crown drawn one side at a time, each as it was drawn', () => {
+    const p = arched();
+    const cross = p.arching!.top.cross;
+    cross.type = 'spline';
+    cross.points = [{ x: 20, z: 40, mirror: false }, { x: 75, z: 85, mirror: false }];
+    const section = marksOf(pageViews(schematicPage(p, 'arching')!)[0], 'ordinates')[0];
+    const heightAt = (x: number) => section.stations.find(st => Math.abs(section.origin.x + st.at - x) < 1e-9)!.height;
+    expect(Math.abs(heightAt(-40) - heightAt(40))).toBeGreaterThan(0.5);
+  });
+
+  it('take fewer heights the smaller the view is drawn, so the figures keep their room on the paper', () => {
+    const spec = schematicPage(arched(), 'arching')!;
+    for (const view of [0, 1]) {
+      const pitch = (scale: number) => {
+        const [first, second] = marksOf(pageViews(spec, scale)[view], 'ordinates')[0].stations;
+        return (second.at - first.at) / scale;
+      };
+      const count = (scale: number) => marksOf(pageViews(spec, scale)[view], 'ordinates')[0].stations.length;
+      for (const scale of [1, 2, 2.5, 4, 5]) expect(pitch(scale)).toBeGreaterThanOrEqual(8);
+      expect(count(5)).toBeLessThan(count(1));
+    }
   });
 });
 

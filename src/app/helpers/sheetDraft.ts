@@ -184,7 +184,7 @@ function drawCallout(out: SheetDrawing, mark: Callout, k: number): void {
   if (mark.sub) out.texts.push(noteText(mark.sub, new Pt(x, from.y - 1.4), DRAWING_TEXT.small, { anchor }));
 }
 
-// values under a level baseline step down every other one when they'd run into each other
+// values under a level baseline step down over as many lines, up to three, as keeps each clear of the next on its own
 function drawOrdinates(out: SheetDrawing, mark: Ordinates, k: number): void {
   let origin = new Pt(mark.origin.x * k, mark.origin.y * k);
   let { axis, normal, stations } = mark;
@@ -195,7 +195,7 @@ function drawOrdinates(out: SheetDrawing, mark: Ordinates, k: number): void {
   let size = DRAWING_TEXT.label;
   let widest = Math.max(...stations.map(st => timesWidth(formatHeight(st.height), size)));
   let pitch = Math.min(...stations.slice(1).map((st, i) => Math.abs(st.at - stations[i].at) * k));
-  let stagger = mark.values === 'base' && level && pitch < widest + 1.5;
+  let lines = mark.values === 'base' && level && stations.length > 1 ? Math.min(3, Math.max(1, Math.ceil((widest + 1) / pitch))) : 1;
   // a height below the baseline pushes every value under the lowest, so they stay on one line
   let dip = Math.max(0, ...stations.map(st => -st.height * k));
   let outward: 'start' | 'end' = normal.x > 0 ? 'start' : 'end';
@@ -207,7 +207,7 @@ function drawOrdinates(out: SheetDrawing, mark: Ordinates, k: number): void {
     if (Math.abs(rise) > 0.05) out.paths.push(noteLine(base, tip));
     let value = formatHeight(st.height);
     if (mark.values === 'base') {
-      let drop = TEXT_GAP + 0.5 + dip + (stagger && i % 2 ? size + 0.4 : 0);
+      let drop = TEXT_GAP + 0.5 + dip + (i % lines) * (size + 0.4);
       if (level) out.texts.push(noteText(value, along(base, normal, -(drop + size / 2)), size));
       else out.texts.push(noteText(value, along(base, normal, -drop), size, { anchor: inward }));
     }

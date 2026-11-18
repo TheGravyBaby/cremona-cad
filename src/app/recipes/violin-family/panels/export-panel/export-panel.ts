@@ -553,8 +553,11 @@ export function buildScaledDrawings(p: ViolinFamilyParams, heading: SheetHeading
 
 // the sections a maker works to: the two widest points and the waist
 const SECTION_CODES: readonly BodyLandmark['code'][] = ['UB', 'C', 'LB'];
-const CROSS_ORDINATE_STEP = 10;
-const LONG_ORDINATE_STEP = 20;
+// how far apart the arching's heights are taken: the first of these steps that leaves a section's
+// figures room on one line, and a long arch's a little air between them, at the scale it's drawn
+const ORDINATE_STEPS = [10, 20, 40, 50, 100];
+const CROSS_ORDINATE_PITCH = 8;
+const LONG_ORDINATE_PITCH = 12;
 // what a page keeps under its view for a table of five rows
 const TABLE_ROOM = 34;
 
@@ -682,21 +685,24 @@ function buildBodyPage(p: ViolinFamilyParams): SheetPageSpec | null {
   return { columns: [{ x: 0, w: SCHEMATIC_AREA.width, blocks: [{ view, h: SCHEMATIC_AREA.height - TABLE_ROOM }, { tables: [measures, heights], w: 66 }] }] };
 }
 
-// one plate's half section at a station, joint to edge: the surface the cross-arch templates are
-// cut to, and its height above the plate's edge every step out from the joint
-function calcHalfSection(surface: PlateSurface, y: number): { half: number; profile: Pt[]; heights: { at: number; height: number }[] } | null {
-  let row = rowAt(surface, y);
-  let half = row.outerHalf;
-  let crown = surfaceZAt(surface, 0, y, row);
-  if (half === null || crown === null) return null;
-  let heights: { at: number; height: number }[] = [];
-  for (let at = 0; at < half; at += CROSS_ORDINATE_STEP) heights.push({ at, height: surfaceZAt(surface, at, y, row) ?? 0 });
-  // the last sample stands on the outline itself, where the surface may read as off the plate
-  let outward = calcSectionRuns(surface, y).flatMap(run => run.pts).filter(pt => pt.x > 1e-9 && Number.isFinite(pt.y));
-  return { half, profile: [new Pt(0, crown), ...outward], heights };
+// the step between heights on a view drawn 1 : scale, its figures `pitch` mm apart on the paper or more
+function calcOrdinateStep(scale: number, pitch: number): number {
+  return ORDINATE_STEPS.find(step => step / scale >= pitch) ?? ORDINATE_STEPS[ORDINATE_STEPS.length - 1];
 }
 
-// each plate's half sections at the upper bout, the waist and the lower bout, and both long
+// one plate's section at a station, edge to edge: the surface the cross-arch templates are cut to.
+// Both halves, since a crown set off the joint or a spline drawn one side at a time leaves them
+// different
+function calcSection(surface: PlateSurface, y: number): { half: number; profile: Pt[]; row: SurfaceRow } | null {
+  let row = rowAt(surface, y);
+  let half = row.outerHalf;
+  if (half === null) return null;
+  // the end samples stand on the outline itself, where the surface may read as off the plate
+  let profile = calcSectionRuns(surface, y).flatMap(run => run.pts).filter(pt => Number.isFinite(pt.y));
+  return { half, profile, row };
+}
+
+// each plate's sections at the upper bout, the waist and the lower bout, and both long
 // arches, every height read off the solved surface
 function buildArchingPage(p: ViolinFamilyParams): SheetPageSpec | null {
   let c = p.arching ? solveCrossArching(p) : null;
@@ -707,16 +713,14 @@ function buildArchingPage(p: ViolinFamilyParams): SheetPageSpec | null {
     let surface = c[plate];
     if (!surface) return [];
     let sections = stations.flatMap(m => {
-      let section = calcHalfSection(surface, m.y);
-      return section ? [{ ...m, ...section }] : [];
+      let section = calcSection(surface, m.y);
+      return section ? [{ ...m, ...section, surface }] : [];
     });
     let centreline = Array.from({ length: Math.ceil(h / 2) + 1 }, (_, i) => {
       let y = h * i / Math.ceil(h / 2);
       return new Pt(channelCenterlineZAt(p, p.fluting![plate], surface.longArch, y), y);
     });
-    let heights: { at: number; height: number }[] = [];
-    for (let at = LONG_ORDINATE_STEP; at < h; at += LONG_ORDINATE_STEP) heights.push({ at, height: surfaceZAt(surface, 0, at) ?? 0 });
-    return [{ plate, label, sections, centreline, heights }];
+    return [{ plate, label, surface, sections, centreline }];
   });
   let widest = Math.max(...plates.flatMap(pl => pl.sections.map(sec => sec.half)));
 
@@ -724,8 +728,9 @@ function buildArchingPage(p: ViolinFamilyParams): SheetPageSpec | null {
     let strokes: SheetStroke[] = [];
     let marks: SheetMark[] = [];
     let cursor = 0;
+    let step = calcOrdinateStep(scale, CROSS_ORDINATE_PITCH);
     for (let { label, sections } of plates) {
-      marks.push({ kind: 'callout', at: new Pt(-7 * scale, cursor), text: label, bare: true, anchor: 'start' });
+      marks.push({ kind: 'callout', at: new Pt(-widest - 7 * scale, cursor), text: label, bare: true, anchor: 'start' });
       cursor -= 6 * scale;
       for (let section of sections) {
         let rise = Math.max(...section.profile.map(pt => pt.y));
@@ -733,14 +738,18 @@ function buildArchingPage(p: ViolinFamilyParams): SheetPageSpec | null {
         let base = cursor - rise;
         strokes.push({ d: translatePath(pathFromPolyline(section.profile), 0, base) });
         strokes.push({ d: pathFromLine(new Pt(0, base), new Pt(0, base + rise + 4 * scale)), ink: 'note', dashed: true });
-        marks.push({ kind: 'ordinates', origin: new Pt(0, base), axis: new Pt(1, 0), normal: new Pt(0, 1), length: section.half, stations: section.heights, values: 'base' });
-        marks.push({ kind: 'callout', at: new Pt(-1.5 * scale, base + rise / 2), text: section.code, sub: String(section.y), bare: true, anchor: 'end' });
+        // the solved surface's height above the plate's edge every step out from the joint, both ways
+        let reach = Math.ceil(section.half / step) - 1;
+        let heights = Array.from({ length: 2 * reach + 1 }, (_, i) => {
+          let x = (i - reach) * step;
+          return { at: x + section.half, height: surfaceZAt(section.surface, x, section.y, section.row) ?? 0 };
+        });
+        marks.push({ kind: 'ordinates', origin: new Pt(-section.half, base), axis: new Pt(1, 0), normal: new Pt(0, 1), length: 2 * section.half, values: 'base', stations: heights });
+        marks.push({ kind: 'callout', at: new Pt(-section.half - 1.5 * scale, base + rise / 2), text: section.code, sub: String(section.y), bare: true, anchor: 'end' });
         cursor = base + dip - 17 * scale;
       }
     }
-    let ruler: { at: number; height: number }[] = [];
-    for (let at = 0; at <= widest; at += CROSS_ORDINATE_STEP) ruler.push({ at, height: 0 });
-    marks.push({ kind: 'ordinates', origin: new Pt(0, cursor), axis: new Pt(1, 0), normal: new Pt(0, 1), stations: ruler, values: 'none', positions: true });
+    marks.push({ kind: 'callout', at: new Pt(-widest - 7 * scale, cursor + 9 * scale), text: `Heights every ${step} mm out from the joint`, bare: true, anchor: 'start' });
     return { strokes, marks };
   };
 
@@ -749,9 +758,11 @@ function buildArchingPage(p: ViolinFamilyParams): SheetPageSpec | null {
   let long = (scale: number): SheetView => {
     let strokes: SheetStroke[] = [];
     let marks: SheetMark[] = [];
-    for (let [i, { plate, label, centreline, heights }] of [...plates].reverse().entries()) {
+    let step = calcOrdinateStep(scale, LONG_ORDINATE_PITCH);
+    for (let [i, { plate, label, surface, centreline }] of [...plates].reverse().entries()) {
       let sign = plate === 'back' ? -1 : 1;
       let x = i * 20 * scale;
+      let heights = Array.from({ length: Math.ceil(h / step) - 1 }, (_, k) => ({ at: (k + 1) * step, height: surfaceZAt(surface, 0, (k + 1) * step) ?? 0 }));
       strokes.push({ d: pathFromPolyline(centreline.map(pt => new Pt(x + sign * pt.x, pt.y))) });
       marks.push({ kind: 'ordinates', origin: new Pt(x, 0), axis: new Pt(0, 1), normal: new Pt(sign, 0), length: h, stations: heights, values: 'tip', positions: i === 0 });
       marks.push({ kind: 'callout', at: new Pt(x, h + 5 * scale), text: label, bare: true });
@@ -761,8 +772,8 @@ function buildArchingPage(p: ViolinFamilyParams): SheetPageSpec | null {
 
   return {
     columns: [
-      { x: 0, w: 124, blocks: [{ view: cross, h: SCHEMATIC_AREA.height }] },
-      { x: 130, w: SCHEMATIC_AREA.width - 130, blocks: [{ view: long, h: SCHEMATIC_AREA.height }] },
+      { x: 0, w: 132, blocks: [{ view: cross, h: SCHEMATIC_AREA.height }] },
+      { x: 138, w: SCHEMATIC_AREA.width - 138, blocks: [{ view: long, h: SCHEMATIC_AREA.height }] },
     ],
   };
 }
