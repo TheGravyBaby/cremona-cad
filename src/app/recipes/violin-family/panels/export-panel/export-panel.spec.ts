@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { recordLayers } from '../../../../helpers/layer-recorder';
 import { pathsBounds } from '../../../../helpers/math/pathMath';
+import { dist } from '../../../../helpers/math/simpleGeometry';
+import { expandMarks, formatMm, SheetMark, SheetPageSpec, SheetRow, SheetView } from '../../../../helpers/sheetDraft';
 import { nightTheme } from '../../../../theme/theme-fixtures';
 import { ThemeService } from '../../../../theme/theme.service';
 import { ViolinFamilyParams } from '../../violin-family-types';
@@ -18,10 +20,13 @@ import { solveStringSetup, StringSetupPanel } from '../string-setup-panel/string
 import { neckHalfWidthAt } from '../neck-panel/neck-panel';
 import { MouldPanel } from '../mould-panel/mould-panel';
 import { solveScroll } from '../pegbox-panel/pegbox-panel';
-import { buildScrollBackStrip, buildScrollCompassWalk } from '../scroll-widths-panel/scroll-widths-panel';
-import { solveCrossArching } from '../cross-arching-panel/cross-arching-panel';
+import { buildScrollBackStrip, buildScrollCompassWalk, calcScrollWidthStations } from '../scroll-widths-panel/scroll-widths-panel';
+import { calcBodyLandmarks, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { solvePositionMarks } from '../dev-fingerboard-panel/dev-fingerboard-panel';
-import { ExportPanel, ExportType, exportReady, exportSheet, fingerboardStl, plateStl } from './export-panel';
+import {
+  buildScaledDrawings, buildSchematic, buildSchematicPages, calcVoluteTurns, crossArchTemplates, ExportDocument, ExportPanel, ExportType, exportReady, exportSheet,
+  fingerboardStl, SchematicPageName, plateStl,
+} from './export-panel';
 
 // The last panel, and the one whose output leaves the app: a wrong path on a sheet is cut into wood.
 // What matters here is that a sheet is offered only once the stages it is drawn from exist, that a
@@ -85,7 +90,7 @@ function makePanel(p: ViolinFamilyParams, fileName = 'test-violin'): ExportPanel
   return panel;
 }
 
-function previewed(panel: ExportPanel, type?: ExportType): any[] {
+function previewed(panel: ExportPanel, type?: ExportType | ExportDocument): any[] {
   const emitted: any[] = [];
   panel.drawn.subscribe(layers => emitted.push(layers));
   if (type) panel.show(type);
@@ -642,5 +647,272 @@ describe('the fingerboard solid', () => {
       if (onFloor(v)) expect(away(v)).toBeLessThanOrEqual(r + 1e-5);
       else if (v[2] > floor + 0.5) expect(away(v)).toBeGreaterThanOrEqual(r - chordDip - 1e-5);
     }
+  });
+});
+
+// The two documents. What matters is that a page only says what the instrument has: a stage not
+// reached has no page and no row, a figure on a dimension is what its arrows measure, and a height
+// is the solved surface's, not a number retyped.
+
+const heading = { title: 'test-violin', description: 'a test', note: 'at full size' };
+const schematicPage = (p: ViolinFamilyParams, name: SchematicPageName): SheetPageSpec | undefined => buildSchematicPages(p).find(page => page.name === name)?.spec;
+const pageViews = (spec: SheetPageSpec, scale = 1): SheetView[] =>
+  spec.columns.flatMap(column => column.blocks).flatMap(block => 'view' in block ? [typeof block.view === 'function' ? block.view(scale) : block.view] : []);
+const pageRows = (spec: SheetPageSpec): SheetRow[] => spec.columns.flatMap(column => column.blocks).flatMap(block => 'tables' in block ? block.tables.flat() : []);
+const marksOf = <K extends SheetMark['kind']>(view: SheetView, kind: K) => view.marks.filter((m): m is Extract<SheetMark, { kind: K }> => m.kind === kind);
+
+describe('the schematic', () => {
+  it('has a page for each stage reached, in the bench\'s order, and none for a stage that isn\'t', () => {
+    const names = (p: ViolinFamilyParams) => buildSchematicPages(p).map(page => page.name);
+    expect(names(blank())).toEqual([]);
+    expect(names(outlined())).toEqual(['body']);
+    expect(names(holed())).toEqual(['body', 'fHoles']);
+    expect(names(arched())).toEqual(['body', 'arching', 'fHoles']);
+    expect(names(scrolled())).toEqual(['body', 'arching', 'fHoles', 'neck', 'head']);
+    expect(buildSchematic(holed(), heading)).toHaveLength(2);
+  });
+
+  it('prints no row it has no value for: a later stage adds rows, an unreached one leaves none blank', () => {
+    for (const p of [outlined(), plated(), holed(), arched(), finished()]) {
+      for (const { name, spec } of buildSchematicPages(p)) {
+        for (const row of pageRows(spec)) {
+          expect(row.label, name).toBeTruthy();
+          expect(row.value, `${name}: ${row.label}`).toMatch(/\d/);
+          expect(row.value, `${name}: ${row.label}`).not.toMatch(/NaN|undefined|null|Infinity/);
+        }
+      }
+    }
+    const bodyRows = (p: ViolinFamilyParams) => pageRows(schematicPage(p, 'body')!).length;
+    expect(bodyRows(outlined())).toBeLessThan(bodyRows(plated()));
+    expect(bodyRows(plated())).toBeLessThan(bodyRows(arched()));
+  });
+
+  it('prints on every dimension the length between its two points, at whatever scale the view is drawn', () => {
+    let measured = 0;
+    for (const { name, spec } of buildSchematicPages(finished())) {
+      for (const scale of [1, 4]) {
+        for (const view of pageViews(spec, scale)) {
+          for (const mark of marksOf(view, 'dimension')) {
+            if (mark.text !== undefined) continue;
+            expect(expandMarks([mark], scale).texts.map(t => t.text), name).toEqual([formatMm(dist(mark.from, mark.to))]);
+            measured++;
+          }
+        }
+      }
+    }
+    expect(measured).toBeGreaterThan(20);
+  });
+
+  it('draws the body\'s side beside the plan on the same stations, once there are ribs to stand the plates on', () => {
+    const stations = (p: ViolinFamilyParams) => marksOf(pageViews(schematicPage(p, 'body')!)[0], 'station');
+    const strokes = (p: ViolinFamilyParams) => pageViews(schematicPage(p, 'body')!)[0].strokes;
+    const p = arched();
+    expect(stations(p).map(st => st.y)).toEqual(calcBodyLandmarks(p).map(m => m.y));
+    expect(strokes(p).length).toBeGreaterThan(strokes(holed()).length);
+    // the side stands to the right of the plan, and every station line reaches across it
+    const planRight = p.body.width / 2;
+    const reach = Math.max(...strokes(p).map(st => pathsBounds([st.d]).maxX));
+    expect(reach).toBeGreaterThan(planRight + p.arching!.ribHeightLower);
+    for (const st of stations(p)) expect(st.to).toBeGreaterThanOrEqual(reach);
+    for (const st of stations(holed())) expect(st.to).toBeLessThan(planRight + p.arching!.ribHeightLower);
+  });
+
+  it('reads every arch height off the solved surface: each plate\'s sections every 10 mm from the joint, each long arch every 20 mm', () => {
+    const p = arched();
+    const c = solveCrossArching(p)!;
+    const [cross, long] = pageViews(schematicPage(p, 'arching')!);
+    const stations = calcBodyLandmarks(p).filter(m => ['UB', 'C', 'LB'].includes(m.code)).sort((m, n) => n.y - m.y);
+    const sections = marksOf(cross, 'ordinates').filter(m => m.values === 'base');
+    expect(sections).toHaveLength(6);
+    sections.forEach((section, i) => {
+      const surface = i < 3 ? c.top! : c.back!;
+      const y = stations[i % 3].y;
+      expect(section.stations.length).toBeGreaterThan(3);
+      section.stations.forEach((st, k) => {
+        expect(st.at).toBe(10 * k);
+        expect(st.height).toBeCloseTo(surfaceZAt(surface, st.at, y)!, 9);
+      });
+    });
+    const arches = marksOf(long, 'ordinates');
+    expect(arches).toHaveLength(2);
+    arches.forEach((arch, i) => {
+      const surface = i === 0 ? c.back! : c.top!;
+      // the back bows to the left, as it lies in the side elevation
+      expect(Math.sign(arch.normal.x)).toBe(i === 0 ? -1 : 1);
+      arch.stations.forEach((st, k) => {
+        expect(st.at).toBe(20 * (k + 1));
+        expect(st.height).toBeCloseTo(surfaceZAt(surface, 0, st.at)!, 9);
+      });
+    });
+  });
+
+  it('boxes both f-holes in place and gives the stop from the upper edge to the notches', () => {
+    const p = holed();
+    const spec = schematicPage(p, 'fHoles')!;
+    const [view] = pageViews(spec);
+    const frame = pathsBounds([view.strokes[0].d]);
+    const holes = pathsBounds(exportSheet(p, 'topPlate')!.paths.filter(path => path.laser === 'cut1').map(path => path.d));
+    expect(frame.minX).toBeLessThan(holes.minX);
+    expect(frame.maxX).toBeGreaterThan(holes.maxX);
+    expect(frame.minY).toBeLessThan(holes.minY);
+    expect(frame.maxY).toBeGreaterThan(holes.maxY);
+    expect(holes.minX + holes.maxX).toBeCloseTo(0, 6);
+    expect(pageRows(spec)).toHaveLength(10);
+    expect(pageRows(spec).map(row => row.value)).toContain(formatMm(p.body.height - p.fHoles!.stem.center.y, 2));
+  });
+
+  it('measures the string along the string, to the millimetre and marked as near enough, only once there is a string', () => {
+    const approximate = (p: ViolinFamilyParams) => pageViews(schematicPage(p, 'neck')!).flatMap(view => marksOf(view, 'dimension')).filter(m => m.text?.startsWith('~'));
+    expect(pageViews(schematicPage(scrolled(), 'neck')!)).toHaveLength(1);
+    expect(approximate(scrolled())).toEqual([]);
+
+    const p = strung();
+    const s = solveStringSetup(p)!;
+    const [string] = approximate(p);
+    expect(pageViews(schematicPage(p, 'neck')!)).toHaveLength(2);
+    expect(approximate(p)).toHaveLength(1);
+    expect([string.from, string.to]).toEqual([s.nutTop, s.bridgeTop]);
+    expect(string.text).toBe(`~${Math.round(dist(s.nutTop!, s.bridgeTop!))}`);
+  });
+
+  it('pairs the volute\'s turns through the eye\'s centre from the inside out, each pair one either side of it', () => {
+    const p = scrolled();
+    const s = solveScroll(p)!;
+    const eye = s.eye!;
+    const turns = calcVoluteTurns(s);
+    expect(turns.widths.length).toBeGreaterThanOrEqual(2);
+    expect(turns.heights.length).toBeGreaterThanOrEqual(2);
+    turns.widths.forEach(([a, b], i) => {
+      expect([a.y, b.y]).toEqual([eye.y, eye.y]);
+      expect(a.x).toBeLessThan(eye.x);
+      expect(b.x).toBeGreaterThan(eye.x);
+      if (i) {
+        expect(a.x).toBeLessThan(turns.widths[i - 1][0].x);
+        expect(b.x).toBeGreaterThan(turns.widths[i - 1][1].x);
+      }
+    });
+    turns.heights.forEach(([a, b], i) => {
+      expect([a.x, b.x]).toEqual([eye.x, eye.x]);
+      expect(a.y).toBeLessThan(eye.y);
+      expect(b.y).toBeGreaterThan(eye.y);
+      if (i) {
+        expect(a.y).toBeLessThan(turns.heights[i - 1][0].y);
+        expect(b.y).toBeGreaterThan(turns.heights[i - 1][1].y);
+      }
+    });
+    // the innermost is the eye itself, across
+    expect(dist(...turns.widths[0])).toBeCloseTo(2 * eye.r, 3);
+    const dimensions = marksOf(pageViews(schematicPage(p, 'head')!)[0], 'dimension');
+    for (const pair of [...turns.widths, ...turns.heights]) expect(dimensions.some(m => dist(m.from, pair[0]) < 1e-9 && dist(m.to, pair[1]) < 1e-9)).toBe(true);
+  });
+
+  it('calls each of the head\'s widths out at the height the widths solve hangs it, on the outline it measures', () => {
+    const p = scrolled();
+    const stations = calcScrollWidthStations(p, solveScroll(p)!);
+    for (const scale of [1, 2]) {
+      const [view] = pageViews(schematicPage(p, 'head')!, scale);
+      const callouts = marksOf(view, 'callout');
+      expect(callouts.length).toBeGreaterThan(8);
+      for (const callout of callouts) {
+        const match = stations.filter(st => st.at.y === callout.at.y && formatMm(st.width, 2) === callout.text);
+        expect(match.length, `${callout.sub} at ${callout.at.y}`).toBeGreaterThan(0);
+      }
+      // the leader starts out from the outline, never back across the view
+      for (const callout of callouts) expect(callout.dx).toBeGreaterThan(0);
+    }
+  });
+
+  it('is A4 pages with nothing off the paper and nothing unsolved on it, and leaves the params alone', () => {
+    const p = finished();
+    const snapshot = JSON.stringify(p);
+    const pages = buildSchematic(p, heading);
+    expect(pages).toHaveLength(5);
+    for (const page of pages) {
+      expect([page.width, page.height]).toEqual([210, 297]);
+      expect(JSON.stringify(page)).not.toMatch(/NaN|Infinity|undefined/);
+      const b = pathsBounds(page.paths.map(path => path.d));
+      expect(b.minX).toBeGreaterThanOrEqual(-105);
+      expect(b.maxX).toBeLessThanOrEqual(105);
+      expect(b.minY).toBeGreaterThanOrEqual(0);
+      expect(b.maxY).toBeLessThanOrEqual(297);
+    }
+    expect(JSON.stringify(p)).toBe(snapshot);
+  });
+});
+
+describe('the scaled drawings', () => {
+  it('print the plan sheets a page each and the rest packed after them, every page the one paper and numbered', () => {
+    const p = holed();
+    const snapshot = JSON.stringify(p);
+    const pages = buildScaledDrawings(p, heading);
+    // top, back and inner contour, then the f-hole template
+    expect(pages).toHaveLength(4);
+    const papers = new Set(pages.map(page => [page.width, page.height].sort((a, b) => a - b).join('x')));
+    expect(papers.size).toBe(1);
+    pages.forEach((page, i) => {
+      const texts = page.texts.map(t => t.text);
+      expect(texts).toContain(`${i + 1} / ${pages.length}`);
+      expect(texts).toContain(heading.title);
+      expect(texts).toContain(heading.note);
+      expect(JSON.stringify(page)).not.toMatch(/NaN|Infinity|undefined/);
+    });
+    expect(JSON.stringify(p)).toBe(snapshot);
+  });
+
+  it('are the inner contour alone for a bare outline', () => {
+    expect(buildScaledDrawings(blank(), heading)).toEqual([]);
+    expect(buildScaledDrawings(outlined(), heading)).toHaveLength(1);
+  });
+});
+
+describe('previewing a document', () => {
+  it.each(['schematic', 'scaledDrawings'] as const)('%s lays its pages out on the canvas, one layer a page, each in a box the size of its paper', document => {
+    const p = holed();
+    const panel = makePanel(p);
+    const emitted = previewed(panel, document);
+    const pages = document === 'schematic' ? buildSchematic(p, heading) : buildScaledDrawings(p, heading);
+    expect(panel.preview).toBe(document);
+    expect(emitted[0]).toHaveLength(pages.length);
+    const drawn = recordLayers(emitted[0]);
+    expect(drawn.countByTag['text'] ?? 0).toBeGreaterThan(pages.length);
+    expect(drawn.paths.join('')).not.toMatch(/NaN|Infinity/);
+    // drawn as any sheet is, in line on the canvas: nothing filled but an arrowhead
+    const filled = drawn.elements.filter(el => el.tag === 'path' && el.attrs['fill'] !== 'none').map(el => pathsBounds([String(el.attrs['d'])]));
+    for (const b of filled) expect(Math.max(b.width, b.height)).toBeLessThan(5);
+    const boxes = drawn.paths.map(d => pathsBounds([d]));
+    for (const page of pages) expect(boxes.some(b => Math.abs(b.width - page.width) < 1 && Math.abs(b.height - page.height) < 1)).toBe(true);
+  });
+
+  it('sets no more than three pages to a row, each row clear below the last', () => {
+    const emitted = previewed(makePanel(scrolled()), 'schematic');
+    const groups = recordLayers(emitted[0]).elements.filter(el => el.layer === 'g' && el.tag === 'g' && !el.parent);
+    const at = groups.map(el => String(el.attrs['transform']).match(/-?[\d.]+/g)!.map(Number));
+    expect(at).toHaveLength(5);
+    const rows = new Map<number, number[]>();
+    for (const [x, y] of at) rows.set(y, [...(rows.get(y) ?? []), x]);
+    expect([...rows.values()].map(xs => xs.length)).toEqual([3, 2]);
+    for (const xs of rows.values()) for (let i = 1; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeGreaterThan(210);
+    const [first, second] = [...rows.keys()];
+    expect(first - second).toBeGreaterThan(297);
+  });
+
+  it('falls back to a sheet when the instrument has nothing to make a page of', () => {
+    const panel = makePanel(blank());
+    previewed(panel, 'schematic');
+    expect(panel.preview).not.toBe('schematic');
+  });
+});
+
+describe('the cross-arch templates', () => {
+  it('are cut at the upper bout, the waist and the lower bout of each plate, and at any station set by hand besides', () => {
+    const p = arched();
+    expect(crossArchTemplates(p)).toHaveLength(6);
+    const marks = calcBodyLandmarks(p);
+    const y = Math.round((marks.find(m => m.code === 'LB')!.y + marks.find(m => m.code === 'LC')!.y) / 2);
+    const { d, pct, peak, points } = p.arching!.top.cross;
+    p.arching!.top.cross.stations.push({ y, d, pct, peak, points });
+    const shapes = crossArchTemplates(p);
+    expect(shapes).toHaveLength(7);
+    expect(shapes.filter(shape => shape.label.includes(`${y}mm`))).toHaveLength(1);
   });
 });

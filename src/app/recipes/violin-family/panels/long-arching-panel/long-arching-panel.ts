@@ -5,8 +5,9 @@ import {
   archSplineKnots, calcChannelHalfWidth, catenaryZAt, channelProfileZAt, solveArchTakeoff, splineZAt, SPLINE_PEAK_SOURCE,
 } from '../../../../helpers/math/archMath';
 import { buildCatenaryPath, buildSplinePath, occludePath } from '../../../../helpers/math/pathVibes';
+import { combinePathStrings, Matrix2D, pathFromLine, pathFromPolyline, transformPath } from '../../../../helpers/math/pathMath';
 import {
-  renderGuideBaseline, renderGuideKnot, renderGuideMeasure, renderPath, renderPointHalo, renderSegment, renderSolveFailures, renderTranslatedLayers,
+  renderGuideBaseline, renderGuideKnot, renderGuideMeasure, renderPath, renderPointHalo, renderSolveFailures, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
 import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { TooltipDirective } from '../../../../docs/tooltips';
@@ -172,13 +173,8 @@ export const renderBodySideProfile = (
 ) => (g: any, ui: any): void => {
   let taper = a.ribs;
   if (!taper) return;
-  let c = o.corners;
-  let flatEnds = [c.U31 ?? c.U3, c.C21 ?? c.C2, c.C11 ?? c.C1, c.L31 ?? c.L3].flatMap(arc => arc ? [pointOnCircle(arc, arc.end).y] : []);
-  let rib = calcRibLine(p, taper);
-  renderPath(`M 0 ${rib.yLow} L ${rib.zLow} ${rib.yLow} L ${rib.zHigh} ${rib.yHigh} L 0 ${rib.yHigh} Z`, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-  for (let corner of [p.corners!.UCr, p.corners!.LCr]) {
-    renderSegment(new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-  }
+  let flatEnds = calcCornerFlatEnds(o);
+  renderPath(defineRibSideProfile(p, taper), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   // the ui layer is Y-flipped, so its transform mirrors
   let { dx, dy, angleDeg, pivotX, pivotY } = calcTopPlatePlacement(p, taper);
   let gTop = g.append('g').attr('transform', `translate(${dx},${dy}) rotate(${angleDeg},${pivotX},${pivotY})`);
@@ -187,43 +183,24 @@ export const renderBodySideProfile = (
   renderPlateSideProfile(p, a, 'back', flatEnds, pal, currentModule, opts)(g, ui);
 };
 
-// one plate in the side view, flat: the top's tilt is the caller's transform. Cut down the
-// centreline there's no slab outline: over all but the last few millimetres the plate's outer
-// surface is the arch, and a rectangle at plate level would contradict the curve
+// one plate in the side view, flat: the top's tilt is the caller's transform
 export const renderPlateSideProfile = (
   p: ViolinFamilyParams, a: LongArchingSolve, plate: Plate, flatEnds: number[], pal: PanelPalette, currentModule: boolean, opts: SideProfileOpts,
 ) => (g: any, ui: any): void => {
   let isTop = plate === 'top';
   let sign: 1 | -1 = isTop ? 1 : -1;
-  let thickness = p.arching![plate].thickness;
-  let innerZ = isTop ? a.ribs!.zLower : 0;
-  let outerZ = innerZ + sign * thickness;
+  let outerZ = (isTop ? a.ribs!.zLower : 0) + sign * p.arching![plate].thickness;
   let color = opts.ground ? pal.neutral : pal.ink(isTop ? TOP_ARCH_INK : BACK_ARCH_INK);
   let channel = opts.ground && !opts.fluting ? pal.neutral : pal.ink(CHANNEL_INK);
-  let gouge = p.fluting![plate];
-  let edge = p.fluting!.flutingEdge;
   let solved = a[plate];
+  let side = definePlateSideProfile(p, a, plate, flatEnds, !!(currentModule || opts.fluting));
 
-  renderSegment(new Pt(innerZ, 0), new Pt(innerZ, p.body.height), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-  let slab = `M ${innerZ} 0 L ${outerZ} 0 L ${outerZ} ${p.body.height} L ${innerZ} ${p.body.height} Z`;
-  let cut = currentModule || opts.fluting;
-  if (cut) {
-    for (let [yEnd, yLand] of [[0, edge], [p.body.height, p.body.height - edge]] as const) {
-      renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-      renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-    }
-    // the channel is the tool, not a curve fitted to the arch, so it's the same at both caps
-    renderPath(defineChannelCapPath(p, gouge, outerZ, sign, true, solved?.takeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
-    renderPath(defineChannelCapPath(p, gouge, outerZ, sign, false, solved?.farTakeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
-  } else {
-    renderSegment(new Pt(innerZ, 0), new Pt(outerZ, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-    renderSegment(new Pt(innerZ, p.body.height), new Pt(outerZ, p.body.height), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-    renderSegment(new Pt(outerZ, 0), new Pt(outerZ, p.body.height), color, STROKE_WEIGHT.section)(g, ui);
-    for (let y of flatEnds) renderSegment(new Pt(innerZ, y), new Pt(outerZ, y), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-  }
-  if (!solved) return;
+  renderPath(side.frame, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+  if (side.edge) renderPath(side.edge, color, STROKE_WEIGHT.section)(g, ui);
+  if (side.channel) renderPath(side.channel, channel, STROKE_WEIGHT.section)(g, ui);
+  if (!solved || !side.arch) return;
 
-  let { span, yStart, lowered, takeoff, farZ } = solved;
+  let { span, yStart, lowered, takeoff } = solved;
   let xBase = outerZ - sign * takeoff.takeoffDepth;
   // halo behind the point whose field has focus; a mirrored point halos both of its knots
   if (opts.highlight?.plate === plate && lowered.type === 'spline') {
@@ -231,8 +208,7 @@ export const renderPlateSideProfile = (
       if (knot.source === opts.highlight.source) renderPointHalo(new Pt(xBase + sign * knot.z, yStart + knot.t * span), color)(g, ui);
     }
   }
-  let arch = defineArchPath(lowered, span, yStart, xBase, sign, farZ);
-  renderPath(cut ? arch : occludePath(arch, slab).visible, color, STROKE_WEIGHT.section)(g, ui);
+  renderPath(side.arch, color, STROKE_WEIGHT.section)(g, ui);
 
   // the guide takes the arch as typed and the plate's outer surface, not the lowered arch against
   // its takeoff: the takeoff moves with the channel, and a guide counting from it would label a
@@ -248,6 +224,84 @@ export const renderPlateSideProfile = (
     }
   }
 };
+
+// where each corner's flat ends along the body, which the plate's edge is crossed at seen from the side
+function calcCornerFlatEnds(o: PlateContourSolve): number[] {
+  let c = o.corners;
+  return [c.U31 ?? c.U3, c.C21 ?? c.C2, c.C11 ?? c.C1, c.L31 ?? c.L3].flatMap(arc => arc ? [pointOnCircle(arc, arc.end).y] : []);
+}
+
+// the garland in the side view: the rib between the two gluing planes, crossed at each corner
+function defineRibSideProfile(p: ViolinFamilyParams, taper: RibTaper): string {
+  let rib = calcRibLine(p, taper);
+  return combinePathStrings([
+    `M 0 ${rib.yLow} L ${rib.zLow} ${rib.yLow} L ${rib.zHigh} ${rib.yHigh} L 0 ${rib.yHigh} Z`,
+    ...[p.corners!.UCr, p.corners!.LCr].map(corner => pathFromLine(new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y))),
+  ]);
+}
+
+// one plate's side profile as paths, flat, by what each is: the frame is the gluing face and the
+// plate's ends, the edge its outer face seen from the side, the channel the gouge's section at both
+// caps, the arch the long arch
+export interface PlateSideProfile { frame: string; edge: string | null; channel: string | null; arch: string | null }
+
+// cut down the centreline there's no slab outline: over all but the last few millimetres the
+// plate's outer surface is the arch, and a rectangle at plate level would contradict the curve.
+// Seen from the side, the arch shows only where it stands out past the slab
+export function definePlateSideProfile(p: ViolinFamilyParams, a: LongArchingSolve, plate: Plate, flatEnds: number[], cut: boolean): PlateSideProfile {
+  let isTop = plate === 'top';
+  let sign: 1 | -1 = isTop ? 1 : -1;
+  let h = p.body.height;
+  let innerZ = isTop ? a.ribs!.zLower : 0;
+  let outerZ = innerZ + sign * p.arching![plate].thickness;
+  let gouge = p.fluting![plate];
+  let land = p.fluting!.flutingEdge;
+  let solved = a[plate];
+
+  let frame = [pathFromLine(new Pt(innerZ, 0), new Pt(innerZ, h))];
+  let edge: string | null = null;
+  let channel: string | null = null;
+  if (cut) {
+    frame.push(pathFromPolyline([new Pt(innerZ, 0), new Pt(outerZ, 0), new Pt(outerZ, land)]));
+    frame.push(pathFromPolyline([new Pt(innerZ, h), new Pt(outerZ, h), new Pt(outerZ, h - land)]));
+    // the channel is the tool, not a curve fitted to the arch, so it's the same at both caps
+    channel = combinePathStrings([
+      defineChannelCapPath(p, gouge, outerZ, sign, true, solved?.takeoff.contactS),
+      defineChannelCapPath(p, gouge, outerZ, sign, false, solved?.farTakeoff.contactS),
+    ]);
+  } else {
+    for (let y of [0, h, ...flatEnds]) frame.push(pathFromLine(new Pt(innerZ, y), new Pt(outerZ, y)));
+    edge = pathFromLine(new Pt(outerZ, 0), new Pt(outerZ, h));
+  }
+
+  let arch: string | null = null;
+  if (solved) {
+    let whole = defineArchPath(solved.lowered, solved.span, solved.yStart, outerZ - sign * solved.takeoff.takeoffDepth, sign, solved.farZ);
+    arch = cut ? whole : occludePath(whole, `M ${innerZ} 0 L ${outerZ} 0 L ${outerZ} ${h} L ${innerZ} ${h} Z`).visible;
+  }
+  return { frame: combinePathStrings(frame), edge, channel, arch };
+}
+
+// the body's side profile as paths, the top plate already tilted onto the rib line, where the
+// render tilts its own group: what a sheet draws. The back is on the left
+export interface BodySideProfile { ribs: string; top: PlateSideProfile; back: PlateSideProfile }
+
+export function defineBodySideProfile(p: ViolinFamilyParams, a: LongArchingSolve, o: PlateContourSolve, cut = false): BodySideProfile | null {
+  if (!a.ribs) return null;
+  let flatEnds = calcCornerFlatEnds(o);
+  let onRibs = calcTopPlateMatrix(calcTopPlatePlacement(p, a.ribs));
+  let flat = definePlateSideProfile(p, a, 'top', flatEnds, cut);
+  return {
+    ribs: defineRibSideProfile(p, a.ribs),
+    top: {
+      frame: transformPath(flat.frame, onRibs),
+      edge: flat.edge && transformPath(flat.edge, onRibs),
+      channel: flat.channel && transformPath(flat.channel, onRibs),
+      arch: flat.arch && transformPath(flat.arch, onRibs),
+    },
+    back: definePlateSideProfile(p, a, 'back', flatEnds, cut),
+  };
+}
 
 // a spline is its control points, so every knot is marked; a catenary follows from the one height
 function calcArchGuideKnots(arch: LongArchCurve): { t: number; z: number }[] {
@@ -335,6 +389,13 @@ export function placeOnTopPlate(pl: TopPlatePlacement, pt: Pt): Pt {
   let a = pl.angleDeg * TURN.degree;
   let px = pt.x - pl.pivotX, py = pt.y - pl.pivotY;
   return new Pt(px * Math.cos(a) - py * Math.sin(a) + pl.pivotX + pl.dx, px * Math.sin(a) + py * Math.cos(a) + pl.pivotY + pl.dy);
+}
+
+// the same placement as a matrix, for a path
+export function calcTopPlateMatrix(pl: TopPlatePlacement): Matrix2D {
+  let a = pl.angleDeg * TURN.degree;
+  let cos = Math.cos(a), sin = Math.sin(a);
+  return [cos, sin, -sin, cos, pl.pivotX + pl.dx - cos * pl.pivotX + sin * pl.pivotY, pl.pivotY + pl.dy - sin * pl.pivotX - cos * pl.pivotY];
 }
 
 // the typed arch in the solver's terms: fractions along the body, the peak among them

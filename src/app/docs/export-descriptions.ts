@@ -4,7 +4,7 @@ export const EXPORT_DESCRIPTIONS: Record<string, string> = {
   backPlate: 'Back of the instrument, with button',
   innerContour: 'Rib outline, for the mould and rib bending',
   longArchTemplates: 'Centerline profile strips, top and back',
-  crossArchTemplates: '5 cross-section strips per plate, evenly spaced',
+  crossArchTemplates: 'Cross-section strips per plate, at the upper bout, the waist and the lower bout, and at any station set by hand',
   fholeTemplate: 'Single unmirrored f-hole, for cutting or tracing',
   fholeTemplateNoEyes: 'Single unmirrored f-hole, eyes closed with a short arc for hand-cut eyes',
   fholeTemplateArched: 'Single unmirrored f-hole corrected for the arching: bent over the top plate, it traces the hole as drawn',
