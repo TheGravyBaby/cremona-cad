@@ -17,6 +17,7 @@ import historyV0834 from './history/v0.8.3.4.md';
 import historyV083 from './history/v0.8.3.md';
 import historyV0880 from './history/v0.8.8.0.md';
 import historyV090 from './history/v0.9.0.md';
+import historyV0901 from './history/v0.9.0.1.md';
 import wikiOverview from './wiki/overview.md';
 import wikiCanvasControls from './wiki/cremonaCad/controls.md';
 import wikiCanvasImages from './wiki/cremonaCad/images.md';
@@ -105,6 +106,7 @@ const HISTORY: PageFile[] = [
   page('history/v0.8.3.md', historyV083),
   page('history/v0.8.8.0.md', historyV0880),
   page('history/v0.9.0.md', historyV090),
+  page('history/v0.9.0.1.md', historyV0901),
 ];
 
 export const PAGE_SOURCES: Record<string, string> = Object.fromEntries(

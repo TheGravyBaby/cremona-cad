@@ -100,7 +100,7 @@ const PLAN_SHEETS: readonly ExportType[] = ['innerContour', 'topPlate', 'backPla
 // the scaled drawings' first pages, each a whole outline standing on the centreline, which its page draws
 const PLAN_PAGES = ['topPlate', 'backPlate', 'innerContour', 'mould'] as const;
 const FULL_SIZE_NOTE = 'Full size. Measurements in millimetres';
-const SHEET_CREDIT = 'Made with Cremona CAD';
+const SHEET_CREDIT = 'Made with CremonaCad';
 // the scaled drawings' pages past the plan sheets, in order: a group shares a page with the one before it
 // when the two fit together
 const PDF_GROUPS: ReadonlyArray<{ label: string; types: readonly ExportType[] }> = [
@@ -164,8 +164,8 @@ export class ExportPanel extends PanelComponentBase {
   // offered once the panels it's drawn from have been reached, so a blank instrument skipped
   // straight here offers its inner contour alone
   ready = new Set<ExportReady>();
-  // what is on the canvas: the top plate until a sheet or a document is picked, or the first sheet there is
-  preview: ExportType | ExportDocument = 'topPlate';
+  // what is on the canvas: the schematic until a sheet or a document is picked, or the first sheet there is
+  preview: ExportType | ExportDocument = 'schematic';
 
   // nothing is edited here, so an edit settling has nothing to say
   reportSolveFailures(): void {}

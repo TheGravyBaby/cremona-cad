@@ -29,7 +29,6 @@ Some viols and basses feature a long straight section before the bout curves upw
 | U0 Join Radius | The large central arc of the upper bout. |
 | U1 Vesica Radius | The small arc that joins U0 to the side of the bounding box, one on either side of the instrument. |
 | U2 Join Radius | The arc that leaves the upper bout and turns in toward the corner. |
-| Join Height | How far above the widest point U1 hands over to U2. Negative is below; 0 is level with it. |
 
 **Lower Bout**
 
@@ -39,7 +38,6 @@ Some viols and basses feature a long straight section before the bout curves upw
 | L0 Join Radius | The large central arc of the lower bout. |
 | L1 Vesica Radius | The small arc that joins L0 to the side of the bounding box, one on either side of the instrument. |
 | L2 Join Radius | The arc that leaves the lower bout and turns in toward the corner. |
-| Join Height | How far above the widest point L1 hands over to L2. Negative is below; 0 is level with it. |
 
 **Viol Neck**
 
@@ -47,7 +45,7 @@ Some viols and basses feature a long straight section before the bout curves upw
 |---|---|
 | Use Viol Neck | Replaces the single upper arc with the viol geometry below. The values are kept when toggled off. |
 | V0 Radius | The primary arc for the viol neck, sweeping in the opposite direction to U0, drawn on either side of the instrument. |
-| Join Turn | How far the join turns the outline down from the level top face, in degrees, before V0 takes over. |
-| V0 Sweep | How far V0 sweeps on from that heading, in degrees, before U0 takes over. |
+| Join Turn | Defines the angle at which the viol neck begins to curve downward. |
+| V0 Sweep | The degrees for V0s arc sweep.|
 | Width | The distance between the end segments of V0, the width of the neck. |
 | Join Radius | Necks feature varying degrees of rounding at their top. Use this to set the rounding to your liking. |

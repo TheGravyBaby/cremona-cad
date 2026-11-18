@@ -152,16 +152,16 @@ describe('the export panel on opening', () => {
     // every export rendered twice and bundled: about five seconds under the full suite's load
   }, 20000);
 
-  it('previews the top plate once the plates are drafted, and the inner contour on a bare outline', () => {
+  it('previews the schematic on opening', () => {
     const panel = makePanel(plated());
     const emitted = previewed(panel);
-    expect(panel.preview).toBe('topPlate');
+    expect(panel.preview).toBe('schematic');
     expect(emitted).toHaveLength(1);
     expect(recordLayers(emitted[0]).elements.length).toBeGreaterThan(0);
 
     const bare = makePanel(outlined());
     previewed(bare);
-    expect(bare.preview).toBe('innerContour');
+    expect(bare.preview).toBe('schematic');
   });
 
   it('offers a bare outline its inner contour and nothing it would have to invent', () => {
