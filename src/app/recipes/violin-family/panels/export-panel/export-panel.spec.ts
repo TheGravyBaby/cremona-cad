@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { recordLayers } from '../../../../helpers/layer-recorder';
 import { pathsBounds } from '../../../../helpers/math/pathMath';
 import { dist } from '../../../../helpers/math/simpleGeometry';
-import { expandMarks, formatMm, SheetMark, SheetPageSpec, SheetRow, SheetView } from '../../../../helpers/sheetDraft';
+import { expandMarks, fitView, formatHeight, formatMm, SheetMark, SheetPageSpec, SheetRow, SheetView } from '../../../../helpers/sheetDraft';
 import { nightTheme } from '../../../../theme/theme-fixtures';
 import { ThemeService } from '../../../../theme/theme.service';
 import { ViolinFamilyParams } from '../../violin-family-types';
@@ -736,20 +736,44 @@ describe('the schematic', () => {
         const x = section.origin.x + st.at;
         if (k) expect(st.at - section.stations[k - 1].at).toBeCloseTo(section.stations[1].at - section.stations[0].at, 9);
         expect(st.height).toBeCloseTo(surfaceZAt(surface, x, y)!, 9);
+        expect(st.text).toBe(`(${formatMm(x)}, ${formatHeight(st.height)})`);
       });
     });
-    const arches = marksOf(long, 'ordinates');
+    const arches = marksOf(long, 'ordinates').filter(m => m.values === 'tip');
     expect(arches).toHaveLength(2);
     arches.forEach((arch, i) => {
       const surface = i === 0 ? c.back! : c.top!;
       // the back bows to the left, as it lies in the side elevation
       expect(Math.sign(arch.normal.x)).toBe(i === 0 ? -1 : 1);
       expect(arch.stations.length).toBeGreaterThan(3);
-      arch.stations.forEach((st, k) => {
-        expect(st.at).toBe(arch.stations[0].at * (k + 1));
+      arch.stations.forEach(st => {
         expect(st.height).toBeCloseTo(surfaceZAt(surface, 0, st.at)!, 9);
+        expect(st.text).toBe(`(${formatMm(st.at, 0)}, ${formatHeight(st.height)})`);
       });
+      // the peak is among the points and nothing on the joint stands taller; the rest stand every
+      // seventh of the body out from it, both ways, besides the neck's end
+      const h = p.body.height;
+      const peak = arch.stations.reduce((m, st) => st.height > m.height ? st : m);
+      for (let y = 0; y <= h; y += 2) expect(surfaceZAt(surface, 0, y) ?? 0).toBeLessThanOrEqual(peak.height + 0.05);
+      expect(arch.stations[arch.stations.length - 1].at).toBe(h);
+      const steps = arch.stations.filter(st => st !== peak && st.at !== h).map(st => (st.at - peak.at) * 7 / h);
+      expect(steps.length).toBeGreaterThan(3);
+      for (const k of steps) expect(k).toBeCloseTo(Math.round(k), 9);
+      expect(steps).toContainEqual(expect.closeTo(-1, 9));
+      expect(steps).toContainEqual(expect.closeTo(1, 9));
     });
+  });
+
+  it('draws both arching views as large with their points written as with bare heights', () => {
+    const spec = schematicPage(arched(), 'arching')!;
+    for (const column of spec.columns) {
+      const block = column.blocks[0] as { view: (scale: number) => SheetView; h: number };
+      const bare = (scale: number): SheetView => {
+        const view = block.view(scale);
+        return { ...view, marks: view.marks.map(m => m.kind === 'ordinates' ? { ...m, stations: m.stations.map(({ at, height }) => ({ at, height })) } : m) };
+      };
+      expect(fitView(block.view, column.w, block.h).scale).toBe(fitView(bare, column.w, block.h).scale);
+    }
   });
 
   it('boxes both f-holes in place and gives the stop from the upper edge to the notches', () => {
@@ -857,17 +881,15 @@ describe('the schematic\'s sections', () => {
     expect(Math.abs(heightAt(-40) - heightAt(40))).toBeGreaterThan(0.5);
   });
 
-  it('take fewer heights the smaller the view is drawn, so the figures keep their room on the paper', () => {
+  it('take fewer heights across a section the smaller it is drawn, so the figures keep their room on the paper', () => {
     const spec = schematicPage(arched(), 'arching')!;
-    for (const view of [0, 1]) {
-      const pitch = (scale: number) => {
-        const [first, second] = marksOf(pageViews(spec, scale)[view], 'ordinates')[0].stations;
-        return (second.at - first.at) / scale;
-      };
-      const count = (scale: number) => marksOf(pageViews(spec, scale)[view], 'ordinates')[0].stations.length;
-      for (const scale of [1, 2, 2.5, 4, 5]) expect(pitch(scale)).toBeGreaterThanOrEqual(8);
-      expect(count(5)).toBeLessThan(count(1));
-    }
+    const pitch = (scale: number) => {
+      const [first, second] = marksOf(pageViews(spec, scale)[0], 'ordinates')[0].stations;
+      return (second.at - first.at) / scale;
+    };
+    const count = (scale: number) => marksOf(pageViews(spec, scale)[0], 'ordinates')[0].stations.length;
+    for (const scale of [1, 2, 2.5, 4, 5]) expect(pitch(scale)).toBeGreaterThanOrEqual(8);
+    expect(count(5)).toBeLessThan(count(1));
   });
 });
 

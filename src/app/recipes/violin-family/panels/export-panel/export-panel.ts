@@ -17,7 +17,7 @@ import { downloadDxfFile } from '../../../../helpers/dxfExporter';
 import { buildHeightFieldStl, downloadStlFile, HeightFieldCut } from '../../../../helpers/stlExporter';
 import { renderFilledPath, renderPath, renderText, renderTranslatedLayers } from '../../../../helpers/renderFuncs';
 import {
-  buildDrawingPage, buildSchematicPage, DRAWING_TEXT, formatMm, SCHEMATIC_AREA, SHEET_SCREEN_FONT, SheetBlock, SheetHeading, SheetMark, SheetPageSpec, SheetRow, SheetStroke,
+  buildDrawingPage, buildSchematicPage, DRAWING_TEXT, formatHeight, formatMm, SCHEMATIC_AREA, SHEET_SCREEN_FONT, SheetBlock, SheetHeading, SheetMark, SheetPageSpec, SheetRow, SheetStroke,
   SheetView, timesWidth,
 } from '../../../../helpers/sheetDraft';
 import { Arc, Circle, Pt, Rectangle } from '../../../../models/types';
@@ -553,11 +553,14 @@ export function buildScaledDrawings(p: ViolinFamilyParams, heading: SheetHeading
 
 // the sections a maker works to: the two widest points and the waist
 const SECTION_CODES: readonly BodyLandmark['code'][] = ['UB', 'C', 'LB'];
-// how far apart the arching's heights are taken: the first of these steps that leaves a section's
-// figures room on one line, and a long arch's a little air between them, at the scale it's drawn
+// how far apart a section's heights are taken: the first of these steps that leaves its figures
+// room on one line at the scale it's drawn
 const ORDINATE_STEPS = [10, 20, 40, 50, 100];
 const CROSS_ORDINATE_PITCH = 8;
-const LONG_ORDINATE_PITCH = 12;
+// a long arch is read every seventh of the body out from its peak, both ways, so the peak's
+// neighbours stand evenly about it; a peak at the fourth seventh, where it usually stands, reads at
+// the sevenths themselves. Where the arch has no peak the fourth seventh stands in for it
+const LONG_ARCH_DIVISIONS = 7;
 // what a page keeps under its view for a table of five rows
 const TABLE_ROOM = 34;
 
@@ -737,42 +740,53 @@ function buildArchingPage(p: ViolinFamilyParams): SheetPageSpec | null {
         let base = cursor - rise;
         strokes.push({ d: translatePath(pathFromPolyline(section.profile), 0, base) });
         strokes.push({ d: pathFromLine(new Pt(0, base), new Pt(0, base + rise + 4 * scale)), ink: 'note', dashed: true });
-        // the solved surface's height above the plate's edge every step out from the joint, both ways
+        // the solved surface's height above the plate's edge every step out from the joint, both
+        // ways, each written as its point (x, z)
         let reach = Math.ceil(section.half / step) - 1;
         let heights = Array.from({ length: 2 * reach + 1 }, (_, i) => {
           let x = (i - reach) * step;
-          return { at: x + section.half, height: surfaceZAt(section.surface, x, section.y, section.row) ?? 0 };
+          let height = surfaceZAt(section.surface, x, section.y, section.row) ?? 0;
+          return { at: x + section.half, height, text: `(${formatMm(x)}, ${formatHeight(height)})` };
         });
         marks.push({ kind: 'ordinates', origin: new Pt(-section.half, base), axis: new Pt(1, 0), normal: new Pt(0, 1), length: 2 * section.half, values: 'base', stations: heights });
         marks.push({ kind: 'callout', at: new Pt(-section.half - 1.5 * scale, base + rise / 2), text: section.code, sub: String(section.y), bare: true, anchor: 'end' });
         cursor = base + dip - 17 * scale;
       }
     }
-    marks.push({ kind: 'callout', at: new Pt(-widest - 7 * scale, cursor + 9 * scale), text: `Heights every ${step} mm out from the joint`, bare: true, anchor: 'start' });
+    marks.push({ kind: 'callout', at: new Pt(-widest - 7 * scale, cursor + 9 * scale), text: `Points (x, z), every ${step} mm from the center joint`, bare: true, anchor: 'start' });
     return { strokes, marks };
   };
 
-  // the back bows to the left and the belly to the right, as they lie in the side elevation, the
-  // stations' positions written once between the two
+  // the back bows to the left and the belly to the right, as they lie in the side elevation, every
+  // height written past its tip as its point (y, z), the neck's end among them. A step too near
+  // either end to letter clear gives way
   let long = (scale: number): SheetView => {
     let strokes: SheetStroke[] = [];
     let marks: SheetMark[] = [];
-    let step = calcOrdinateStep(scale, LONG_ORDINATE_PITCH);
+    let step = h / LONG_ARCH_DIVISIONS;
+    let room = (DRAWING_TEXT.label + 1) * scale;
     for (let [i, { plate, label, surface, centreline }] of [...plates].reverse().entries()) {
       let sign = plate === 'back' ? -1 : 1;
       let x = i * 20 * scale;
-      let heights = Array.from({ length: Math.ceil(h / step) - 1 }, (_, k) => ({ at: (k + 1) * step, height: surfaceZAt(surface, 0, (k + 1) * step) ?? 0 }));
+      let peak = calcArchPeak(p, plate);
+      let anchor = peak?.y ?? h * 4 / LONG_ARCH_DIVISIONS;
+      let steps = Array.from({ length: 2 * LONG_ARCH_DIVISIONS - 1 }, (_, k) => anchor + (k + 1 - LONG_ARCH_DIVISIONS) * step)
+        .filter(at => at !== anchor && at > room && at < h - room);
+      let heights = [...steps, h].map(at => ({ at, height: surfaceZAt(surface, 0, at) ?? 0 }));
+      if (peak) heights = [...heights, { at: peak.y, height: peak.height }].sort((a, b) => a.at - b.at);
+      let points = heights.map(st => ({ ...st, text: `(${formatMm(st.at, 0)}, ${formatHeight(st.height)})` }));
       strokes.push({ d: pathFromPolyline(centreline.map(pt => new Pt(x + sign * pt.x, pt.y))) });
-      marks.push({ kind: 'ordinates', origin: new Pt(x, 0), axis: new Pt(0, 1), normal: new Pt(sign, 0), length: h, stations: heights, values: 'tip', positions: i === 0 });
+      marks.push({ kind: 'ordinates', origin: new Pt(x, 0), axis: new Pt(0, 1), normal: new Pt(sign, 0), length: h, stations: points, values: 'tip' });
       marks.push({ kind: 'callout', at: new Pt(x, h + 5 * scale), text: label, bare: true });
     }
+    marks.push({ kind: 'callout', at: new Pt(10 * scale, -6 * scale), text: 'Points (y, z)', bare: true });
     return { strokes, marks };
   };
 
   return {
     columns: [
-      { x: 0, w: 132, blocks: [{ view: cross, h: SCHEMATIC_AREA.height }] },
-      { x: 138, w: SCHEMATIC_AREA.width - 138, blocks: [{ view: long, h: SCHEMATIC_AREA.height }] },
+      { x: 0, w: 120, blocks: [{ view: cross, h: SCHEMATIC_AREA.height }] },
+      { x: 126, w: SCHEMATIC_AREA.width - 126, blocks: [{ view: long, h: SCHEMATIC_AREA.height }] },
     ],
   };
 }

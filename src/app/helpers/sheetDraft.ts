@@ -29,14 +29,14 @@ export interface SheetStroke {
 //              `text` says otherwise, and sits `textAt` of the way along
 //   station    a dashed level across the view, labelled at its `from` end
 //   callout    text beside a point, `dx`, `dy` off it, with a leader back unless `bare`
-//   ordinates  heights standing on a baseline at each station along it, the value written under
-//              the baseline or past the height's tip, the station's position on the baseline's
-//              other side when asked for
+//   ordinates  heights standing on a baseline at each station along it, the value (or the
+//              station's own `text`) written under the baseline or past the height's tip, the
+//              station's position on the baseline's other side when asked for
 export type SheetMark =
   | { kind: 'dimension'; from: Pt; to: Pt; through?: Pt; offset?: number; text?: string; textAt?: number }
   | { kind: 'station'; y: number; from: number; to: number; label?: string; sub?: string }
   | { kind: 'callout'; at: Pt; text: string; sub?: string; dx?: number; dy?: number; bare?: boolean; anchor?: 'start' | 'middle' | 'end' }
-  | { kind: 'ordinates'; origin: Pt; axis: Pt; normal: Pt; length?: number; stations: { at: number; height: number }[]; values: 'base' | 'tip' | 'none'; positions?: boolean };
+  | { kind: 'ordinates'; origin: Pt; axis: Pt; normal: Pt; length?: number; stations: { at: number; height: number; text?: string }[]; values: 'base' | 'tip' | 'none'; positions?: boolean };
 
 export interface SheetView {
   strokes: SheetStroke[];
@@ -100,7 +100,7 @@ export function formatMm(v: number, places = 1): string {
   return String(+v.toFixed(places) || 0);
 }
 
-function formatHeight(v: number): string {
+export function formatHeight(v: number): string {
   return (Math.round(v * 10) / 10 || 0).toFixed(1);
 }
 
@@ -193,7 +193,7 @@ function drawOrdinates(out: SheetDrawing, mark: Ordinates, k: number): void {
   out.paths.push(noteLine(origin, along(origin, axis, length)));
   let level = Math.abs(normal.y) >= Math.abs(normal.x);
   let size = DRAWING_TEXT.label;
-  let widest = Math.max(...stations.map(st => timesWidth(formatHeight(st.height), size)));
+  let widest = Math.max(...stations.map(st => timesWidth(st.text ?? formatHeight(st.height), size)));
   let pitch = Math.min(...stations.slice(1).map((st, i) => Math.abs(st.at - stations[i].at) * k));
   let lines = mark.values === 'base' && level && stations.length > 1 ? Math.min(3, Math.max(1, Math.ceil((widest + 1) / pitch))) : 1;
   // a height below the baseline pushes every value under the lowest, so they stay on one line
@@ -205,7 +205,7 @@ function drawOrdinates(out: SheetDrawing, mark: Ordinates, k: number): void {
     let rise = st.height * k;
     let tip = along(base, normal, rise);
     if (Math.abs(rise) > 0.05) out.paths.push(noteLine(base, tip));
-    let value = formatHeight(st.height);
+    let value = st.text ?? formatHeight(st.height);
     if (mark.values === 'base') {
       let drop = TEXT_GAP + 0.5 + dip + (i % lines) * (size + 0.4);
       if (level) out.texts.push(noteText(value, along(base, normal, -(drop + size / 2)), size));
