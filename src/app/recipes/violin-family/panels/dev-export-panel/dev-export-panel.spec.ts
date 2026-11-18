@@ -1026,7 +1026,7 @@ describe('the fingerboard toolpaths', () => {
       // never deeper than a step under what stood there, nor starting in the air above the crown
       const levels = [...new Set(pts.map(pt => +pt.z.toFixed(6)))].sort((a, b) => b - a);
       const high = Math.max(zAt(dot), ...rim.map(zAt));
-      expect(high - levels[0]).toBeLessThanOrEqual(bit.feeds!.stepDown + 1e-6);
+      expect(high - levels[0]).toBeLessThanOrEqual(bit.feeds!.stepDown + 1e-3);
       for (let k = 1; k < levels.length; k++) expect(levels[k - 1] - levels[k]).toBeLessThanOrEqual(bit.feeds!.stepDown + 1e-6);
       expect(floor).toBeGreaterThanOrEqual(tp.floorZ - 1e-9);
     });

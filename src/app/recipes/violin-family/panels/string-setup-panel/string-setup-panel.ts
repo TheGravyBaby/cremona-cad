@@ -7,6 +7,7 @@ import { occludePath } from '../../../../helpers/math/pathVibes';
 import {
   renderCircle, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo, renderSolveFailures, renderStroke, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
+import { isLocalHost } from '../../../../helpers/debugDump';
 import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { Circle, Pt, Vect2D } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
@@ -45,6 +46,8 @@ export type StringSetupHighlightKey =
 export class StringSetupPanel extends PanelComponentBase<StringSetupHighlightKey> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFingerboard', 'showFretMarks'];
   protected readonly pal = ThemeService.getPalette('varnish');
+  // on trial, not offered off localhost; the params and the solve carry it all the same
+  protected readonly showSoundPost = isLocalHost();
 
   static seed(p: ViolinFamilyParams): void {
     if (p.stringSetup || !p.neck) return;
@@ -262,7 +265,8 @@ const renderStringSetupFrontView = (
     let half = p.stringSetup!.bridgeWidth / 2;
     bridge = [new Pt(-half, tailFoot.y), new Pt(half, tailFoot.y), new Pt(half, neckFoot.y), new Pt(-half, neckFoot.y)];
   }
-  let post = s.soundPost;
+  // on trial, not drawn off localhost
+  let post = isLocalHost() ? s.soundPost : null;
   let anchor = calcSoundPostAnchor(p, s);
   let halo = opts.highlighted;
 
