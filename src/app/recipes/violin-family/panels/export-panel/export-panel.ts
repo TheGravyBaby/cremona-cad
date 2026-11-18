@@ -667,7 +667,6 @@ function buildBodyPage(p: ViolinFamilyParams): SheetPageSpec | null {
   };
 
   let arching = p.arching;
-  let thickness = arching && arching.top.thickness !== arching.back.thickness ? [arching.back.thickness, arching.top.thickness] : [arching?.top.thickness];
   let measures = buildRows([
     ['Body length', formatValues([h])],
     ['Upper bout width', formatValues([p.bouts?.UBW])],
@@ -678,7 +677,7 @@ function buildBodyPage(p: ViolinFamilyParams): SheetPageSpec | null {
   let heights = buildRows([
     ['Rib height, end / neck', formatValues([arching?.ribHeightLower, arching?.ribHeightUpper])],
     ['Arch height, back / belly', formatValues([backPeak?.height, topPeak?.height], ' / ', '', 1)],
-    ['Edge thickness', formatValues(thickness)],
+    ['Edge thickness, back / belly', formatValues([arching?.back.thickness, arching?.top.thickness])],
     ['Purfling from edge', formatValues([p.plateContour?.purflingOffset])],
     ['Button, width × height', formatValues([p.plateContour?.button.width, p.plateContour?.button.height], ' × ')],
   ]);
