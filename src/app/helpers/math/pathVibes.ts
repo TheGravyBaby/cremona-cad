@@ -844,9 +844,15 @@ function strokeSegCrossings(seg: StrokeSeg, q0: Pt, q1: Pt): number[] {
 
 // a closed subpath as a polygon: lines by their own ends, curves cut into chords of at most stepMm
 // a path's subpaths as polylines, every command's endpoint a vertex and its curves flattened to
-// `stepMm`: the corners stay exact, which sampling by length alone cuts
-export function flattenPath(d: string, stepMm: number): Pt[][] {
-  return parseStrokeSubpaths(d).map(sub => flattenSubpath(sub, stepMm));
+// `stepMm`: the corners stay exact, which sampling by length alone cuts. Each comes back as a ring,
+// its last point left off; `withEnds` adds it, a closed subpath's being its first again, for
+// telling an open run from a loop and walking either to its end
+export function flattenPath(d: string, stepMm: number, withEnds = false): Pt[][] {
+  return parseStrokeSubpaths(d).map(sub => {
+    const poly = flattenSubpath(sub, stepMm);
+    if (withEnds && sub.segs.length) poly.push(sub.closed ? poly[0] : strokeSegAt(sub.segs[sub.segs.length - 1], 1));
+    return poly;
+  });
 }
 
 function flattenSubpath(sub: StrokeSubpath, stepMm: number): Pt[] {
@@ -1112,6 +1118,22 @@ function trimAtCrossing(x: PathPiece[], y: PathPiece[]): [PathPiece[], PathPiece
 
 const MITRE_LIMIT = 4;
 
+// a chain run on past its end, or back before its start, by `len` the way it was heading: two
+// offsets at an inside turn can meet just beyond where either piece stops
+function runOn(chain: PathPiece[], atEnd: boolean, len: number): PathPiece[] {
+  const p = atEnd ? chain[chain.length - 1] : chain[0];
+  let more: PathPiece;
+  if (p.kind === 'arc') {
+    const dt = Math.sign(p.dt) * Math.min(len / p.r, TURN.quarter);
+    more = { ...p, t0: atEnd ? p.t0 + p.dt : p.t0 - dt, dt };
+  } else {
+    const q = pieceAt(p, atEnd ? 1 : 0), t = pieceTangent(p, atEnd ? 1 : 0), s = atEnd ? len : -len;
+    const far = { x: q.x + t.x * s, y: q.y + t.y * s };
+    more = atEnd ? { kind: 'line', a: q, b: far } : { kind: 'line', a: far, b: q };
+  }
+  return atEnd ? [...chain, more] : [more, ...chain];
+}
+
 function offsetSubpath(pieces: PathPiece[], closed: boolean, left: number): PathPiece[] | null {
   const chains: PathPiece[][] = [];
   for (const p of pieces) {
@@ -1119,19 +1141,48 @@ function offsetSubpath(pieces: PathPiece[], closed: boolean, left: number): Path
     if (!chain) return null;
     chains.push(chain);
   }
+  const n = pieces.length;
   const joins: PathPiece[][] = chains.map(() => []);
-  const corners = closed ? pieces.length : pieces.length - 1;
+  const dropped = new Set<number>(), trimmedCorners = new Set<number>();
+  const corners = closed ? n : n - 1;
+  const meet = (x: PathPiece[], y: PathPiece[]) =>
+    trimAtCrossing(x, y) ?? trimAtCrossing(runOn(x, true, MITRE_LIMIT * Math.abs(left)), runOn(y, false, MITRE_LIMIT * Math.abs(left)));
+  const sliver = (p: PathPiece) => (p.kind === 'arc' ? p.r * Math.abs(p.dt) : dist(pieceAt(p, 0), pieceAt(p, 1))) < Math.abs(left) / 4;
   for (let i = 0; i < corners; i++) {
-    const j = (i + 1) % pieces.length;
+    if (dropped.has(i)) continue;
+    const j = (i + 1) % n;
     const tA = pieceTangent(pieces[i], 1), tB = pieceTangent(pieces[j], 0);
     const cross = tA.x * tB.y - tA.y * tB.x, dot = tA.x * tB.x + tA.y * tB.y;
     if (Math.abs(Math.atan2(cross, dot)) < 1e-3) continue;
     // the offset on the inside of a turn overlaps itself, and is cut back to where its two sides cross
     if (cross * left > 0 && Math.abs(cross) > 1e-9) {
       if (i === j) return null;
-      const trimmed = trimAtCrossing(chains[i], chains[j]);
-      if (!trimmed) return null;
-      [chains[i], chains[j]] = trimmed;
+      const trimmed = meet(chains[i], chains[j]);
+      if (trimmed) {
+        [chains[i], chains[j]] = trimmed;
+        trimmedCorners.add(i);
+        continue;
+      }
+      // a sliver of a piece beside an inside turn is swallowed whole, its offset lying past where
+      // its neighbours' offsets meet: the step a mould's block notch leaves where it lands just
+      // inside the outline. The neighbours are trimmed against each other instead, which takes
+      // off no more than the sliver's length, so only one well under the offset is let go
+      const k = (j + 1) % n, h = (i - 1 + n) % n;
+      const ahead = sliver(pieces[j]) && j !== 0 && k !== i && (closed || j + 1 < n) ? meet(chains[i], chains[k]) : null;
+      if (ahead) {
+        [chains[i], chains[k]] = ahead;
+        chains[j] = [];
+        dropped.add(j);
+        trimmedCorners.add(i);
+        continue;
+      }
+      const behind = sliver(pieces[i]) && i > 0 && h !== j && !trimmedCorners.has(h) && !dropped.has(h) ? meet(chains[h], chains[j]) : null;
+      if (!behind) return null;
+      [chains[h], chains[j]] = behind;
+      chains[i] = [];
+      joins[h] = [];
+      dropped.add(i);
+      trimmedCorners.add(h);
       continue;
     }
     const corner = pieceAt(pieces[i], 1);
@@ -1147,7 +1198,7 @@ function offsetSubpath(pieces: PathPiece[], closed: boolean, left: number): Path
       : [{ kind: 'line', a: from, b: to }];
   }
   // a side trimmed away to nothing means the offset has shrunk through itself
-  if (chains.some(chain => chain.every(p => p.kind === 'arc' ? p.r * Math.abs(p.dt) < 1e-9 : dist(pieceAt(p, 0), pieceAt(p, 1)) < 1e-9))) return null;
+  if (chains.some((chain, i) => !dropped.has(i) && chain.every(p => p.kind === 'arc' ? p.r * Math.abs(p.dt) < 1e-9 : dist(pieceAt(p, 0), pieceAt(p, 1)) < 1e-9))) return null;
   return chains.flatMap((chain, i) => [...chain, ...joins[i]]);
 }
 
@@ -1155,8 +1206,9 @@ function offsetSubpath(pieces: PathPiece[], closed: boolean, left: number): Path
  * A parallel copy of a path `distance` away: positive grows a closed loop (one ending with Z, or
  * drawn back to its start) and moves an open run to the right of its travel, the same side a
  * positive offset takes an arc drawn counterclockwise.
- * Corners are mitred. Null when the offset would fold over itself — an inward step deeper than
- * a bend or past a corner's neighbours — or when the path holds something it can't offset.
+ * Corners are mitred. A sliver of a piece at an inside turn, under a quarter of the distance, is
+ * swallowed. Null when the offset would fold over itself — an inward step deeper than a bend or
+ * past a corner's neighbours — or when the path holds something it can't offset.
  */
 export function offsetPath(d: string, distance: number): string | null {
   const subpaths = pathPieces(d);
@@ -1422,6 +1474,40 @@ export interface RowSampledField<R> {
   rowAt: (y: number) => R;
   halfAt: (row: R) => number | null;
   zAt: (x: number, y: number, row: R) => number | null;
+}
+
+// a height field's surface carried in square to itself by a depth read where it's carried from, as
+// a shell's inside stands under its outside: the inside's height over (x, y), or null off the field.
+// The carried point lands beside the one it left, so the start is walked back by each miss; on the
+// slopes of a carved plate the miss is under a millimetre and a few steps settle it
+export function normalOffsetZAt(zAt: (x: number, y: number) => number | null, depthAt: (x: number, y: number) => number, x: number, y: number, h = 0.25, tolerance = 1e-3, maxSteps = 8): number | null {
+  let ux = x, uy = y, innerZ: number | null = null;
+  for (let step = 0; step < maxSteps; step++) {
+    let z = zAt(ux, uy);
+    if (z === null) return null;
+    let n = heightFieldNormalAt(zAt, ux, uy, z, h);
+    let t = depthAt(ux, uy);
+    let missX = ux - t * n.x - x, missY = uy - t * n.y - y;
+    innerZ = z - t * n.z;
+    if (Math.hypot(missX, missY) < tolerance) break;
+    ux -= missX;
+    uy -= missY;
+  }
+  return innerZ;
+}
+
+// the unit normal, pointing up, by central differences; one-sided where a neighbour falls off the
+// field, level along an axis where both do
+function heightFieldNormalAt(zAt: (x: number, y: number) => number | null, x: number, y: number, z: number, h: number): Pt3D {
+  let slope = (plus: number | null, minus: number | null): number =>
+    plus !== null && minus !== null ? (plus - minus) / (2 * h)
+      : plus !== null ? (plus - z) / h
+        : minus !== null ? (z - minus) / h
+          : 0;
+  let zx = slope(zAt(x + h, y), zAt(x - h, y));
+  let zy = slope(zAt(x, y + h), zAt(x, y - h));
+  let len = Math.hypot(zx, zy, 1);
+  return new Pt3D(-zx / len, -zy / len, 1 / len);
 }
 
 // the field's contour map: heights on a grid, marching squares, every ring clipped to the outline.

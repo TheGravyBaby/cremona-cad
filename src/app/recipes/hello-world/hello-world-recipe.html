@@ -30,7 +30,7 @@
       <div class="ui-group-title">Body</div>
       <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-          <span class="field-title">Length <span class="unit-label">mm</span></span>
+          <span class="field-title">Length</span>
           <input class="basic-input" type="number" step="1" min="1"
             [(ngModel)]="d.params.bodyLength" (input)="onChange()" />
         </label>
@@ -43,7 +43,7 @@
       <div class="ui-group-title">Four Circles</div>
       <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-          <span class="field-title">Upper Radius <span class="unit-label">mm</span></span>
+          <span class="field-title">Upper Radius</span>
           <input class="basic-input" type="number" step="1" min="1"
             [(ngModel)]="d.params.upperR" (input)="onChange()" [style.border-color]="pal.ink(1)" />
         </label>
@@ -55,7 +55,7 @@
       </div>
       <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-          <span class="field-title">Centre Radius <span class="unit-label">mm</span></span>
+          <span class="field-title">Centre Radius</span>
           <input class="basic-input" type="number" step="1" min="1"
             [(ngModel)]="d.params.centerR" (input)="onChange()" [style.border-color]="pal.ink(3)" />
         </label>
@@ -67,7 +67,7 @@
       </div>
       <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-          <span class="field-title">Lower Radius <span class="unit-label">mm</span></span>
+          <span class="field-title">Lower Radius</span>
           <input class="basic-input" type="number" step="1" min="1"
             [(ngModel)]="d.params.lowerR" (input)="onChange()" [style.border-color]="pal.ink(0)" />
         </label>

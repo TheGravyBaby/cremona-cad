@@ -29,12 +29,12 @@
 
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <span class="field-title">Height</span>
             <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="params.body.height" (input)="recordEditAndRedraw()" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
-            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Width</span>
             <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="params.body.width" (input)="recordEditAndRedraw()" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
@@ -48,17 +48,17 @@
 
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Overhang <span class="unit-label">mm</span></span>
+            <span class="field-title">Overhang</span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.body.overhang" (input)="recordEditAndRedraw()" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
-            <span class="field-title">Ribs <span class="unit-label">mm</span></span>
+            <span class="field-title">Ribs</span>
             <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.body.rib" (input)="recordEditAndRedraw()" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
-            <span class="field-title">Inset<span class="unit-label">mm</span></span>
+            <span class="field-title">Inset</span>
             <div class="basic-display" aria-label="Inset">{{ body.failures.length ? '–' : body.inset }}</div>
         </label>
         <button type="button" class="info-icon" (click)="showFieldHelp('inset')" title="More information"

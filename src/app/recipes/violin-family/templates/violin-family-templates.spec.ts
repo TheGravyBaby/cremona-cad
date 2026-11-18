@@ -15,6 +15,7 @@ import { solveNeck } from '../panels/neck-panel/neck-panel';
 import { solveStringSetup } from '../panels/string-setup-panel/string-setup-panel';
 import { solveScroll } from '../panels/pegbox-panel/pegbox-panel';
 import { solveScrollWidths } from '../panels/scroll-widths-panel/scroll-widths-panel';
+import { buildSchematicPages } from '../panels/export-panel/export-panel';
 
 // the served set, and the only spec that reads it: a file here is re-saved from the app whenever an
 // instrument is retraced, so anything else would pin work that touched nothing near it
@@ -66,4 +67,12 @@ describe('CORPUS_TEMPLATES', () => {
     }
     // cross arching every template takes a few seconds; the default 5 s flakes under a full run
   }, 20000);
+
+  it('have a schematic page for each stage they carry, and no other', () => {
+    for (const t of CORPUS_TEMPLATES) {
+      const p = t.params;
+      const expected = ['body', ...(p.arching ? ['arching'] : []), ...(p.fHoleContours ? ['fHoles'] : []), ...(p.neck ? ['neck'] : []), ...(p.scroll ? ['head'] : [])];
+      expect(buildSchematicPages(p).map(page => page.name), t.key).toEqual(expected);
+    }
+  });
 });

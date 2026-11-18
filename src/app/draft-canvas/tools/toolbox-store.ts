@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { DraftShape, ImageShape, DEFAULT_SHAPE_COLOR, DEFAULT_STROKE_WIDTH, DEFAULT_TEXT_SIZE_MM } from './toolbox-shape';
 import { Layer, DEFAULT_LAYER_ID, makeLayerId } from './layer';
 import { PanelScope, scopeShows, scopeWith } from './panel-scope';
+import { translateShape } from './shape-transform';
 import { ImageAssetStore } from './image-asset-store';
 import { readWorkingState, writeWorkingState } from '../../helpers/workingStorage';
 import { UndoCoordinator, Undoable } from '../../helpers/undoCoordinator';
@@ -254,13 +255,38 @@ export class ToolboxStore implements Undoable {
     this.notify();
   }
 
-  addLayer(): string {
-    const layer: Layer = { id: makeLayerId(), name: `Layer ${this._layers.length + 1}`, locked: false };
+  /** `as` names the layer, scopes it or binds it to a face from the start — see Layer. */
+  addLayer(as: Partial<Pick<Layer, 'name' | 'scope' | 'face'>> = {}): string {
+    const layer: Layer = { id: makeLayerId(), name: `Layer ${this._layers.length + 1}`, locked: false, ...as };
     this._layers = [...this._layers, layer];
     this._activeLayerId = layer.id;
     this.persist();
     this.notify();
     return layer.id;
+  }
+
+  /** Carries every layer bound to face `id` to where the recipe now draws that face: the layer's
+   * origin and its shapes move by the same step, so each shape stays where it was on the face.
+   * Not an undo step. Every snapshot in the history moves too, since the layer's origin is not
+   * in the history: an undo then returns a shape to its earlier place on the face, not to where
+   * the face used to be. */
+  moveFace(id: string, origin: { x: number; y: number }): void {
+    const steps = new Map<string, { x: number; y: number }>();
+    this._layers = this._layers.map(l => {
+      if (l.face?.id !== id) return l;
+      const step = { x: origin.x - l.face.origin.x, y: origin.y - l.face.origin.y };
+      if (Math.abs(step.x) < 1e-9 && Math.abs(step.y) < 1e-9) return l;
+      steps.set(l.id, step);
+      return { ...l, face: { id, origin: { x: origin.x, y: origin.y } } };
+    });
+    if (steps.size === 0) return;
+    this.history = this.history.map(shapes => shapes.map(s => {
+      const step = s.type === 'image' ? undefined : steps.get(s.layerId ?? DEFAULT_LAYER_ID);
+      return step ? translateShape(s, step.x, step.y) : s;
+    }));
+    this.shapes = this.history[this.historyIndex];
+    this.persist();
+    this.notify();
   }
 
   renameLayer(id: string, name: string): void {

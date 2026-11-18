@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { dist, normalizeRadians, pointOnCircle, signedArcSweep, travelAtArcStart, TURN } from '../../../../helpers/math/simpleGeometry';
 import { MainBoutsPanel, calcMainBoutsRatios, solveMainBouts, calcViolNeckJoinLimit } from './main-bouts-panel';
 import { calcBodyRatios } from '../base-measurements-panel/base-measurements-panel';
+import { Arc } from '../../../../models/types';
 import { ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS, SEED_RATIOS } from '../../violin-family-seed';
 
@@ -81,6 +82,57 @@ describe('main bouts', () => {
   });
 });
 
+describe('a join off the widest point', () => {
+  // the furthest out an arc gets: its level point where it sweeps through it, else an end
+  const reach = (arc: Arc) => Math.min(arc.start, arc.end) <= 0 && Math.max(arc.start, arc.end) >= 0
+    ? arc.x + arc.r
+    : Math.max(pointOnCircle(arc, arc.start).x, pointOnCircle(arc, arc.end).x);
+  const heights = [-12, -6, -1, 0, 1, 6, 12];
+  const drafts = heights.flatMap(h => [seeded, withViol].map(make => {
+    const p = make();
+    p.bouts!.UJoinY = h;
+    p.bouts!.LJoinY = h;
+    return { h, p, m: solveMainBouts(p)! };
+  }));
+
+  it('keeps each bout at its typed width wherever the join sits', () => {
+    for (const { p, m } of drafts) {
+      const inset = p.body.overhang + p.body.rib;
+      expect(m.failures).toEqual([]);
+      expect(Math.max(reach(m.L1!), reach(m.L2!))).toBeCloseTo(p.body.width / 2 - inset, 9);
+      expect(Math.max(reach(m.U1!), reach(m.U2!))).toBeCloseTo(p.bouts!.UBW / 2 - inset, 9);
+    }
+  });
+
+  it('puts the join that far above the widest point', () => {
+    for (const { h, m } of drafts) {
+      const lowerWidest = h >= 0 ? m.L1!.y : m.L2!.y;
+      const upperWidest = h <= 0 ? m.U1!.y : m.U2!.y;
+      expect(pointOnCircle(m.L1!, m.L1!.end).y - lowerWidest).toBeCloseTo(h, 9);
+      expect(pointOnCircle(m.U1!, m.U1!.end).y - upperWidest).toBeCloseTo(h, 9);
+    }
+  });
+
+  it('keeps all three arcs of a bout tangent and unbroken', () => {
+    for (const { m } of drafts) {
+      for (const [big, small, join] of [[m.L0!, m.L1!, m.L2!], [m.U0!, m.U1!, m.U2!]]) {
+        expect(dist(big, small)).toBeCloseTo(big.r - small.r, 6);
+        expect(dist(small, join)).toBeCloseTo(Math.abs(join.r - small.r), 9);
+        expect(dist(pointOnCircle(big, big.end), pointOnCircle(small, small.start))).toBeCloseTo(0, 6);
+        expect(dist(pointOnCircle(small, small.end), pointOnCircle(join, join.start))).toBeCloseTo(0, 9);
+      }
+    }
+  });
+
+  it('refuses a join further off than the arc it rides can reach', () => {
+    const p = seeded();
+    p.bouts!.LJoinY = p.bouts!.L1R + 1;
+    const m = solveMainBouts(p)!;
+    expect(m.failures.map(f => f.unsolved)).toEqual([['L0', 'L1', 'L2']]);
+    expect(m.U2).not.toBeNull();
+  });
+});
+
 describe('a main bout that cannot reach its width', () => {
   const innerHalf = (p: ViolinFamilyParams, width: number) => (width - 2 * (p.body.overhang + p.body.rib)) / 2;
 
@@ -111,7 +163,7 @@ describe('a main bout that cannot reach its width', () => {
     (p.bouts as any).L1R = null;
     const m = solveMainBouts(p)!;
 
-    expect(m.failures.map(f => f.unsolved)).toEqual([['L0', 'L1']]);
+    expect(m.failures.map(f => f.unsolved)).toEqual([['L0', 'L1', 'L2']]);
     expect(m.L0).toBeNull();
     expect(m.L1).toBeNull();
     for (const arc of [m.U0!, m.U1!]) for (const v of [arc.x, arc.y, arc.r, arc.start, arc.end]) expect(Number.isFinite(v)).toBe(true);
@@ -214,6 +266,8 @@ describe('ratios', () => {
     expect(Math.abs(r.U1toUBW! - SEED_RATIOS.U1toUBW)).toBeLessThanOrEqual(0.05 / UBWI + 1e-12);
     expect(Math.abs(r.L0toLBW! - SEED_RATIOS.L0toLBW)).toBeLessThanOrEqual(0.05 / LBWI + 1e-12);
     expect(Math.abs(r.L1toLBW! - SEED_RATIOS.L1toLBW)).toBeLessThanOrEqual(0.05 / LBWI + 1e-12);
+    expect(Math.abs(r.U2toUBW! - SEED_RATIOS.U2toUBW)).toBeLessThanOrEqual(0.5 / UBWI + 1e-12);
+    expect(Math.abs(r.L2toLBW! - SEED_RATIOS.L2toLBW)).toBeLessThanOrEqual(0.5 / LBWI + 1e-12);
   });
 
   it('follows an edit, with nothing to refresh', () => {

@@ -3,7 +3,12 @@
         <button type="button" class="recipe-btn recipe-btn--primary" (click)="saveRecipe.emit()">Save Recipe Data</button>
     </div>
     <div class="export-primary">
-        <button type="button" class="recipe-btn recipe-btn--primary" [disabled]="!ready.has('innerContour')" (click)="downloadFullPlan()">Full Plan PDF</button>
+        <button type="button" class="recipe-btn recipe-btn--primary" [disabled]="!ready.has('innerContour')" (click)="downloadSchematic()">Schematic PDF</button>
+        <button type="button" class="recipe-btn" [disabled]="!ready.has('innerContour')" (click)="show('schematic')">Preview</button>
+    </div>
+    <div class="export-primary">
+        <button type="button" class="recipe-btn recipe-btn--primary" [disabled]="!ready.has('innerContour')" (click)="downloadScaledDrawings()">Scaled Drawings PDF</button>
+        <button type="button" class="recipe-btn" [disabled]="!ready.has('innerContour')" (click)="show('scaledDrawings')">Preview</button>
     </div>
     <div class="export-primary">
         <button type="button" class="recipe-btn recipe-btn--primary" [disabled]="!readyCount(templateBundle)" (click)="downloadBundle('templates')">Templates SVG</button>

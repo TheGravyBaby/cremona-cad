@@ -18,15 +18,18 @@ export interface BodySolve {
   failures: BodyFailure[];
 }
 
-export type MainBoutKey = 'U0' | 'U1' | 'L0' | 'L1';
+export type MainBoutKey = 'U0' | 'U1' | 'U2' | 'L0' | 'L1' | 'L2';
 export type MainBoutFailure = SolveFailure<MainBoutKey>;
 
-// the right half of the rib outline; renders mirror it. A bout whose section failed is null
+// the right half of the rib outline; renders mirror it. A bout whose section failed is null. The
+// join arcs start at their join and run a short sweep on: the corners give them their real end
 export interface MainBoutsSolve {
   U0: Arc | null;
   U1: Arc | null;
+  U2: Arc | null;
   L0: Arc | null;
   L1: Arc | null;
+  L2: Arc | null;
   V0: Arc | null;
   // the neck's top face and join, at the rib line and at the plate edge
   violCap: ViolNeckCap | null;
@@ -52,10 +55,9 @@ export interface ViolNeckJoin {
 export type CornerKey = 'U2' | 'U3' | 'U31' | 'U4' | 'L2' | 'L3' | 'L31' | 'L4';
 export type CornerFailure = SolveFailure<CornerKey>;
 
-// the right-hand corners; renders mirror them. U1 and L1 are the main bouts' arcs with their ends
-// moved to where U2 and L2 take over: a render under or after this stage draws the bouts with
-// these in place of the main bouts' own. A corner whose section failed leaves its arcs null and
-// its bout arc untrimmed
+// the right-hand corners; renders mirror them. U1 and L1 are the main bouts' own arcs, and U2 and
+// L2 the main bouts' join arcs ended where the corner arc takes over. A corner whose section
+// failed leaves its arcs null
 export interface CornersSolve {
   U1: Arc | null;
   U2: Arc | null;
@@ -300,12 +302,13 @@ export interface NeckSolve {
   failures: NeckFailure[];
 }
 
-export type StringSetupKey = 'bridge' | 'nut' | 'fingerboard' | 'scoop';
+export type StringSetupKey = 'bridge' | 'nut' | 'fingerboard' | 'soundPost';
 export type StringSetupFailure = SolveFailure<StringSetupKey>;
 
 // the string setup in the side elevation, over the neck it was solved on: the bridge's foot on the
 // arch, its blank (neck-side foot, tail-side foot, tail-side top, neck-side top) and the string's
-// point on its top, the string's point on the nut, and the board's end on the fingerboard plane
+// point on its top, the string's point on the nut, and the board's end on the fingerboard plane.
+// The soundpost is in plan, as the front view draws it
 export interface StringSetupSolve {
   neck: NeckSolve;
   bridgeFoot: Pt | null;
@@ -313,6 +316,7 @@ export interface StringSetupSolve {
   bridgeTop: Pt | null;
   nutTop: Pt | null;
   fingerboardEnd: Pt | null;
+  soundPost: Circle | null;
   failures: StringSetupFailure[];
 }
 
@@ -343,12 +347,12 @@ export interface ScrollWidthsSolve {
   failures: ScrollWidthsFailure[];
 }
 
-export type MouldKey = 'neckBlock' | 'upperCornerBlock' | 'lowerCornerBlock' | 'endBlock' | 'clampBox';
+export type MouldKey = 'neckBlock' | 'upperCornerBlock' | 'lowerCornerBlock' | 'endBlock' | 'clampBox' | 'alignmentHoles';
 export type MouldFailure = SolveFailure<MouldKey>;
 
 // the blocks placed (the corner blocks on the right; renders mirror them), the rib outline they are
-// cut from, the mould that leaves, and the clamp box's windows. A window that can't be cut between
-// its blocks is left out and said so
+// cut from, the mould that leaves, and the clamp box's cutouts, windows or holes. One that can't be
+// cut between its blocks is left out and said so
 export interface MouldSolve {
   blocks: Record<'neck' | 'upperCorner' | 'lowerCorner' | 'end', Rectangle> | null;
   ribOutline: string | null;
@@ -357,6 +361,8 @@ export interface MouldSolve {
   notchOutline: string | null;
   reliefs: MouldRelief[];
   clampBox: string[];
+  // the bit's own size, one behind the neck block and one behind the end block
+  alignmentHoles: Circle[];
   failures: MouldFailure[];
 }
 
@@ -389,3 +395,14 @@ export interface GraduationSolve {
 }
 
 export interface GraduationGround { loop: Pt[]; minX: number; maxX: number; minY: number; maxY: number }
+
+export type BassBarKey = 'bar';
+export type BassBarFailure = SolveFailure<BassBarKey>;
+
+export interface BassBarSolve {
+  upperLeft: Pt | null;
+  upperRight: Pt | null;
+  lowerLeft: Pt | null;
+  lowerRight: Pt | null;
+  failures: BassBarFailure[];
+}

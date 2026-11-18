@@ -4,7 +4,7 @@ import { applyMatrix } from '../../../../helpers/math/pathMath';
 import { TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../../models/types';
 import {
-  fingerboardCrownAt, calcFingerboardCrownLine, calcFingerboardEdgeLine, fingerboardRadiusAt, fingerboardScoopAt, calcScoopGuideGeometry, solveStringSetup,
+  calcSoundPostAnchor, fingerboardCrownAt, calcFingerboardCrownLine, fingerboardRadiusAt, solveStringSetup,
   StringSetupPanel,
 } from './string-setup-panel';
 import { NeckPanel, neckHalfWidthAt, calcScrollOnNeck } from '../neck-panel/neck-panel';
@@ -138,102 +138,35 @@ describe('the string setup solve', () => {
     expect(fingerboardCrownAt(wider, solved(wider), topY)).toBeLessThan(fingerboardCrownAt(p, s, topY));
   });
 
-  it('scoops each edge to its own depth at the one station, nothing at the ends, and runs the depth across linearly', () => {
-    const p = seeded();
-    const ss = p.stringSetup!;
-    ss.scoopAt = 100;
-    ss.scoopBass = 1;
-    ss.scoopTreble = 0.5;
-    const s = solved(p);
-    const top = s.neck.neckTop!, end = s.fingerboardEnd!;
-    const at = (d: number) => dist(top, end) ? new Pt(top.x + (end.x - top.x) * d / dist(top, end), top.y + (end.y - top.y) * d / dist(top, end)) : top;
-    for (const side of [-1, 0, 1] as const) {
-      expect(fingerboardScoopAt(p, s, top.y, side)).toBeCloseTo(0, 9);
-      expect(fingerboardScoopAt(p, s, end.y, side)).toBeCloseTo(0, 9);
-    }
-    expect(fingerboardScoopAt(p, s, at(100).y, -1)).toBeCloseTo(1, 9);
-    expect(fingerboardScoopAt(p, s, at(100).y, 1)).toBeCloseTo(0.5, 9);
-    expect(fingerboardScoopAt(p, s, at(100).y, 0)).toBeCloseTo(0.75, 9);
-    // deepening toward the station from either end, never past the typed depth
-    let last = 0;
-    for (let d = 0; d <= 100; d += 5) {
-      const scoop = fingerboardScoopAt(p, s, at(d).y, -1);
-      expect(scoop).toBeGreaterThanOrEqual(last);
-      expect(scoop).toBeLessThanOrEqual(1 + 1e-9);
-      last = scoop;
-    }
-    for (let d = 100; d <= ss.fingerboardLength; d += 5) {
-      const scoop = fingerboardScoopAt(p, s, at(d).y, -1);
-      expect(scoop).toBeLessThanOrEqual(last + 1e-9);
-      last = scoop;
-    }
-    // the two arcs meet level at the station
-    const step = 0.5;
-    expect(Math.abs(fingerboardScoopAt(p, s, at(100 + step).y, -1) - fingerboardScoopAt(p, s, at(100 - step).y, -1)) / step).toBeLessThan(1e-3);
-  });
-
-  it('planes the scoop into the edges and the crown line, and leaves them straight with none', () => {
-    const scooped = seeded();
-    const flat = seeded();
-    flat.stringSetup!.scoopBass = flat.stringSetup!.scoopTreble = 0;
-    const sScooped = solved(scooped), sFlat = solved(flat);
-    const t = scooped.stringSetup!.fingerboardThickness;
-    for (const pt of calcFingerboardEdgeLine(flat, sFlat, -1)) expect(off(flat, sFlat, pt)).toBeCloseTo(t, 9);
-    const edge = calcFingerboardEdgeLine(scooped, sScooped, -1);
-    expect(off(scooped, sScooped, edge[0])).toBeCloseTo(t, 9);
-    expect(off(scooped, sScooped, edge.at(-1)!)).toBeCloseTo(t, 9);
-    for (const pt of edge.slice(1, -1)) expect(off(scooped, sScooped, pt)).toBeLessThan(t);
-    const crownScooped = calcFingerboardCrownLine(scooped, sScooped)!, crownFlat = calcFingerboardCrownLine(flat, sFlat)!;
-    const deepest = Math.max(scooped.stringSetup!.scoopBass, scooped.stringSetup!.scoopTreble);
-    // the line's first two and last two points stand at the ends, where the scoop is nothing
-    for (let i = 2; i < crownScooped.length - 2; i++) {
-      const drop = off(flat, sFlat, crownFlat[i]) - off(scooped, sScooped, crownScooped[i]);
-      expect(drop).toBeGreaterThan(0);
-      expect(drop).toBeLessThanOrEqual(deepest + 1e-9);
-    }
-  });
-
-  it('lays the scoop guide at scale: a straightedge along the top, the edges their depths beneath it at the station', () => {
+  it('stands the soundpost its offset off the bridge\'s treble foot, and carries it with the bridge', () => {
     const p = seeded();
     const ss = p.stringSetup!;
     const s = solved(p);
-    const guide = calcScoopGuideGeometry(p, s)!;
-    const top = s.neck.neckTop!, end = s.fingerboardEnd!;
-    const t = ss.fingerboardThickness;
-    const along = (pt: Pt) => ((pt.x - top.x) * (end.x - top.x) + (pt.y - top.y) * (end.y - top.y)) / dist(top, end);
-    for (const pt of guide.straightedge) expect(off(p, s, pt)).toBeCloseTo(t, 9);
-    expect(along(guide.straightedge[0])).toBeCloseTo(0, 9);
-    expect(along(guide.straightedge[1])).toBeCloseTo(ss.fingerboardLength, 9);
-    const [deepestBass, onStraightedge] = guide.station;
-    expect(along(deepestBass)).toBeCloseTo(ss.scoopAt, 9);
-    expect(along(onStraightedge)).toBeCloseTo(ss.scoopAt, 9);
-    expect(off(p, s, onStraightedge) - off(p, s, deepestBass)).toBeCloseTo(ss.scoopBass, 9);
-    expect(off(p, s, onStraightedge) - off(p, s, guide.deepestTreble)).toBeCloseTo(ss.scoopTreble, 9);
-    // the edges never rise above the straightedge nor fall past their depth
-    for (const [edge, depth] of [[guide.bass, ss.scoopBass], [guide.treble, ss.scoopTreble]] as const) {
-      for (const pt of edge) {
-        expect(off(p, s, pt)).toBeLessThanOrEqual(t + 1e-9);
-        expect(off(p, s, pt)).toBeGreaterThanOrEqual(t - depth - 1e-9);
-      }
-    }
+    const anchor = calcSoundPostAnchor(p, s)!;
+    expect(anchor.x).toBeCloseTo(ss.bridgeWidth / 2, 9);
+    expect(anchor.y).toBeCloseTo(s.bridgeFoot!.y, 9);
+    expect(s.soundPost!.x - anchor.x).toBeCloseTo(ss.soundPostOffset.x, 9);
+    expect(s.soundPost!.y - anchor.y).toBeCloseTo(ss.soundPostOffset.y, 9);
+    expect(2 * s.soundPost!.r).toBeCloseTo(ss.soundPostDiameter, 9);
+    // seeded on the treble side, behind the bridge
+    expect(s.soundPost!.x).toBeGreaterThan(0);
+    expect(s.soundPost!.y).toBeLessThan(s.bridgeFoot!.y);
+    const moved: ViolinFamilyParams = JSON.parse(JSON.stringify(p));
+    moved.stringSetup!.bodyStop += 5;
+    moved.stringSetup!.bridgeWidth += 4;
+    const sMoved = solved(moved);
+    expect(sMoved.soundPost!.y - s.soundPost!.y).toBeCloseTo(sMoved.bridgeFoot!.y - s.bridgeFoot!.y, 9);
+    expect(sMoved.soundPost!.x - s.soundPost!.x).toBeCloseTo(2, 9);
   });
 
-  it('reports a scoop off the board or below zero, flattens the board and withholds the guide, keeping the crown', () => {
-    const edits = [
-      (p: ViolinFamilyParams) => { p.stringSetup!.scoopAt = p.stringSetup!.fingerboardLength; },
-      (p: ViolinFamilyParams) => { p.stringSetup!.scoopAt = 0; },
-      (p: ViolinFamilyParams) => { p.stringSetup!.scoopTreble = -0.5; },
-    ];
-    for (const edit of edits) {
+  it('reports a soundpost with no offset or no diameter, and leaves the rest standing', () => {
+    for (const edit of [(p: ViolinFamilyParams) => { p.stringSetup!.soundPostOffset.x = null as any; }, (p: ViolinFamilyParams) => { p.stringSetup!.soundPostDiameter = 0; }]) {
       const p = seeded();
       edit(p);
       const s = solveStringSetup(p)!;
-      expect(unsolved(s, 'scoop')).toBe(true);
-      expect(unsolved(s, 'fingerboard')).toBe(false);
-      expect(calcScoopGuideGeometry(p, s)).toBeNull();
-      const mid = calcFingerboardCrownLine(p, s)!;
-      expect(mid).not.toBeNull();
-      for (const pt of calcFingerboardEdgeLine(p, s, -1)) expect(off(p, s, pt)).toBeCloseTo(p.stringSetup!.fingerboardThickness, 9);
+      expect(s.failures.every(f => f.unsolved.includes('soundPost'))).toBe(true);
+      expect(s.soundPost).toBeNull();
+      expect(s.bridgeFoot).not.toBeNull();
     }
   });
 
@@ -247,7 +180,7 @@ describe('the string setup solve', () => {
   });
 
   it('reports a cleared field rather than drawing it', () => {
-    for (const key of ['bodyStop', 'bridgeHeight', 'nutThickness', 'fingerboardLength', 'fingerboardThickness', 'fingerboardNutRadius', 'fingerboardEndRadius', 'scoopAt', 'scoopBass', 'scoopTreble'] as const) {
+    for (const key of ['bodyStop', 'bridgeHeight', 'nutThickness', 'fingerboardLength', 'fingerboardThickness', 'fingerboardNutRadius', 'fingerboardEndRadius', 'bridgeWidth', 'soundPostDiameter'] as const) {
       const p = seeded();
       (p.stringSetup as any)[key] = null;
       const s = solveStringSetup(p)!;
@@ -261,7 +194,9 @@ describe('the string setup solve', () => {
       edit(p);
       const s = solveStringSetup(p)!;
       expect(unsolved(s, 'bridge')).toBe(true);
+      expect(unsolved(s, 'soundPost')).toBe(true);
       expect(s.bridgeFoot).toBeNull();
+      expect(s.soundPost).toBeNull();
       expect(s.nutTop).not.toBeNull();
       expect(s.fingerboardEnd).not.toBeNull();
     }

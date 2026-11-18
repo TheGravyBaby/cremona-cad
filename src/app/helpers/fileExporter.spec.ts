@@ -134,7 +134,7 @@ describe('buildPackedSvg', () => {
   });
 });
 
-describe('the full plan on one paper', () => {
+describe('the scaled drawings on one paper', () => {
   const box = (w: number, h: number): SvgPiece => ({ paths: [path(`M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`)] });
   const fits = (page: { width: number; height: number }, paper: typeof PAPER_FORMATS[string]) =>
     [false, true].some(landscape => {

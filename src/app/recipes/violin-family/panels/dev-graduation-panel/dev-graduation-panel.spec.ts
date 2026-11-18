@@ -4,7 +4,7 @@ import { dist, pointInPolygon } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
-import { DevGraduationPanel, edgeThicknessOf, gridPoints, plateMap, solveGraduation, thicknessBands, thicknessField, zonePoints } from './dev-graduation-panel';
+import { DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, thicknessBands, thicknessField, zonePoints } from './dev-graduation-panel';
 import { definePurflingPath, PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
 import { MainBoutsPanel, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -30,6 +30,12 @@ const seeded = (p = blank()): ViolinFamilyParams => {
 const grad = (p: ViolinFamilyParams): GraduationParams => {
   DevGraduationPanel.seed(p);
   return p.graduation!;
+};
+// what a Lay Grid does on each plate
+const gridded = (p: ViolinFamilyParams): GraduationParams => {
+  const s = grad(p);
+  for (const plate of ['top', 'back'] as const) s[plate].points = gridPoints(p, SPACING, plate);
+  return s;
 };
 const solved = (p: ViolinFamilyParams, change: (s: GraduationParams) => void = () => {}) => {
   const s = grad(p);
@@ -68,6 +74,12 @@ describe('the graduation solve', () => {
     DevGraduationPanel.seed(p);
     expect(p.graduation).toBeUndefined();
     expect(solveGraduation(p)).toBeNull();
+  });
+
+  it('seeds no readings on either plate', () => {
+    const s = grad(seeded());
+    expect(s.top.points).toEqual([]);
+    expect(s.back.points).toEqual([]);
   });
 
   it('makes two closed, mirrored loops with nothing to report', () => {
@@ -233,10 +245,11 @@ describe('the graduation grid', () => {
     LongArchingPanel.seed(p);
     p.arching!.top.thickness = 4.2;
     p.arching!.back.thickness = 4.7;
-    const { settings } = solved(p);
-    expect(settings.top.points.length).toBeGreaterThan(0);
-    expect(settings.top.points.every(pt => pt.thickness === 4.2)).toBe(true);
-    expect(settings.back.points.every(pt => pt.thickness === 4.7)).toBe(true);
+    solved(p);
+    const top = gridPoints(p, SPACING, 'top'), back = gridPoints(p, SPACING, 'back');
+    expect(top.length).toBeGreaterThan(0);
+    expect(top.every(pt => pt.thickness === 4.2)).toBe(true);
+    expect(back.every(pt => pt.thickness === 4.7)).toBe(true);
   });
 
   it('fills in as the spacing closes', () => {
@@ -254,7 +267,7 @@ describe('the graduation grid', () => {
 
   it('leaves the loops alone when a point is edited', () => {
     const p = seeded();
-    const { settings, solve } = solved(p);
+    const { settings, solve } = solved(p, s => s.top.points = gridPoints(p, SPACING, 'top'));
     settings.top.points[0].thickness += 1;
     settings.top.points[0].x += 3;
     expect(solveGraduation(p)).toBe(solve);
@@ -269,7 +282,7 @@ describe('the plate map', () => {
   };
 
   it('sets a grid out as it lies: a row per station top to bottom, a column per line bass to treble', () => {
-    const g = solved(seeded()).settings.top;
+    const g = gridded(seeded()).top;
     const map = plateMap(g.points);
     holdsEveryPointOnce(map, g.points.length);
     expect(map.rows.every(row => row.cells.length === map.columns)).toBe(true);
@@ -310,7 +323,7 @@ describe('the plate map', () => {
   });
 
   it('keeps a grid set out as it lies while its points stay near the lattice, and deals it once they stray', () => {
-    const g = solved(seeded()).settings.top;
+    const g = gridded(seeded()).top;
     expect(plateMap(g.points).labelled).toBe(true);
     const nudged = g.points.map((pt, i) => i === 3 ? { ...pt, x: pt.x + 7, y: pt.y - 4 } : pt);
     expect(plateMap(nudged).labelled).toBe(true);
@@ -341,16 +354,25 @@ describe('the thickness field', () => {
     return new Pt(0, (Math.min(...ys) + Math.max(...ys)) / 2);
   };
 
+  it('is nothing on a plate with no readings', () => {
+    const p = arched();
+    const s = gridded(p);
+    s.back.points = [];
+    expect(thicknessField(p, 'back')).toBeNull();
+    expect(thicknessBands(p, 'back')).toEqual([]);
+    expect(thicknessField(p, 'top')).not.toBeNull();
+  });
+
   it('is nothing until the boundary solves', () => {
     const p = arched();
-    const s = grad(p);
+    const s = gridded(p);
     s.edgeInset = s.lining / 2;
     expect(thicknessField(p, 'back')).toBeNull();
   });
 
   it('reads every point\'s own thickness at the point, the boundary\'s own reading on the boundary, and the edge thickness off the plate', () => {
     const p = arched();
-    const s = grad(p);
+    const s = gridded(p);
     s.back.points.forEach((pt, i) => pt.thickness = 2 + (i % 5) * 0.5);
     const f = thicknessField(p, 'back')!;
     for (const pt of s.back.points) expect(f.at(pt.x, pt.y)).toBeCloseTo(pt.thickness, 9);
@@ -361,7 +383,7 @@ describe('the thickness field', () => {
 
   it('reads the boundary off the arching over the flat, not the edge thickness', () => {
     const p = arched();
-    const s = grad(p);
+    const s = gridded(p);
     const surface = solveCrossArching(p)!.back!;
     const f = thicknessField(p, 'back')!;
     const readings = f.loop.map(q => f.edgeAt(q.x, q.y));
@@ -380,7 +402,7 @@ describe('the thickness field', () => {
 
   it('never leaves the range of what was read', () => {
     const p = arched();
-    const s = grad(p);
+    const s = gridded(p);
     s.back.points.forEach((pt, i) => pt.thickness = 2 + (i % 5) * 0.5);
     const f = thicknessField(p, 'back')!;
     const xs = f.loop.map(q => q.x), ys = f.loop.map(q => q.y);
@@ -395,10 +417,8 @@ describe('the thickness field', () => {
 
   it('runs from a lone point\'s thickness down to the boundary\'s reading without a bullseye', () => {
     const p = arched();
-    const s = grad(p);
-    s.back.points = [];
-    const f0 = thicknessField(p, 'back')!;
-    const c = centre(f0.loop);
+    const s = gridded(p);
+    const c = centre(solveGraduation(p)!.ground!.loop);
     s.back.points = [{ x: c.x, y: c.y, thickness: 5 }];
     const f = thicknessField(p, 'back')!;
     expect(f.at(c.x, c.y)).toBeCloseTo(5, 9);
@@ -419,7 +439,7 @@ describe('the thickness field', () => {
 
   it('mirrors across the joint for a mirrored set of readings', () => {
     const p = arched();
-    const s = grad(p);
+    const s = gridded(p);
     s.back.points.forEach(pt => pt.thickness = 2 + Math.abs(pt.x) / 50 + pt.y / 400);
     const f = thicknessField(p, 'back')!;
     const ys = f.loop.map(q => q.y);
@@ -437,7 +457,7 @@ describe('the thickness field', () => {
       return p;
     };
     const settled = (p: ViolinFamilyParams) => {
-      const s = grad(p);
+      const s = gridded(p);
       // thicker than anything else on the plate, the boundary's arched readings included, so it
       // shows in the range
       s.fHoleThickness = edgeThicknessOf(p, 'top') + p.arching!.top.long.height + 1;
@@ -547,7 +567,7 @@ describe('the thickness field', () => {
 
   it('maps the field in bands cut to the boundary, thin to thick', () => {
     const p = arched();
-    const s = grad(p);
+    const s = gridded(p);
     s.back.points.forEach((pt, i) => pt.thickness = 2 + (i % 5) * 0.5);
     const f = thicknessField(p, 'back')!;
     const bands = thicknessBands(p, 'back');
@@ -563,6 +583,46 @@ describe('the thickness field', () => {
     const area = (ring: Pt[]) => Math.abs(ring.reduce((a, q, i) => a + q.x * ring[(i + 1) % ring.length].y - ring[(i + 1) % ring.length].x * q.y, 0)) / 2;
     const outer = (b: { polygons: Pt[][][] }) => b.polygons.reduce((a, poly) => a + area(poly[0]), 0);
     for (let i = 1; i < bands.length; i++) expect(outer(bands[i])).toBeLessThanOrEqual(outer(bands[i - 1]) + 1e-6);
+  });
+});
+
+describe('the inner surface', () => {
+  const graduated = (): ViolinFamilyParams => {
+    const p = seeded();
+    FlutingPanel.seed(p);
+    FHolePlacementPanel.seed(p);
+    FHoleContoursPanel.seed(p);
+    LongArchingPanel.seed(p);
+    const s = gridded(p);
+    // thickness by station alone, so the field is mirrored across the joint
+    s.top.points.forEach(pt => pt.thickness = 2.5 + Math.abs(Math.sin(pt.y / 40)));
+    return p;
+  };
+
+  it('is nothing before the plate is graduated', () => {
+    const p = seeded();
+    FlutingPanel.seed(p);
+    LongArchingPanel.seed(p);
+    expect(innerSurfaceZAt(p, 'top', 0, p.body.height / 2)).toBeNull();
+  });
+
+  it('stands under the outside, mirrored across the joint, and is nothing off the plate', () => {
+    const p = graduated();
+    const surface = solveCrossArching(p)!.top!;
+    const f = thicknessField(p, 'top')!;
+    const xs = f.loop.map(q => q.x), ys = f.loop.map(q => q.y);
+    let read = 0;
+    for (let y = Math.min(...ys) + 5; y < Math.max(...ys) - 5; y += 23) {
+      for (let x = 3; x < Math.max(...xs) - 5; x += 17) {
+        if (!pointInPolygon(new Pt(x, y), f.loop)) continue;
+        const inner = innerSurfaceZAt(p, 'top', x, y)!;
+        expect(inner).toBeLessThan(surfaceZAt(surface, x, y)!);
+        expect(innerSurfaceZAt(p, 'top', -x, y)!).toBeCloseTo(inner, 3);
+        read++;
+      }
+    }
+    expect(read).toBeGreaterThan(10);
+    expect(innerSurfaceZAt(p, 'top', p.body.width, p.body.height / 2)).toBeNull();
   });
 });
 

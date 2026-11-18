@@ -16,8 +16,12 @@
       "UBW": 167.6,
       "U0R": 160,
       "U1R": 66,
+      "U2R": 72,
+      "UJoinY": 0,
       "L0R": 262.5,
       "L1R": 65.7,
+      "L2R": 100,
+      "LJoinY": 0,
       "useViolNeck": false,
       "viol": null,
       "CBW": 109,
@@ -34,13 +38,11 @@
         "x": 87.25,
         "y": 142.15
       },
-      "U2R": 72,
       "U3R": 400,
       "U31R": 16,
       "U31Sweep": 53,
       "U31DoubleArc": true,
       "useViolCornerUC": false,
-      "L2R": 100,
       "L3R": 400,
       "L31R": 16,
       "L31Sweep": 63,
@@ -298,6 +300,7 @@
     "stringSetup": {
       "bodyStop": 195,
       "bridgeHeight": 33,
+      "bridgeWidth": 43,
       "nutThickness": 7.3,
       "fingerboardLength": 270,
       "fingerboardThickness": 5.5,
@@ -305,7 +308,12 @@
       "fingerboardEndRadius": 56,
       "scoopAt": 135,
       "scoopBass": 0.75,
-      "scoopTreble": 0.5
+      "scoopTreble": 0.5,
+      "soundPostOffset": {
+        "x": -5,
+        "y": -8
+      },
+      "soundPostDiameter": 6
     },
     "mould": {
       "neckBlock": {
@@ -333,7 +341,9 @@
         "height": 20
       },
       "bitDiameter": 6.35,
-      "clampBox": true
+      "clampBox": "windows",
+      "windowInset": 26.4,
+      "alignmentHoles": false
     }
   },
   "ratios": {

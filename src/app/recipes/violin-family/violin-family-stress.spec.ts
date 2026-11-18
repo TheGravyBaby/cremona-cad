@@ -63,6 +63,7 @@ const FIRST_READER: Record<keyof ViolinFamilyParams, string> = {
   stringSetup: 'stringSetup',
   mould: 'mould',
   graduation: 'devGraduation',
+  bassBar: 'devBassBar',
 };
 
 const SEEDS = [MainBoutsPanel, CornersPanel, PlateContourPanel, FlutingPanel, FHolePlacementPanel,

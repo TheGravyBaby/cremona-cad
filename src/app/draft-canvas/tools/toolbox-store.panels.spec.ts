@@ -108,6 +108,70 @@ describe('ToolboxStore panel scoping', () => {
     expect(toolbox.layers.find(l => l.id === scoped)?.scope).toEqual({ only: ['crossArching'] });
   });
 
+  // a layer a recipe adds for a part's face: active at once, shown where it was told, and still
+  // bound after a rename, a lock and a save
+  it('adds a layer bound to a face, drawn on next, and keeps the binding through edits and a save', () => {
+    toolbox.setActivePanel('devFingerboard');
+    const bound = toolbox.addLayer({ name: 'Inlay', scope: { only: ['devFingerboard'] }, face: { id: 'fingerboard', origin: { x: 100, y: 50 } } });
+    expect(toolbox.activeLayerId).toBe(bound);
+    toolbox.addShape({ id: 'a', type: 'line', start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, layerId: bound });
+    expect(toolbox.getVisibleShapes().map(s => s.id)).toEqual(['a']);
+    toolbox.setActivePanel('base');
+    expect(toolbox.getVisibleShapes()).toEqual([]);
+
+    toolbox.renameLayer(bound, 'Vine');
+    toolbox.toggleLayerLocked(bound);
+    toolbox.setLayerScope(bound, undefined);
+    const saved = JSON.parse(JSON.stringify(toolbox.exportState()));
+    toolbox.resetAll();
+    expect(toolbox.layers.some(l => l.face)).toBe(false);
+    toolbox.loadState(saved);
+    expect(toolbox.layers.find(l => l.id === bound)).toMatchObject({ name: 'Vine', face: { id: 'fingerboard', origin: { x: 100, y: 50 } } });
+    expect(toolbox.layers.filter(l => l.face?.id === 'fingerboard').length).toBe(1);
+  });
+
+  // what is drawn on a face is a point on the part: when the recipe moves the face on the canvas,
+  // shape less origin has to read the same before and after, now and at every step of the undo
+  it('carries a face layer\'s shapes with the face, through undo and redo, leaving other layers and the undo stack alone', () => {
+    const plain = toolbox.layers[0].id;
+    const bound = toolbox.addLayer({ face: { id: 'fingerboard', origin: { x: 100, y: 50 } } });
+    const other = toolbox.addLayer({ face: { id: 'top', origin: { x: 0, y: 0 } } });
+    toolbox.addShape({ id: 'a', type: 'line', start: { x: 101, y: 52 }, end: { x: 103, y: 52 }, layerId: bound });
+    toolbox.addShape({ id: 'p', type: 'line', start: { x: 1, y: 1 }, end: { x: 2, y: 1 }, layerId: plain });
+    toolbox.addShape({ id: 'o', type: 'line', start: { x: 5, y: 5 }, end: { x: 6, y: 5 }, layerId: other });
+    toolbox.updateShape('a', { start: { x: 102, y: 52 } });
+
+    const onFace = (id: string) => {
+      const s = toolbox.getShapes().find(s => s.id === id) as any;
+      const origin = toolbox.layers.find(l => l.id === s.layerId)!.face?.origin ?? { x: 0, y: 0 };
+      return [s.start.x - origin.x, s.start.y - origin.y, s.end.x - origin.x, s.end.y - origin.y];
+    };
+    const snapshot = () => JSON.stringify(toolbox.getShapes());
+    let changes = 0;
+    const off = toolbox.onChange(() => changes++);
+
+    toolbox.moveFace('fingerboard', { x: 100, y: 50 });
+    expect(changes).toBe(0);
+    const before = snapshot();
+    toolbox.moveFace('fingerboard', { x: 130, y: 45 });
+    off();
+    expect(changes).toBe(1);
+    expect(toolbox.layers.find(l => l.id === bound)!.face!.origin).toEqual({ x: 130, y: 45 });
+    expect(onFace('a')).toEqual([2, 2, 3, 2]);
+    expect(onFace('p')).toEqual([1, 1, 2, 1]);
+    expect(onFace('o')).toEqual([5, 5, 6, 5]);
+    expect(snapshot()).not.toBe(before);
+
+    toolbox.undo();
+    expect(onFace('a')).toEqual([1, 2, 3, 2]);
+    toolbox.redo();
+    expect(onFace('a')).toEqual([2, 2, 3, 2]);
+    expect(toolbox.canRedo).toBe(false);
+
+    toolbox.moveFace('fingerboard', { x: 100, y: 50 });
+    expect(snapshot()).toBe(before);
+  });
+
   it('switching onto a layer shows it on the open panel', () => {
     const scoped = toolbox.addLayer();
     toolbox.setLayerScope(scoped, { only: [] });

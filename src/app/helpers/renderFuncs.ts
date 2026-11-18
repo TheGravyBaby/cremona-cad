@@ -250,16 +250,22 @@ export const renderPolygon = (points: Pt[], color: string, strokeWidth: number =
         .attr('vector-effect', 'non-scaling-stroke');
 };
 
-/** Plain centered label at a drafting point, upright regardless of the canvas Y-flip (and rotation, if given). */
-export const renderText = (P: Pt, label: string, color: string = 'black', fontSize: number = 5, rotationDeg: number = 0) => (g: any, ui: any) => {
-    ui.append("text")
+/** Plain label at a drafting point, upright regardless of the canvas Y-flip (and rotation, if given). Centred on the
+ * point unless `face` anchors it by an end; `face` also sets it italic or in a family of its own. */
+export const renderText = (
+    P: Pt, label: string, color: string = 'black', fontSize: number = 5, rotationDeg: number = 0,
+    face: { anchor?: 'start' | 'middle' | 'end'; italic?: boolean; family?: string } = {},
+) => (g: any, ui: any) => {
+    const el = ui.append("text")
         .text(label)
         .attr("transform", `translate(${P.x},${-P.y}) rotate(${-rotationDeg})`)
         .attr("fill", color)
         .attr("font-size", fontSize)
-        .attr("text-anchor", "middle")
+        .attr("text-anchor", face.anchor ?? "middle")
         .attr("dominant-baseline", "central")
         .attr("vector-effect", "non-scaling-stroke");
+    if (face.italic) el.attr("font-style", "italic");
+    if (face.family) el.attr("font-family", face.family);
 };
 
 export const renderFilledPath = (path: string, fill: string, opacity: number = 0.15, fillRule: 'evenodd' | 'nonzero' = 'evenodd') => (g: any, ui: any) => {

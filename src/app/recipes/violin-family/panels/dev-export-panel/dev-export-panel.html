@@ -58,6 +58,36 @@
     </div>
     <p class="hint">Cheek down, the planed face on the stem, the heel end on the crossbar. Rolled over onto the stem's other side for the second file.</p>
     }
+    @if (isFingerboard) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Stage</span>
+            <select [(ngModel)]="fingerboard.stage" (change)="saveSettingsAndRedraw()">
+                <option value="rough">Roughing</option>
+                <option value="finish">Finishing</option>
+                <option value="marks">Position marks</option>
+                <option value="inlay">Inlay layer</option>
+                <option value="contour">Contour</option>
+            </select>
+        </label>
+    </div>
+    @if (fingerboard.stage === 'inlay') {
+    @if (inlay; as job) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Layer</span>
+            <select [ngModel]="job.layerId" (ngModelChange)="fingerboard.layer = $event; saveSettingsAndRedraw()">
+                @for (each of faceJobs; track each.layerId) {
+                <option [value]="each.layerId">{{ each.name }}</option>
+                }
+            </select>
+        </label>
+    </div>
+    <p class="hint">{{ job.cut.kind === 'follow' ? 'Follow' : job.cut.kind === 'pocket' ? 'Pocket' : 'Outline' }}, {{ job.cut.depth }} mm deep{{ job.cut.kind === 'follow' ? ', ' + job.cut.width + ' mm wide' : '' }}; {{ job.lines.length }} line{{ job.lines.length === 1 ? '' : 's' }} drawn. Set on the Dev Fingerboard panel.</p>
+    }
+    }
+    <p class="hint">Gluing face down, the nut end up. The position marks, dots and fret lines, are the Dev Fingerboard panel's.</p>
+    }
 </section>
 
 @if (settings.job === 'fholes') {
@@ -76,6 +106,30 @@
     </div>
     <p class="hint">Under the surface. The groove's centre is the drawn line at any depth.</p>
     }
+</section>
+}
+
+@if (isFingerboard && fingerboard.stage === 'marks') {
+<section class="ui-group">
+    <div class="ui-group-title">Position marks</div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Inlay depth" [step]="0.1" [min]="0" [value]="fingerboard.markDepth"
+            (valueChange)="fingerboard.markDepth = $event; saveSettingsAndRedraw()"></app-mm-inch>
+    </div>
+    <p class="hint">A dot's floor is flat, this far under the lowest point of the surface round its rim, so the inlay stands proud toward the crown. A fret line's channel is this far under the surface all the way across.</p>
+</section>
+}
+
+@if (isFingerboard) {
+<section class="ui-group">
+    <div class="ui-group-title">Harness</div>
+    <div class="input-group basic-row field-row" role="group">
+        <app-mm-inch label="Fence X" [step]="0.5" [min]="0" [value]="fingerboard.fence.x"
+            (valueChange)="fingerboard.fence.x = $event; saveSettingsAndRedraw()"></app-mm-inch>
+        <app-mm-inch label="Fence Y" [step]="0.5" [min]="0" [value]="fingerboard.fence.y"
+            (valueChange)="fingerboard.fence.y = $event; saveSettingsAndRedraw()"></app-mm-inch>
+    </div>
+    <p class="hint">Where the fences stand from the harness's zero, the file's XY0. The blank is pushed into their corner, the board centred in it.</p>
 </section>
 }
 
@@ -116,7 +170,7 @@
 }
 
 <section class="ui-group">
-    <div class="ui-group-title">{{ onBlank || isScroll ? 'Blank' : inCradle ? 'Slab' : 'Sheet' }}</div>
+    <div class="ui-group-title">{{ onBlank || isScroll || isFingerboard ? 'Blank' : inCradle ? 'Slab' : 'Sheet' }}</div>
     @if (onBlank) {
     <div class="input-group basic-row field-row" role="group">
         <app-mm-inch label="At the seam" [step]="0.1" [min]="0" [value]="blank.stock.thickness"
@@ -211,8 +265,6 @@
 <section class="ui-group">
     <div class="ui-group-title">
         Plan
-        <button type="button" class="info-icon" (click)="showMachineHelp()" title="Why these defaults"
-            aria-label="Information">ⓘ</button>
     </div>
     @if (!toolpaths) {
     <p class="hint">The part has to solve first.</p>

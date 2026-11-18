@@ -4,14 +4,14 @@
     <div class="ui-group-title">Neck</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Length <span class="unit-label">mm</span></span>
+            <span class="field-title">Length</span>
             <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(2)"
                 [(ngModel)]="neck.length" (input)="recordEditAndRedraw()" (focus)="highlightPart('length', pal.ink(2))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Thickness Upper - Lower <span class="unit-label">mm</span></span>
+            <span class="field-title">Thickness Upper - Lower</span>
             <input type="number" class="basic-input" step="0.5" min="1" [style.border-color]="pal.ink(2).faint(3)"
                 [(ngModel)]="neck.upperThickness" (input)="recordEditAndRedraw()" (focus)="highlightPart('upperThickness', pal.ink(2).faint(3))" (blur)="clearHighlight()" />
         </label>
@@ -22,7 +22,7 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Width Upper - Lower<span class="unit-label">mm</span></span>
+            <span class="field-title">Width Upper - Lower</span>
             <input type="number" class="basic-input" step="0.5" min="1" [style.border-color]="pal.ink(2).faint(3)"
                 [(ngModel)]="neck.topWidth" (input)="recordEditAndRedraw()" (focus)="highlightPart('topWidth', pal.ink(2).faint(3))" (blur)="clearHighlight()" />
         </label>
@@ -37,7 +37,7 @@
     <div class="ui-group-title">Heel</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Heel Radius <span class="unit-label">mm</span></span>
+            <span class="field-title">Heel Radius</span>
             <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(3)"
                 [(ngModel)]="neck.heelRadius" (input)="recordEditAndRedraw()" (focus)="highlightPart('heel', pal.ink(3))" (blur)="clearHighlight()" />
         </label>
@@ -49,7 +49,7 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Button Height <span class="unit-label">mm</span></span>
+            <span class="field-title">Button Height</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(1)"
                 [(ngModel)]="params.plateContour!.button.height" (input)="recordEditAndRedraw()" (focus)="highlightPart('buttonHeight', pal.ink(1))" (blur)="clearHighlight()" />
         </label> 
@@ -60,14 +60,14 @@
     <div class="ui-group-title">Mortise</div>
      <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Mortise Depth <span class="unit-label">mm</span></span>
+            <span class="field-title">Mortise Depth</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0).faint(-3)"
                 [(ngModel)]="neck.mortiseDepth" (input)="recordEditAndRedraw()" (focus)="highlightPart('mortise', pal.ink(0).faint(-3))" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Overstand <span class="unit-label">mm</span></span>
+            <span class="field-title">Overstand</span>
             <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="neck.overstand" (input)="recordEditAndRedraw()" (focus)="highlightPart('overstand', pal.ink(0))" (blur)="clearHighlight()" />
         </label>

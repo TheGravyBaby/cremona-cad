@@ -17,14 +17,14 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Radius <span class="unit-label">mm</span></span>
+            <span class="field-title">Radius</span>
             <input type="number" class="basic-input" step="0.25" min="0.25" [style.border-color]="pal.ink(2)"
                 [(ngModel)]="v.eye.r" (input)="recordEditAndRedraw()" />
         </label>
         <div class="field-cell field-cell--xy">
             <div class="xy-titles">
-                <span class="field-title">X <span class="unit-label">mm</span></span>
-                <span class="field-title">Y <span class="unit-label">mm</span></span>
+                <span class="field-title">X</span>
+                <span class="field-title">Y</span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Eye position" [style.borderColor]="pal.ink(2).faint(5)">
                 @if (v.fitToNeck) {
@@ -39,13 +39,13 @@
     <div class="input-group basic-row field-row" role="group">
         @if (v.style === 'archimedean') {
         <label class="field-cell">
-            <span class="field-title">Pitch <span class="unit-label">mm</span></span>
+            <span class="field-title">Pitch</span>
             <input type="number" class="basic-input" step="0.25" min="0.25" [(ngModel)]="v.pitch" (input)="recordEditAndRedraw()" />
         </label>
         }
         @if (v.style === 'kelly') {
         <label class="field-cell">
-            <span class="field-title">Seed <span class="unit-label">mm</span></span>
+            <span class="field-title">Seed</span>
             <input type="number" class="basic-input" step="0.25" min="0.25" [(ngModel)]="v.seedLength" (input)="recordEditAndRedraw()" />
         </label>
         }
@@ -60,7 +60,7 @@
     <div class="input-group basic-row field-row" role="group">
         @for (i of arcs; track i) {
         <label class="field-cell field-cell--arc">
-            <span class="field-title" [style.color]="arcInk(i)">R {{ arcEnd(i) }} <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="arcInk(i)">R {{ arcEnd(i) }}</span>
             <input type="number" class="basic-input" step="0.25" min="0.25" [style.border-color]="arcInk(i)"
                 [(ngModel)]="v.arcRadii[i]" (input)="recordEditAndRedraw()" (focus)="highlightPart(i, arcInk(i))" (blur)="clearHighlight()" />
         </label>
@@ -74,7 +74,7 @@
     <div class="ui-group-title">Crown</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).faint(3)">S0 R <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="pal.ink(1).faint(3)">S0 R</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(3)"
                 [(ngModel)]="v.S0R" (input)="recordEditAndRedraw()" (focus)="highlightPart('S0', pal.ink(1).faint(3))" (blur)="clearHighlight()" />
         </label>
@@ -84,13 +84,13 @@
                 [(ngModel)]="v.S0Sweep" (input)="recordEditAndRedraw()" (focus)="highlightPart('S0', pal.ink(1).faint(3))" (blur)="clearHighlight()" />
         </label>
           <label class="field-cell">
-            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <span class="field-title">Height</span>
             <div class="basic-display" aria-label="Scroll height">{{ extent.height.toFixed(1) }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1)">S1 R <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="pal.ink(1)">S1 R</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1)"
                 [(ngModel)]="v.S1R" (input)="recordEditAndRedraw()" (focus)="highlightPart('S1', pal.ink(1))" (blur)="clearHighlight()" />
         </label>
@@ -100,13 +100,13 @@
                 [(ngModel)]="v.S1Sweep" (input)="recordEditAndRedraw()" (focus)="highlightPart('S1', pal.ink(1))" (blur)="clearHighlight()" />
         </label>
          <label class="field-cell">
-            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Width</span>
             <div class="basic-display" aria-label="Scroll width">{{ extent.width.toFixed(1) }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pal.ink(1).faint(-3)">S2 R <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="pal.ink(1).faint(-3)">S2 R</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1).faint(-3)"
                 [(ngModel)]="v.S2R" (input)="recordEditAndRedraw()" (focus)="highlightPart('S2', pal.ink(1).faint(-3))" (blur)="clearHighlight()" />
         </label>

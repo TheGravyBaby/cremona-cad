@@ -17,6 +17,7 @@ import historyV0834 from './history/v0.8.3.4.md';
 import historyV083 from './history/v0.8.3.md';
 import historyV0880 from './history/v0.8.8.0.md';
 import historyV090 from './history/v0.9.0.md';
+import historyV0901 from './history/v0.9.0.1.md';
 import wikiOverview from './wiki/overview.md';
 import wikiCanvasControls from './wiki/cremonaCad/controls.md';
 import wikiCanvasImages from './wiki/cremonaCad/images.md';
@@ -24,7 +25,6 @@ import wikiCanvasLayers from './wiki/cremonaCad/layers.md';
 import wikiCanvasTools from './wiki/cremonaCad/tools.md';
 import wikiPanelsBase from './wiki/panels/base.md';
 import wikiPanelsCorners from './wiki/panels/corners.md';
-import wikiPanelsCenterBout from './wiki/panels/center-bout.md';
 import wikiPanelsPlateContour from './wiki/panels/plate-contour.md';
 import wikiPanelsFluting from './wiki/panels/fluting.md';
 import wikiPanelsFHolePlacement from './wiki/panels/f-hole-placement.md';
@@ -68,7 +68,6 @@ export const WIKI: WikiCategory[] = [
       page('wiki/panels/base.md', wikiPanelsBase),
       page('wiki/panels/bouts.md', wikiPanelsBouts),
       page('wiki/panels/corners.md', wikiPanelsCorners),
-      page('wiki/panels/center-bout.md', wikiPanelsCenterBout),
       page('wiki/panels/mould.md', wikiPanelsMould),
       page('wiki/panels/plate-contour.md', wikiPanelsPlateContour),
       page('wiki/panels/fluting.md', wikiPanelsFluting),
@@ -107,6 +106,7 @@ const HISTORY: PageFile[] = [
   page('history/v0.8.3.md', historyV083),
   page('history/v0.8.8.0.md', historyV0880),
   page('history/v0.9.0.md', historyV090),
+  page('history/v0.9.0.1.md', historyV0901),
 ];
 
 export const PAGE_SOURCES: Record<string, string> = Object.fromEntries(

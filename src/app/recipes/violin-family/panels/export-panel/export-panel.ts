@@ -1,21 +1,27 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { EXPORT_DESCRIPTIONS } from '../../../../docs/export-descriptions';
-import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, pointAtDistanceToward, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
 import {
-  applyMatrix, arcPathData, combinePathStrings, Matrix2D, pathFromArc, pathFromCircle, pathFromLine, pathFromPolygon, pathFromPolyline, pathFromRect,
-  pathsBounds, rotatePath180, samplePathToPolyline, transformPath, translatePath,
+  angleFromCenter, angleWithinSweep, dist, normalizeRadians, pointAtDistanceToward, pointOnCircle, signedArcSweep, TURN,
+} from '../../../../helpers/math/simpleGeometry';
+import {
+  applyMatrix, arcPathData, combinePathStrings, Matrix2D, parseSvgTransform, pathFromArc, pathFromCircle, pathFromLine, pathFromPolygon, pathFromPolyline,
+  pathFromRect, pathsBounds, rotatePath180, samplePathToPolyline, transformPath, translatePath,
 } from '../../../../helpers/math/pathMath';
-import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
-import { developOverSurface } from '../../../../helpers/math/vibeMath';
+import { occludePath, unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
+import { developOverSurface, polylineCrossingsAtY } from '../../../../helpers/math/vibeMath';
 import {
-  buildMirroredSvg, buildPackedSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, paginatePieces, paperFor, PdfPage, PieceGroup,
+  buildMirroredSvg, buildPackedSvg, downloadPdf, downloadSvgFile, pageSizeFor, paginatePieces, PaperPage, paperFor, PdfPage, PieceGroup,
   SvgPathExport, SvgTextExport,
 } from '../../../../helpers/fileExporter';
 import { downloadDxfFile } from '../../../../helpers/dxfExporter';
 import { buildHeightFieldStl, downloadStlFile, HeightFieldCut } from '../../../../helpers/stlExporter';
-import { renderPath, renderText } from '../../../../helpers/renderFuncs';
+import { renderFilledPath, renderPath, renderText, renderTranslatedLayers } from '../../../../helpers/renderFuncs';
+import {
+  buildDrawingPage, buildSchematicPage, DRAWING_TEXT, formatMm, SCHEMATIC_AREA, SHEET_SCREEN_FONT, SheetBlock, SheetHeading, SheetMark, SheetPageSpec, SheetRow, SheetStroke,
+  SheetView, timesWidth,
+} from '../../../../helpers/sheetDraft';
 import { Arc, Circle, Pt, Rectangle } from '../../../../models/types';
-import { STROKE_WEIGHT } from '../../../../theme/palettes';
+import { DASH, SHEET, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
   RenderLayer,
@@ -34,28 +40,41 @@ import {
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout, solveRibArcs } from '../center-bout-panel/center-bout-panel';
+import { calcStemEdgePoints, stemEdgeAt } from '../fhole-placement-panel/fhole-placement-panel';
 import { definePurflingPath, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
-import { defineArchPath, solveLongArching } from '../long-arching-panel/long-arching-panel';
-import { calcBodyLandmarks, rowAt, calcSectionRuns, solveCrossArching, STATION_MERGE_EPS_MM, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
+import {
+  calcRibLine, calcTopPlatePlacement, channelCenterlineZAt, defineArchPath, defineBodySideProfile, longArchHeightAt, placeOnTopPlate, solveLongArching,
+} from '../long-arching-panel/long-arching-panel';
+import {
+  BodyLandmark, calcBodyLandmarks, calcSectionRuns, plateHalfChordAtY, rowAt, solveCrossArching, STATION_MERGE_EPS_MM, surfaceZAt,
+} from '../cross-arching-panel/cross-arching-panel';
 import { calcMortiseFloorY, neckHalfWidthAt, calcScrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
-import { fingerboardRadiusAt, fingerboardScoopAt, solveStringSetup } from '../string-setup-panel/string-setup-panel';
-import type { PositionMarkSolve } from '../dev-fingerboard-panel/dev-fingerboard-panel';
+import { solveStringSetup } from '../string-setup-panel/string-setup-panel';
+import { fingerboardSurfaceZAt, PositionMarkSolve, solveScoop } from '../dev-fingerboard-panel/dev-fingerboard-panel';
+import { calcScrollExtent } from '../volute-panel/volute-panel';
 import { defineSideScrollPath } from '../pegbox-panel/pegbox-panel';
-import { buildScrollBackStrip, buildScrollBackViewStrokes, buildScrollCompassWalk, buildScrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';
+import {
+  buildScrollBackStrip, buildScrollBackViewStrokes, buildScrollCompassWalk, buildScrollFrontViewStrokes, calcScrollWidthStations, ScrollStationKey, ScrollView,
+  solveScrollWidths,
+} from '../scroll-widths-panel/scroll-widths-panel';
 import { buildBlockLayout, MOULD_EXPORT_STEP, solveMould } from '../mould-panel/mould-panel';
 
 // The export panel: every sheet the drawing leaves the app on. Each is built once, by `exportSheet`,
 // from the earlier panels' solvers, and the preview, the SVG, the PDF and the DXF are all written
-// from that one sheet. Nothing is typed here, and nothing is written back to the params. Panel, then
-// the sheets, then what exists for the sheets alone: the arch templates, the neck template, the
-// plate solid and the fingerboard solid.
+// from that one sheet. The two documents, the scaled drawings and the schematic, are pages of the
+// same paths and texts, so they preview and print the same way. Nothing is typed here, and nothing
+// is written back to the params. Panel, then the sheets, the scaled drawings and the schematic, then
+// what exists for the sheets alone: the arch templates, the neck template, the plate solid and the
+// fingerboard solid.
 
 type ScrollExportType = 'neckTemplate' | 'scrollSide' | 'scrollFrontView' | 'scrollBackView' | 'scrollBack' | 'scrollCompass';
 export type ExportType = 'innerContour' | 'topPlate' | 'backPlate' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate' | 'fholeTemplateNoEyes' | 'fholeTemplateArched' | ScrollExportType;
 export type ExportReady = ExportType | 'stlTop' | 'stlBack' | 'stlFingerboard';
+// the two PDFs of many pages
+export type ExportDocument = 'schematic' | 'scaledDrawings';
 
-// the sheet's title on a PDF page, one at a time or in the full plan
+// the sheet's title on a PDF page, one at a time or in the scaled drawings
 const SHEET_LABELS: Record<ExportType, string> = {
   innerContour: 'Inner Contour',
   topPlate: 'Top Plate',
@@ -78,7 +97,11 @@ const SCROLL_EXPORTS: readonly ScrollExportType[] = ['neckTemplate', 'scrollSide
 const EXPORT_TYPES: readonly ExportType[] = ['topPlate', 'backPlate', 'innerContour', 'longArchTemplates', 'crossArchTemplates', 'fholeTemplate', 'fholeTemplateArched', ...SCROLL_EXPORTS, 'mould', 'blocks'];
 // drawn on the plan's own sheet, the body's width by its height, rather than sized to themselves
 const PLAN_SHEETS: readonly ExportType[] = ['innerContour', 'topPlate', 'backPlate', 'mould', 'blocks'];
-// the full plan's pages past the plan sheets, in order: a group shares a page with the one before it
+// the scaled drawings' first pages, each a whole outline standing on the centreline, which its page draws
+const PLAN_PAGES = ['topPlate', 'backPlate', 'innerContour', 'mould'] as const;
+const FULL_SIZE_NOTE = 'Full size. Measurements in millimetres';
+const SHEET_CREDIT = 'Made with CremonaCad';
+// the scaled drawings' pages past the plan sheets, in order: a group shares a page with the one before it
 // when the two fit together
 const PDF_GROUPS: ReadonlyArray<{ label: string; types: readonly ExportType[] }> = [
   { label: 'Blocks', types: ['blocks'] },
@@ -127,7 +150,7 @@ const cutFirst = (d: string, strokeWidth = '.5'): SvgPathExport => ({ ...black(d
 })
 export class ExportPanel extends PanelComponentBase {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = [];
-  // the previews draw in the trace grey alone, so any palette serves
+  // a sheet's preview draws in the trace grey alone; a document's takes one ink for the instrument
   protected readonly pal = ThemeService.getPalette('classicCremona');
   protected readonly describe = (id: string): string => EXPORT_DESCRIPTIONS[id] ?? '';
   protected readonly groups = EXPORT_GROUPS;
@@ -141,21 +164,28 @@ export class ExportPanel extends PanelComponentBase {
   // offered once the panels it's drawn from have been reached, so a blank instrument skipped
   // straight here offers its inner contour alone
   ready = new Set<ExportReady>();
-  // the sheet on the canvas: the top plate until one is picked, or the first sheet there is
-  preview: ExportType = 'topPlate';
+  // what is on the canvas: the schematic until a sheet or a document is picked, or the first sheet there is
+  preview: ExportType | ExportDocument = 'schematic';
 
   // nothing is edited here, so an edit settling has nothing to say
   reportSolveFailures(): void {}
 
-  show(type: ExportType): void {
+  show(type: ExportType | ExportDocument): void {
     this.preview = type;
     this.drawCanvas();
   }
 
   protected buildCanvasLayers(): RenderLayer[] {
     this.ready = exportReady(this.params);
-    if (!this.ready.has(this.preview)) this.preview = EXPORT_TYPES.find(type => this.ready.has(type)) ?? this.preview;
-    let sheet = this.ready.has(this.preview) ? exportSheet(this.params, this.preview) : null;
+    let shown = this.preview;
+    if (shown === 'schematic' || shown === 'scaledDrawings') {
+      let pages = shown === 'schematic' ? buildSchematic(this.params, this.heading()) : buildScaledDrawings(this.params, this.heading(FULL_SIZE_NOTE));
+      if (pages.length) return renderPages(pages, this.pal);
+      shown = 'topPlate';
+    }
+    if (!this.ready.has(shown)) shown = EXPORT_TYPES.find(type => this.ready.has(type)) ?? shown;
+    this.preview = shown;
+    let sheet = this.ready.has(shown) ? exportSheet(this.params, shown) : null;
     return sheet ? renderSheet(sheet, this.pal) : [];
   }
 
@@ -167,6 +197,10 @@ export class ExportPanel extends PanelComponentBase {
     return this.fileName?.trim() || 'violin-family';
   }
 
+  private heading(note?: string): SheetHeading {
+    return { title: this.baseName(), description: this.description ?? '', note };
+  }
+
   download(type: ExportType, format: 'svg' | 'pdf' | 'dxf'): void {
     this.ready = exportReady(this.params);
     let sheet = this.ready.has(type) ? exportSheet(this.params, type) : null;
@@ -174,7 +208,7 @@ export class ExportPanel extends PanelComponentBase {
     let name = `${this.baseName()}-${type}.${format}`;
     let { width, height } = sheetSize(this.params, type, sheet);
     if (format === 'svg') downloadSvgFile(name, buildMirroredSvg(width, height, sheet.paths, sheet.texts));
-    else if (format === 'pdf') downloadSvgAsPdf(name, width, height, sheet.paths, { fileName: this.baseName(), description: this.description ?? '', sheetLabel: SHEET_LABELS[type] }, sheet.texts);
+    else if (format === 'pdf') downloadPdf(name, [buildScaledDrawingPage(type, { width, height, ...sheet }, this.heading(FULL_SIZE_NOTE))]);
     else downloadDxfFile(name, combinePathStrings(sheet.paths.map(s => s.d)), sheet.texts.map(t => ({ text: t.text, x: t.x, y: t.y, height: t.fontSize ?? TEMPLATE_LABEL_SIZE, rotationDeg: t.rotationDeg })));
   }
 
@@ -200,26 +234,12 @@ export class ExportPanel extends PanelComponentBase {
     if (solid) downloadStlFile(`${this.baseName()}-fingerboard.stl`, solid);
   }
 
-  downloadFullPlan(): void {
-    this.ready = exportReady(this.params);
-    let p = this.params;
-    let baseName = this.baseName();
-    let description = this.description ?? '';
-    let plans: PdfPage[] = [];
-    for (let type of ['topPlate', 'backPlate', 'innerContour', 'mould'] as const) {
-      let sheet = this.ready.has(type) ? exportSheet(p, type) : null;
-      if (sheet) plans.push({ label: SHEET_LABELS[type], ...sheetSize(p, type, sheet), paths: sheet.paths, texts: sheet.texts });
-    }
-    // the rest in their own frames, each sheet whole, filling pages of the one paper every page prints on
-    let groups: PieceGroup[] = PDF_GROUPS
-      .map(({ label, types }) => ({
-        label,
-        pieces: types.filter(type => this.ready.has(type)).map(type => exportSheet(p, type)).filter((sheet): sheet is ExportSheet => !!sheet),
-      }))
-      .filter(group => group.pieces.length);
-    let paper = paperFor([...plans, ...groups.flatMap(g => g.pieces.map(piece => pathsBounds(piece.paths.map(path => path.d))))]);
-    let pages = [...plans, ...paginatePieces(groups, paper)].map(page => ({ ...page, fileName: baseName, description }));
-    if (pages.length) downloadFullPlanPdf(`${baseName}-full-plan.pdf`, pages, paper);
+  downloadScaledDrawings(): void {
+    downloadPdf(`${this.baseName()}-scaled-drawings.pdf`, buildScaledDrawings(this.params, this.heading(FULL_SIZE_NOTE)));
+  }
+
+  downloadSchematic(): void {
+    downloadPdf(`${this.baseName()}-schematic.pdf`, buildSchematic(this.params, this.heading()));
   }
 }
 
@@ -230,11 +250,40 @@ export interface ExportSheet {
   texts: SvgTextExport[];
 }
 
-// a sheet on the canvas as the file will have it: outlines at trace weight, etched marks at guide
-export const renderSheet = (sheet: ExportSheet, pal: PanelPalette): RenderLayer[] => [
-  ...sheet.paths.map(path => renderPath(path.d, pal.neutral, path.laser === 'etch' ? STROKE_WEIGHT.guide : STROKE_WEIGHT.trace)),
-  ...sheet.texts.map(t => renderText(new Pt(t.x, t.y), t.text, pal.neutral, t.fontSize ?? TEMPLATE_LABEL_SIZE, t.rotationDeg ?? 0)),
+// a sheet on the canvas as the file will have it: outlines at trace weight, etched marks at guide.
+// Printed, it is a document's page, drawn in the canvas's own inks rather than the paper's: the
+// instrument in the panel's ink, everything said about it in the trace grey, dashes dashed
+const INSTRUMENT_INK = 4;
+export const renderSheet = (sheet: ExportSheet, pal: PanelPalette, printed = false): RenderLayer[] => [
+  ...sheet.paths.map(path => {
+    let d = path.transform ? transformPath(path.d, parseSvgTransform(path.transform)) : path.d;
+    if (!printed) return renderPath(d, pal.neutral, path.laser === 'etch' ? STROKE_WEIGHT.guide : STROKE_WEIGHT.trace);
+    if (path.fill && path.fill !== 'none') return renderFilledPath(d, pal.neutral, 1);
+    let ink = path.stroke === SHEET.subject ? pal.ink(INSTRUMENT_INK) : pal.neutral;
+    return renderPath(d, ink, path.strokeWidth === SHEET.light ? STROKE_WEIGHT.guide : STROKE_WEIGHT.section, 1, path.dash ? DASH.preview : undefined);
+  }),
+  ...sheet.texts.map(t => printed
+    ? renderText(new Pt(t.x, t.y), t.text, pal.neutral, t.fontSize, t.rotationDeg ?? 0, { anchor: t.anchor, italic: t.italic, family: SHEET_SCREEN_FONT })
+    : renderText(new Pt(t.x, t.y), t.text, pal.neutral, t.fontSize ?? TEMPLATE_LABEL_SIZE, t.rotationDeg ?? 0)),
 ];
+
+// a document on the canvas, its pages laid out as they read, three to a row and the rows running
+// down, each in a box the size of its paper, the first standing where a single sheet does
+const PAGE_GAP = 20;
+const PAGES_PER_ROW = 3;
+export const renderPages = (pages: PaperPage[], pal: PanelPalette): RenderLayer[] => {
+  let x = 0, y = 0;
+  return pages.map((page, i) => {
+    if (i && i % PAGES_PER_ROW === 0) {
+      x = 0;
+      y -= Math.max(...pages.slice(i, i + PAGES_PER_ROW).map(next => next.height)) + PAGE_GAP;
+    }
+    let paper = pathFromRect(new Rectangle(new Pt(-page.width / 2, 0), new Pt(page.width / 2, page.height)));
+    let layer = renderTranslatedLayers([renderPath(paper, pal.neutral, STROKE_WEIGHT.guide), ...renderSheet(page, pal, true)], x, y);
+    x += page.width + PAGE_GAP;
+    return layer;
+  });
+};
 
 // which sheets the stages reached so far can build. Each check is the cheapest that says so; a sheet
 // that still can't be built when asked for writes nothing
@@ -278,7 +327,8 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
   switch (type) {
     case 'innerContour': {
       let inner = ribOutline(p);
-      return inner ? sheet([black(inner)]) : null;
+      let holes = solveMould(p)?.alignmentHoles ?? [];
+      return inner ? sheet([black(inner), ...holes.map(hole => cutFirst(pathFromCircle(hole)))]) : null;
     }
     case 'topPlate':
     case 'backPlate': {
@@ -292,7 +342,7 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
     }
     case 'mould': {
       let m = solveMould(p, MOULD_EXPORT_STEP);
-      return m?.outline ? sheet([black(combinePathStrings([...m.clampBox, m.outline]))]) : null;
+      return m?.outline ? sheet([black(combinePathStrings([...m.clampBox, m.outline])), ...m.alignmentHoles.map(hole => cutFirst(pathFromCircle(hole)))]) : null;
     }
     case 'blocks': {
       let m = solveMould(p);
@@ -332,7 +382,7 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
       if (!scroll?.widths) return null;
       let place = (x: number, y: number) => new Pt(x, y);
       let strokes = type === 'scrollFrontView' ? buildScrollFrontViewStrokes(p, scroll.s, place, 0) : buildScrollBackViewStrokes(p, scroll.s, place, 0);
-      let d = combinePathStrings(Object.values(strokes).flat().map(s => 'line' in s ? pathFromLine(...s.line) : 'polygon' in s ? pathFromPolygon(s.polygon) : s.d));
+      let d = defineScrollViewPath(strokes);
       return sheet([black(translatePath(d, 0, -pathsBounds([d]).minY))]);
     }
     case 'scrollBack': {
@@ -463,6 +513,524 @@ function compassSheet(p: ViolinFamilyParams): { box: string; marks: string; cent
   };
 }
 
+// every stroke of a scroll view as one path
+function defineScrollViewPath(view: ScrollView): string {
+  return combinePathStrings(Object.values(view).flat().map(s => 'line' in s ? pathFromLine(...s.line) : 'polygon' in s ? pathFromPolygon(s.polygon) : s.d));
+}
+
+// The scaled drawings: every sheet at full size on one paper, the plan sheets a page each and the rest
+// packed after them, each page framed by helpers/sheetDraft.ts. A sheet's own PDF is one such page.
+
+function buildScaledDrawingPage(type: ExportType, sheet: { width: number; height: number } & ExportSheet, heading: SheetHeading): PaperPage {
+  let centreline = (PLAN_PAGES as readonly ExportType[]).includes(type);
+  return buildDrawingPage({ ...sheet, centreline }, pageSizeFor(sheet.width, sheet.height), heading, { page: 1, of: 1, name: SHEET_LABELS[type], credit: SHEET_CREDIT });
+}
+
+export function buildScaledDrawings(p: ViolinFamilyParams, heading: SheetHeading): PaperPage[] {
+  let ready = exportReady(p);
+  let plans: (PdfPage & { centreline: boolean })[] = [];
+  for (let type of PLAN_PAGES) {
+    let sheet = ready.has(type) ? exportSheet(p, type) : null;
+    if (sheet) plans.push({ label: SHEET_LABELS[type], ...sheetSize(p, type, sheet), paths: sheet.paths, texts: sheet.texts, centreline: true });
+  }
+  // the rest in their own frames, each sheet whole, filling pages of the one paper every page prints on
+  let groups: PieceGroup[] = PDF_GROUPS
+    .map(({ label, types }) => ({
+      label,
+      pieces: types.filter(type => ready.has(type)).map(type => exportSheet(p, type)).filter((sheet): sheet is ExportSheet => !!sheet),
+    }))
+    .filter(group => group.pieces.length);
+  let paper = paperFor([...plans, ...groups.flatMap(g => g.pieces.map(piece => pathsBounds(piece.paths.map(path => path.d))))]);
+  let pages = [...plans, ...paginatePieces(groups, paper)];
+  return pages.map((page, i) => buildDrawingPage(page, pageSizeFor(page.width, page.height, paper), heading, { page: i + 1, of: pages.length, name: page.label, credit: SHEET_CREDIT }));
+}
+
+// The schematic: A4 pages to print at home and read at the bench, each view reduced to fit and
+// carrying its own dimensions. A page here is a description, a view's paths and marks and a
+// table's rows, which helpers/sheetDraft.ts draws. A page whose stage hasn't been reached is left
+// out, and so is a mark or a row within one. Every number is a param or read off a solve; a
+// dimension with no text of its own prints what it measures.
+
+// the sections a maker works to: the two widest points and the waist
+const SECTION_CODES: readonly BodyLandmark['code'][] = ['UB', 'C', 'LB'];
+// how far apart the arching's heights are taken: the first of these steps that leaves a section's
+// figures room on one line, and a long arch's a little air between them, at the scale it's drawn
+const ORDINATE_STEPS = [10, 20, 40, 50, 100];
+const CROSS_ORDINATE_PITCH = 8;
+const LONG_ORDINATE_PITCH = 12;
+// what a page keeps under its view for a table of five rows
+const TABLE_ROOM = 34;
+
+export type SchematicPageName = 'body' | 'arching' | 'fHoles' | 'neck' | 'head';
+
+export function buildSchematicPages(p: ViolinFamilyParams): { name: SchematicPageName; spec: SheetPageSpec }[] {
+  let pages: [SchematicPageName, SheetPageSpec | null][] = [
+    ['body', buildBodyPage(p)], ['arching', buildArchingPage(p)], ['fHoles', buildFholesPage(p)], ['neck', buildNeckPage(p)], ['head', buildHeadPage(p)],
+  ];
+  return pages.flatMap(([name, spec]) => spec ? [{ name, spec }] : []);
+}
+
+export function buildSchematic(p: ViolinFamilyParams, heading: SheetHeading): PaperPage[] {
+  let pages = buildSchematicPages(p);
+  return pages.map((page, i) => buildSchematicPage(page.spec, heading, { page: i + 1, of: pages.length, credit: SHEET_CREDIT }));
+}
+
+// values as a row prints them: a typed one to the hundredth, as it was typed, and a measured one
+// to `places`. Null while any is missing
+function formatValues(values: (number | null | undefined)[], between = ' / ', after = '', places = 2): string | null {
+  return values.every(v => typeof v === 'number' && Number.isFinite(v)) ? values.map(v => formatMm(v!, places)).join(between) + after : null;
+}
+
+// a row with nothing to say is left out
+function buildRows(rows: [string, string | null][]): SheetRow[] {
+  return rows.flatMap(([label, value]) => value === null ? [] : [{ label, value }]);
+}
+
+// a plate's arch height: the solved surface on the joint, above the plate's edge, where the long
+// arch stands highest
+function calcArchPeak(p: ViolinFamilyParams, plate: Plate): { y: number; height: number } | null {
+  let surface = p.arching ? solveCrossArching(p)?.[plate] : null;
+  let la = surface?.longArch;
+  if (!surface || !la) return null;
+  let y = la.yStart;
+  for (let at = la.yStart; at <= la.yEnd; at += 1) if (longArchHeightAt(la, at) > longArchHeightAt(la, y)) y = at;
+  let height = surfaceZAt(surface, 0, y);
+  return height === null ? null : { y, height };
+}
+
+// plan and side elevation on the same station lines. The widths are callipered off the outline at
+// its stations; the side's are taken along the bottom, back to belly
+function buildBodyPage(p: ViolinFamilyParams): SheetPageSpec | null {
+  let rib = ribOutline(p);
+  if (!rib) return null;
+  let o = solvePlateContour(p);
+  let outline = o?.top ?? rib;
+  let loop = samplePathToPolyline(outline, 0.25);
+  let half = Math.max(...loop.map(pt => Math.abs(pt.x)));
+  let foot = Math.min(...loop.map(pt => pt.y));
+  let head = Math.max(...loop.map(pt => pt.y));
+  let h = p.body.height;
+  let landmarks = calcBodyLandmarks(p);
+  let holes = fholes(p);
+  let a = p.arching && o ? solveLongArching(p) : null;
+  let side = a?.ribs && o ? defineBodySideProfile(p, a, o) : null;
+  let ribs = a?.ribs && side ? calcRibLine(p, a.ribs) : null;
+  let backPeak = side ? calcArchPeak(p, 'back') : null;
+  let topPeak = side ? calcArchPeak(p, 'top') : null;
+  let backThickness = p.arching?.back.thickness ?? 0;
+  let buttonHeight = o?.button ? p.plateContour!.button.height : 0;
+  // the belly's edge and crown where the tilted plate carries them in the side view
+  let onRibs = a?.ribs ? calcTopPlatePlacement(p, a.ribs) : null;
+  let topEdgeZ = a?.ribs ? a.ribs.zLower + p.arching!.top.thickness : 0;
+  let topEdge = onRibs && topPeak ? placeOnTopPlate(onRibs, new Pt(topEdgeZ, topPeak.y)) : null;
+  let topCrown = onRibs && topPeak ? placeOnTopPlate(onRibs, new Pt(topEdgeZ + topPeak.height, topPeak.y)) : null;
+  let backReach = backThickness + (backPeak?.height ?? 0);
+  let topReach = topCrown?.x ?? (ribs ? Math.max(ribs.zLow, ribs.zHigh) + p.arching!.top.thickness : 0);
+
+  let view = (scale: number): SheetView => {
+    let left = -half - 11 * scale;
+    let sideX = half + 11 * scale + backReach;
+    let right = side ? sideX + topReach + 2 * scale : half + 2 * scale;
+    let strokes: SheetStroke[] = [
+      { d: outline },
+      { d: pathFromLine(new Pt(0, foot - 3 * scale), new Pt(0, head + buttonHeight + 3 * scale)), ink: 'note', dashed: true },
+    ];
+    for (let d of [o?.purfling, o?.outerPurfling]) if (d) strokes.push({ d, weight: 'light' });
+    for (let d of holes) strokes.push({ d });
+    if (o?.button) strokes.push({ d: o.button.path, weight: 'light', dashed: true });
+
+    let marks: SheetMark[] = [{ kind: 'dimension', from: new Pt(0, foot), to: new Pt(0, head), through: new Pt(left, 0) }];
+    for (let m of landmarks) {
+      marks.push({ kind: 'station', y: m.y, from: -half - 3 * scale, to: right, label: String(m.y), sub: m.code });
+      let reach = plateHalfChordAtY(loop, m.y);
+      if (reach && SECTION_CODES.includes(m.code)) marks.push({ kind: 'dimension', from: new Pt(-reach, m.y), to: new Pt(reach, m.y), textAt: 0.72 });
+    }
+
+    if (side && ribs) {
+      strokes.push({ d: translatePath(side.ribs, sideX, 0), weight: 'light' });
+      for (let plate of [side.back, side.top]) {
+        strokes.push({ d: translatePath(plate.frame, sideX, 0), weight: 'light' });
+        if (plate.edge) strokes.push({ d: translatePath(plate.edge, sideX, 0) });
+        if (plate.arch) strokes.push({ d: translatePath(plate.arch, sideX, 0) });
+      }
+      if (buttonHeight) {
+        strokes.push({ d: pathFromPolyline([new Pt(sideX, h), new Pt(sideX, h + buttonHeight), new Pt(sideX - backThickness, h + buttonHeight), new Pt(sideX - backThickness, h)]) });
+      }
+      let below = new Pt(0, 0);
+      marks.push({ kind: 'dimension', from: new Pt(sideX, ribs.yHigh), to: new Pt(sideX + ribs.zHigh, ribs.yHigh), through: new Pt(0, h + buttonHeight), offset: 4 });
+      marks.push({ kind: 'dimension', from: new Pt(sideX, ribs.yLow), to: new Pt(sideX + ribs.zLow, ribs.yLow), through: below, offset: -5 });
+      if (backPeak) marks.push({ kind: 'dimension', from: new Pt(sideX - backReach, 0), to: new Pt(sideX - backThickness, 0), through: below, offset: -5 });
+      if (topEdge && topCrown) marks.push({ kind: 'dimension', from: new Pt(sideX + topEdge.x, 0), to: new Pt(sideX + topCrown.x, 0), through: below, offset: -5 });
+      if (backPeak && topCrown) marks.push({ kind: 'dimension', from: new Pt(sideX - backReach, 0), to: new Pt(sideX + topCrown.x, 0), through: below, offset: -11 });
+    }
+    return { strokes, marks };
+  };
+
+  let arching = p.arching;
+  let measures = buildRows([
+    ['Body length', formatValues([h])],
+    ['Upper bout width', formatValues([p.bouts?.UBW])],
+    ['Middle bout width', formatValues([solveCenterBout(p)?.CBW])],
+    ['Lower bout width', formatValues([p.body.width])],
+    ['Overhang', formatValues([p.body.overhang])],
+  ]);
+  let heights = buildRows([
+    ['Rib height, end / neck', formatValues([arching?.ribHeightLower, arching?.ribHeightUpper])],
+    ['Arch height, back / belly', formatValues([backPeak?.height, topPeak?.height], ' / ', '', 1)],
+    ['Edge thickness, back / belly', formatValues([arching?.back.thickness, arching?.top.thickness])],
+    ['Purfling from edge', formatValues([p.plateContour?.purflingOffset])],
+    ['Button, width × height', formatValues([p.plateContour?.button.width, p.plateContour?.button.height], ' × ')],
+  ]);
+  return { columns: [{ x: 0, w: SCHEMATIC_AREA.width, blocks: [{ view, h: SCHEMATIC_AREA.height - TABLE_ROOM }, { tables: [measures, heights], w: 66 }] }] };
+}
+
+// the step between heights on a view drawn 1 : scale, its figures `pitch` mm apart on the paper or more
+function calcOrdinateStep(scale: number, pitch: number): number {
+  return ORDINATE_STEPS.find(step => step / scale >= pitch) ?? ORDINATE_STEPS[ORDINATE_STEPS.length - 1];
+}
+
+// one plate's section at a station, edge to edge: the surface the cross-arch templates are cut to.
+// Both halves, since a crown set off the joint or a spline drawn one side at a time leaves them
+// different
+function calcSection(surface: PlateSurface, y: number): { half: number; profile: Pt[]; row: SurfaceRow } | null {
+  let row = rowAt(surface, y);
+  let half = row.outerHalf;
+  if (half === null) return null;
+  // the end samples stand on the outline itself, where the surface may read as off the plate
+  let profile = calcSectionRuns(surface, y).flatMap(run => run.pts).filter(pt => Number.isFinite(pt.y));
+  return { half, profile, row };
+}
+
+// each plate's sections at the upper bout, the waist and the lower bout, and both long
+// arches, every height read off the solved surface
+function buildArchingPage(p: ViolinFamilyParams): SheetPageSpec | null {
+  let c = p.arching ? solveCrossArching(p) : null;
+  if (!c || (!c.top && !c.back)) return null;
+  let h = p.body.height;
+  let stations = calcBodyLandmarks(p).filter(m => SECTION_CODES.includes(m.code)).sort((m, n) => n.y - m.y);
+  let plates = [...TEMPLATE_PLATES].reverse().flatMap(({ plate, label }) => {
+    let surface = c[plate];
+    if (!surface) return [];
+    let sections = stations.flatMap(m => {
+      let section = calcSection(surface, m.y);
+      return section ? [{ ...m, ...section, surface }] : [];
+    });
+    let centreline = Array.from({ length: Math.ceil(h / 2) + 1 }, (_, i) => {
+      let y = h * i / Math.ceil(h / 2);
+      return new Pt(channelCenterlineZAt(p, p.fluting![plate], surface.longArch, y), y);
+    });
+    return [{ plate, label, surface, sections, centreline }];
+  });
+  let widest = Math.max(...plates.flatMap(pl => pl.sections.map(sec => sec.half)));
+
+  let cross = (scale: number): SheetView => {
+    let strokes: SheetStroke[] = [];
+    let marks: SheetMark[] = [];
+    let cursor = 0;
+    let step = calcOrdinateStep(scale, CROSS_ORDINATE_PITCH);
+    for (let { label, sections } of plates) {
+      marks.push({ kind: 'callout', at: new Pt(-widest - 7 * scale, cursor), text: label, bare: true, anchor: 'start' });
+      cursor -= 6 * scale;
+      for (let section of sections) {
+        let rise = Math.max(...section.profile.map(pt => pt.y));
+        let dip = Math.min(0, ...section.profile.map(pt => pt.y));
+        let base = cursor - rise;
+        strokes.push({ d: translatePath(pathFromPolyline(section.profile), 0, base) });
+        strokes.push({ d: pathFromLine(new Pt(0, base), new Pt(0, base + rise + 4 * scale)), ink: 'note', dashed: true });
+        // the solved surface's height above the plate's edge every step out from the joint, both ways
+        let reach = Math.ceil(section.half / step) - 1;
+        let heights = Array.from({ length: 2 * reach + 1 }, (_, i) => {
+          let x = (i - reach) * step;
+          return { at: x + section.half, height: surfaceZAt(section.surface, x, section.y, section.row) ?? 0 };
+        });
+        marks.push({ kind: 'ordinates', origin: new Pt(-section.half, base), axis: new Pt(1, 0), normal: new Pt(0, 1), length: 2 * section.half, values: 'base', stations: heights });
+        marks.push({ kind: 'callout', at: new Pt(-section.half - 1.5 * scale, base + rise / 2), text: section.code, sub: String(section.y), bare: true, anchor: 'end' });
+        cursor = base + dip - 17 * scale;
+      }
+    }
+    marks.push({ kind: 'callout', at: new Pt(-widest - 7 * scale, cursor + 9 * scale), text: `Heights every ${step} mm out from the joint`, bare: true, anchor: 'start' });
+    return { strokes, marks };
+  };
+
+  // the back bows to the left and the belly to the right, as they lie in the side elevation, the
+  // stations' positions written once between the two
+  let long = (scale: number): SheetView => {
+    let strokes: SheetStroke[] = [];
+    let marks: SheetMark[] = [];
+    let step = calcOrdinateStep(scale, LONG_ORDINATE_PITCH);
+    for (let [i, { plate, label, surface, centreline }] of [...plates].reverse().entries()) {
+      let sign = plate === 'back' ? -1 : 1;
+      let x = i * 20 * scale;
+      let heights = Array.from({ length: Math.ceil(h / step) - 1 }, (_, k) => ({ at: (k + 1) * step, height: surfaceZAt(surface, 0, (k + 1) * step) ?? 0 }));
+      strokes.push({ d: pathFromPolyline(centreline.map(pt => new Pt(x + sign * pt.x, pt.y))) });
+      marks.push({ kind: 'ordinates', origin: new Pt(x, 0), axis: new Pt(0, 1), normal: new Pt(sign, 0), length: h, stations: heights, values: 'tip', positions: i === 0 });
+      marks.push({ kind: 'callout', at: new Pt(x, h + 5 * scale), text: label, bare: true });
+    }
+    return { strokes, marks };
+  };
+
+  return {
+    columns: [
+      { x: 0, w: 132, blocks: [{ view: cross, h: SCHEMATIC_AREA.height }] },
+      { x: 138, w: SCHEMATIC_AREA.width - 138, blocks: [{ view: long, h: SCHEMATIC_AREA.height }] },
+    ],
+  };
+}
+
+// both holes in place on the top, boxed, the plate's edge and purfling running through the box
+function buildFholesPage(p: ViolinFamilyParams): SheetPageSpec | null {
+  let s = p.fHoleContours ? solveFholeContours(p) : null;
+  if (!s?.path || !s.UTip || !s.LTip) return null;
+  let f = p.fHoles!;
+  let o = solvePlateContour(p);
+  let { UEye, LEye, stem } = f;
+  let bass = defineFholePath(p, s, true)!;
+  let b = pathsBounds([s.path]);
+  let pad = 0.14 * b.height;
+  let box = pathFromRect(new Rectangle(new Pt(-b.maxX - 2 * pad, b.minY - pad), new Pt(b.maxX + 2 * pad, b.maxY + pad)));
+  let edges = calcStemEdgePoints(stem);
+  let notch = stemEdgeAt(stem, edges.inner, stem.center.y);
+
+  let strokes: SheetStroke[] = [
+    { d: box, ink: 'note', weight: 'heavy' },
+    { d: s.path },
+    { d: bass },
+    { d: pathFromLine(new Pt(0, b.minY - pad), new Pt(0, b.maxY + pad)), ink: 'note', dashed: true },
+    { d: pathFromLine(new Pt(-notch.x, notch.y), notch), ink: 'note', dashed: true },
+  ];
+  if (o?.top) strokes.push({ d: occludePath(o.top, box).hidden });
+  for (let d of [o?.purfling, o?.outerPurfling]) if (d) strokes.push({ d: occludePath(d, box).hidden, weight: 'light' });
+
+  // the two measures that run aslant, eye to eye and wing point to wing point, are drawn on the
+  // bass hole and read off beside it, where their figures don't lie along the hole's own edge
+  let bassUEye = new Pt(-UEye.x, UEye.y), bassLEye = new Pt(-LEye.x, LEye.y);
+  let bassUTip = new Pt(-s.UTip.x, s.UTip.y), bassLTip = new Pt(-s.LTip.x, s.LTip.y);
+  let marks: SheetMark[] = [
+    { kind: 'dimension', from: new Pt(-(UEye.x - UEye.r), UEye.y), to: new Pt(UEye.x - UEye.r, UEye.y), textAt: 0.62 },
+    { kind: 'dimension', from: new Pt(-(LEye.x - LEye.r), LEye.y), to: new Pt(LEye.x - LEye.r, LEye.y), textAt: 0.62 },
+    { kind: 'dimension', from: new Pt(UEye.x - UEye.r, UEye.y), to: new Pt(UEye.x + UEye.r, UEye.y), through: new Pt(0, UEye.y - UEye.r), offset: -6.5 },
+    { kind: 'dimension', from: new Pt(LEye.x - LEye.r, LEye.y), to: new Pt(LEye.x + LEye.r, LEye.y), through: new Pt(0, LEye.y + LEye.r), offset: 3 },
+    { kind: 'dimension', from: edges.inner, to: edges.outer, text: formatMm(stem.width, 2) },
+    { kind: 'dimension', from: bassUEye, to: bassLEye, text: '' },
+    { kind: 'callout', at: pointAtDistanceToward(bassUEye, bassLEye, 0.3 * dist(bassUEye, bassLEye)), dx: 16, dy: 4, text: formatMm(dist(bassUEye, bassLEye)) },
+    { kind: 'dimension', from: bassUTip, to: bassLTip, text: '' },
+    { kind: 'callout', at: pointAtDistanceToward(bassUTip, bassLTip, 0.62 * dist(bassUTip, bassLTip)), dx: 18, dy: -5, text: formatMm(dist(bassUTip, bassLTip)) },
+    { kind: 'dimension', from: new Pt(-b.maxX, b.minY), to: new Pt(-b.maxX, b.maxY), offset: 5 },
+  ];
+
+  let lengths = buildRows([
+    ['Stop, upper edge to notches', formatValues([p.body.height - stem.center.y])],
+    ['Length', formatValues([b.height], '', '', 1)],
+    ['Between upper eyes', formatValues([2 * (UEye.x - UEye.r)])],
+    ['Between lower eyes', formatValues([2 * (LEye.x - LEye.r)])],
+    ['Upper eye to lower eye', formatValues([dist(UEye, LEye)], '', '', 1)],
+  ]);
+  let widths = buildRows([
+    ['Upper eye diameter', formatValues([2 * UEye.r])],
+    ['Lower eye diameter', formatValues([2 * LEye.r])],
+    ['Eye centres from joint, upper / lower', formatValues([UEye.x, LEye.x])],
+    ['Stem width', formatValues([stem.width])],
+    ['Between wing points', formatValues([dist(s.UTip, s.LTip)], '', '', 1)],
+  ]);
+  return { columns: [{ x: 0, w: SCHEMATIC_AREA.width, blocks: [{ view: { strokes, marks }, h: SCHEMATIC_AREA.height - TABLE_ROOM }, { tables: [lengths, widths], w: 76 }] }] };
+}
+
+// the neck and whatever of the scroll has solved, in the side elevation's frame
+function defineNeckSidePath(p: ViolinFamilyParams, n: NeckSolve, scroll: ScrollSolve | null): string {
+  if (!scroll) return combinePathStrings([...neckOutline(p, n, n.backNut!), pathFromLine(n.neckTop!, n.backNut!)]);
+  let onNeck = calcScrollOnNeck(p, n);
+  return combinePathStrings([
+    ...neckOutline(p, n, applyMatrix(onNeck, pointOnCircle(scroll.nape!, scroll.nape!.start))),
+    pathFromLine(n.neckTop!, applyMatrix(onNeck, new Pt(0, p.neck!.nutHeight))),
+    transformPath(defineSideScrollPath(p, scroll), onNeck),
+  ]);
+}
+
+// the neck from the side with what sets it, and beside it the whole instrument small, strung: the
+// string's length along the string and the stop down the body
+function buildNeckPage(p: ViolinFamilyParams): SheetPageSpec | null {
+  let n = solvedNeck(p);
+  if (!n) return null;
+  let nk = p.neck!;
+  let h = p.body.height;
+  let neck = defineNeckSidePath(p, n, solvedScroll(p)?.s ?? null);
+  let root = n.root!;
+  let lean = nk.angle * TURN.degree;
+  let reach = 0.42 * nk.length;
+  let a = solveLongArching(p);
+  let o = solvePlateContour(p);
+  let side = a && o ? defineBodySideProfile(p, a, o) : null;
+  let body = side ? [side.ribs, side.back.frame, side.back.edge, side.back.arch, side.top.frame, side.top.edge, side.top.arch].filter((d): d is string => !!d) : [];
+  let backThickness = p.arching!.back.thickness;
+  let button = pathFromPolyline([new Pt(0, h), new Pt(0, n.tip!.y), new Pt(-backThickness, n.tip!.y), new Pt(-backThickness, h)]);
+
+  // the top of the body the neck stands on, and no more of it
+  let below = new Rectangle(new Pt(-1e4, h - 0.03 * h), new Pt(1e4, h + 1e4));
+  let strokes: SheetStroke[] = [
+    { d: neck },
+    { d: button, weight: 'light' },
+    ...body.map(d => ({ d: occludePath(d, pathFromRect(below)).hidden, weight: 'light' as const })),
+    { d: pathFromLine(root, new Pt(root.x, root.y + 1.15 * reach)), ink: 'note', dashed: true },
+    { d: arcPathData(root, reach, TURN.quarter + Math.min(lean, 0), TURN.quarter + Math.max(lean, 0)), ink: 'note' },
+  ];
+  let marks: SheetMark[] = [
+    { kind: 'dimension', from: n.bottomFront!, to: n.neckTop!, offset: -14 },
+    { kind: 'dimension', from: n.neckTop!, to: n.backNut!, offset: 4 },
+    { kind: 'dimension', from: n.lowerThickness![0], to: n.lowerThickness![1], offset: -4 },
+    { kind: 'callout', at: pointOnCircle({ ...root, r: reach }, TURN.quarter + lean / 2), dy: 2.4, text: `${formatMm(nk.angle, 2)}°`, bare: true },
+  ];
+  if (n.plateEdge) marks.push({ kind: 'dimension', from: n.plateEdge, to: root, offset: -6 });
+  if (n.heel) marks.push({ kind: 'callout', at: pointOnCircle(n.heel, n.heel.start + signedArcSweep(n.heel) / 2), dx: -16, dy: 9, text: `R ${formatMm(nk.heelRadius, 2)}` });
+
+  let beside: SheetBlock[] = [];
+  let st = p.stringSetup ? solveStringSetup(p) : null;
+  if (st?.nutTop && st.bridgeTop && st.bridgeFoot && st.bridge) {
+    let stop = p.stringSetup!.bodyStop;
+    beside.push({
+      h: 150,
+      view: {
+        strokes: [
+          { d: neck },
+          { d: button },
+          ...body.map(d => ({ d })),
+          { d: pathFromPolygon(st.bridge) },
+          { d: pathFromLine(st.nutTop, st.bridgeTop), ink: 'note' },
+        ],
+        marks: [
+          { kind: 'dimension', from: st.nutTop, to: st.bridgeTop, offset: 6, text: `~${Math.round(dist(st.nutTop, st.bridgeTop))}` },
+          { kind: 'dimension', from: new Pt(st.bridgeFoot.x, h), to: new Pt(st.bridgeFoot.x, h - stop), through: st.bridgeTop, offset: 15 },
+        ],
+      },
+    });
+  }
+  let rows = buildRows([
+    ['Neck length', formatValues([nk.length])],
+    ['Angle', formatValues([nk.angle], '', '°')],
+    ['Overstand', formatValues([nk.overstand])],
+    ['Width, nut / root', formatValues([nk.topWidth, nk.rootWidth])],
+    ['Mortise depth', formatValues([nk.mortiseDepth])],
+  ]);
+  return {
+    columns: [
+      { x: 0, w: 118, blocks: [{ view: { strokes, marks }, h: SCHEMATIC_AREA.height }] },
+      { x: 126, w: SCHEMATIC_AREA.width - 126, blocks: [...beside, { tables: [rows], w: SCHEMATIC_AREA.width - 126 }] },
+    ],
+  };
+}
+
+// the volute's turns as a maker callipers them: where the curve, from the eye's back under the eye
+// and out round the spiral and over the head's back, crosses the level and the plumb through the
+// eye's centre. They pair from the inside out, one each side of the centre; a crossing left with no
+// partner, the back's own, is no turn's
+export function calcVoluteTurns(s: ScrollSolve): { widths: [Pt, Pt][]; heights: [Pt, Pt][] } {
+  let eye = s.eye!;
+  let curve = combinePathStrings([
+    arcPathData(eye, eye.r, -TURN.half, 0),
+    ...[...[...s.spiral!].reverse(), s.S0!, s.S1!, s.S2!].map(arc => arcPathData(arc, arc.r, arc.start, arc.end)),
+  ]);
+  let run = samplePathToPolyline(curve, 0.02, true);
+  // a hair under the centre, so the eye's own two ends on the level each count once
+  let xs = polylineCrossingsAtY(run, eye.y - 1e-7, false);
+  let ys = polylineCrossingsAtY(run.map(pt => new Pt(pt.y, pt.x)), eye.x, false);
+  let left = xs.filter(x => x < eye.x).reverse(), right = xs.filter(x => x > eye.x);
+  let under = ys.filter(y => y < eye.y).reverse(), over = ys.filter(y => y > eye.y);
+  return {
+    widths: left.slice(0, right.length).map((x, i) => [new Pt(x, eye.y), new Pt(right[i], eye.y)]),
+    heights: under.slice(0, over.length).map((y, i) => [new Pt(eye.x, y), new Pt(eye.x, over[i])]),
+  };
+}
+
+// which view shows each width, and what the sheet calls it
+const HEAD_WIDTHS: Partial<Record<ScrollStationKey, { view: 'front' | 'back'; name: string }>> = {
+  nut: { view: 'front', name: 'nut' },
+  hip: { view: 'front', name: 'hips' },
+  throat: { view: 'front', name: 'throat' },
+  turn2Bottom: { view: 'front', name: 'turn 2, bottom' },
+  eye: { view: 'front', name: 'eyes' },
+  turn2Top: { view: 'front', name: 'turn 2, top' },
+  crown: { view: 'front', name: 'crown' },
+  duckTail: { view: 'back', name: 'duck tail' },
+  foot: { view: 'back', name: 'foot' },
+  poll: { view: 'back', name: 'poll' },
+  turn1Bottom: { view: 'back', name: 'turn 1, bottom' },
+};
+// how close two call-outs' texts, or two levels' labels, may stand on the paper
+const CALLOUT_PITCH = 6.2;
+const CALLOUT_REACH = 5;
+const LEVEL_PITCH = 2.4;
+
+// the head from the side, the front and the back, all standing on the nut line. The side carries
+// each turn's width and height through the eye; the front and back each width, called out at the
+// height the widths solve hangs it at
+function buildHeadPage(p: ViolinFamilyParams): SheetPageSpec | null {
+  let scroll = solvedScroll(p);
+  if (!scroll?.widths) return null;
+  let s = scroll.s;
+  let v = p.scroll!;
+  let eye = s.eye!;
+  let side = defineSideScrollPath(p, s);
+  let front = defineScrollViewPath(buildScrollFrontViewStrokes(p, s, (x, y) => new Pt(x, y), 0));
+  let back = defineScrollViewPath(buildScrollBackViewStrokes(p, s, (x, y) => new Pt(x, y), 0));
+  let sb = pathsBounds([side]), fb = pathsBounds([front]), bb = pathsBounds([back]);
+  let turns = calcVoluteTurns(s);
+  let extent = calcScrollExtent(s);
+  let widths = calcScrollWidthStations(p, s).filter(st => HEAD_WIDTHS[st.key]).sort((m, n) => m.at.y - n.at.y);
+
+  let view = (scale: number): SheetView => {
+    // each call-out reads on its own level, the figure over the line and the name under it, a
+    // leader's reach out from the outline. One that would land on another's text steps out past it
+    let texts: Record<'front' | 'back', { from: number; to: number; level: number }[]> = { front: [], back: [] };
+    let placed = widths.map(st => {
+      let { view: which, name } = HEAD_WIDTHS[st.key]!;
+      let wide = Math.max(timesWidth(formatMm(st.width, 2), DRAWING_TEXT.label), timesWidth(name, DRAWING_TEXT.small));
+      let level = st.at.y / scale;
+      let from = st.width / 2 / scale + CALLOUT_REACH;
+      for (let t of texts[which]) if (Math.abs(t.level - level) < CALLOUT_PITCH && from < t.to + 1 && from + wide + 1 > t.from) from = t.to + 1 + CALLOUT_REACH;
+      texts[which].push({ from, to: from + wide + 1, level });
+      return { st, which, name, dx: from - st.width / 2 / scale };
+    });
+    let frontX = sb.maxX + 9 * scale - fb.minX;
+    let backX = frontX + (Math.max(...texts.front.map(t => t.to)) + 2) * scale - bb.minX;
+    let right = backX + bb.maxX + 2 * scale;
+    let top = Math.max(sb.maxY, fb.maxY, bb.maxY);
+    let strokes: SheetStroke[] = [
+      { d: side },
+      { d: translatePath(front, frontX, 0) },
+      { d: translatePath(back, backX, 0) },
+      { d: pathFromLine(new Pt(sb.minX, 0), new Pt(right, 0)), ink: 'note' },
+      { d: pathFromLine(new Pt(frontX, -2 * scale), new Pt(frontX, top + 2 * scale)), ink: 'note', dashed: true },
+      { d: pathFromLine(new Pt(backX, -2 * scale), new Pt(backX, top + 2 * scale)), ink: 'note', dashed: true },
+    ];
+    let marks: SheetMark[] = [];
+    turns.widths.forEach(([from, to], i) => marks.push({ kind: 'dimension', from, to, through: new Pt(0, sb.maxY), offset: 3 + 3.8 * i }));
+    turns.heights.forEach(([from, to], i) => marks.push({ kind: 'dimension', from, to, through: new Pt(sb.minX, 0), offset: 3 + 3.8 * i }));
+    marks.push({ kind: 'dimension', from: new Pt(-extent.width, sb.minY), to: new Pt(0, sb.minY), offset: -5 });
+
+    let labelled = -Infinity;
+    for (let { st, which, name, dx } of placed) {
+      let level = st.at.y / scale;
+      let clear = level - labelled >= LEVEL_PITCH;
+      marks.push({ kind: 'station', y: st.at.y, from: frontX + fb.minX - 2 * scale, to: right, sub: clear ? formatMm(st.at.y) : undefined });
+      if (clear) labelled = level;
+      let at = new Pt((which === 'front' ? frontX : backX) + st.width / 2, st.at.y);
+      marks.push({ kind: 'callout', at, dx, text: formatMm(st.width, 2), sub: name });
+    }
+    return { strokes, marks };
+  };
+
+  let lengths = buildRows([
+    ['Head length, duck tail to crown', formatValues([extent.height - sb.minY], '', '', 1)],
+    ['Head depth', formatValues([extent.width], '', '', 1)],
+    ['Eye diameter', formatValues([2 * eye.r])],
+  ]);
+  let across = buildRows([
+    ['Width across the eyes', formatValues([v.widths.eye])],
+    ['Nut width', formatValues([p.neck!.nutWidth])],
+    ['Pegbox wall', formatValues([v.wall])],
+  ]);
+  return { columns: [{ x: 0, w: SCHEMATIC_AREA.width, blocks: [{ view, h: SCHEMATIC_AREA.height - TABLE_ROOM }, { tables: [lengths, across], w: 66 }] }] };
+}
+
 // Physical templates for hand-carving: a strip with the arch along both long edges, so one edge
 // sits over the outside of a carved plate and the other in a hollow carved from the inside.
 
@@ -540,16 +1108,18 @@ function stackTemplates(shapes: TemplateShape[]): TemplateShape[] {
   });
 }
 
-// where a plate gets cross-arch templates: the five body landmarks, which a section is sighted
-// against whether or not the maker set a station there, plus any station they did set that isn't
-// already on one, which would be the same template cut twice
+// where a plate gets cross-arch templates: the two widest points and the waist, which a section is
+// sighted against whether or not the maker set a station there, plus any station they did set that
+// isn't already on one, which would be the same template cut twice. A station set on a corner
+// takes the corner's name
 function templateStations(p: ViolinFamilyParams, plate: Plate): { y: number; code: string }[] {
-  let landmarks = calcBodyLandmarks(p).map(m => ({ y: m.y, code: m.code as string }));
+  let landmarks = calcBodyLandmarks(p);
+  let sighted = landmarks.filter(m => SECTION_CODES.includes(m.code)).map(m => ({ y: m.y, code: m.code as string }));
   let authored = p.arching![plate].cross.stations
     .map(st => Math.round(st.y))
-    .filter(y => Number.isFinite(y) && !landmarks.some(m => Math.abs(m.y - y) <= STATION_MERGE_EPS_MM))
-    .map(y => ({ y, code: '' }));
-  return [...landmarks, ...authored].sort((a, b) => a.y - b.y);
+    .filter(y => Number.isFinite(y) && !sighted.some(m => Math.abs(m.y - y) <= STATION_MERGE_EPS_MM))
+    .map(y => ({ y, code: landmarks.find(m => Math.abs(m.y - y) <= STATION_MERGE_EPS_MM)?.code ?? '' }));
+  return [...sighted, ...authored].sort((a, b) => a.y - b.y);
 }
 
 // the two plates, back first: the order the blanks stack in on the sheet
@@ -845,7 +1415,7 @@ function plateZAt(surface: PlateSurface): (x: number, y: number) => number | nul
 // the string setup with its board and scoop standing, or null
 function solvedFingerboard(p: ViolinFamilyParams): StringSetupSolve | null {
   let s = p.stringSetup && p.neck ? solveStringSetup(p) : null;
-  if (!s?.fingerboardEnd || s.failures.some(f => f.unsolved.includes('fingerboard') || f.unsolved.includes('scoop'))) return null;
+  if (!s?.fingerboardEnd || s.failures.some(f => f.unsolved.includes('fingerboard')) || solveScoop(p, s).failures.length) return null;
   return s;
 }
 
@@ -865,18 +1435,11 @@ const MARK_RIM_SEGMENTS = 48;
 export function fingerboardStl(p: ViolinFamilyParams, gridMm = 0.5, marks: PositionMarkSolve[] = []): ArrayBuffer | null {
   let s = solvedFingerboard(p);
   if (!s) return null;
-  let ss = p.stringSetup!;
   let neckTop = s.neck.neckTop!, end = s.fingerboardEnd!;
   let length = dist(neckTop, end);
   let worldY = (d: number) => pointAtDistanceToward(neckTop, end, d).y;
   let halfAt = (d: number) => neckHalfWidthAt(p, s.neck, worldY(d));
-  let topZ = (x: number, d: number) => {
-    let y = worldY(d), half = halfAt(d);
-    let side = Math.max(-1, Math.min(1, -x / half));
-    let edge = ss.fingerboardThickness - fingerboardScoopAt(p, s, y, side);
-    let r = fingerboardRadiusAt(p, s, y);
-    return edge + Math.sqrt(Math.max(0, r * r - x * x)) - Math.sqrt(Math.max(0, r * r - half * half));
-  };
+  let topZ = (x: number, d: number) => fingerboardSurfaceZAt(p, s, -x, d);
   let onBoard = (d: number) => Math.max(0, Math.min(length, d));
   let cuts: HeightFieldCut[] = marks.flatMap(m => m.dots.map(dot => {
     let x = -dot.x, d = dist(neckTop, m.station);

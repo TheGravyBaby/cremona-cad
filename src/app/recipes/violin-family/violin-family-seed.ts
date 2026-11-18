@@ -149,10 +149,12 @@ export const FHOLE_SEED_RATIOS: FholeRatios & {
 // and the blocks are the mould's. The rows are the 4/4 violin, the 16½" viola, the 4/4 cello and
 // the 3/4 bass of the Woodsound setup chart, with the violin's bench figures from
 // makingtheviolin.com; the thicknesses and widths the chart gives are kept where the seed outline
-// had rounded them. The bridge is the stock blank: its width across the feet, and how thick it is at
-// the feet and the top. The violin's is a stock blank's drawing, the cello's and the bass's the MENC
-// size chart; the viola's feet are the trade's 50 mm, its thicknesses the violin's scaled to them
-export interface BridgeBlank { footWidth: number; footThickness: number; topThickness: number }
+// had rounded them. The bridge is the stock blank: how thick it is at the feet and the top, its
+// width across the feet seeded on the strings. The violin's is a stock blank's drawing, the cello's
+// and the bass's the MENC size chart; the viola's feet are the trade's 50 mm, its thicknesses the
+// violin's scaled to them. The soundpost is a bench rule of thumb, not a chart's: the usual post
+// for the size, its centre a little inside the treble foot's and a few mm behind its back face
+export interface BridgeBlank { footThickness: number; topThickness: number }
 
 export interface FamilyStandards {
   family: 'violin' | 'viola' | 'cello' | 'bass';
@@ -178,8 +180,8 @@ export const FAMILY_STANDARDS: readonly FamilyStandards[] = [
     family: 'violin', below: 400, overhang: 2.5, rib: 1, ribHeightLower: 32, ribHeightUpper: 30, edgeThickness: 3.5,
     neckStop: 130,
     neck: { angle: 7.5, upperThickness: 13, lowerThickness: 15, topWidth: 24, rootWidth: 33, heelRadius: 10, mortiseDepth: 6.5, overstand: 6.5, nutHeight: 6, nutWidth: 24 },
-    strings: { bodyStop: 195, bridgeHeight: 33, nutThickness: 7.5, fingerboardLength: 270, fingerboardThickness: 5, fingerboardNutRadius: 41, fingerboardEndRadius: 43, scoopAt: 135, scoopBass: 0.75, scoopTreble: 0.5 },
-    bridge: { footWidth: 43, footThickness: 5, topThickness: 2.3 },
+    strings: { bodyStop: 195, bridgeHeight: 33, bridgeWidth: 43, nutThickness: 7.5, fingerboardLength: 270, fingerboardThickness: 5, fingerboardNutRadius: 41, fingerboardEndRadius: 43, scoopAt: 135, scoopBass: 0.75, scoopTreble: 0.5, soundPostOffset: { x: -5, y: -8 }, soundPostDiameter: 6 },
+    bridge: { footThickness: 5, topThickness: 2.3 },
     lining: 2,
     blocks: { pad: 2.5, height: 20, width: 16, end: 20 },
   },
@@ -187,8 +189,8 @@ export const FAMILY_STANDARDS: readonly FamilyStandards[] = [
     family: 'viola', below: 500, overhang: 3, rib: 1.2, ribHeightLower: 40, ribHeightUpper: 38, edgeThickness: 4,
     neckStop: 150,
     neck: { angle: 7.5, upperThickness: 14, lowerThickness: 15, topWidth: 25, rootWidth: 36, heelRadius: 11, mortiseDepth: 7, overstand: 9, nutHeight: 6.5, nutWidth: 25 },
-    strings: { bodyStop: 225, bridgeHeight: 38, nutThickness: 8, fingerboardLength: 305, fingerboardThickness: 5.5, fingerboardNutRadius: 37, fingerboardEndRadius: 39, scoopAt: 152.5, scoopBass: 1, scoopTreble: 0.75 },
-    bridge: { footWidth: 50, footThickness: 5 * 50 / 43, topThickness: 2.3 * 50 / 43 },
+    strings: { bodyStop: 225, bridgeHeight: 38, bridgeWidth: 50, nutThickness: 8, fingerboardLength: 305, fingerboardThickness: 5.5, fingerboardNutRadius: 37, fingerboardEndRadius: 39, scoopAt: 152.5, scoopBass: 1, scoopTreble: 0.75, soundPostOffset: { x: -6, y: -9 }, soundPostDiameter: 6.5 },
+    bridge: { footThickness: 5 * 50 / 43, topThickness: 2.3 * 50 / 43 },
     lining: 2.5,
     blocks: { pad: 4, height: 30, width: 24, end: 25 },
   },
@@ -196,8 +198,8 @@ export const FAMILY_STANDARDS: readonly FamilyStandards[] = [
     family: 'cello', below: 800, overhang: 4, rib: 1.5, ribHeightLower: 120, ribHeightUpper: 116, edgeThickness: 6,
     neckStop: 280,
     neck: { angle: 7.5, upperThickness: 17, lowerThickness: 19, topWidth: 31, rootWidth: 46, heelRadius: 20, mortiseDepth: 10, overstand: 19, nutHeight: 9, nutWidth: 31 },
-    strings: { bodyStop: 400, bridgeHeight: 90, nutThickness: 11, fingerboardLength: 580, fingerboardThickness: 7.5, fingerboardNutRadius: 60, fingerboardEndRadius: 64, scoopAt: 290, scoopBass: 1.5, scoopTreble: 1 },
-    bridge: { footWidth: 90, footThickness: 11, topThickness: 2.6 },
+    strings: { bodyStop: 400, bridgeHeight: 90, bridgeWidth: 90, nutThickness: 11, fingerboardLength: 580, fingerboardThickness: 7.5, fingerboardNutRadius: 60, fingerboardEndRadius: 64, scoopAt: 290, scoopBass: 1.5, scoopTreble: 1, soundPostOffset: { x: -10, y: -15 }, soundPostDiameter: 11 },
+    bridge: { footThickness: 11, topThickness: 2.6 },
     lining: 3.5,
     blocks: { pad: 5, height: 40, width: 32, end: 45 },
   },
@@ -205,8 +207,8 @@ export const FAMILY_STANDARDS: readonly FamilyStandards[] = [
     family: 'bass', below: Infinity, overhang: 6, rib: 2.5, ribHeightLower: 185, ribHeightUpper: 179, edgeThickness: 9,
     neckStop: 425,
     neck: { angle: 7.5, upperThickness: 22, lowerThickness: 30, topWidth: 42, rootWidth: 60, heelRadius: 30, mortiseDepth: 15, overstand: 25, nutHeight: 10, nutWidth: 42 },
-    strings: { bodyStop: 610, bridgeHeight: 165, nutThickness: 15, fingerboardLength: 850, fingerboardThickness: 10, fingerboardNutRadius: 92, fingerboardEndRadius: 98, scoopAt: 425, scoopBass: 2.5, scoopTreble: 1.5 },
-    bridge: { footWidth: 150, footThickness: 21, topThickness: 4.5 },
+    strings: { bodyStop: 610, bridgeHeight: 165, bridgeWidth: 150, nutThickness: 15, fingerboardLength: 850, fingerboardThickness: 10, fingerboardNutRadius: 92, fingerboardEndRadius: 98, scoopAt: 425, scoopBass: 2.5, scoopTreble: 1.5, soundPostOffset: { x: -15, y: -25 }, soundPostDiameter: 18 },
+    bridge: { footThickness: 21, topThickness: 4.5 },
     lining: 5,
     blocks: { pad: 8, height: 50, width: 40, end: 70 },
   },

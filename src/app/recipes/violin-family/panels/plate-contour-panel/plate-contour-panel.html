@@ -5,12 +5,12 @@
     <div class="ui-group-title">Button</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Width</span>
             <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="o.button.width" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(0)" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <span class="field-title">Height</span>
             <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="o.button.height" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(0)" />
         </label>
@@ -99,11 +99,11 @@
     <div class="ui-group-title">Purfling</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Offset <span class="unit-label">mm</span></span>
+            <span class="field-title">Offset</span>
             <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="o.purflingOffset" (input)="recordEditAndRedraw()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Width</span>
             <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="o.purflingChannelDepth" (input)="recordEditAndRedraw()" />
         </label>
     </div>

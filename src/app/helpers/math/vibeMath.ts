@@ -402,10 +402,11 @@ export function polylinePointAtY(pts: Pt3D[], y: number): Pt3D | null {
 }
 
 // where a closed polyline crosses the line y = const, the x of each crossing sorted ascending.
-// Half-open on each edge, so a vertex exactly on the line counts once
-export function polylineCrossingsAtY(poly: Pt[], y: number): number[] {
+// Half-open on each edge, so a vertex exactly on the line counts once. With `closed` off the
+// polyline is a run, its last point not joined back to its first
+export function polylineCrossingsAtY(poly: Pt[], y: number, closed = true): number[] {
   const xs: number[] = [];
-  for (let i = 0; i < poly.length; i++) {
+  for (let i = 0; i < poly.length - (closed ? 0 : 1); i++) {
     const a = poly[i], b = poly[(i + 1) % poly.length];
     if ((a.y <= y) !== (b.y <= y)) xs.push(a.x + ((y - a.y) / (b.y - a.y)) * (b.x - a.x));
   }

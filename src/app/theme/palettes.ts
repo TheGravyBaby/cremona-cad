@@ -77,6 +77,17 @@ export const LASER = {
   hairline: .1,
 } as const;
 
+// the printed sheets, the schematic and the scaled drawings: paper, not a theme, so the same in both
+// modes. Two inks, the instrument's red and one warm near-black for everything said about it; two
+// line weights and one dash, in mm on the paper
+export const SHEET = {
+  subject: '#B5371F',
+  note: '#2A2320',
+  heavy: 0.35,
+  light: 0.14,
+  dash: '1.5 1',
+} as const;
+
 // stroke widths in screen px, every render drawing non-scaling. trace is a cut line (bouts, corners,
 // f-hole contours), guide a reference drawn beside one (purfling, insets), section the curves in the
 // arching section views, focusHalo the halo behind a focused arc or point

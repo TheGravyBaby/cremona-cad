@@ -8,7 +8,7 @@
     </div>
     <div class="input-group basic-row field-row station-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Station <span class="unit-label">mm</span></span>
+            <span class="field-title">Station</span>
             <input type="number" class="basic-input" step="1" min="0" [max]="params.body.height" [ngModel]="cursorY"
                 (ngModelChange)="setCursor($event)" />
         </label>
@@ -107,9 +107,9 @@
     @if (cross.type === 'spline') {
     <div class="spline-points" appRowReorder (rowReorder)="moveRow(plate, $event)">
         <div class="input-group basic-row spline-row spline-row--header">
-            <span class="field-cell">Position <span class="unit-label">%</span></span>
-            <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
             <span class="field-cell">Height <span class="unit-label">%</span></span>
+            <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
+            <span class="field-cell">Position <span class="unit-label">%</span></span>
         </div>
         @for (row of rows(shape.points, shape.peakRow); track $index) {
         <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
@@ -117,12 +117,12 @@
                 [disabled]="!editable">⠿</button>
             @if (row.item; as pt) {
             <div class="field-cell">
-                <input type="number" class="basic-input" step="1" min="0" max="100" [(ngModel)]="pt.x" (input)="recordEditAndRedraw()"
+                <input type="number" class="basic-input" step="1" [min]="zFloor(plate)" max="100" [(ngModel)]="pt.z" (input)="recordEditAndRedraw()"
                     [disabled]="!editable" (focus)="highlightArchPoint(plate, row.index)" (blur)="clearHighlight()" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
-                <input type="number" class="basic-input" step="1" [min]="zFloor(plate)" max="100" [(ngModel)]="pt.z" (input)="recordEditAndRedraw()"
+                <input type="number" class="basic-input" step="1" min="0" max="100" [(ngModel)]="pt.x" (input)="recordEditAndRedraw()"
                     [disabled]="!editable" (focus)="highlightArchPoint(plate, row.index)" (blur)="clearHighlight()" />
             </div>
             <div class="toggle">
@@ -132,12 +132,13 @@
                 [disabled]="!editable">×</button>
             } @else {
             <div class="field-cell">
-                <input type="number" class="basic-input" step="1" min="30" max="70" [(ngModel)]="shape.peak" (input)="recordEditAndRedraw()"
-                    [disabled]="!editable" [style.borderColor]="ink" />
+                <input type="text" class="basic-input" value="100" readonly tabindex="-1" aria-label="Peak height"
+                    [style.borderColor]="ink" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
-                <span class="basic-display">100</span>
+                <input type="number" class="basic-input" step="1" min="30" max="70" [(ngModel)]="shape.peak" (input)="recordEditAndRedraw()"
+                    [disabled]="!editable" />
             </div>
             <span>Peak</span>
             }

@@ -4,12 +4,12 @@
     <div class="ui-group-title">Neck Block</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <span class="field-title">Height</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1)"
                 [(ngModel)]="mo.neckBlock.height" (input)="recordEditAndRedraw()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Width</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(1)"
                 [(ngModel)]="mo.neckBlock.width" (input)="recordEditAndRedraw()" />
         </label>
@@ -20,12 +20,12 @@
     <div class="ui-group-title">Upper Corner Blocks</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <span class="field-title">Height</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(4)"
                 [(ngModel)]="mo.upperCornerBlock.height" (input)="recordEditAndRedraw()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Width</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(4)"
                 [(ngModel)]="mo.upperCornerBlock.width" (input)="recordEditAndRedraw()" />
         </label>
@@ -33,8 +33,8 @@
     <div class="input-group basic-row field-row" role="group">
         <div class="field-cell field-cell--xy">
             <div class="xy-titles">
-                <span class="field-title">Pad X <span class="unit-label">mm</span></span>
-                <span class="field-title">Pad Y <span class="unit-label">mm</span></span>
+                <span class="field-title">Pad X</span>
+                <span class="field-title">Pad Y</span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Upper corner block pad"
                 [style.borderColor]="pal.ink(4).faint(5)" title="Arrow keys move the block from either box">
@@ -51,12 +51,12 @@
     <div class="ui-group-title">Lower Corner Blocks</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <span class="field-title">Height</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(2)"
                 [(ngModel)]="mo.lowerCornerBlock.height" (input)="recordEditAndRedraw()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Width</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(2)"
                 [(ngModel)]="mo.lowerCornerBlock.width" (input)="recordEditAndRedraw()" />
         </label>
@@ -64,8 +64,8 @@
     <div class="input-group basic-row field-row" role="group">
         <div class="field-cell field-cell--xy">
             <div class="xy-titles">
-                <span class="field-title">Pad X <span class="unit-label">mm</span></span>
-                <span class="field-title">Pad Y <span class="unit-label">mm</span></span>
+                <span class="field-title">Pad X</span>
+                <span class="field-title">Pad Y</span>
             </div>
             <div class="xy-field" data-xy-point role="group" aria-label="Lower corner block pad"
                 [style.borderColor]="pal.ink(2).faint(5)" title="Arrow keys move the block from either box">
@@ -82,12 +82,12 @@
     <div class="ui-group-title">End Block</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <span class="field-title">Height</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="mo.endBlock.height" (input)="recordEditAndRedraw()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Width</span>
             <input type="number" class="basic-input" step="1" min="0" [style.border-color]="pal.ink(0)"
                 [(ngModel)]="mo.endBlock.width" (input)="recordEditAndRedraw()" />
         </label>
@@ -101,9 +101,32 @@
         <button type="button" class="info-icon" (click)="showFieldHelp('bitDiameter')" title="More information"
             aria-label="Information">ⓘ</button>
     </div>
+    <div class="input-group basic-row field-row" role="group" aria-label="Clamp box">
+        <div class="toggle">
+            <input type="radio" name="mould-clamp-box" value="windows" [(ngModel)]="mo.clampBox" (change)="recordEditAndRedraw()" />
+            <span>Window</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" name="mould-clamp-box" value="holes" [(ngModel)]="mo.clampBox" (change)="recordEditAndRedraw()" />
+            <span>Holes</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" name="mould-clamp-box" value="none" [(ngModel)]="mo.clampBox" (change)="recordEditAndRedraw()" />
+            <span>None</span>
+        </div>
+    </div>
+    @if (mo.clampBox === 'windows') {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Window Inset</span>
+            <input type="number" class="basic-input" step="0.5" min="0"
+                [(ngModel)]="mo.windowInset" (input)="recordEditAndRedraw()" />
+        </label>
+    </div>
+    }
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
-            <input type="checkbox" [(ngModel)]="mo.clampBox" (change)="recordEditAndRedraw()" /><span>Clamp Box</span>
+            <input type="checkbox" [(ngModel)]="mo.alignmentHoles" (change)="recordEditAndRedraw()" /><span>Alignment Holes</span>
         </div>
     </div>
 </section>

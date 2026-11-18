@@ -4,7 +4,7 @@ import { pointInPolygon } from '../../../../helpers/math/simpleGeometry';
 import { filletRightAngleCorner } from '../../../../helpers/math/draftMath';
 import { pathFromPolyline, pathFromRect, samplePathToPolyline, translatePath } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, closestPointToPolylineIndexed, distPointToPolylineIndexed, minCostAssignment, pointAtPolylineLength, polylineCumulativeLengths, Reading, thinPlateSplineFitter } from '../../../../helpers/math/vibeMath';
-import { differenceFromManyPaths, fieldBands, intersectionFromTwoPaths, mirroredLoop } from '../../../../helpers/math/pathVibes';
+import { differenceFromManyPaths, fieldBands, intersectionFromTwoPaths, mirroredLoop, normalOffsetZAt } from '../../../../helpers/math/pathVibes';
 import { renderFilledPath, renderPath, renderPointHalo, renderSolveFailures, renderText } from '../../../../helpers/renderFuncs';
 import { reportFailures, solveSection } from '../../../../helpers/validators';
 import { stepAmountForKey } from '../../../../helpers/stepSize';
@@ -17,7 +17,7 @@ import { contrastRatio, PanelPalette, parseHex, ThemeService, toHex } from '../.
 import { Pt, Rectangle } from '../../../../models/types';
 import { GraduationParams, GraduationPoint, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
-import { GraduationFailure, GraduationSolve, PlateSurface } from '../../violin-family-solves';
+import { GraduationFailure, GraduationSolve, PlateSurface, SurfaceRow } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
@@ -26,7 +26,7 @@ import { PLATE_LAYOUT_GAP, definePurflingPath, solvePlateContour } from '../plat
 import { renderFholePlate } from '../fhole-placement-panel/fhole-placement-panel';
 import { solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { defineChannelLoop } from '../fluting-panel/fluting-panel';
-import { calcBodyLandmarks, loopHalfChordAtY, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
+import { calcBodyLandmarks, loopHalfChordAtY, rowAt, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { MouldPanel, solveMould } from '../mould-panel/mould-panel';
 
 // Graduation, tried out on localhost only and carried without promise of support. The readings on
@@ -94,12 +94,11 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
   }
 
   // the linings by size class, the gouge held off them by two rib thicknesses, the f-hole thickness
-  // at the top's edge thickness, and a coarse grid of readings on each plate
+  // at the top's edge thickness, and no readings: the user lays or picks their own
   static seed(p: ViolinFamilyParams): void {
     if (p.graduation || !p.plateContour) return;
     let lining = familyStandards(p.body.height).lining;
     p.graduation = { lining, edgeInset: lining + 2 * p.body.rib, blockMargin: 0, fHoleThickness: edgeThicknessOf(p, 'top'), top: { points: [] }, back: { points: [] } };
-    for (let plate of GRADUATION_PLATES) p.graduation[plate].points = gridPoints(p, DEFAULT_SPACING, plate);
   }
 
   ngOnDestroy(): void {
@@ -640,8 +639,10 @@ export function thicknessField(p: ViolinFamilyParams, plate: GraduationPlate): T
   let solve = solveGraduation(p);
   let s = p.graduation;
   if (!solve?.ground || !s) return null;
-  let edge = edgeThicknessOf(p, plate);
   let points = s[plate].points.filter(pt => Number.isFinite(pt.thickness));
+  // with no readings the boundary alone would make up a plate nobody read
+  if (!points.length) return null;
+  let edge = edgeThicknessOf(p, plate);
   let holes = plate === 'top' && Number.isFinite(s.fHoleThickness) ? solve.holes : [];
   let key = JSON.stringify([edge, p.fluting, p.arching?.[plate], s.fHoleThickness, points.map(pt => [pt.x, pt.y, pt.thickness])]);
   let hit = fieldCache[plate];
@@ -679,6 +680,21 @@ export function thicknessField(p: ViolinFamilyParams, plate: GraduationPlate): T
   };
   fieldCache[plate] = { solve, key, field };
   return field;
+}
+
+// the inside of a plate over (x, y): its outer surface carried in square to itself by the thickness
+// the calipers read where they stand, so on a slope the inside lands beside the reading, not under
+// it. Null off the plate or before it is graduated
+export function innerSurfaceZAt(p: ViolinFamilyParams, plate: GraduationPlate, x: number, y: number): number | null {
+  let surface = solveCrossArching(p)?.[plate];
+  let field = thicknessField(p, plate);
+  if (!surface || !field) return null;
+  // a row is the slow part of a surface read, and the slopes read three points on each
+  let rows = new Map<number, SurfaceRow>();
+  return normalOffsetZAt((u, v) => {
+    let row = rows.get(v) ?? rows.set(v, rowAt(surface, v)).get(v)!;
+    return surfaceZAt(surface, u, v, row);
+  }, field.at, x, y);
 }
 
 // the land: the flat outside the boundary, left uncarved, so its thickness is whatever the outer

@@ -194,8 +194,11 @@ arcs, F0–F1 the front's.
   `pal.neutral`. A distinct part gets a distinct ink; `faint(n)` only separates siblings of one
   part. No desaturated "off" twins. Only R/length fields take the arc colour, not angle fields.
   Never write tests asserting colours.
-- **No loader migrations** (pre-production). When a field's shape changes, rewrite the templates
-  and let old files fall away.
+- **No migration per change.** When a field's shape changes, rewrite the templates and move on;
+  files saved mid-branch fall away. Migrations are weighed once, before a merge to master: if the
+  branch changed the file since the last release, that release's files get one step in
+  `normalizer/violin-family-normalizer.ts`, with a fixture and spec beside it. Don't add or extend
+  a step while working on a feature; flag the format change instead.
 - Working state goes through `helpers/workingStorage.ts` (sessionStorage, a tab is a workspace),
   never `localStorage` directly. Exception: `SettingsService`, whose preferences outlive a tab.
 - UI help prose: what the concept is in luthier terms, then what the field controls. Terse.

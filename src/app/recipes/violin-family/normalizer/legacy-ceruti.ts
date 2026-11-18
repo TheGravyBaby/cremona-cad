@@ -6,6 +6,7 @@ import {
   FlutingParams, LongArchParams, MainBoutsParams, MouldParams, PlateContourParams, VIOLIN_FAMILY_RECIPE_NAME,
   ViolinFamilyParams, ViolinFamilyRecipe,
 } from '../violin-family-types';
+import { SEED_RATIOS } from '../violin-family-seed';
 
 // Files the Enrico Ceruti recipe wrote, up to 0.8.x. They all say version "1" whatever release
 // wrote them, so the recipe name is the only tell. Ceruti saved each stage's solved arcs whole, so
@@ -140,8 +141,12 @@ function legacyBouts(c: any): MainBoutsParams | undefined {
   let b = c.bouts;
   if (!b || ![b.U0, b.U1, b.L0, b.L1, b.C0].every(isArc) || ![b.UBW, b.CBW].every(Number.isFinite)) return undefined;
   let V0: LegacyArc | null = c.viol?.V0;
+  let inset = c.overhang + c.rib;
   return {
     UBW: b.UBW, U0R: b.U0.r, U1R: b.U1.r, L0R: b.L0.r, L1R: b.L1.r,
+    // Ceruti drew the join arcs with its corners; a file that never got that far takes the seed's
+    U2R: isArc(b.U2) ? b.U2.r : Math.round((b.UBW - 2 * inset) * SEED_RATIOS.U2toUBW), UJoinY: 0,
+    L2R: isArc(b.L2) ? b.L2.r : Math.round(((b.LBW ?? c.width) - 2 * inset) * SEED_RATIOS.L2toLBW), LJoinY: 0,
     useViolNeck: !!c.options.useViolNeck,
     // V0 ran counterclockwise from the join, which turns the outline down from the level top face
     viol: isArc(V0) ? {
@@ -174,9 +179,9 @@ function legacyCorners(c: any): CornersParams | undefined {
   return {
     UCr: { x: b.UCr.x, y: b.UCr.y },
     LCr: { x: b.LCr.x, y: b.LCr.y },
-    U2R: b.U2.r, U3R: b.U3.r,
+    U3R: b.U3.r,
     useViolCornerUC: !!o.useViolCornerUC,
-    L2R: b.L2.r, L3R: b.L3.r,
+    L3R: b.L3.r,
     useViolCornerLC: !!o.useViolCornerLC,
     C2R: b.C2.r, C1R: b.C1.r,
     ...compound('U31', o.U31DoubleArc),
@@ -328,7 +333,9 @@ function legacyMould(c: any): MouldParams | undefined {
     lowerCornerBlock: { width: b.CL.width, height: b.CL.height, pad: { x: b.CLPad, y: b.CLPad } },
     endBlock: { width: b.L.width, height: b.L.height },
     bitDiameter: c.bitDiameter ?? 6.35,
-    clampBox: true,
+    clampBox: 'windows',
+    windowInset: 1.1 * (Math.max(b.U.height, b.L.height) + 4),
+    alignmentHoles: false,
   };
 }
 

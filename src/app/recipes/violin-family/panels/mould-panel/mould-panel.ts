@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  angleFromCenter, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope, offsetArcRadius, pointOnCircle, tangentUnitVectorFromLine,
+  angleFromCenter, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope, offsetArcRadius, pointInPolygon, pointOnCircle, tangentUnitVectorFromLine,
 } from '../../../../helpers/math/simpleGeometry';
-import { filletRightAngleCorner, solveTangentCircleAndLine } from '../../../../helpers/math/draftMath';
-import { combinePathStrings, pathFromCircle, pathFromRect, pathsBounds, translatePath } from '../../../../helpers/math/pathMath';
+import { circleCircleIntersections, filletRightAngleCorner, solveTangentCircleAndLine } from '../../../../helpers/math/draftMath';
+import { combinePathStrings, pathFromCircle, pathFromRect, pathFromSlot, pathsBounds, samplePathToPolyline, translatePath } from '../../../../helpers/math/pathMath';
+import { buildPolylineIndex, distPointToPolylineIndexed, PolylineIndex, rayPolylineIntersection } from '../../../../helpers/math/vibeMath';
 import { differenceFromManyPaths, intersectionFromTwoPaths, mirroredLoop } from '../../../../helpers/math/pathVibes';
 import { renderPath, renderRect, renderSolveFailures } from '../../../../helpers/renderFuncs';
 import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
@@ -53,7 +54,10 @@ export class MouldPanel extends PanelComponentBase {
       endBlock: { width: 3 * size.end, height: size.end },
       // Carbide's 1/4", the bit the moulds are cut with
       bitDiameter: 6.35,
-      clampBox: true,
+      clampBox: 'windows',
+      // a wall a little more than the end blocks and the channel behind them
+      windowInset: MOULD_WALL * (size.end + MOULD_CHANNEL_DEPTH),
+      alignmentHoles: false,
     };
   }
 
@@ -80,7 +84,7 @@ export class MouldPanel extends PanelComponentBase {
 
 // used to be a user-facing param; in practice one depth suited every instrument, so it's fixed
 const MOULD_CHANNEL_DEPTH = 4;
-const MOULD_WALL = 1.1; // scales the thickness of the mould walls
+const MOULD_WALL = 1.1;
 // the export samples the outline ten times finer than the panel's preview
 export const MOULD_EXPORT_STEP = 0.1;
 
@@ -90,7 +94,7 @@ const BLOCK_KEYS: MouldKey[] = ['neckBlock', 'upperCornerBlock', 'lowerCornerBlo
 // when asked for
 export const renderMould = (s: MouldSolve, pal: PanelPalette, flags: ViolinFamilyViewFlags) => (g: any, ui: any): void => {
   if (flags.showRibOutline && s.ribOutline) renderPath(s.ribOutline, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-  if (s.outline) renderPath(combinePathStrings([...s.clampBox, s.outline]), pal.neutral)(g, ui);
+  if (s.outline) renderPath(combinePathStrings([...s.clampBox, ...s.alignmentHoles.map(pathFromCircle), s.outline]), pal.neutral)(g, ui);
   if (flags.showBlocks && s.blocks) {
     let b = s.blocks;
     renderRect(b.neck, pal.ink(1))(g, ui);
@@ -125,11 +129,42 @@ function calcClampFillet(t: Line, Q: Circle, Pr: number, diff: boolean, side: 1 
   return { center, lineTangent, circleTangent: pointOnCircle(Q, circleAngle), circleAngle };
 }
 
+// a bump's shoulder, from the end of its flat `top` to the bout's inset arc Q: an S of two arcs of
+// radius r, the first centred `away` (+1 up, -1 down) from the top. While the window's face is
+// still flat where the S comes down it lands level on the face, and the face runs on into its
+// fillet; past that it lands tangent on Q itself. Null when neither landing is there to take
+function solveBumpShoulder(top: Pt, away: 1 | -1, faceY: number, fillet: NonNullable<ReturnType<typeof calcClampFillet>>, Q: Arc, r: number): (Arc | [Pt, Pt])[] | null {
+  let c1 = new Circle(top.x, top.y + away * r, r);
+  let rise = Math.abs(top.y - faceY);
+  let footX = top.x + 2 * r * Math.sqrt(1 - (1 - rise / (2 * r)) ** 2);
+  if (rise <= 2 * r && footX <= fillet.lineTangent.x) {
+    let c2 = new Circle(footX, faceY - away * r, r);
+    let join = new Pt((c1.x + c2.x) / 2, (c1.y + c2.y) / 2);
+    let foot = new Pt(footX, faceY);
+    return [arcFromCircleAndPoints(c1, top, join), arcFromCircleAndPoints(c2, join, foot), [foot, fillet.lineTangent],
+      arcFromCircleAndPoints({ ...fillet.center, r }, fillet.lineTangent, fillet.circleTangent), new Arc(Q.x, Q.y, Q.r, fillet.circleAngle, Q.end)];
+  }
+  if (Q.r <= r) return null;
+  let centre = circleCircleIntersections(new Circle(c1.x, c1.y, 2 * r), new Circle(Q.x, Q.y, Q.r - r)).sort((a, b) => b.x - a.x)[0];
+  if (!centre || centre.x <= top.x) return null;
+  let join = new Pt((c1.x + centre.x) / 2, (c1.y + centre.y) / 2);
+  let landing = angleFromCenter(Q, centre);
+  let foot = pointOnCircle(Q, landing);
+  let end = pointOnCircle(Q, Q.end);
+  if (foot.x < fillet.circleTangent.x - 1e-6 || (foot.y - fillet.circleTangent.y) * (end.y - foot.y) < 0) return null;
+  return [arcFromCircleAndPoints(c1, top, join), arcFromCircleAndPoints(new Circle(centre.x, centre.y, r), join, foot), new Arc(Q.x, Q.y, Q.r, landing, Q.end)];
+}
+
+// a clamp hole of radius r at `centre` is in the mould with half its radius of wood to the cut edge
+function isClampHoleClear(centre: Pt, r: number, edge: Pt[], edgeIndex: PolylineIndex): boolean {
+  return pointInPolygon(centre, edge) && distPointToPolylineIndexed(centre, edgeIndex) >= 1.5 * r;
+}
+
 // a later panel reads the mould by calling this; it returns and never writes to the params. `step`
 // is how finely the outline is sampled where the blocks cut it
 export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
   if (!p.mould || !p.corners || !p.bouts) return null;
-  let s: MouldSolve = { blocks: null, ribOutline: null, outline: null, notchOutline: null, reliefs: [], clampBox: [], failures: [] };
+  let s: MouldSolve = { blocks: null, ribOutline: null, outline: null, notchOutline: null, reliefs: [], clampBox: [], alignmentHoles: [], failures: [] };
   let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
   if (!rib) {
     s.failures.push(buildMiss('Mould: every arc of the rib outline has to solve first.', [...BLOCK_KEYS, 'clampBox']));
@@ -187,13 +222,69 @@ export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
     return null;
   });
 
-  if (mo.clampBox && s.blocks) solveSection(s.failures, 'Clamp box', ['clampBox'], () => {
+  // where the cutout behind the neck block and the one behind the end block begin; NaN until cut
+  let neckWallY = NaN;
+  let endWallY = NaN;
+
+  // the hole pattern, each cutout sized from its own block. A corner hole spans the block's inside
+  // face, from the block's end in the mould to where the rib line cuts the face off, so it never
+  // reaches past the block along the body; it stands its own diameter in from that face. Behind the
+  // neck and end blocks a slot the block's height, its straight the block's width, that
+  // same height off the block
+  if (mo.clampBox === 'holes' && s.blocks && s.notchOutline) solveSection(s.failures, 'Clamp box', ['clampBox'], () => {
+    let b = s.blocks!;
+    let edge = samplePathToPolyline(s.notchOutline!, 1, true);
+    let edgeIndex = buildPolylineIndex(edge);
+    let ribs = samplePathToPolyline(ribOutline, 1, true);
+    let uncut: string[] = [];
+
+    // the slots stop their own height short of the corner blocks, so a beam is left across the mould
+    let neckR = mo.neckBlock.height / 2;
+    let neckY = calcRectMinY(b.neck) - 3 * neckR;
+    let neckEnd = new Pt(mo.neckBlock.width / 2, neckY);
+    if (neckY - neckR >= calcRectMaxY(b.upperCorner) + 2 * neckR && isClampHoleClear(neckEnd, neckR, edge, edgeIndex)) {
+      s.clampBox.push(pathFromSlot(new Pt(-neckEnd.x, neckY), neckEnd, neckR));
+      neckWallY = neckY + neckR;
+    }
+    else uncut.push('neck slot');
+
+    // twin holes keep a diameter of wood between them across the centre line
+    let upperX = calcRectMinX(b.upperCorner);
+    let upperTop = calcRectMaxY(b.upperCorner);
+    let upperCut = rayPolylineIntersection(new Pt(upperX, upperTop), -Math.PI / 2, ribs);
+    let upperBottom = Math.max(upperCut ? upperCut.point.y : -Infinity, calcRectMinY(b.upperCorner));
+    let upperR = (upperTop - upperBottom) / 2;
+    let upper = new Circle(upperX - 3 * upperR, upperBottom + upperR, upperR);
+    if (upperR > 0 && upper.x >= 2 * upperR && isClampHoleClear(upper, upperR, edge, edgeIndex)) s.clampBox.push(pathFromCircle(upper), pathFromCircle(new Circle(-upper.x, upper.y, upperR)));
+    else uncut.push('upper corner holes');
+
+    let lowerX = calcRectMinX(b.lowerCorner);
+    let lowerBottom = calcRectMinY(b.lowerCorner);
+    let lowerCut = rayPolylineIntersection(new Pt(lowerX, lowerBottom), Math.PI / 2, ribs);
+    let lowerTop = Math.min(lowerCut ? lowerCut.point.y : Infinity, calcRectMaxY(b.lowerCorner));
+    let lowerR = (lowerTop - lowerBottom) / 2;
+    let lower = new Circle(lowerX - 3 * lowerR, lowerBottom + lowerR, lowerR);
+    if (lowerR > 0 && lower.x >= 2 * lowerR && isClampHoleClear(lower, lowerR, edge, edgeIndex)) s.clampBox.push(pathFromCircle(lower), pathFromCircle(new Circle(-lower.x, lower.y, lowerR)));
+    else uncut.push('lower corner holes');
+
+    let endR = mo.endBlock.height / 2;
+    let endY = calcRectMaxY(b.end) + 3 * endR;
+    let endEnd = new Pt(mo.endBlock.width / 2, endY);
+    if (endY + endR <= calcRectMinY(b.lowerCorner) - 2 * endR && isClampHoleClear(endEnd, endR, edge, edgeIndex)) {
+      s.clampBox.push(pathFromSlot(new Pt(-endEnd.x, endY), endEnd, endR));
+      endWallY = endY - endR;
+    }
+    else uncut.push('end slot');
+
+    if (!uncut.length) return null;
+    return buildMiss(`Clamp box: the mould has no room for the ${uncut.join(' or the ')}, left uncut.`, []);
+  });
+
+  if (mo.clampBox === 'windows' && s.blocks) solveSection(s.failures, 'Clamp box', ['clampBox'], () => {
     let b = s.blocks!;
     if (!rib.U2 || !rib.L2) return buildMiss('Clamp box: the bouts have to turn into their corners for the windows to follow them.', ['clampBox']);
-    let clampOffset = MOULD_WALL * (Math.max(mo.neckBlock.height, mo.endBlock.height) + MOULD_CHANNEL_DEPTH);
-    if (p.bouts!.useViolNeck)
-      clampOffset = MOULD_WALL * (mo.endBlock.height + MOULD_CHANNEL_DEPTH);
-
+    let clampOffset = mo.windowInset;
+    if (!(clampOffset > 0)) return buildMiss('Clamp box: the window inset needs a value above 0.', ['clampBox']);
     if ([rib.U1, rib.U2, rib.L1, rib.L2].some(arc => arc.r <= clampOffset))
       return buildMiss("Clamp box: the walls are thicker than the bouts are round, so no window can follow them, and it's left uncut.", []);
 
@@ -217,13 +308,25 @@ export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
     // the >rf checks mirror the old collision guard: a fillet whose tangent lands too close
     // to the centerline would cross its own mirror image
     if (uTop && uBot && uTop.lineTangent.x > rf && uBot.lineTangent.x > rf && uTopY - uBotY >= 2 * rf) {
+      // the web alone leaves the frame skinny behind the block, right where the clamp bears, so a
+      // bump stands into the window there: the full inset of wood across the block's width, each
+      // end falling away in an S. Left out where it would close the window or has nowhere to land
+      let neckBumpY = calcRectMinY(b.neck) - clampOffset;
+      let neckHalf = mo.neckBlock.width / 2;
+      let neckShoulder = neckBumpY < uTopY && neckBumpY - uBotY >= 2 * rf ? solveBumpShoulder(new Pt(neckHalf, neckBumpY), 1, uTopY, uTop, U1c, rf) : null;
+      let upperTop: (Arc | [Pt, Pt])[] = [arcFromCircleAndPoints({ ...uTop.center, r: rf }, uTop.lineTangent, uTop.circleTangent), new Arc(U1c.x, U1c.y, U1c.r, uTop.circleAngle, U1c.end)];
+      let upperFace: [Pt, Pt] = [new Pt(-uTop.lineTangent.x, uTopY), new Pt(uTop.lineTangent.x, uTopY)];
+      neckWallY = uTopY;
+      if (neckShoulder) {
+        upperTop = neckShoulder;
+        upperFace = [new Pt(-neckHalf, neckBumpY), new Pt(neckHalf, neckBumpY)];
+        neckWallY = neckBumpY;
+      }
       s.clampBox.push(mirroredLoop(
-        [arcFromCircleAndPoints({ ...uTop.center, r: rf }, uTop.lineTangent, uTop.circleTangent),
-         new Arc(U1c.x, U1c.y, U1c.r, uTop.circleAngle, U1c.end),
+        [...upperTop,
          new Arc(U2c.x, U2c.y, U2c.r, U2c.start, uBot.circleAngle),
          arcFromCircleAndPoints({ ...uBot.center, r: rf }, uBot.lineTangent, uBot.circleTangent)],
-        [[new Pt(-uTop.lineTangent.x, uTopY), new Pt(uTop.lineTangent.x, uTopY)],
-         [new Pt(-uBot.lineTangent.x, uBotY), new Pt(uBot.lineTangent.x, uBotY)]]));
+        [upperFace, [new Pt(-uBot.lineTangent.x, uBotY), new Pt(uBot.lineTangent.x, uBotY)]]));
     }
     else uncut.push('upper');
 
@@ -275,18 +378,43 @@ export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
     const lTop = calcClampFillet({ m: 0, y: lTopY, x: 0 }, L2c, rf, true, 1, pointOnCircle(L2c, L2c.end));
     const lBot = calcClampFillet({ m: 0, y: lBotY, x: 0 }, L1c, rf, true, -1, pointOnCircle(L1c, L1c.start));
     if (lTop && lBot && lTop.lineTangent.x > rf && lBot.lineTangent.x > rf && lTopY - lBotY >= 2 * rf) {
+      let endBumpY = calcRectMaxY(b.end) + clampOffset;
+      let endHalf = mo.endBlock.width / 2;
+      let endShoulder = endBumpY > lBotY && lTopY - endBumpY >= 2 * rf ? solveBumpShoulder(new Pt(endHalf, endBumpY), -1, lBotY, lBot, L1c, rf) : null;
+      let lowerBottom: (Arc | [Pt, Pt])[] = [new Arc(L1c.x, L1c.y, L1c.r, lBot.circleAngle, L1c.end), arcFromCircleAndPoints({ ...lBot.center, r: rf }, lBot.lineTangent, lBot.circleTangent)];
+      let lowerFace: [Pt, Pt] = [new Pt(-lBot.lineTangent.x, lBotY), new Pt(lBot.lineTangent.x, lBotY)];
+      endWallY = lBotY;
+      if (endShoulder) {
+        lowerBottom = endShoulder;
+        lowerFace = [new Pt(-endHalf, endBumpY), new Pt(endHalf, endBumpY)];
+        endWallY = endBumpY;
+      }
       s.clampBox.push(mirroredLoop(
         [arcFromCircleAndPoints({ ...lTop.center, r: rf }, lTop.lineTangent, lTop.circleTangent),
          new Arc(L2c.x, L2c.y, L2c.r, L2c.start, lTop.circleAngle),
-         new Arc(L1c.x, L1c.y, L1c.r, lBot.circleAngle, L1c.end),
-         arcFromCircleAndPoints({ ...lBot.center, r: rf }, lBot.lineTangent, lBot.circleTangent)],
-        [[new Pt(-lTop.lineTangent.x, lTopY), new Pt(lTop.lineTangent.x, lTopY)],
-         [new Pt(-lBot.lineTangent.x, lBotY), new Pt(lBot.lineTangent.x, lBotY)]]));
+         ...lowerBottom],
+        [[new Pt(-lTop.lineTangent.x, lTopY), new Pt(lTop.lineTangent.x, lTopY)], lowerFace]));
     }
     else uncut.push('lower');
 
     if (!uncut.length) return null;
     return buildMiss(`Clamp box: the ${uncut.join(' and ')} ${uncut.length > 1 ? 'windows have' : 'window has'} no room between the blocks and the walls, and ${uncut.length > 1 ? 'are' : 'is'} left uncut.`, []);
+  });
+
+  // each hole half its block's height behind the neck or the end block: midway through
+  // the wall the hole pattern's slot leaves there, and well inside the window's bump, so it stays
+  // put whichever is cut. It keeps half a bit of wood to the block and to the cutout behind it
+  if (mo.alignmentHoles && s.blocks) solveSection(s.failures, 'Alignment holes', ['alignmentHoles'], () => {
+    let b = s.blocks!;
+    if (!(mo.bitDiameter > 0)) return buildMiss('Alignment holes: the bit plunges them, so the bit diameter has to be above 0.', ['alignmentHoles']);
+    let neckY = calcRectMinY(b.neck);
+    let endY = calcRectMaxY(b.end);
+    let neckInset = 0.5 * mo.neckBlock.height;
+    let endInset = 0.5 * mo.endBlock.height;
+    if (Math.min(neckInset, endInset, neckY - neckWallY - neckInset, endWallY - endY - endInset) < mo.bitDiameter)
+      return buildMiss('Alignment holes: the wall behind the neck or the end block is too thin to hold one, and they are left uncut.', ['alignmentHoles']);
+    s.alignmentHoles = [new Circle(0, neckY - neckInset, mo.bitDiameter / 2), new Circle(0, endY + endInset, mo.bitDiameter / 2)];
+    return null;
   });
 
   return s;

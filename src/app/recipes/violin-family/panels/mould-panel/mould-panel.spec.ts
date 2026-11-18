@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { dist, flipPointAboutY, flipRectAboutY, pointInPolygon } from '../../../../helpers/math/simpleGeometry';
 import { pathsBounds, samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
-import { Pt, Rectangle } from '../../../../models/types';
+import { Circle, Pt, Rectangle } from '../../../../models/types';
 import { buildBlockLayout, MOULD_EXPORT_STEP, MouldPanel, solveMould } from './mould-panel';
 import { CornersPanel } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
@@ -115,7 +115,7 @@ describe('the mould solve', () => {
     expect(nearest([corner], points(solved(p, MOULD_EXPORT_STEP).outline!))).toBeLessThan(0.1);
   });
 
-  it('cuts each clamp window as a closed loop inside the mould, clear of every block, one wall thick in from the ribs, more than the blocks and channel', () => {
+  it('cuts each clamp window as a closed loop inside the mould, clear of every block, the window inset in from the ribs', () => {
     const p = seeded();
     const s = solved(p);
     const outline = points(s.outline!);
@@ -129,25 +129,143 @@ describe('the mould solve', () => {
       return nearest(q, ribs);
     });
     for (const wall of walls) expect(wall).toBeCloseTo(walls[0], 3);
-    expect(walls[0]).toBeGreaterThan(Math.max(p.mould!.neckBlock.height, p.mould!.endBlock.height) + 4);
+    expect(walls[0]).toBeCloseTo(p.mould!.windowInset, 1);
+  });
+
+  it('bumps the frame into its window behind the neck and end blocks, the window inset of wood across each block', () => {
+    const p = seeded();
+    const s = solved(p, MOULD_EXPORT_STEP);
+    const inset = p.mould!.windowInset;
+    const neck = s.blocks!.neck, end = s.blocks!.end;
+    const neckY = Math.min(neck.Pt1.y, neck.Pt2.y), endY = Math.max(end.Pt1.y, end.Pt2.y);
+    const behind = (r: Rectangle) => (pt: Pt) => Math.abs(pt.x) <= Math.abs(r.Pt1.x);
+    const upper = points(s.clampBox[0]).filter(behind(neck)), lower = points(s.clampBox[2]).filter(behind(end));
+    expect(subpaths(s.clampBox[0])).toBe(1);
+    expect(subpaths(s.clampBox[2])).toBe(1);
+    expect(Math.max(...upper.map(pt => pt.y))).toBeCloseTo(neckY - inset, 1);
+    expect(Math.min(...lower.map(pt => pt.y))).toBeCloseTo(endY + inset, 1);
+    // no sharp point where a bump comes down: the cut line never turns more than its sampling allows
+    for (const window of [s.clampBox[0], s.clampBox[2]]) {
+      const q = points(window).slice(0, -1);
+      for (let i = 0; i < q.length; i++) {
+        const a = q[i], m = q[(i + 1) % q.length], c = q[(i + 2) % q.length];
+        if (dist(a, m) < 1e-6 || dist(m, c) < 1e-6) continue;
+        const turn = Math.abs(Math.atan2((m.x - a.x) * (c.y - m.y) - (m.y - a.y) * (c.x - m.x), (m.x - a.x) * (c.x - m.x) + (m.y - a.y) * (c.y - m.y)));
+        expect(turn, `at ${m.x.toFixed(2)}, ${m.y.toFixed(2)}`).toBeLessThan(0.2);
+      }
+    }
   });
 
   it('leaves the clamp box off for a maker who cuts their own, the outline untouched', () => {
     const p = seeded();
     const withBox = solved(p);
-    p.mould!.clampBox = false;
+    p.mould!.clampBox = 'none';
     const without = solved(p);
     expect(without.clampBox).toEqual([]);
     expect(without.outline).toBe(withBox.outline);
   });
 
-  it('leaves a window uncut and says so when the blocks leave it no room, the mould still drawn', () => {
+  it('thickens the walls with the window inset', () => {
     const p = seeded();
-    p.mould!.endBlock.height = 90;
+    const thin = nearest(points(solved(p).clampBox[0]), points(solved(p).ribOutline!));
+    p.mould!.windowInset += 5;
+    const thick = nearest(points(solved(p).clampBox[0]), points(solved(p).ribOutline!));
+    expect(thick).toBeCloseTo(thin + 5, 1);
+  });
+
+  it('fails the clamp box on a cleared inset, the mould still drawn', () => {
+    const p = seeded();
+    p.mould!.windowInset = null as unknown as number;
+    const s = solveMould(p)!;
+    expect(s.failures[0].unsolved).toEqual(['clampBox']);
+    expect(s.clampBox).toEqual([]);
+    expect(s.outline).toBeTruthy();
+  });
+
+  it('leaves a window uncut and says so when the inset leaves it no room, the mould still drawn', () => {
+    const p = seeded();
+    p.mould!.windowInset = 90;
     const s = solveMould(p)!;
     expect(s.failures.length).toBe(1);
     expect(s.failures[0].unsolved).toEqual([]);
     expect(s.clampBox.length).toBeLessThan(3);
+    expect(s.outline).toBeTruthy();
+  });
+
+  it('cuts the hole pattern as a slot behind each end block and a hole beside each corner block, mirrored, in solid wood', () => {
+    const p = seeded();
+    p.mould!.clampBox = 'holes';
+    const s = solved(p);
+    const outline = points(s.outline!);
+    expect(s.clampBox.length).toBe(6);
+    const bounds = s.clampBox.map(cut => pathsBounds([cut]));
+    s.clampBox.forEach((cut, i) => {
+      expect(closed(cut)).toBe(true);
+      const q = points(cut);
+      expect(q.every(pt => pointInPolygon(pt, outline))).toBe(true);
+      expect(q.some(pt => allBlocks(s).some(rect => inside(pt, rect)))).toBe(false);
+      const r = (bounds[i].maxY - bounds[i].minY) / 2;
+      expect(nearest(q, outline)).toBeGreaterThan(r / 2 - 0.3);
+      const twin = bounds.some(b => Math.abs(b.minX + bounds[i].maxX) < 0.05 && Math.abs(b.maxX + bounds[i].minX) < 0.05 && Math.abs(b.minY - bounds[i].minY) < 0.05);
+      expect(twin, `cutout ${i}`).toBe(true);
+    });
+    // a corner hole never reaches past its block along the body
+    for (const [block, holes] of [[s.blocks!.upperCorner, bounds.slice(1, 3)], [s.blocks!.lowerCorner, bounds.slice(3, 5)]] as const) {
+      for (const hole of holes) {
+        expect(hole.minY).toBeGreaterThan(Math.min(block.Pt1.y, block.Pt2.y) - 0.05);
+        expect(hole.maxY).toBeLessThan(Math.max(block.Pt1.y, block.Pt2.y) + 0.05);
+        expect(hole.maxX - hole.minX).toBeCloseTo(hole.maxY - hole.minY, 1);
+      }
+    }
+    for (let i = 0; i < bounds.length; i++) {
+      for (let j = i + 1; j < bounds.length; j++) {
+        const a = bounds[i], b = bounds[j];
+        expect(a.maxX < b.minX || b.maxX < a.minX || a.maxY < b.minY || b.maxY < a.minY, `cutouts ${i} and ${j}`).toBe(true);
+      }
+    }
+  });
+
+  it('leaves out the holes the mould has no room for and says so, the mould still drawn', () => {
+    const p = seeded();
+    p.mould!.clampBox = 'holes';
+    p.mould!.neckBlock.height *= 4;
+    const s = solveMould(p)!;
+    expect(s.failures.length).toBe(1);
+    expect(s.clampBox.length).toBeLessThan(6);
+    expect(s.outline).toBeTruthy();
+  });
+
+  it('drills the alignment holes on the centre line, the bit across, in solid wood with a wall round each', () => {
+    const placed: Circle[][] = [];
+    for (const clampBox of ['windows', 'holes', 'none'] as const) {
+      const p = seeded();
+      p.mould!.alignmentHoles = true;
+      p.mould!.clampBox = clampBox;
+      const s = solved(p);
+      const r = p.mould!.bitDiameter / 2;
+      const cuts = [s.outline!, ...s.clampBox].map(points);
+      expect(s.alignmentHoles.length).toBe(2);
+      for (const hole of s.alignmentHoles) {
+        expect(hole.x).toBe(0);
+        expect(hole.r).toBeCloseTo(r, 9);
+        expect(pointInPolygon(hole, cuts[0])).toBe(true);
+        expect(s.clampBox.some(window => pointInPolygon(hole, points(window)))).toBe(false);
+        for (const cut of cuts) expect(nearest([hole], cut)).toBeGreaterThan(2 * r - 1e-6);
+      }
+      placed.push(s.alignmentHoles);
+    }
+    expect(placed[1]).toEqual(placed[0]);
+    expect(placed[2]).toEqual(placed[0]);
+  });
+
+  it('leaves the alignment holes out until asked, and fails them alone with no bit to plunge them', () => {
+    const p = seeded();
+    expect(solved(p).alignmentHoles).toEqual([]);
+    p.mould!.alignmentHoles = true;
+    p.mould!.bitDiameter = 0;
+    const s = solveMould(p)!;
+    expect(s.failures.map(f => f.unsolved)).toEqual([['alignmentHoles']]);
+    expect(s.alignmentHoles).toEqual([]);
     expect(s.outline).toBeTruthy();
   });
 

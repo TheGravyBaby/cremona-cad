@@ -23,6 +23,7 @@ export interface ViolinFamilyParams {
   fHoleContours?: FholeContourParams;
   arching?: ArchingParams;
   graduation?: GraduationParams;
+  bassBar?: BassBarParams;
   neck?: NeckParams;
   scroll?: ScrollParams;
   stringSetup?: StringSetupParams;
@@ -41,13 +42,20 @@ export interface BodyParams {
 
 // widths are outer measurements; radii are of the rib outline, inside the inset. The lower bout's
 // width is the body's (`body.width`), so the two panels can't disagree about it. The center bout
-// is a bout, so C0 lives here too, seeded with the others and edited on the Center Bout panel
+// is a bout, so C0 lives here too, seeded with the others and edited on the Center Bout panel.
+// The join arcs (U2, L2) are bout arcs: the width binds all three, so they are solved here and the
+// corners only say where they end. A join height is how far above the bout's widest point the
+// vesica arc hands over to the join arc; 0 is level with it
 export interface MainBoutsParams {
   UBW: number;
   U0R: number;
   U1R: number;
+  U2R: number;
+  UJoinY: number;
   L0R: number;
   L1R: number;
+  L2R: number;
+  LJoinY: number;
   useViolNeck: boolean;
   // kept when the toggle goes off, so turning it back on returns the same neck
   viol: ViolNeckParams | null;
@@ -78,17 +86,11 @@ export interface ViolNeckParams {
 export interface CornersParams {
   UCr: Pt;
   LCr: Pt;
-  // the join arcs' centre heights, where they're let off their bout arc's; absent, level with it.
-  // Read only while the solve's height flex is on
-  U2Y?: number;
-  L2Y?: number;
-  U2R: number;
   U3R: number;
   U31R: number;
   U31Sweep: number;
   U31DoubleArc: boolean;
   useViolCornerUC: boolean;
-  L2R: number;
   L3R: number;
   L31R: number;
   L31Sweep: number;
@@ -309,6 +311,16 @@ export interface GraduationPoint {
   label?: string;
 }
 
+// the bass bar, glued under the top's bass side once the top is graduated. A placeholder: its
+// length, its width across, and its height at the middle
+export interface BassBarParams {
+  length: number;
+  width: number;
+  height: number;
+  xOffset: number;
+  angle: number;
+}
+
 // the neck set in the side elevation and its widths in plan. Length runs along the fingerboard
 // plane from the mortise floor to the nut's foot, which it places; the angle is the fingerboard
 // plane's tilt off the top plate's square, in degrees. The thicknesses are the wood alone, the upper
@@ -333,15 +345,19 @@ export interface NeckParams {
 }
 
 // the string setup, reference geometry over the neck that never shapes it. The bridge stands on the
-// top's arch the body stop down from the neck end, its height off the arch; the nut stands its
-// thickness off the neck's front at the nut; the board runs its length down the neck from the nut,
-// its thickness off the neck at the edges and its crown a cone across its width: one radius at the
-// nut, another at the end, the radius between them running linearly along the board. The scoop is
-// planed along the top under the strings: how far from the nut it's deepest, and how deep under a
-// straightedge at the bass edge and at the treble edge, the depth running linearly across
+// top's arch the body stop down from the neck end, its height off the arch, its width across the
+// feet; the nut stands its thickness off the neck's front at the nut; the board runs its length down
+// the neck from the nut, its thickness off the neck at the edges and its crown a cone across its
+// width: one radius at the nut, another at the end, the radius between them running linearly along
+// the board. The scoop is planed along the top under the strings: how far from the nut it's deepest,
+// and how deep under a straightedge at the bass edge and at the treble edge, the depth running
+// linearly across. Only the dev fingerboard panel and the fingerboard STL read it. The soundpost
+// stands its offset from the bridge's treble foot, across (+ toward the treble edge) and along
+// (+ toward the neck), in plan
 export interface StringSetupParams {
   bodyStop: number;
   bridgeHeight: number;
+  bridgeWidth: number;
   nutThickness: number;
   fingerboardLength: number;
   fingerboardThickness: number;
@@ -350,20 +366,29 @@ export interface StringSetupParams {
   scoopAt: number;
   scoopBass: number;
   scoopTreble: number;
+  soundPostOffset: Pt;
+  soundPostDiameter: number;
 }
 
 // the inside mould: the rib outline with the blocks cut out of it. Only the blocks' sizes are typed;
 // where they sit follows from the outline. The neck and end blocks stand on the centreline against
 // the outline's ends; each corner block's outer corner stands `pad` off its corner tip, out past it
 // and toward the waist, so the outline clips the block to the corner's shape. The clamp box is the
-// windows a clamp reaches through to hold each block home; off, the mould is its outline alone
+// cutouts a clamp reaches through to hold each block home: windows, a frame with the window inset
+// for its wall, bumped in behind the neck and end blocks to keep that much wood there too; holes, a round hole inboard of each corner block and a slot behind the neck and end
+// blocks, each sized from its own block; or none, the mould its outline alone. The
+// alignment holes are two holes on the centre line, plunged with the bit, that the inner contour
+// carries too, so a template of it pins down over the mould
 export interface MouldParams {
   neckBlock: BlockParams;
   upperCornerBlock: CornerBlockParams;
   lowerCornerBlock: CornerBlockParams;
   endBlock: BlockParams;
   bitDiameter: number;
-  clampBox: boolean;
+  clampBox: 'windows' | 'holes' | 'none';
+  // how far the clamp windows stand in from the rib outline: the mould's wall
+  windowInset: number;
+  alignmentHoles: boolean;
 }
 
 export interface BlockParams {
@@ -502,7 +527,7 @@ export const VIOLIN_FAMILY_RECIPE_NAME = 'violin-family-recipe';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'centerBout', 'plateContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'pegbox', 'scrollWidths', 'stringSetup', 'mould', 'export', 'devFingerboard', 'devGraduation', 'devExport'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'plateContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'pegbox', 'scrollWidths', 'stringSetup', 'mould', 'export', 'devFingerboard', 'devGraduation', 'devBassBar', 'devExport'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface<ViolinFamilyParams> {
