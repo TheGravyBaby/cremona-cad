@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
+import { cross, dot, subVec, TURN, vecAtAngle } from '../../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../../models/types';
 import { pathsBounds } from '../../../../helpers/math/pathMath';
 import {
@@ -40,11 +40,11 @@ const solved = (p: ViolinFamilyParams): StringSetupSolve => {
 };
 
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
-const normalOf = (p: ViolinFamilyParams) => vectorFromSlope(p.neck!.angle * TURN.degree);
+const normalOf = (p: ViolinFamilyParams) => vecAtAngle(p.neck!.angle * TURN.degree);
 // how far a point stands off the fingerboard plane, along its normal
 const off = (p: ViolinFamilyParams, s: StringSetupSolve, pt: Pt) => {
   const normal = normalOf(p);
-  return (pt.x - s.neck.root!.x) * normal.a + (pt.y - s.neck.root!.y) * normal.b;
+  return dot(subVec(pt, s.neck.root!), normal);
 };
 // one marker per semitone, each the family's default dot unless edited
 const settings = (p: ViolinFamilyParams, semitones: number[], edit: Partial<PositionMarker> = {}): PositionMarker[] =>
@@ -81,8 +81,8 @@ describe('the position marks', () => {
         s.nutTop!.y + (s.bridgeTop!.y - s.nutTop!.y) * m.alongString / stringLength);
       // the drop runs along the plane's normal
       const normal = normalOf(p);
-      const drop = { x: onString.x - m.station.x, y: onString.y - m.station.y };
-      expect(drop.x * normal.b - drop.y * normal.a).toBeCloseTo(0, 9);
+      const drop = subVec(onString, m.station);
+      expect(cross(drop, normal)).toBeCloseTo(0, 9);
     }
     expect(marks.find(m => m.semitone === 12)!.alongString).toBeCloseTo(stringLength / 2, 9);
     // down the board in order, each nearer the end than the last

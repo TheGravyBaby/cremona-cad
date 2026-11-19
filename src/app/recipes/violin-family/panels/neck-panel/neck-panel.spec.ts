@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { lineFromTwoPoints, pointOnCircle, shortestDistanceFromPtToLine, vectorFromSlope, TURN } from '../../../../helpers/math/simpleGeometry';
+import { dot, lineFromTwoPoints, pointOnCircle, shortestDistanceFromPtToLine, subVec, vecAtAngle, TURN } from '../../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../../models/types';
 import { calcMortiseFloorY, NeckPanel, neckHalfWidthAt, solveNeck } from './neck-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
@@ -39,13 +39,13 @@ const solved = (p: ViolinFamilyParams): NeckSolve => {
 };
 
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
-const normalOf = (p: ViolinFamilyParams) => vectorFromSlope(p.neck!.angle * TURN.degree);
-const directionOf = (p: ViolinFamilyParams) => vectorFromSlope(p.neck!.angle * TURN.degree + TURN.quarter);
-const footOf = (p: ViolinFamilyParams) => vectorFromSlope(p.neck!.heelAngle * TURN.degree);
+const normalOf = (p: ViolinFamilyParams) => vecAtAngle(p.neck!.angle * TURN.degree);
+const directionOf = (p: ViolinFamilyParams) => vecAtAngle(p.neck!.angle * TURN.degree + TURN.quarter);
+const footOf = (p: ViolinFamilyParams) => vecAtAngle(p.neck!.heelAngle * TURN.degree);
 // how far under the fingerboard plane a point sits
 const under = (p: ViolinFamilyParams, s: NeckSolve, pt: Pt) => {
   const normal = normalOf(p);
-  return (pt.x - s.root!.x) * -normal.a + (pt.y - s.root!.y) * -normal.b;
+  return -dot(subVec(pt, s.root!), normal);
 };
 
 describe('the neck solve', () => {
@@ -168,7 +168,7 @@ describe('the heel', () => {
       expect(dist(end, pointOnCircle(s.heel!, s.heel!.end))).toBeLessThan(1e-9);
       expect(Math.atan2(end.y - tip.y, end.x - tip.x)).toBeCloseTo(p.neck!.heelAngle * TURN.degree, 9);
       const foot = footOf(p);
-      expect(Math.abs((end.x - s.heel!.x) * foot.a + (end.y - s.heel!.y) * foot.b)).toBeLessThan(1e-9);
+      expect(Math.abs(dot(subVec(end, s.heel!), foot))).toBeLessThan(1e-9);
       expectTangentToBack(s);
     }
   });
@@ -180,7 +180,7 @@ describe('the heel', () => {
       p.neck!.heelAngle = p.neck!.angle + tilt;
       const s = solved(p);
       const h = s.heel!;
-      const direction = vectorFromSlope(p.neck!.heelAngle * TURN.degree + TURN.quarter);
+      const direction = vecAtAngle(p.neck!.heelAngle * TURN.degree + TURN.quarter);
       let a1 = h.end;
       while (a1 - h.start > Math.PI) a1 -= 2 * Math.PI;
       while (a1 - h.start < -Math.PI) a1 += 2 * Math.PI;
@@ -188,7 +188,7 @@ describe('the heel', () => {
         const a = h.start + (a1 - h.start) * i / 64;
         const x = h.x + h.r * Math.cos(a) - s.tip!.x;
         const y = h.y + h.r * Math.sin(a) - s.tip!.y;
-        expect(x * direction.a + y * direction.b, `r=${radius} tilt=${tilt}`).toBeGreaterThanOrEqual(-1e-9);
+        expect(dot({ x, y }, direction), `r=${radius} tilt=${tilt}`).toBeGreaterThanOrEqual(-1e-9);
       }
     }
   });
@@ -253,7 +253,7 @@ describe('the neck wood', () => {
     const p = seeded();
     const s = solved(p);
     const along = directionOf(p);
-    for (const end of s.lowerThickness!) expect((s.tip!.x - end.x) * along.a + (s.tip!.y - end.y) * along.b).toBeCloseTo(0, 9);
+    for (const end of s.lowerThickness!) expect(dot(subVec(s.tip!, end), along)).toBeCloseTo(0, 9);
   });
 
   it('tapers the back in one straight line from the nut through the heel to the root', () => {

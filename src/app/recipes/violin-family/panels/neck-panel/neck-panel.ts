@@ -1,7 +1,8 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  angleFromCenter, dist, intersectLines, lineFromTwoPoints, moveInVectorSpace, pointOnCircle, TURN, vectorFromSlope,
+  addVec, angleFromCenter, cross, dist, dot, intersectLines, lineFromTwoPoints, pointOnCircle, scaleVec, stepAlong, subVec, TURN, unitVec,
+  vecAtAngle,
 } from '../../../../helpers/math/simpleGeometry';
 import { applyMatrix, Matrix2D, pathFromArc, pathFromLine, pathFromPolygon, transformPath, translatePath } from '../../../../helpers/math/pathMath';
 import { occludePath } from '../../../../helpers/math/pathVibes';
@@ -10,7 +11,7 @@ import {
   renderSegmentHalo, renderSolveFailures, renderStroke, renderTranslatedLayers,
 } from '../../../../helpers/renderFuncs';
 import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
-import { Arc, arcFromCircle, Circle, Pt, Vect2D } from '../../../../models/types';
+import { Arc, arcFromCircle, Circle, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
@@ -201,9 +202,9 @@ const renderNeckHighlight = (
 // fingerboard plane's normal and +y up the neck, so the neck's angle turns it
 export function calcScrollOnNeck(p: ViolinFamilyParams, n: NeckSolve): Matrix2D {
   let angle = p.neck!.angle * TURN.degree;
-  let normal = vectorFromSlope(angle);
-  let up = vectorFromSlope(angle + TURN.quarter);
-  return [normal.a, normal.b, up.a, up.b, n.neckTop!.x, n.neckTop!.y];
+  let normal = vecAtAngle(angle);
+  let up = vecAtAngle(angle + TURN.quarter);
+  return [normal.x, normal.y, up.x, up.y, n.neckTop!.x, n.neckTop!.y];
 }
 
 // how much deeper the back sits per mm along the fingerboard plane toward the heel, the back running
@@ -287,35 +288,34 @@ export function neckHalfWidthAt(p: ViolinFamilyParams, n: NeckSolve, y: number):
 function calcTipDepthBehindBack(backRoot: Pt, backNut: Pt, tip: Pt): number {
   let backRunLength = dist(backRoot, backNut);
   if (backRunLength < 1e-9) return NaN;
-  return ((tip.y - backRoot.y) * (backNut.x - backRoot.x) - (tip.x - backRoot.x) * (backNut.y - backRoot.y)) / backRunLength;
+  return cross(subVec(backNut, backRoot), subVec(tip, backRoot)) / backRunLength;
 }
 
 // the heel rounds `corner`, where the back meets the foot running out to the tip at the heel angle:
 // a plain fillet if it fits, else the arc reaches the tip itself
 function solveHeel(corner: Pt, backNut: Pt, tip: Pt, radius: number): Arc {
-  let backRunLength = dist(corner, backNut);
   let footLength = dist(corner, tip);
-  let up: Vect2D = { a: (backNut.x - corner.x) / backRunLength, b: (backNut.y - corner.y) / backRunLength, mag: 1 };
-  let out: Vect2D = { a: (tip.x - corner.x) / footLength, b: (tip.y - corner.y) / footLength, mag: 1 };
+  let up = unitVec(subVec(backNut, corner));
+  let out = unitVec(subVec(tip, corner));
   // off the back toward the tip, where the arc's centre stands
-  let cos = up.a * out.a + up.b * out.b;
-  let offBack: Vect2D = { a: (out.a - cos * up.a) / Math.sqrt(1 - cos * cos), b: (out.b - cos * up.b) / Math.sqrt(1 - cos * cos), mag: 1 };
+  let cos = dot(up, out);
+  let offBack = unitVec(subVec(out, scaleVec(up, cos)));
 
   let start: Pt;
   let end: Pt;
   let tangentRun = radius * Math.sqrt((1 + cos) / (1 - cos));
   if (tangentRun < footLength) {
-    start = moveInVectorSpace(corner, [{ ...up, mag: tangentRun }]);
-    end = moveInVectorSpace(corner, [{ ...out, mag: tangentRun }]);
+    start = stepAlong(corner, up, tangentRun);
+    end = stepAlong(corner, out, tangentRun);
   } else {
-    let fromTip = new Pt(corner.x + offBack.a * radius - tip.x, corner.y + offBack.b * radius - tip.y);
-    let along = fromTip.x * up.a + fromTip.y * up.b;
-    let upBack = -along + Math.sqrt(Math.max(along * along - (fromTip.x ** 2 + fromTip.y ** 2) + radius * radius, 0));
-    start = moveInVectorSpace(corner, [{ ...up, mag: upBack }]);
+    let fromTip = subVec(stepAlong(corner, offBack, radius), tip);
+    let along = dot(fromTip, up);
+    let upBack = -along + Math.sqrt(Math.max(along * along - dot(fromTip, fromTip) + radius * radius, 0));
+    start = stepAlong(corner, up, upBack);
     end = tip;
   }
 
-  let center = moveInVectorSpace(start, [{ ...offBack, mag: radius }]);
+  let center = stepAlong(start, offBack, radius);
   let circle: Circle = { x: center.x, y: center.y, r: radius };
   return arcFromCircle(circle, angleFromCenter(center, start), angleFromCenter(center, end));
 }
@@ -347,13 +347,13 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
     let h = p.body.height;
     let placement = calcTopPlatePlacement(p, a.ribs);
     let outerZ = a.ribs.zLower + p.arching!.top.thickness;
-    let direction = vectorFromSlope(angle + TURN.quarter);
-    let normal = vectorFromSlope(angle);
+    let direction = vecAtAngle(angle + TURN.quarter);
+    let normal = vecAtAngle(angle);
     let floorY = calcMortiseFloorY(p);
     s.plateEdge = placeOnTopPlate(placement, new Pt(outerZ, h));
     s.plateAtMortise = new Pt(ribHeightAt(p, floorY, a.ribs) + p.arching!.top.thickness, floorY); // note the plates are likely tapered, so we take the rib height at that Y then add the plate thickness
     let root = s.root = placeOnTopPlate(placement, new Pt(outerZ + nk.overstand, h));
-    let fingerboardPlane = lineFromTwoPoints(root, moveInVectorSpace(root, [{ ...direction, mag: 1 }]));
+    let fingerboardPlane = lineFromTwoPoints(root, addVec(root, direction));
     let rootPlaneY = h - p.body.overhang;
     let neckAtRootPlane = intersectLines(fingerboardPlane, lineFromTwoPoints(new Pt(0, rootPlaneY), new Pt(1, rootPlaneY)))!;
 
@@ -361,15 +361,15 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
     // sits the upper thickness under the nut and runs straight through the lower under the heel
     let tip = s.tip = new Pt(0, h + buttonHeight);
     let bottomFront = s.bottomFront = intersectLines(fingerboardPlane, lineFromTwoPoints(new Pt(0, floorY), new Pt(1, floorY)))!;
-    let neckTop = s.neckTop = moveInVectorSpace(bottomFront, [{ ...direction, mag: nk.length }]);
-    let backNut = s.backNut = moveInVectorSpace(neckTop, [{ ...normal, mag: -nk.upperThickness }]);
+    let neckTop = s.neckTop = stepAlong(bottomFront, direction, nk.length);
+    let backNut = s.backNut = stepAlong(neckTop, normal, -nk.upperThickness);
 
     // the lower thickness is taken square to the plane through the button tip: the line the heel's
     // foot is cut along, so it is measured at the corner the heel rounds
-    let front = moveInVectorSpace(root, [{ ...direction, mag: (tip.x - root.x) * direction.a + (tip.y - root.y) * direction.b }]);
-    let backHeel = moveInVectorSpace(front, [{ ...normal, mag: -nk.lowerThickness }]);
+    let front = stepAlong(root, direction, dot(subVec(tip, root), direction));
+    let backHeel = stepAlong(front, normal, -nk.lowerThickness);
     s.lowerThickness = [front, backHeel];
-    s.backRoot = intersectLines(lineFromTwoPoints(backNut, backHeel), lineFromTwoPoints(neckAtRootPlane, moveInVectorSpace(neckAtRootPlane, [normal])))!;
+    s.backRoot = intersectLines(lineFromTwoPoints(backNut, backHeel), lineFromTwoPoints(neckAtRootPlane, addVec(neckAtRootPlane, normal)))!;
 
     // the heel: a cove, so a back past the tip or a cleared radius leaves the back straight down to
     // the root, and says so
@@ -385,10 +385,10 @@ export function solveNeck(p: ViolinFamilyParams): NeckSolve | null {
       s.failures.push(buildMiss('Heel: the heel angle has to lie between -90° and 90°.', ['heel']));
       return null;
     }
-    let foot = vectorFromSlope(nk.heelAngle * TURN.degree);
-    let corner = intersectLines(lineFromTwoPoints(backNut, backHeel), lineFromTwoPoints(tip, moveInVectorSpace(tip, [foot])));
-    let alongBack = corner ? ((corner.x - s.backRoot.x) * (backNut.x - s.backRoot.x) + (corner.y - s.backRoot.y) * (backNut.y - s.backRoot.y)) / dist(s.backRoot, backNut) ** 2 : NaN;
-    if (!corner || (corner.x - tip.x) * foot.a + (corner.y - tip.y) * foot.b <= 0 || !(alongBack > 0 && alongBack < 1)) {
+    let foot = vecAtAngle(nk.heelAngle * TURN.degree);
+    let corner = intersectLines(lineFromTwoPoints(backNut, backHeel), lineFromTwoPoints(tip, addVec(tip, foot)));
+    let alongBack = corner ? dot(subVec(corner, s.backRoot), subVec(backNut, s.backRoot)) / dist(s.backRoot, backNut) ** 2 : NaN;
+    if (!corner || dot(subVec(corner, tip), foot) <= 0 || !(alongBack > 0 && alongBack < 1)) {
       s.failures.push(buildMiss('Heel: at this heel angle the foot never meets the neck\'s back between the root and the nut. Bring the angle nearer the neck projection.', ['heel']));
       return null;
     }

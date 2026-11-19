@@ -52,12 +52,11 @@
                     [style.borderColor]="pal.ink(1).faint(-2)"
                     (focus)="highlightPart('U2', pal.ink(1).faint(-2))" (blur)="clearHighlight()" />
             </label>
-            <!-- <label class='field-cell'>
+            <label class='field-cell'>
                 <span class="field-title">Join Height</span>
                 <input type="number" class="basic-input" step="1" [(ngModel)]="bouts.UJoinY" (input)="recordEditAndRedraw()"
                     (focus)="highlightPart('U2', pal.ink(1).faint(-2))" (blur)="clearHighlight()" />
-            </label> -->
-             <label class="field-cell"></label>
+            </label>
             <label class='field-cell'>
                 <span class="field-title">U2 to UBW</span>
                 <div class="basic-display" aria-label="U2 to upper bout width ratio value">{{ formatRatio('U2toUBW') }}</div>
@@ -161,11 +160,11 @@
                     [style.borderColor]="pal.ink(0).faint(-2)"
                     (focus)="highlightPart('L2', pal.ink(0).faint(-2))" (blur)="clearHighlight()" />
             </label>
-            <!-- <label class='field-cell'>
+            <label class='field-cell'>
+                <span class="field-title">Join Height</span>
                 <input type="number" class="basic-input" step="1" [(ngModel)]="bouts.LJoinY" (input)="recordEditAndRedraw()"
                     (focus)="highlightPart('L2', pal.ink(0).faint(-2))" (blur)="clearHighlight()" />
-            </label> -->
-            <label class="field-cell"></label>
+            </label>
             <label class='field-cell'>
                 <span class="field-title">L2 to LBW</span>
                 <div class="basic-display" aria-label="L2 to lower bout width ratio value">{{ formatRatio('L2toLBW') }}</div>

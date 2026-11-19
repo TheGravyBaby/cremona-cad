@@ -2,8 +2,8 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections, inscribeCircleWithinCircle, solveTangentCircleAndLine } from '../../../../helpers/math/draftMath';
 import {
-  angleFromCenter, dist, flipArcAboutY, flipPointAboutY, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, moveInVectorSpace,
-  normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, signedArcSweep, signedRadianDelta, solveSineSum, tangentUnitVectorFromLine, TURN, vectorFromSlope,
+  angleFromCenter, dist, flipArcAboutY, flipPointAboutY, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, stepAlong,
+  normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, signedArcSweep, signedRadianDelta, solveSineSum, lineNormal, TURN, vecAtAngle,
 } from '../../../../helpers/math/simpleGeometry';
 import { pathFromArc, pathFromArcLongWay, pathFromLine, pathFromPolyline, transformPath } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
@@ -399,8 +399,8 @@ function buildStemMiss(
   side: 1 | -1,
   shrink: string,
 ): FholeFailure {
-  let normal = tangentUnitVectorFromLine(edge);
-  let clearance = side * (reach.x * normal.a + (reach.y - edge.y) * normal.b) - reach.r;
+  let normal = lineNormal(edge);
+  let clearance = side * (reach.x * normal.x + (reach.y - edge.y) * normal.y) - reach.r;
   return {
     message: clearance < 0
       ? `${section}: ${reachKey} crosses the ${edgeName} stem edge before it can turn onto it. ${shrink}, or widen the stem.`
@@ -480,9 +480,8 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
     let missing = buildBlankMiss('Upper wing', ['U3', 'S1'], [k.U3R, k.U3Angle, k.UCut.angleOnEye, k.UCut.slope, k.UCut.length, k.stemArcR]);
     if (missing) return missing;
     let cutStart = pointOnCircle(f.UEye, k.UCut.angleOnEye * deg);
-    let cutVector = vectorFromSlope(k.UCut.slope * deg);
-    cutVector.mag = k.UCut.length;
-    let cutEnd = moveInVectorSpace(cutStart, [cutVector]);
+    let cutDirection = vecAtAngle(k.UCut.slope * deg);
+    let cutEnd = stepAlong(cutStart, cutDirection, k.UCut.length);
     s.UTip = cutEnd;
     let U3End = calcWingEnd(k.UCut, k.U3Angle, 1);
     let cutCircle = placeCircleOnPointAtAngle(k.U3R, cutEnd, U3End);
@@ -542,9 +541,8 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
     let missing = buildBlankMiss('Lower wing', ['L3', 'S4'], [k.L3R, k.L3Angle, k.LCut.angleOnEye, k.LCut.slope, k.LCut.length, k.stemArcR]);
     if (missing) return missing;
     let cutStart = pointOnCircle(f.LEye, k.LCut.angleOnEye * deg);
-    let cutVector = vectorFromSlope(k.LCut.slope * deg);
-    cutVector.mag = k.LCut.length;
-    let cutEnd = moveInVectorSpace(cutStart, [cutVector]);
+    let cutDirection = vecAtAngle(k.LCut.slope * deg);
+    let cutEnd = stepAlong(cutStart, cutDirection, k.LCut.length);
     s.LTip = cutEnd;
     let L3End = calcWingEnd(k.LCut, k.L3Angle, -1);
     let cutCircle = placeCircleOnPointAtAngle(k.L3R, cutEnd, L3End);

@@ -399,10 +399,22 @@ export interface GraduationGround { loop: Pt[]; minX: number; maxX: number; minY
 export type BassBarKey = 'bar';
 export type BassBarFailure = SolveFailure<BassBarKey>;
 
+// one face of the bar in the side view, as (z, y): where it meets the inside of the top, the foot
+// it hangs to with the ends that join the two, and the bar's height if the face holds its highest point
+export interface BassBarFace {
+  edge: string;
+  foot: string;
+  height: string | null;
+}
+
 export interface BassBarSolve {
   upperLeft: Pt | null;
   upperRight: Pt | null;
   lowerLeft: Pt | null;
   lowerRight: Pt | null;
+  left: BassBarFace | null;
+  right: BassBarFace | null;
+  // the foot is one flat across the bar, so both faces hang to it
+  footZ: number | null;
   failures: BassBarFailure[];
 }

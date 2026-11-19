@@ -6,6 +6,8 @@
 // the top: a flat floor inside its rim, the cells the rim crosses split along it, and a wall from
 // the floor up to the surface, so the pocket is as round as its rim and not the grid.
 
+import { cross3, subVec3, unitVec3 } from './math/simpleGeometry';
+
 export interface HeightFieldCut {
   /** the pocket's rim, a closed polygon in the field's mm */
   outline: [number, number][];
@@ -265,13 +267,13 @@ function writeBinaryStl(tris: number[]): ArrayBuffer {
   let off = 84;
   for (let t = 0; t < n; t++) {
     const b = t * 9;
-    const ux = tris[b + 3] - tris[b], uy = tris[b + 4] - tris[b + 1], uz = tris[b + 5] - tris[b + 2];
-    const vx = tris[b + 6] - tris[b], vy = tris[b + 7] - tris[b + 1], vz = tris[b + 8] - tris[b + 2];
-    let cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
-    const len = Math.hypot(cx, cy, cz) || 1;
-    dv.setFloat32(off, cx / len, true);
-    dv.setFloat32(off + 4, cy / len, true);
-    dv.setFloat32(off + 8, cz / len, true);
+    const corner = { x: tris[b], y: tris[b + 1], z: tris[b + 2] };
+    const u = subVec3({ x: tris[b + 3], y: tris[b + 4], z: tris[b + 5] }, corner);
+    const v = subVec3({ x: tris[b + 6], y: tris[b + 7], z: tris[b + 8] }, corner);
+    const normal = unitVec3(cross3(u, v));
+    dv.setFloat32(off, normal.x, true);
+    dv.setFloat32(off + 4, normal.y, true);
+    dv.setFloat32(off + 8, normal.z, true);
     for (let k = 0; k < 9; k++) dv.setFloat32(off + 12 + k * 4, tris[b + k], true);
     dv.setUint16(off + 48, 0, true);
     off += 50;

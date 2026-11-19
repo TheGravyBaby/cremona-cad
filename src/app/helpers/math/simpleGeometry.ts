@@ -1,4 +1,4 @@
-import { Pt, Circle, Line, Rectangle, Arc, arcFromCircle, Vect2D } from "../../models/types";
+import { Pt, Pt3D, Circle, Line, Rectangle, Arc, arcFromCircle, Vec2, Vec3 } from "../../models/types";
 
 export const TURN = {
   degree: Math.PI / 180,
@@ -204,9 +204,9 @@ export function tangentAngleFromLine(line: Line): number {
  * from travel — i.e. "right of travel".
  */
 export function offsetLineByDistance(line: Line, offset: number): Line {
-  const normal = tangentUnitVectorFromLine(line);
+  const normal = lineNormal(line);
   if (isVerticalLine(line)) return { m: Infinity, y: NaN, x: line.x + offset };
-  return lineFromPointAndSlope({ x: normal.a * offset, y: line.y + normal.b * offset }, line.m);
+  return lineFromPointAndSlope({ x: normal.x * offset, y: line.y + normal.y * offset }, line.m);
 }
 
 export function intersectLines(line1: Line, line2: Line): Pt | null {
@@ -313,9 +313,9 @@ export function closestPointOnLine(point: Pt, line: Line): { dist: number; point
     const closest = { x: line.x, y: point.y };
     return { dist: Math.abs(point.x - line.x), point: closest };
   }
-  const direction = unitVectorFromLine(line);
-  const t = point.x * direction.a + (point.y - line.y) * direction.b;
-  const closest = { x: t * direction.a, y: line.y + t * direction.b };
+  const direction = lineDirection(line);
+  const t = point.x * direction.x + (point.y - line.y) * direction.y;
+  const closest = { x: t * direction.x, y: line.y + t * direction.y };
   return { dist: Math.hypot(point.x - closest.x, point.y - closest.y), point: closest };
 }
 
@@ -332,38 +332,106 @@ export function closestPointOnSegment(point: Pt, a: Pt, b: Pt): { dist: number; 
 
 
 // ===== Vectors =====
-export function unitVectorFromLine(line: Line): Vect2D {
-  if (isVerticalLine(line)) return { a: 0, b: 1, mag: 1 };
-  const mag = Math.sqrt(1 + line.m * line.m);
-  return { a: 1 / mag, b: line.m / mag, mag: 1 };
+export function addVec(u: Vec2, v: Vec2): Vec2 {
+  return { x: u.x + v.x, y: u.y + v.y };
 }
 
-export function tangentUnitVectorFromLine(line: Line): Vect2D {
-  if (isVerticalLine(line)) return { a: 1, b: 0, mag: 1 };
-  const mag = Math.sqrt(1 + line.m * line.m);
-  return { a: line.m / mag, b: -1 / mag, mag: 1 };
+export function subVec(u: Vec2, v: Vec2): Vec2 {
+  return { x: u.x - v.x, y: u.y - v.y };
 }
 
-export function moveInVectorSpace(point: Pt, vectors: Vect2D[]): Pt {
-  let newX = point.x;
-  let newY = point.y;
-  for (const v of vectors) {
-    newX += v.a * v.mag;
-    newY += v.b * v.mag;
-  }
-  return { x: newX, y: newY };
+export function scaleVec(v: Vec2, k: number): Vec2 {
+  return { x: v.x * k, y: v.y * k };
 }
 
-export function vectorFromSlope(theta: number): Vect2D {
-  return { a: Math.cos(theta), b: Math.sin(theta), mag: 1 };
+export function dot(u: Vec2, v: Vec2): number {
+  return u.x * v.x + u.y * v.y;
 }
 
-export function normalVectorFromSlope(theta: number): Vect2D {
-  return { a: -Math.sin(theta), b: Math.cos(theta), mag: 1 };
+// the z of the 3D cross product: positive when v turns counterclockwise from u
+export function cross(u: Vec2, v: Vec2): number {
+  return u.x * v.y - u.y * v.x;
 }
 
-export function vectorFromSlopeAndMag(theta: number, mag: number): Vect2D {
-  return { a: Math.cos(theta), b: Math.sin(theta), mag };
+export function vecLength(v: Vec2): number {
+  return Math.hypot(v.x, v.y);
+}
+
+// the zero vector stays zero
+export function unitVec(v: Vec2): Vec2 {
+  const len = Math.hypot(v.x, v.y);
+  return len > 0 ? { x: v.x / len, y: v.y / len } : { x: 0, y: 0 };
+}
+
+// turned a quarter counterclockwise
+export function perp(v: Vec2): Vec2 {
+  return { x: -v.y, y: v.x };
+}
+
+export function vecAtAngle(theta: number): Vec2 {
+  return { x: Math.cos(theta), y: Math.sin(theta) };
+}
+
+export function angleOfVec(v: Vec2): number {
+  return Math.atan2(v.y, v.x);
+}
+
+export function lerpVec(u: Vec2, v: Vec2, t: number): Vec2 {
+  return { x: u.x + (v.x - u.x) * t, y: u.y + (v.y - u.y) * t };
+}
+
+export function stepAlong(from: Pt, dir: Vec2, distance: number): Pt {
+  return { x: from.x + dir.x * distance, y: from.y + dir.y * distance };
+}
+
+export function addVec3(u: Vec3, v: Vec3): Vec3 {
+  return { x: u.x + v.x, y: u.y + v.y, z: u.z + v.z };
+}
+
+export function subVec3(u: Vec3, v: Vec3): Vec3 {
+  return { x: u.x - v.x, y: u.y - v.y, z: u.z - v.z };
+}
+
+export function scaleVec3(v: Vec3, k: number): Vec3 {
+  return { x: v.x * k, y: v.y * k, z: v.z * k };
+}
+
+export function dot3(u: Vec3, v: Vec3): number {
+  return u.x * v.x + u.y * v.y + u.z * v.z;
+}
+
+export function cross3(u: Vec3, v: Vec3): Vec3 {
+  return { x: u.y * v.z - u.z * v.y, y: u.z * v.x - u.x * v.z, z: u.x * v.y - u.y * v.x };
+}
+
+export function vecLength3(v: Vec3): number {
+  return Math.hypot(v.x, v.y, v.z);
+}
+
+export function unitVec3(v: Vec3): Vec3 {
+  const len = Math.hypot(v.x, v.y, v.z);
+  return len > 0 ? { x: v.x / len, y: v.y / len, z: v.z / len } : { x: 0, y: 0, z: 0 };
+}
+
+export function lerpVec3(u: Vec3, v: Vec3, t: number): Vec3 {
+  return { x: u.x + (v.x - u.x) * t, y: u.y + (v.y - u.y) * t, z: u.z + (v.z - u.z) * t };
+}
+
+export function stepAlong3(from: Pt3D, dir: Vec3, distance: number): Pt3D {
+  return { x: from.x + dir.x * distance, y: from.y + dir.y * distance, z: from.z + dir.z * distance };
+}
+
+// a line's unit direction runs toward increasing x, or up when vertical, whichever way it was drawn
+export function lineDirection(line: Line): Vec2 {
+  if (isVerticalLine(line)) return { x: 0, y: 1 };
+  const len = Math.sqrt(1 + line.m * line.m);
+  return { x: 1 / len, y: line.m / len };
+}
+
+// the unit normal to the right of lineDirection, the side offsetLineByDistance moves toward
+export function lineNormal(line: Line): Vec2 {
+  const direction = lineDirection(line);
+  return { x: direction.y, y: -direction.x };
 }
 
 // ===== Arcs =====

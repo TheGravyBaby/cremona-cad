@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { applyMatrix } from '../../../../helpers/math/pathMath';
-import { TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
+import { dot, subVec, TURN, vecAtAngle } from '../../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../../models/types';
 import {
   calcSoundPostAnchor, fingerboardCrownAt, calcFingerboardCrownLine, fingerboardRadiusAt, solveStringSetup,
@@ -42,12 +42,12 @@ const solved = (p: ViolinFamilyParams): StringSetupSolve => {
 };
 
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
-const normalOf = (p: ViolinFamilyParams) => vectorFromSlope(p.neck!.angle * TURN.degree);
+const normalOf = (p: ViolinFamilyParams) => vecAtAngle(p.neck!.angle * TURN.degree);
 const unsolved = (s: StringSetupSolve, key: StringSetupKey) => s.failures.some(f => f.unsolved.includes(key));
 // how far a point stands off the fingerboard plane, along its normal
 const off = (p: ViolinFamilyParams, s: StringSetupSolve, pt: Pt) => {
   const normal = normalOf(p);
-  return (pt.x - s.neck.root!.x) * normal.a + (pt.y - s.neck.root!.y) * normal.b;
+  return dot(subVec(pt, s.neck.root!), normal);
 };
 
 describe('the string setup solve', () => {

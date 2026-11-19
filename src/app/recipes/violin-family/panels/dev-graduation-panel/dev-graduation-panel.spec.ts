@@ -4,7 +4,7 @@ import { dist, pointInPolygon } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
-import { DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, thicknessBands, thicknessField, zonePoints } from './dev-graduation-panel';
+import { calcHoleFill, calcLevelBridges, DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, thicknessBands, thicknessField, zonePoints } from './dev-graduation-panel';
 import { definePurflingPath, PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
 import { MainBoutsPanel, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -556,6 +556,37 @@ describe('the thickness field', () => {
       }
     });
 
+    it('lies level between the holes and the points beside them that share their thickness', () => {
+      const p = holed();
+      const s = grad(p);
+      const g = solveGraduation(p)!;
+      const reach = Math.min(...g.holes.flat().map(q => Math.abs(q.x)));
+      const ys = g.holes[0].map(q => q.y);
+      const lo = Math.min(...ys), hi = Math.max(...ys);
+      s.fHoleThickness = edgeThicknessOf(p, 'top') + 1.5;
+      // three on the joint the height of the holes at their thickness, the plate thin beyond them
+      s.top.points = [
+        ...[lo, (lo + hi) / 2, hi].map(y => ({ x: 0, y, thickness: s.fHoleThickness })),
+        ...[lo - 60, hi + 60].map(y => ({ x: 0, y, thickness: edgeThicknessOf(p, 'top') - 1 })),
+      ];
+      const f = thicknessField(p, 'top')!;
+      for (let y = lo + 5; y <= hi - 5; y += 5) {
+        for (let x = 0; x < reach - 2; x += 3) expect(Math.abs(f.interpolated(x, y) - s.fHoleThickness)).toBeLessThan(0.05);
+      }
+    });
+
+    it('fills each hole with readings inside it, mirrored', () => {
+      const p = holed();
+      grad(p);
+      const [a, b] = solveGraduation(p)!.holes.map(hole => ({ hole, fill: calcHoleFill(hole) }));
+      expect(a.fill.length).toBeGreaterThan(10);
+      expect(b.fill.length).toBe(a.fill.length);
+      for (const q of a.fill) {
+        expect(pointInPolygon(q, a.hole)).toBe(true);
+        expect(b.fill.some(m => Math.hypot(m.x + q.x, m.y - q.y) < 1e-9)).toBe(true);
+      }
+    });
+
     it('has no holes before the contours are drafted', () => {
       const p = arched();
       const s = settled(p);
@@ -563,6 +594,67 @@ describe('the thickness field', () => {
       expect(g.holes).toEqual([]);
       expect(thicknessField(p, 'top')!.range.hi).toBeLessThan(s.fHoleThickness);
     });
+  });
+
+  describe('between neighbours that agree', () => {
+    const square = [new Pt(-100, -100), new Pt(100, -100), new Pt(100, 100), new Pt(-100, 100)];
+    const pt = (x: number, y: number, thickness: number) => ({ x, y, thickness });
+
+    it('bridges two points alike with readings on the line between them, at their thickness', () => {
+      const bridges = calcLevelBridges([pt(-30, 0, 5), pt(30, 10, 5)], [], 3, square);
+      expect(bridges.length).toBeGreaterThan(1);
+      for (const b of bridges) {
+        expect(b.v).toBe(5);
+        expect(Math.abs((b.x + 30) * 10 - b.y * 60)).toBeLessThan(1e-9);
+        expect(Math.abs(b.x)).toBeLessThan(30);
+      }
+    });
+
+    it('leaves alone points that differ, and two alike with a third standing between them', () => {
+      expect(calcLevelBridges([pt(-30, 0, 5), pt(30, 0, 4.9)], [], 3, square)).toEqual([]);
+      const bridges = calcLevelBridges([pt(-30, 0, 5), pt(30, 0, 5), pt(0, 5, 4)], [], 3, square);
+      expect(bridges).toEqual([]);
+    });
+
+    it('bridges a point to a hole at the hole\'s thickness, but never through one or off the plate', () => {
+      const hole = [new Pt(40, -20), new Pt(46, -20), new Pt(46, 20), new Pt(40, 20)];
+      const near = calcLevelBridges([pt(0, 0, 5)], [hole], 5, square);
+      expect(near.length).toBeGreaterThan(1);
+      for (const b of near) {
+        expect(b.y).toBeCloseTo(0, 9);
+        expect(b.x).toBeGreaterThan(0);
+        expect(b.x).toBeLessThan(40);
+      }
+      expect(calcLevelBridges([pt(0, 0, 5)], [hole], 4, square)).toEqual([]);
+      expect(calcLevelBridges([pt(0, 0, 5), pt(80, 0, 5)], [hole], 3, square)).toEqual([]);
+      const notch = [new Pt(-100, -100), new Pt(100, -100), new Pt(100, 100), new Pt(0, 10), new Pt(-100, 100)];
+      expect(calcLevelBridges([pt(-60, 50, 5), pt(60, 50, 5)], [], 3, notch)).toEqual([]);
+    });
+
+    it('holds the field level along the line between them, where a lone pair lets it swell', () => {
+      const p = arched();
+      grad(p);
+      const c = centre(solveGraduation(p)!.ground!.loop);
+      const thick = edgeThicknessOf(p, 'back') + 1.5;
+      p.graduation!.back.points = [-40, 0, 40].map(dy => ({ x: 0, y: c.y + dy, thickness: thick }));
+      const f = thicknessField(p, 'back')!;
+      for (let dy = -40; dy <= 40; dy += 4) expect(Math.abs(f.interpolated(0, c.y + dy) - thick)).toBeLessThan(0.02);
+    });
+  });
+
+  it('maps a plate read alike all over as whole bands, none broken up by a contour at the reading', () => {
+    const p = arched();
+    grad(p);
+    p.graduation!.back.points = zonePoints(p, 'back');
+    const read = p.graduation!.back.points[0].thickness;
+    const bands = thicknessBands(p, 'back');
+    expect(bands.length).toBeGreaterThan(1);
+    for (const { level, polygons } of bands) {
+      expect(Math.abs(level - read)).toBeGreaterThan(0.1);
+      // the plate is thin at the edge and thicker within, so the ground above a level under the
+      // reading is one piece with nothing cut out of it
+      if (level < read) expect(polygons.map(poly => poly.length)).toEqual([1]);
+    }
   });
 
   it('maps the field in bands cut to the boundary, thin to thick', () => {
@@ -632,10 +724,10 @@ describe('the zones layout', () => {
     return { points: zonePoints(p, 'back'), loop: points(solveGraduation(p)!.boundary!) };
   };
 
-  it('lays thirteen named zones inside the boundary, the sides mirrored', () => {
+  it('lays seventeen named zones inside the boundary, the sides mirrored', () => {
     const { points: pts, loop } = zoned();
-    expect(pts.length).toBe(13);
-    expect(new Set(pts.map(pt => pt.label)).size).toBe(13);
+    expect(pts.length).toBe(17);
+    expect(new Set(pts.map(pt => pt.label)).size).toBe(17);
     for (const pt of pts) {
       expect(pointInPolygon(new Pt(pt.x, pt.y), loop)).toBe(true);
       expect(pts.some(q => q.x === -pt.x && q.y === pt.y)).toBe(true);
@@ -656,6 +748,10 @@ describe('the zones layout', () => {
       expect((flank.y - dome.y) * (island.y - flank.y)).toBeGreaterThan(0);
       expect(flank.x).toBeGreaterThan(0);
       expect(flank.x).toBeLessThan(channel.x);
+      // the edge pair sits past the dome toward the bout's end, off the joint
+      const edge = by(`${bout} edge treble`);
+      expect((edge.y - dome.y) * (dome.y - island.y)).toBeGreaterThan(0);
+      expect(edge.x).toBeGreaterThan(0);
     }
     expect(by('Island').y).toBeLessThan(by('Upper flank bass').y);
     expect(by('Island').y).toBeGreaterThan(by('Lower flank bass').y);

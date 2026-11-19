@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { dist, moveInVectorSpace, pointAtDistanceToward, TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
+import { dist, dot, pointAtDistanceToward, stepAlong, subVec, TURN, unitVec, vecAtAngle } from '../../../../helpers/math/simpleGeometry';
 import { pathFromCircle, pathFromPolygon, pathFromPolyline, translatePath } from '../../../../helpers/math/pathMath';
 import { intersectionFromTwoPaths } from '../../../../helpers/math/pathVibes';
 import {
@@ -12,7 +12,7 @@ import { DEFAULT_LAYER_ID, Layer } from '../../../../draft-canvas/tools/layer';
 import { DraftShape, pathFromShape } from '../../../../draft-canvas/tools/toolbox-shape';
 import { scopeOnly } from '../../../../draft-canvas/tools/panel-scope';
 import { ToolboxStore } from '../../../../draft-canvas/tools/toolbox-store';
-import { Circle, Pt, Vect2D } from '../../../../models/types';
+import { Circle, Pt, Vec2 } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
@@ -316,14 +316,14 @@ export function solvePositionMarks(p: ViolinFamilyParams, s: StringSetupSolve, m
     }
     let stringLength = dist(s.nutTop, s.bridgeTop);
     let boardLength = dist(neckTop, s.fingerboardEnd);
-    let board: Vect2D = { a: (s.fingerboardEnd.x - neckTop.x) / boardLength, b: (s.fingerboardEnd.y - neckTop.y) / boardLength, mag: 1 };
+    let board = unitVec(subVec(s.fingerboardEnd, neckTop));
     let past: number[] = [];
     for (let semitone of [...new Set(markers.map(m => m.semitone))].sort((a, b) => a - b)) {
       let alongString = calcSemitoneStop(semitone, stringLength);
       let onString = pointAtDistanceToward(s.nutTop, s.bridgeTop, alongString);
-      let alongBoard = (onString.x - neckTop.x) * board.a + (onString.y - neckTop.y) * board.b;
+      let alongBoard = dot(subVec(onString, neckTop), board);
       if (alongBoard > boardLength) { past.push(semitone); continue; }
-      let station = moveInVectorSpace(neckTop, [{ ...board, mag: alongBoard }]);
+      let station = stepAlong(neckTop, board, alongBoard);
       // the share of the board scales with its width; an overhang past the edge is carried as is
       let half = neckHalfWidthAt(p, s.neck, station.y);
       let mark: PositionMarkSolve = { semitone, alongString, station, dots: [], faceDots: [], markers: [], lines: [] };
@@ -373,14 +373,14 @@ export function calcFingerboardFaceOrigin(p: ViolinFamilyParams, s: StringSetupS
   return new Pt(calcSideViewOffsetX(p) + reach + 0.12 * p.body.height + neckHalfWidthAt(p, s.neck, end.y), neckTop.y);
 }
 
-function calcOffPlane(pt: Pt, root: Pt, normal: Vect2D): number {
-  return (pt.x - root.x) * normal.a + (pt.y - root.y) * normal.b;
+function calcOffPlane(pt: Pt, root: Pt, normal: Vec2): number {
+  return dot(subVec(pt, root), normal);
 }
 
 // the text is centred, so each label moves out by half its own width to start past the string
-const renderScoopLabel = (at: Pt, normal: Vect2D, up: Vect2D, lift: number, stagger: number, text: string, color: string) => (g: any, ui: any): void => {
-  let raised = moveInVectorSpace(at, [{ ...normal, mag: lift + text.length * SCOOP_GUIDE_LABEL_SIZE * 0.28 }]);
-  renderText(moveInVectorSpace(raised, [{ ...up, mag: stagger }]), text, color, SCOOP_GUIDE_LABEL_SIZE)(g, ui);
+const renderScoopLabel = (at: Pt, normal: Vec2, up: Vec2, lift: number, stagger: number, text: string, color: string) => (g: any, ui: any): void => {
+  let raised = stepAlong(at, normal, lift + text.length * SCOOP_GUIDE_LABEL_SIZE * 0.28);
+  renderText(stepAlong(raised, up, stagger), text, color, SCOOP_GUIDE_LABEL_SIZE)(g, ui);
 };
 
 // the scoop at scale under the straight top string setup draws: the bass and treble edges, knots on
@@ -389,8 +389,8 @@ const renderScoopGuide = (p: ViolinFamilyParams, s: StringSetupSolve, k: ScoopSo
   let guide = calcScoopGuideGeometry(p, s, k);
   if (!guide) return;
   let ss = p.stringSetup!;
-  let normal = vectorFromSlope(p.neck!.angle * TURN.degree);
-  let up = vectorFromSlope(p.neck!.angle * TURN.degree + TURN.quarter);
+  let normal = vecAtAngle(p.neck!.angle * TURN.degree);
+  let up = vecAtAngle(p.neck!.angle * TURN.degree + TURN.quarter);
   renderPath(pathFromPolyline(guide.bass), pal.ink(0), STROKE_WEIGHT.guide)(g, ui);
   renderPath(pathFromPolyline(guide.treble), pal.ink(0).faint(-3), STROKE_WEIGHT.guide)(g, ui);
   let [deepestBass, onStraightedge] = guide.station;
@@ -467,10 +467,10 @@ export function fingerboardSurfaceZAt(p: ViolinFamilyParams, s: StringSetupSolve
 export function calcScoopedEdgeLine(p: ViolinFamilyParams, s: StringSetupSolve, side: -1 | 1): Pt[] {
   let neckTop = s.neck.neckTop!, end = s.fingerboardEnd!;
   let thickness = p.stringSetup!.fingerboardThickness;
-  let normal = vectorFromSlope(p.neck!.angle * TURN.degree);
+  let normal = vecAtAngle(p.neck!.angle * TURN.degree);
   return Array.from({ length: SCOOP_EDGE_SAMPLES + 1 }, (_, i) => {
     let at = pointAtDistanceToward(neckTop, end, i * dist(neckTop, end) / SCOOP_EDGE_SAMPLES);
-    return moveInVectorSpace(at, [{ ...normal, mag: thickness - fingerboardScoopAt(p, s, at.y, side) }]);
+    return stepAlong(at, normal, thickness - fingerboardScoopAt(p, s, at.y, side));
   });
 }
 
@@ -483,13 +483,13 @@ export function calcScoopGuideGeometry(p: ViolinFamilyParams, s: StringSetupSolv
   let end = s.fingerboardEnd;
   if (!neckTop || !end || k.failures.length || s.failures.some(f => f.unsolved.includes('fingerboard'))) return null;
   let ss = p.stringSetup!;
-  let normal = vectorFromSlope(p.neck!.angle * TURN.degree);
+  let normal = vecAtAngle(p.neck!.angle * TURN.degree);
   let deepestAt = pointAtDistanceToward(neckTop, end, ss.scoopAt);
   return {
     bass: calcScoopedEdgeLine(p, s, -1),
     treble: calcScoopedEdgeLine(p, s, 1),
-    station: [moveInVectorSpace(deepestAt, [{ ...normal, mag: ss.fingerboardThickness - fingerboardScoopAt(p, s, deepestAt.y, -1) }]), moveInVectorSpace(deepestAt, [{ ...normal, mag: ss.fingerboardThickness }])],
-    deepestTreble: moveInVectorSpace(deepestAt, [{ ...normal, mag: ss.fingerboardThickness - fingerboardScoopAt(p, s, deepestAt.y, 1) }]),
+    station: [stepAlong(deepestAt, normal, ss.fingerboardThickness - fingerboardScoopAt(p, s, deepestAt.y, -1)), stepAlong(deepestAt, normal, ss.fingerboardThickness)],
+    deepestTreble: stepAlong(deepestAt, normal, ss.fingerboardThickness - fingerboardScoopAt(p, s, deepestAt.y, 1)),
   };
 }
 

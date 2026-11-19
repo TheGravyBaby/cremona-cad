@@ -1,6 +1,6 @@
 import * as d3 from 'd3';
 import { Arc, Circle, Pt, Rectangle } from '../../models/types';
-import { dist, lineFromTwoPoints, offsetArcRadius, offsetCircleRadius, offsetRectangle, pointOnCircle, signedPolygonArea, tangentUnitVectorFromLine } from '../../helpers/math/simpleGeometry';
+import { dist, lineFromTwoPoints, offsetArcRadius, offsetCircleRadius, offsetRectangle, pointOnCircle, signedPolygonArea, lineDirection, lineNormal, angleOfVec, dot, subVec, stepAlong } from '../../helpers/math/simpleGeometry';
 import { arcPathData } from '../../helpers/math/pathMath';
 import { offsetPath } from '../../helpers/math/pathVibes';
 import { DraftTool, DraftToolHost } from './draft-tool';
@@ -29,8 +29,8 @@ function signedOffsetMetric(shape: DraftShape, pt: Pt): { abs: number; signed: n
   }
   if (shape.type === 'line') {
     if (dist(shape.start, shape.end) < 1e-9) return null;
-    const normal = tangentUnitVectorFromLine(lineFromTwoPoints(shape.start, shape.end));
-    const signed = (pt.x - shape.start.x) * normal.a + (pt.y - shape.start.y) * normal.b;
+    const normal = lineNormal(lineFromTwoPoints(shape.start, shape.end));
+    const signed = dot(subVec(pt, shape.start), normal);
     return { abs: Math.abs(signed), signed };
   }
   if (shape.type === 'rect') {
@@ -90,8 +90,7 @@ function boundaryPoints(shape: DraftShape): { pt: Pt; tangentAngle: number }[] |
   // direction here is the one that side is the right of
   if (shape.type === 'line') {
     if (dist(shape.start, shape.end) < 1e-9) return null;
-    const normal = tangentUnitVectorFromLine(lineFromTwoPoints(shape.start, shape.end));
-    const angle = Math.atan2(normal.a, -normal.b);
+    const angle = angleOfVec(lineDirection(lineFromTwoPoints(shape.start, shape.end)));
     return [{ pt: shape.start, tangentAngle: angle }, { pt: shape.end, tangentAngle: angle }];
   }
   if (shape.type === 'path') {
@@ -166,9 +165,9 @@ function tryOffsetShape(shape: DraftShape, distance: number): DraftShape | null 
       return { id: makeShapeId(), type: 'circle', center: { x: circle.x, y: circle.y }, radius: circle.r };
     }
     if (shape.type === 'line') {
-      const normal = tangentUnitVectorFromLine(lineFromTwoPoints(shape.start, shape.end));
-      const start = { x: shape.start.x + normal.a * distance, y: shape.start.y + normal.b * distance };
-      const end = { x: shape.end.x + normal.a * distance, y: shape.end.y + normal.b * distance };
+      const normal = lineNormal(lineFromTwoPoints(shape.start, shape.end));
+      const start = stepAlong(shape.start, normal, distance);
+      const end = stepAlong(shape.end, normal, distance);
       return { id: makeShapeId(), type: 'line', start, end };
     }
     if (shape.type === 'rect') {

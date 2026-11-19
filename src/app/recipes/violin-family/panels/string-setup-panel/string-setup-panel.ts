@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { dist, moveInVectorSpace, pointAtDistanceToward, TURN, vectorFromSlope } from '../../../../helpers/math/simpleGeometry';
+import { dist, perp, pointAtDistanceToward, stepAlong, subVec, TURN, unitVec, vecAtAngle } from '../../../../helpers/math/simpleGeometry';
 import { applyMatrix, pathFromPolygon, pathFromPolyline } from '../../../../helpers/math/pathMath';
 import { occludePath } from '../../../../helpers/math/pathVibes';
 import {
@@ -9,7 +9,7 @@ import {
 } from '../../../../helpers/renderFuncs';
 import { isLocalHost } from '../../../../helpers/debugDump';
 import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
-import { Circle, Pt, Vect2D } from '../../../../models/types';
+import { Circle, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
@@ -127,11 +127,11 @@ const renderFretTick = (s: StringSetupSolve, semitone: number, halfLength: numbe
   let stringLength = dist(nut, bridge);
   let d = calcSemitoneStop(semitone, stringLength);
   if (d > dist(s.neck.neckTop!, s.fingerboardEnd!)) return;
-  let along: Vect2D = { a: (bridge.x - nut.x) / stringLength, b: (bridge.y - nut.y) / stringLength, mag: 1 };
-  let across: Vect2D = { a: -along.b, b: along.a, mag: 1 };
-  let center = moveInVectorSpace(nut, [{ ...along, mag: d }]);
-  let a = moveInVectorSpace(center, [{ ...across, mag: halfLength }]);
-  let b = moveInVectorSpace(center, [{ ...across, mag: -halfLength }]);
+  let along = unitVec(subVec(bridge, nut));
+  let across = perp(along);
+  let center = stepAlong(nut, along, d);
+  let a = stepAlong(center, across, halfLength);
+  let b = stepAlong(center, across, -halfLength);
   renderSegment(a, b, color, STROKE_WEIGHT.guide)(g, ui);
 };
 
@@ -156,23 +156,23 @@ export const renderStringSetup = (
   let n = s.neck;
   if (!n.neckTop || !n.root || !n.bottomFront) return;
   let ss = p.stringSetup!;
-  let up = vectorFromSlope(p.neck!.angle * TURN.degree + TURN.quarter);
-  let normal = vectorFromSlope(p.neck!.angle * TURN.degree);
+  let up = vecAtAngle(p.neck!.angle * TURN.degree + TURN.quarter);
+  let normal = vecAtAngle(p.neck!.angle * TURN.degree);
 
   if (s.bridge) renderPolygon(s.bridge, pal.ink(1), STROKE_WEIGHT.section)(g, ui);
 
   if (opts.fingerboard && s.fingerboardEnd) {
     // the board's edge solid, the crown above it faded so the two read apart
-    let edgeAtNut = moveInVectorSpace(n.neckTop, [{ ...normal, mag: ss.fingerboardThickness }]);
-    let edgeAtEnd = moveInVectorSpace(s.fingerboardEnd, [{ ...normal, mag: ss.fingerboardThickness }]);
+    let edgeAtNut = stepAlong(n.neckTop, normal, ss.fingerboardThickness);
+    let edgeAtEnd = stepAlong(s.fingerboardEnd, normal, ss.fingerboardThickness);
     renderPolygon([n.neckTop, edgeAtNut, edgeAtEnd, s.fingerboardEnd], pal.ink(0), STROKE_WEIGHT.section)(g, ui);
     let crown = calcFingerboardCrownLine(p, s);
     if (crown) renderPath(pathFromPolyline(crown), pal.ink(0), STROKE_WEIGHT.section, FINGERBOARD_CROWN_OPACITY)(g, ui);
   }
 
   if (s.nutTop) {
-    let nutFar = moveInVectorSpace(n.neckTop, [{ ...up, mag: p.neck!.nutHeight }]);
-    let nutFarTop = moveInVectorSpace(nutFar, [{ ...normal, mag: ss.nutThickness }]);
+    let nutFar = stepAlong(n.neckTop, up, p.neck!.nutHeight);
+    let nutFarTop = stepAlong(nutFar, normal, ss.nutThickness);
     renderPolygon([n.neckTop, nutFar, nutFarTop, s.nutTop], pal.ink(0).faint(-3), STROKE_WEIGHT.section)(g, ui);
   }
 
@@ -191,7 +191,7 @@ const renderStringSetupHighlight = (
   if (!highlighted || !n.neckTop || !n.bottomFront) return;
   let { key, color } = highlighted;
   let ss = p.stringSetup!;
-  let normal = vectorFromSlope(p.neck!.angle * TURN.degree);
+  let normal = vecAtAngle(p.neck!.angle * TURN.degree);
   let end = s.fingerboardEnd;
 
   switch (key) {
@@ -203,8 +203,8 @@ const renderStringSetupHighlight = (
     case 'fbLength': if (end) renderSegmentHalo(n.neckTop, end, color)(g, ui); break;
     case 'fbThickness':
       if (end) {
-        renderSegmentHalo(n.neckTop, moveInVectorSpace(n.neckTop, [{ ...normal, mag: ss.fingerboardThickness }]), color)(g, ui);
-        renderSegmentHalo(end, moveInVectorSpace(end, [{ ...normal, mag: ss.fingerboardThickness }]), color)(g, ui);
+        renderSegmentHalo(n.neckTop, stepAlong(n.neckTop, normal, ss.fingerboardThickness), color)(g, ui);
+        renderSegmentHalo(end, stepAlong(end, normal, ss.fingerboardThickness), color)(g, ui);
       }
       break;
     // each radius lights its own half of the crown
@@ -326,13 +326,13 @@ export function calcFingerboardCrownLine(p: ViolinFamilyParams, s: StringSetupSo
   let end = s.fingerboardEnd;
   if (!neckTop || !end || s.failures.some(f => f.unsolved.includes('fingerboard'))) return null;
   let thickness = p.stringSetup!.fingerboardThickness;
-  let normal = vectorFromSlope(p.neck!.angle * TURN.degree);
-  let line = [moveInVectorSpace(neckTop, [{ ...normal, mag: thickness }])];
+  let normal = vecAtAngle(p.neck!.angle * TURN.degree);
+  let line = [stepAlong(neckTop, normal, thickness)];
   for (let i = 0; i <= FINGERBOARD_CROWN_SAMPLES; i++) {
     let at = pointAtDistanceToward(neckTop, end, i * dist(neckTop, end) / FINGERBOARD_CROWN_SAMPLES);
-    line.push(moveInVectorSpace(at, [{ ...normal, mag: thickness + fingerboardCrownAt(p, s, at.y) }]));
+    line.push(stepAlong(at, normal, thickness + fingerboardCrownAt(p, s, at.y)));
   }
-  line.push(moveInVectorSpace(end, [{ ...normal, mag: thickness }]));
+  line.push(stepAlong(end, normal, thickness));
   return line;
 }
 
@@ -355,7 +355,7 @@ export function solveStringSetup(p: ViolinFamilyParams): StringSetupSolve | null
     s.failures.push(buildMiss('String setup: the neck has to solve first; everything here stands on it.', ['bridge', 'nut', 'fingerboard', 'soundPost']));
     return s;
   }
-  let normal = vectorFromSlope(p.neck.angle * TURN.degree);
+  let normal = vecAtAngle(p.neck.angle * TURN.degree);
 
   solveSection(s.failures, 'Bridge', ['bridge'], () => {
     if (![ss.bodyStop, ss.bridgeHeight, ss.bridgeWidth].every(Number.isFinite)) return buildMiss('Bridge: the stop, height and width need values.', ['bridge']);
@@ -398,7 +398,7 @@ export function solveStringSetup(p: ViolinFamilyParams): StringSetupSolve | null
       let half = neckHalfWidthAt(p, neck, at.y);
       if (r <= half) {
         return buildMiss(`Fingerboard: the radius at the ${name} has to span the board's half width there, ${half.toFixed(1)} mm.`, ['fingerboard'],
-          [moveInVectorSpace(at, [{ ...normal, mag: ss.fingerboardThickness }])]);
+          [stepAlong(at, normal, ss.fingerboardThickness)]);
       }
     }
     return null;
@@ -409,12 +409,12 @@ export function solveStringSetup(p: ViolinFamilyParams): StringSetupSolve | null
   // round to pass as one or not
   solveSection(s.failures, 'Nut', ['nut'], () => {
     if (!Number.isFinite(ss.nutThickness) || !(ss.nutThickness > 0)) return buildMiss('Nut: the thickness needs a value above 0.', ['nut']);
-    s.nutTop = moveInVectorSpace(neckTop, [{ ...normal, mag: ss.nutThickness }]);
+    s.nutTop = stepAlong(neckTop, normal, ss.nutThickness);
     if (!s.fingerboardEnd || !(ss.fingerboardNutRadius > neckHalfWidthAt(p, neck, neckTop.y))) return null;
     let crownAtNut = ss.fingerboardThickness + fingerboardCrownAt(p, s, neckTop.y);
     if (ss.nutThickness < crownAtNut) {
       return buildMiss(`Nut: it stands below the fingerboard's crown, which is ${crownAtNut.toFixed(1)} mm off the neck at the nut.`, [],
-        [moveInVectorSpace(neckTop, [{ ...normal, mag: crownAtNut }])]);
+        [stepAlong(neckTop, normal, crownAtNut)]);
     }
     return null;
   });

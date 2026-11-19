@@ -1,8 +1,8 @@
-import { Pt, Pt3D, Arc } from '../../models/types';
+import { Pt, Pt3D, Arc, Vec3 } from '../../models/types';
 import { svgPathProperties } from 'svg-path-properties';
 import * as polygonClipping from 'polygon-clipping';
 import * as d3 from 'd3';
-import { dist, angleFromCenter, normalizeRadians, TURN, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY, cubicBezierPoint, signedPolygonArea, closestPointOnSegment, pointInPolygon } from './simpleGeometry';
+import { dist, angleFromCenter, normalizeRadians, TURN, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY, cubicBezierPoint, signedPolygonArea, closestPointOnSegment, pointInPolygon, stepAlong3, unitVec3 } from './simpleGeometry';
 import { circleCircleIntersections } from './draftMath';
 import { battenBeziers } from './vibeMath';
 import { solveCatenaryA, ArchSplineControlPoint, archSplineKnots, makeArchSplineZOf, trochoidNorm } from './archMath';
@@ -1486,9 +1486,9 @@ export function normalOffsetZAt(zAt: (x: number, y: number) => number | null, de
     let z = zAt(ux, uy);
     if (z === null) return null;
     let n = heightFieldNormalAt(zAt, ux, uy, z, h);
-    let t = depthAt(ux, uy);
-    let missX = ux - t * n.x - x, missY = uy - t * n.y - y;
-    innerZ = z - t * n.z;
+    let carried = stepAlong3({ x: ux, y: uy, z }, n, -depthAt(ux, uy));
+    let missX = carried.x - x, missY = carried.y - y;
+    innerZ = carried.z;
     if (Math.hypot(missX, missY) < tolerance) break;
     ux -= missX;
     uy -= missY;
@@ -1498,7 +1498,7 @@ export function normalOffsetZAt(zAt: (x: number, y: number) => number | null, de
 
 // the unit normal, pointing up, by central differences; one-sided where a neighbour falls off the
 // field, level along an axis where both do
-function heightFieldNormalAt(zAt: (x: number, y: number) => number | null, x: number, y: number, z: number, h: number): Pt3D {
+function heightFieldNormalAt(zAt: (x: number, y: number) => number | null, x: number, y: number, z: number, h: number): Vec3 {
   let slope = (plus: number | null, minus: number | null): number =>
     plus !== null && minus !== null ? (plus - minus) / (2 * h)
       : plus !== null ? (plus - z) / h
@@ -1506,8 +1506,7 @@ function heightFieldNormalAt(zAt: (x: number, y: number) => number | null, x: nu
           : 0;
   let zx = slope(zAt(x + h, y), zAt(x - h, y));
   let zy = slope(zAt(x, y + h), zAt(x, y - h));
-  let len = Math.hypot(zx, zy, 1);
-  return new Pt3D(-zx / len, -zy / len, 1 / len);
+  return unitVec3({ x: -zx, y: -zy, z: 1 });
 }
 
 // the field's contour map: heights on a grid, marching squares, every ring clipped to the outline.

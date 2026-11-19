@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { dist, normalizeRadians, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
+import { dist, lerpVec3, normalizeRadians, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
 import { arcRun, joinedRun, riseAlongRun, Run, straightRun } from '../../../../helpers/math/draftMath';
 import { clipPolylineAtY, hermiteEvaluator, hymanFilterSlopes, naturalSplineSlopes, polylinePointAtY, rayPolylineIntersection } from '../../../../helpers/math/vibeMath';
 import { arcPathData, pathFromLine, pathFromPolygon, pathFromPolyline } from '../../../../helpers/math/pathMath';
@@ -177,10 +177,6 @@ function isHiddenAt(on: ScrollStretches, pt: Pt3D, behind: boolean): boolean {
   return (coverAt(on, pt.y, pt.z, behind) ?? -Infinity) >= pt.x - 1e-9;
 }
 
-function lerpPt3D(a: Pt3D, b: Pt3D, t: number): Pt3D {
-  return new Pt3D(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
-}
-
 // what of a line can be seen: its runs that no nearer stretch at least as wide hides, each cut
 // where the widths cross, so a turn's edge runs right up to the one that hides it
 function calcSeenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[][] {
@@ -192,9 +188,9 @@ function calcSeenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[]
       let lo = 0, hi = 1;
       for (let i = 0; i < 30; i++) {
         let mid = (lo + hi) / 2;
-        if (isHiddenAt(on, lerpPt3D(pts[k - 1], pt, mid), behind) === was) lo = mid; else hi = mid;
+        if (isHiddenAt(on, lerpVec3(pts[k - 1], pt, mid), behind) === was) lo = mid; else hi = mid;
       }
-      runs.at(-1)!.push(lerpPt3D(pts[k - 1], pt, was ? hi : lo));
+      runs.at(-1)!.push(lerpVec3(pts[k - 1], pt, was ? hi : lo));
     }
     if (!is) runs.at(-1)!.push(pt);
     else if (!was) runs.push([]);

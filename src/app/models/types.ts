@@ -1,7 +1,8 @@
 import { version } from '../../../package.json';
 export class Pt { x: number; y: number; constructor(x: number, y: number) { this.x = x; this.y = y; } };
 export class Pt3D { x: number; y: number; z: number; constructor(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; } };
-export class Vect2D { a: number; b: number; mag: number; constructor(a: number, b: number, mag: number) { this.a = a; this.b = b; this.mag = mag; } }
+export type Vec2 = { x: number; y: number };
+export type Vec3 = { x: number; y: number; z: number };
 export class Line { m: number; y: number; x: number; constructor(m: number, y: number) { this.m = m; this.y = y; this.x = 0 } }
 export class Circle { x: number; y: number; r: number; constructor(x: number, y: number, r: number) { this.x = x; this.y = y; this.r = r; } }
 export class Rectangle { Pt1: Pt; Pt2: Pt; height: number | null; width: number | null;

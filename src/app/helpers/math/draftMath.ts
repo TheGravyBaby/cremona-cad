@@ -1,7 +1,7 @@
-import { Pt, Circle, Line, Arc, Vect2D } from "../../models/types";
+import { Pt, Circle, Line, Arc } from "../../models/types";
 import {
-  TURN, dist, angleFromCenter, pointOnCircle, angleWithinSweep, unitVectorFromLine,
-  tangentUnitVectorFromLine, offsetLineByDistance, closestPointOnLine, moveInVectorSpace, normalizeRadians,
+  TURN, dist, angleFromCenter, pointOnCircle, angleWithinSweep, lineDirection,
+  lineNormal, offsetLineByDistance, closestPointOnLine, stepAlong, dot, subVec, normalizeRadians,
   lineFromTwoPoints, intersectLines, lineCircleIntersection,
 } from "./simpleGeometry";
 
@@ -90,14 +90,14 @@ export function solveTangentCircleAndLine(t: Line, Q: Circle, Pr: number, diff: 
 
   // we know that the circle P must be tangent to the line, which means its
   // exists along a line parallel to our given line at some distance away, on the chosen side
-  let unitVectAgainstT = tangentUnitVectorFromLine(t)
+  let normalToT = lineNormal(t)
   let parallelLine = offsetLineByDistance(t, side * Pr);
 
   // now we need to solve for the point along Cy where the distance to Q is equal to dist
   // first find the distance between the line t and the center of Q — signed, so moving Q by it
   // lands exactly on parallelLine regardless of which side Q started on
   let Qfoot = closestPointOnLine(Q, parallelLine).point
-  let QtoT = (Qfoot.x - Q.x) * unitVectAgainstT.a + (Qfoot.y - Q.y) * unitVectAgainstT.b
+  let QtoT = dot(subVec(Qfoot, Q), normalToT)
 
   // we have two sides of a right triangle, we can solve for the third
   // scale-aware tolerance so a genuinely-tangent case doesn't get knocked negative
@@ -109,16 +109,11 @@ export function solveTangentCircleAndLine(t: Line, Q: Circle, Pr: number, diff: 
   if (discriminant < -eps) return null;
   let distanceAlongLine = Math.sqrt(Math.max(discriminant, 0));
 
-  // so lets make vectors, we have angles and magnitudes — two candidate centers, one each
-  // direction along the line; near picks which one actually gets returned
-  let unitVectAlongT = unitVectorFromLine(t)
-  let vectAgainstT: Vect2D = { a: unitVectAgainstT.a, b: unitVectAgainstT.b, mag: QtoT }
-  let vectAlongTPlus: Vect2D = { a: unitVectAlongT.a, b: unitVectAlongT.b, mag: distanceAlongLine }
-  let vectAlongTMinus: Vect2D = { a: unitVectAlongT.a, b: unitVectAlongT.b, mag: -distanceAlongLine }
-
-  // now we just start at our reference point and apply the vectors to find the potential circle centers
-  let CxyPlus = moveInVectorSpace(Q, [vectAlongTPlus, vectAgainstT])
-  let CxyMinus = moveInVectorSpace(Q, [vectAlongTMinus, vectAgainstT])
+  // two candidate centers, one each direction along the line, both carried across onto the
+  // parallel line; near picks which one actually gets returned
+  let alongT = lineDirection(t)
+  let CxyPlus = stepAlong(stepAlong(Q, alongT, distanceAlongLine), normalToT, QtoT)
+  let CxyMinus = stepAlong(stepAlong(Q, alongT, -distanceAlongLine), normalToT, QtoT)
   let Cxy = dist(CxyPlus, near) <= dist(CxyMinus, near) ? CxyPlus : CxyMinus;
   let C = new Circle(Cxy.x, Cxy.y, Pr)
   return C;

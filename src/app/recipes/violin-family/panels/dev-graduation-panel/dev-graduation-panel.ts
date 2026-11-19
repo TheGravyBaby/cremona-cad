@@ -407,7 +407,7 @@ export const renderThicknessMap = (p: ViolinFamilyParams, scale: { lo: number; h
     let bands = thicknessBands(p, plate);
     bands.forEach(({ level, polygons }, i) => {
       let d = polygons.map(poly => poly.map(ring => pathFromPolyline(ring.map(q => new Pt(q.x + dx, q.y)), true)).join(' ')).join(' ');
-      let fill = rampFill(pal, scale, level);
+      let fill = rampFill(pal, scale, level + CONTOUR_INTERVAL / 2);
       renderFilledPath(d, fill, 1, 'evenodd')(g, ui);
       // the lowest band's edge is the boundary itself, already drawn
       if (i > 0) renderPath(d, shade(fill, 0.35), STROKE_WEIGHT.guide, 0.7)(g, ui);
@@ -474,7 +474,7 @@ export const renderGraduationPoints = (p: ViolinFamilyParams, active: Graduation
 // the zones a luthier graduates by, as the fewest points that draw them: an island on the joint
 // midway between the corner rows, with a point above and below it on those rows, where it gives
 // way to the bouts; for each main bout a dome on the joint at its widest row, a channel zone each side
-// along the edge on that row, and a flank each side on the row between the corners and the widest,
+// along the edge on that row, a pair out toward the block on the row most of the way to the end, and a flank each side on the row between the corners and the widest,
 // the four flanks fanning out from the island as an X. Each is placed off the boundary's half
 // chord at its row, so the zones scale with the outline. Read from the lower bout up
 export function zonePoints(p: ViolinFamilyParams, plate: GraduationPlate): GraduationPoint[] {
@@ -488,9 +488,11 @@ export function zonePoints(p: ViolinFamilyParams, plate: GraduationPlate): Gradu
   let at = (x: number, y: number, label: string): GraduationPoint => ({ x: round(x), y: round(y), thickness, label });
   let pair = (x: number, y: number, label: string): GraduationPoint[] => [at(-x, y, `${label} bass`), at(x, y, `${label} treble`)];
   let points: GraduationPoint[] = [];
-  for (let [name, bout, corner] of [['Lower', LB, LC], ['Upper', UB, UC]] as const) {
+  for (let [name, bout, corner, end] of [['Lower', LB, LC, ground.minY], ['Upper', UB, UC, ground.maxY]] as const) {
     let flankY = (bout + corner) / 2;
+    let edgeY = bout + ZONE.edgeRow * (end - bout);
     points.push(
+      ...pair(ZONE.edge * half(edgeY), edgeY, `${name} edge`),
       ...pair(ZONE.channel * half(bout), bout, `${name} channel`),
       at(0, bout, `${name} dome`),
       ...pair(ZONE.flank * half(flankY), flankY, `${name} flank`),
@@ -504,8 +506,9 @@ export function zonePoints(p: ViolinFamilyParams, plate: GraduationPlate): Gradu
     .sort((a, b) => a.y - b.y || a.x - b.x);
 }
 
-// where the channel and flank zones sit, as shares of the half chord at their row
-const ZONE = { channel: 0.82, flank: 0.55 };
+// where the channel, flank and edge zones sit, as shares of the half chord at their row; the edge
+// row as a share of the way from the widest row to the block's face
+const ZONE = { channel: 0.82, flank: 0.55, edge: 0.6, edgeRow: 0.7 };
 
 // a lattice `spacing` apart, one column on the joint and the rows centred on the boundary, kept to
 // the points inside it and off the top's holes, where there is no wood to read, read top to bottom
@@ -610,9 +613,9 @@ export function plateMap(pts: GraduationPoint[], extent: { minX: number; maxX: n
 }
 
 // a plate's thickness anywhere. Inside the boundary it is the thin-plate spline through the
-// readings: the points, and the boundary and each f-hole outline sampled along at their own
-// thicknesses, as a surveyor fixes a breakline. In a hole it is the f-hole thickness, what its wings
-// carry. Outside the boundary it is the land's. `interpolated` is the spline alone, unclamped and
+// readings: the points, the boundary and each f-hole sampled at their own thicknesses, as a surveyor
+// fixes a breakline, and the lines between neighbouring readings that agree. In a hole it is the
+// f-hole thickness, what its wings carry. Outside the boundary it is the land's. `interpolated` is the spline alone, unclamped and
 // defined everywhere, for the raster to read; `edgeAt` is the land's reading at the boundary's
 // nearest point
 export interface ThicknessField {
@@ -654,7 +657,8 @@ export function thicknessField(p: ViolinFamilyParams, plate: GraduationPlate): T
   for (let r of [
     ...points.map(pt => ({ x: pt.x, y: pt.y, v: pt.thickness })),
     ...sampleLoop(loop, BOUNDARY_STEP).map(q => ({ x: q.x, y: q.y, v: land.atBoundary(q.x, q.y) })),
-    ...holes.flatMap(hole => sampleLoop(hole, HOLE_STEP).map(q => ({ x: q.x, y: q.y, v: s.fHoleThickness }))),
+    ...holes.flatMap(hole => [...sampleLoop(hole, HOLE_STEP), ...calcHoleFill(hole)].map(q => ({ x: q.x, y: q.y, v: s.fHoleThickness }))),
+    ...calcLevelBridges(points, holes, s.fHoleThickness, loop),
   ]) {
     if (!readings.some(q => Math.hypot(q.x - r.x, q.y - r.y) < SAME_SPOT)) readings.push(r);
   }
@@ -680,6 +684,57 @@ export function thicknessField(p: ViolinFamilyParams, plate: GraduationPlate): T
   };
   fieldCache[plate] = { solve, key, field };
   return field;
+}
+
+// the lattice points inside a hole, read at the f-hole thickness with its outline. The outline alone
+// leaves the spline free to swell across the hole, where the thin boundary runs hard by its outer
+// wall, and the swell comes back as a hollow in the island; held level in the hole it cannot. The
+// lattice stands on the joint, so mirrored holes fill alike
+const HOLE_FILL_STEP = 3;
+
+export function calcHoleFill(hole: Pt[]): Pt[] {
+  let xs = hole.map(q => q.x), ys = hole.map(q => q.y);
+  let fill: Pt[] = [];
+  for (let j = Math.ceil(Math.min(...ys) / HOLE_FILL_STEP); j * HOLE_FILL_STEP <= Math.max(...ys); j++) {
+    for (let i = Math.ceil(Math.min(...xs) / HOLE_FILL_STEP); i * HOLE_FILL_STEP <= Math.max(...xs); i++) {
+      let q = new Pt(i * HOLE_FILL_STEP, j * HOLE_FILL_STEP);
+      if (pointInPolygon(q, hole)) fill.push(q);
+    }
+  }
+  return fill;
+}
+
+// the level ground between readings that agree: where two neighbouring points share a thickness, the
+// line between them is read at it too, and so is the line from a point at the f-hole thickness to
+// each hole beside it, as a maker who marks three spots alike means the wood between them. A point
+// alone cannot hold a spline level; a line can. Two points are neighbours while no third stands in
+// the circle drawn on the line between them, and a line that leaves the plate or crosses a hole is
+// no bridge
+const BRIDGE_STEP = 10;
+const SAME_THICKNESS = 1e-6;
+
+export function calcLevelBridges(points: GraduationPoint[], holes: Pt[][], holeThickness: number, loop: Pt[]): Reading[] {
+  let walls = holes.map(hole => buildPolylineIndex(hole));
+  let spans: { a: Pt; b: Pt; v: number }[] = [];
+  points.forEach((pt, i) => {
+    let a = new Pt(pt.x, pt.y);
+    for (let other of points.slice(i + 1)) {
+      if (Math.abs(other.thickness - pt.thickness) < SAME_THICKNESS) spans.push({ a, b: new Pt(other.x, other.y), v: pt.thickness });
+    }
+    if (Math.abs(holeThickness - pt.thickness) < SAME_THICKNESS) {
+      for (let wall of walls) spans.push({ a, b: closestPointToPolylineIndexed(a, wall).point, v: pt.thickness });
+    }
+  });
+  let bridges: Reading[] = [];
+  for (let { a, b, v } of spans) {
+    let mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, r = Math.hypot(b.x - a.x, b.y - a.y) / 2;
+    if (points.some(q => Math.hypot(q.x - mx, q.y - my) < r - SAME_SPOT)) continue;
+    let n = Math.round(2 * r / BRIDGE_STEP);
+    let line = Array.from({ length: Math.max(0, n - 1) }, (_, k) => new Pt(a.x + (b.x - a.x) * (k + 1) / n, a.y + (b.y - a.y) * (k + 1) / n));
+    if (line.some(q => !pointInPolygon(q, loop) || holes.some(hole => pointInPolygon(q, hole)))) continue;
+    for (let q of line) bridges.push({ x: q.x, y: q.y, v });
+  }
+  return bridges;
 }
 
 // the inside of a plate over (x, y): its outer surface carried in square to itself by the thickness
@@ -751,7 +806,10 @@ function sampleLoop(loop: Pt[], step: number): Pt[] {
 // the thickness map, drawn as a contour map is: the spline read onto a raster `RASTER_COLUMNS`
 // cells across the plate, contours traced at every `CONTOUR_INTERVAL` from the thinnest reading up,
 // and the ground at or above each level filled as a band, cut to the boundary with the holes left
-// blank, so the bands stack from thin to thick. The field itself still answers in a hole
+// blank, so the bands stack from thin to thick. The levels fall half an interval off the round
+// thicknesses a maker types, so each band is centred on one: a plate read 3.5 all over lies in the
+// middle of its band, where a level at 3.5 would trace every hundredth the spline strays either
+// side. The field itself still answers in a hole
 export const CONTOUR_INTERVAL = 0.25;
 const RASTER_COLUMNS = 80;
 // the clip needs no finer a loop than the raster; cutting to the boundary as sampled costs four times as much
@@ -767,7 +825,7 @@ export function thicknessBands(p: ViolinFamilyParams, plate: GraduationPlate): {
   let box = solve.ground!;
   let cell = Math.max(1, (box.maxX - box.minX) / RASTER_COLUMNS);
   let levels: number[] = [];
-  for (let k = Math.floor(field.range.lo / CONTOUR_INTERVAL); k * CONTOUR_INTERVAL <= field.range.hi; k++) levels.push(k * CONTOUR_INTERVAL);
+  for (let k = Math.floor(field.range.lo / CONTOUR_INTERVAL - 0.5); (k + 0.5) * CONTOUR_INTERVAL <= field.range.hi; k++) levels.push((k + 0.5) * CONTOUR_INTERVAL);
   let holes = plate === 'top' ? solve.holes.map(hole => sampleLoop(hole, CLIP_STEP)) : [];
   let bands = fieldBands(field.interpolated, box, cell, levels, sampleLoop(field.loop, CLIP_STEP), holes);
   bandCache[plate] = { field, bands };

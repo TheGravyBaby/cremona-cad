@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  angleFromCenter, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope, offsetArcRadius, pointInPolygon, pointOnCircle, tangentUnitVectorFromLine,
+  angleFromCenter, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope, offsetArcRadius, pointInPolygon, pointOnCircle, lineNormal, stepAlong,
 } from '../../../../helpers/math/simpleGeometry';
 import { circleCircleIntersections, filletRightAngleCorner, solveTangentCircleAndLine } from '../../../../helpers/math/draftMath';
 import { combinePathStrings, pathFromCircle, pathFromRect, pathFromSlot, pathsBounds, samplePathToPolyline, translatePath } from '../../../../helpers/math/pathMath';
@@ -123,8 +123,8 @@ function calcRectMaxY(r: Rectangle): number {
 function calcClampFillet(t: Line, Q: Circle, Pr: number, diff: boolean, side: 1 | -1, near: Pt) {
   const center = solveTangentCircleAndLine(t, Q, Pr, diff, side, near);
   if (!center) return null;
-  const normal = tangentUnitVectorFromLine(t);
-  const lineTangent = new Pt(center.x - side * Pr * normal.a, center.y - side * Pr * normal.b);
+  const normal = lineNormal(t);
+  const lineTangent = stepAlong(center, normal, -side * Pr);
   const circleAngle = angleFromCenter(Q, center);
   return { center, lineTangent, circleTangent: pointOnCircle(Q, circleAngle), circleAngle };
 }

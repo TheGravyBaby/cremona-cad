@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  angleFromCenter, angleWithinSweep, dist, moveInVectorSpace, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, TURN,
-  vectorFromSlope,
+  angleFromCenter, angleWithinSweep, dist, stepAlong, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, TURN,
+  vecAtAngle,
 } from '../../../../helpers/math/simpleGeometry';
 import { circleCircleIntersections } from '../../../../helpers/math/draftMath';
 import { arcPathData, combinePathStrings, pathFromLine } from '../../../../helpers/math/pathMath';
@@ -126,9 +126,9 @@ export function calcScrollLines(p: ViolinFamilyParams, s: ScrollSolve): Record<S
   let F0End = s.F0?.end ?? 0;
   return {
     napeLine: s.S3 && s.nape ? [pointOnCircle(s.S3, s.S3.start), pointOnCircle(s.nape, s.nape.end)] : [nutTop, nutTop],
-    backStraight: [backTop, moveInVectorSpace(backTop, [{ ...vectorFromSlope(S2End + TURN.quarter), mag: v.backStraight }])],
+    backStraight: [backTop, stepAlong(backTop, vecAtAngle(S2End + TURN.quarter), v.backStraight)],
     flat: [nutTop, new Pt(nutTop.x, nutTop.y + v.flat)],
-    frontStraight: [frontTop, moveInVectorSpace(frontTop, [{ ...vectorFromSlope(F0End + TURN.quarter), mag: v.frontStraight }])],
+    frontStraight: [frontTop, stepAlong(frontTop, vecAtAngle(F0End + TURN.quarter), v.frontStraight)],
   };
 }
 
@@ -182,7 +182,7 @@ export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
   if (s.S2) solveSection(s.failures, 'Back', ['S3', 'nape', 'backStraight'], () => {
     let S2 = s.S2!;
     if (!Number.isFinite(v.backStraight) || v.backStraight < 0) return buildBadLengthMiss('Back', 'backStraight', ['S3', 'nape', 'backStraight']);
-    let foot = moveInVectorSpace(pointOnCircle(S2, S2.end), [{ ...vectorFromSlope(S2.end + TURN.quarter), mag: v.backStraight }]);
+    let foot = stepAlong(pointOnCircle(S2, S2.end), vecAtAngle(S2.end + TURN.quarter), v.backStraight);
 
     // S3 turns back clockwise, so as a counterclockwise sweep it runs from the duck tail to the foot
     let S3end = S2.end - TURN.half;
@@ -238,7 +238,7 @@ export function solveScroll(p: ViolinFamilyParams): ScrollSolve | null {
     s.F0 = new Arc(F0.x, F0.y, F0.r, 0, F0End);
 
     if (!Number.isFinite(v.frontStraight) || v.frontStraight < 0) return buildBadLengthMiss('Front', 'frontStraight', ['F1', 'frontStraight']);
-    let foot = moveInVectorSpace(pointOnCircle(s.F0, s.F0.end), [{ ...vectorFromSlope(s.F0.end + TURN.quarter), mag: v.frontStraight }]);
+    let foot = stepAlong(pointOnCircle(s.F0, s.F0.end), vecAtAngle(s.F0.end + TURN.quarter), v.frontStraight);
 
     // F1 curves back clockwise until it first crosses a drawn arc of the spiral
     if (!(v.F1R > 0)) return buildBadArcMiss('Front', 'F1', v.F1R, ['F1']);
