@@ -427,7 +427,5 @@ export interface BassBarSolve {
   // hang to the one curve
   bottom: Pt[];
   knots: BassBarKnot[];
-  // the underside's lowest z, where the side view sets the two faces back to back
-  lowZ: number | null;
   failures: BassBarFailure[];
 }

@@ -157,6 +157,8 @@ export interface SideProfileOpts {
   showGuides?: boolean;
   ground?: boolean;
   fluting?: boolean;
+  // false for a plate drawn off the ribs, where the gluing face meets nothing
+  gluingFace?: boolean;
 }
 
 // the body's side profile: the rib between the two plates, the top growing up off it and the back
@@ -193,7 +195,7 @@ export const renderPlateSideProfile = (
   let color = opts.ground ? pal.neutral : pal.ink(isTop ? TOP_ARCH_INK : BACK_ARCH_INK);
   let channel = opts.ground && !opts.fluting ? pal.neutral : pal.ink(CHANNEL_INK);
   let solved = a[plate];
-  let side = definePlateSideProfile(p, a, plate, flatEnds, !!(currentModule || opts.fluting));
+  let side = definePlateSideProfile(p, a, plate, flatEnds, !!(currentModule || opts.fluting), opts.gluingFace ?? true);
 
   renderPath(side.frame, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   if (side.edge) renderPath(side.edge, color, STROKE_WEIGHT.section)(g, ui);
@@ -248,7 +250,9 @@ export interface PlateSideProfile { frame: string; edge: string | null; channel:
 // cut down the centreline there's no slab outline: over all but the last few millimetres the
 // plate's outer surface is the arch, and a rectangle at plate level would contradict the curve.
 // Seen from the side, the arch shows only where it stands out past the slab
-export function definePlateSideProfile(p: ViolinFamilyParams, a: LongArchingSolve, plate: Plate, flatEnds: number[], cut: boolean): PlateSideProfile {
+export function definePlateSideProfile(
+  p: ViolinFamilyParams, a: LongArchingSolve, plate: Plate, flatEnds: number[], cut: boolean, gluingFace = true,
+): PlateSideProfile {
   let isTop = plate === 'top';
   let sign: 1 | -1 = isTop ? 1 : -1;
   let h = p.body.height;
@@ -258,7 +262,7 @@ export function definePlateSideProfile(p: ViolinFamilyParams, a: LongArchingSolv
   let land = p.fluting!.flutingEdge;
   let solved = a[plate];
 
-  let frame = [pathFromLine(new Pt(innerZ, 0), new Pt(innerZ, h))];
+  let frame = gluingFace ? [pathFromLine(new Pt(innerZ, 0), new Pt(innerZ, h))] : [];
   let edge: string | null = null;
   let channel: string | null = null;
   if (cut) {

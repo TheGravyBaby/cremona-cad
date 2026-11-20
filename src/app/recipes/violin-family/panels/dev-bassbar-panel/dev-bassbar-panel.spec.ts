@@ -87,7 +87,6 @@ describe('the bass bar', () => {
     const ends = [b.knots[0], b.knots[b.knots.length - 1]];
     expect(b.bottom[0].x).toBeCloseTo(ends[0].bottom.x, 9);
     expect(b.bottom[b.bottom.length - 1].x).toBeCloseTo(ends[1].bottom.x, 9);
-    expect(b.lowZ).toBe(Math.min(...b.bottom.map(q => q.x)));
 
     for (const face of [b.left!, b.right!]) {
       const edge = read(face.edge), bottom = read(face.bottom);

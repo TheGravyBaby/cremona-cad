@@ -11,13 +11,13 @@ import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { BassBarParams, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
-import { BassBarFace, BassBarSolve, PlateSurface } from '../../violin-family-solves';
+import { BassBarFace, BassBarSolve, LongArchingSolve, PlateSurface } from '../../violin-family-solves';
 import { renderPlateContour, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
-import { calcSideViewOffsetX } from '../long-arching-panel/long-arching-panel';
+import { calcSideViewOffsetX, renderPlateSideProfile, solveLongArching } from '../long-arching-panel/long-arching-panel';
 import { stepAlong, TURN, vecAtAngle } from '../../../../helpers/math/simpleGeometry';
 import { makeMonotoneSpline } from '../../../../helpers/math/vibeMath';
-import { applyMatrix, Matrix2D, pathFromPolyline, transformPath } from '../../../../helpers/math/pathMath';
+import { Matrix2D, pathFromPolyline, transformPath } from '../../../../helpers/math/pathMath';
 import { innerSurfaceZAt, thicknessField, ThicknessField } from '../dev-graduation-panel/dev-graduation-panel';
 import { solveCrossArching } from '../cross-arching-panel/cross-arching-panel';
 import { Pt } from '../../../../models/types';
@@ -32,8 +32,6 @@ const END_INK = 1;
 const BOTTOM_INK = 3;
 // the right face is the left's sibling
 const RIGHT_FAINT = 3;
-// between the two undersides in the side view, at their lowest
-const SIDE_GAP = 10;
 // two knots closer than this (% along the bar) collapse to the first
 const KNOT_EPS = 1e-3;
 // a fine export solve reads about a thousand points; past this the kept reads start over
@@ -93,14 +91,20 @@ export class DevBassBarPanel extends PanelComponentBase<BassBarHighlight> {
   protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
     let o = solvePlateContour(p)!;
+    let a = solveLongArching(p)!;
     let b = this.b = solveBassBar(p)!;
-    let sideX = calcSideViewOffsetX(p);
     let highlight = this.highlightedPart?.key ?? null;
+    // the top alone, cut down the centreline and flat on its gluing plane, which holds still at the
+    // side view's offset whatever the ribs do
+    let side = a.ribs ? renderTranslatedLayers([
+      renderPlateSideProfile(p, a, 'top', [], this.pal, true, { ground: true, gluingFace: false }),
+      renderBassBarSideProfile(p, a, b, this.pal, this.flags.showModuleGuides, highlight),
+    ], calcSideViewOffsetX(p) - a.ribs.zLower) : null;
 
     return [
       renderPlateContour(p, o, this.pal, this.flags, false, false),
       renderFholes(p, this.pal),
-      renderTranslatedLayers([renderBassBarSideProfile(p, b, this.pal, this.flags.showModuleGuides, highlight)], -sideX),
+      ...(side ? [side] : []),
       renderSolveFailures(b.failures, this.pal.alert),
       renderBassBar(b, this.pal, highlight),
     ];
@@ -170,41 +174,38 @@ export const renderBassBar = (b: BassBarSolve, pal: PanelPalette, highlight: Bas
   renderSegment(lowerRight, upperRight, rightFace)(g, ui);
 }
 
-// the two faces side by side, undersides together at their lowest, the left face turned over so its
-// top faces away; lined up with the plan, the bar's middle at the body's
-export const renderBassBarSideProfile = (p: ViolinFamilyParams, b: BassBarSolve, pal: PanelPalette, showGuides: boolean, highlight: BassBarHighlight | null) =>
-  (g: any, ui: any): void => {
-    if (b.lowZ === null) return;
-    let lowerY = (p.body.height - p.bassBar!.length) / 2;
-    let face = pal.ink(FACE_INK);
-    let bottom = pal.ink(BOTTOM_INK);
-    if (b.left) {
-      let m: Matrix2D = [-1, 0, 0, 1, b.lowZ - SIDE_GAP / 2, lowerY];
-      renderBassBarFace(b, b.left, m, face, bottom, showGuides, highlight)(g, ui);
-    }
-    if (b.right) {
-      let m: Matrix2D = [1, 0, 0, 1, SIDE_GAP / 2 - b.lowZ, lowerY];
-      renderBassBarFace(b, b.right, m, face.faint(RIGHT_FAINT), bottom, showGuides, highlight)(g, ui);
-    }
-  }
+// the bar under the top plate's side profile, seen from the bass side: the face nearer the rib hides
+// the other, so only it is drawn, its edge on the inside of the top and the underside below, in the
+// plate's own flat frame as renderPlateSideProfile draws it. Each knot is measured down from the
+// inside of the top on the bar's centreline, where a point's depth is read, so its measure starts a
+// little above the face's edge wherever the top rises toward the joint
+export const renderBassBarSideProfile = (
+  p: ViolinFamilyParams, a: LongArchingSolve, b: BassBarSolve, pal: PanelPalette, showGuides: boolean, highlight: BassBarHighlight | null,
+) => (g: any, ui: any): void => {
+  let { lowerLeft, upperLeft, lowerRight, upperRight } = b;
+  if (!a.ribs || !b.left || !b.right || !lowerLeft || !upperLeft || !lowerRight || !upperRight) return;
+  let isLeftOuter = Math.abs(lowerLeft.x + upperLeft.x) >= Math.abs(lowerRight.x + upperRight.x);
+  let [f, lower, upper] = isLeftOuter ? [b.left, lowerLeft, upperLeft] : [b.right, lowerRight, upperRight];
+  let outerZ = a.ribs.zLower + p.arching!.top.thickness;
+  // (z, s) along the face to the side view: s runs up the body by the bar's rise per millimetre
+  let m: Matrix2D = [1, 0, 0, (upper.y - lower.y) / p.bassBar!.length, outerZ, lower.y];
+  let face = pal.ink(FACE_INK);
+  let bottom = pal.ink(BOTTOM_INK);
 
-// one face in the side view: its edge on the top, the underside, and each knot measured down from
-// the inside of the top on the centreline, which is where a point's depth is read
-export const renderBassBarFace = (b: BassBarSolve, f: BassBarFace, m: Matrix2D, face: string, bottom: string, showGuides: boolean, highlight: BassBarHighlight | null) =>
-  (g: any, ui: any): void => {
+  for (let knot of b.knots) {
+    if (knot.source === highlight) renderPointHalo(new Pt(outerZ + knot.bottom.x, knot.plan.y), bottom)(g, ui);
+  }
+  renderPath(transformPath(f.edge, m), face, STROKE_WEIGHT.section)(g, ui);
+  renderPath(transformPath(f.bottom, m), bottom, STROKE_WEIGHT.section)(g, ui);
+  if (showGuides) {
     for (let knot of b.knots) {
-      if (knot.source === highlight) renderPointHalo(applyMatrix(m, knot.bottom), bottom)(g, ui);
-    }
-    renderPath(transformPath(f.edge, m), face, STROKE_WEIGHT.section)(g, ui);
-    renderPath(transformPath(f.bottom, m), bottom, STROKE_WEIGHT.section)(g, ui);
-    if (showGuides) {
-      for (let knot of b.knots) {
-        let at = applyMatrix(m, knot.bottom);
-        renderGuideMeasure(applyMatrix(m, new Pt(knot.topZ, knot.bottom.y)), at, bottom, 0, knot.topZ - knot.bottom.x)(g, ui);
-        renderGuideKnot(at, bottom)(g, ui);
-      }
+      let at = new Pt(outerZ + knot.bottom.x, knot.plan.y);
+      let top = new Pt(outerZ + knot.topZ, knot.plan.y);
+      renderGuideMeasure(top, at, bottom, 0, knot.topZ - knot.bottom.x)(g, ui);
+      renderGuideKnot(at, bottom)(g, ui);
     }
   }
+}
 
 // a later panel reads the bass bar by calling this; it returns and never writes to the params.
 // `step` is the spacing along the bar between surface reads: coarse on screen, fine for export
@@ -212,7 +213,7 @@ export function solveBassBar(p: ViolinFamilyParams, step = 5): BassBarSolve | nu
   if (!p.bassBar) return null;
   let bb = p.bassBar;
   let b: BassBarSolve = {
-    upperLeft: null, upperRight: null, lowerLeft: null, lowerRight: null, left: null, right: null, bottom: [], knots: [], lowZ: null, failures: [],
+    upperLeft: null, upperRight: null, lowerLeft: null, lowerRight: null, left: null, right: null, bottom: [], knots: [], failures: [],
   };
   let along = vecAtAngle(bb.angle * TURN.degree);
   let across = vecAtAngle(bb.angle * TURN.degree + TURN.quarter);
@@ -266,7 +267,6 @@ export function solveBassBar(p: ViolinFamilyParams, step = 5): BassBarSolve | nu
     let bottomZAt = makeMonotoneSpline(b.knots.map(k => k.bottom.y), b.knots.map(k => k.bottom.x));
     let n = Math.max(1, Math.ceil(bb.length / step));
     for (let i = 0; i <= n; i++) b.bottom.push(new Pt(bottomZAt(bb.length * i / n), bb.length * i / n));
-    b.lowZ = Math.min(...b.bottom.map(q => q.x));
 
     let left = calcBassBarContact(p, lowerLeft, upperLeft, step);
     let right = calcBassBarContact(p, lowerRight, upperRight, step);
