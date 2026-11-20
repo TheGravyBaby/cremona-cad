@@ -465,6 +465,44 @@
   border-radius: 2px;
 }
 
+/* Lay Grid and its spacing as one control, so the spacing reads as the grid's and not the zones' */
+.graduation-lay-grid {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-panel);
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: box-shadow 120ms ease;
+}
+
+.graduation-lay-grid:focus-within { box-shadow: 0 0 0 3px var(--ui-focus-ring); }
+
+.graduation-lay-grid > .panel-nav-btn {
+  height: 100%;
+  border: none;
+  border-right: 1px solid var(--ui-border-strong);
+  border-radius: 0;
+}
+
+.graduation-lay-grid .basic-input {
+  width: 52px;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.graduation-lay-grid .basic-input:focus { box-shadow: none; }
+.graduation-lay-grid > .unit-label { padding: 0 6px 0 2px; }
+
+@media (pointer: coarse) {
+  .graduation-lay-grid { height: 48px; }
+  .graduation-lay-grid .basic-input { width: 84px; }
+}
+
 /* the plate map: chips standing where the points do, a close grid scrolled sideways once it runs
    out of room */
 .graduation-map {

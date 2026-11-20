@@ -4,7 +4,7 @@ import { dist, pointInPolygon } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
-import { calcHoleFill, calcLevelBridges, DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, thicknessBands, thicknessField, zonePoints } from './dev-graduation-panel';
+import { calcClearSpot, calcHoleFill, calcLevelBridges, DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, thicknessBands, thicknessField, zonePoints } from './dev-graduation-panel';
 import { definePurflingPath, PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
 import { MainBoutsPanel, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -271,6 +271,28 @@ describe('the graduation grid', () => {
     settings.top.points[0].thickness += 1;
     settings.top.points[0].x += 3;
     expect(solveGraduation(p)).toBe(solve);
+  });
+});
+
+describe('an added point', () => {
+  it('lands inside the ground, clear of every point already placed, on a grid as well', () => {
+    const p = seeded();
+    const { solve } = solved(p);
+    const ground = solve.ground!;
+    const placed = gridPoints(p, SPACING, 'top');
+    for (let n = 0; n < 40; n++) {
+      const at = calcClearSpot(ground, placed)!;
+      expect(pointInPolygon(at, ground.loop)).toBe(true);
+      const nearest = Math.min(...placed.map(pt => Math.hypot(pt.x - at.x, pt.y - at.y)));
+      expect(nearest).toBeGreaterThanOrEqual(8);
+      placed.push({ x: at.x, y: at.y, thickness: 3 });
+    }
+  });
+
+  it('finds no spot on a plate already laid closer than the clearance', () => {
+    const p = seeded();
+    const { solve } = solved(p);
+    expect(calcClearSpot(solve.ground!, gridPoints(p, 5, 'top'))).toBeNull();
   });
 });
 

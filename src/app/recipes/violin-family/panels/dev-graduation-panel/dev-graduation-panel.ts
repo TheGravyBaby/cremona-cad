@@ -17,7 +17,7 @@ import { contrastRatio, PanelPalette, parseHex, ThemeService, toHex } from '../.
 import { Pt, Rectangle } from '../../../../models/types';
 import { GraduationParams, GraduationPoint, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
-import { GraduationFailure, GraduationSolve, PlateSurface, SurfaceRow } from '../../violin-family-solves';
+import { GraduationFailure, GraduationGround, GraduationSolve, PlateSurface, SurfaceRow } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
@@ -43,7 +43,9 @@ export const GRADUATION_PLATES = ['top', 'back'] as const;
 export type GraduationPlate = typeof GRADUATION_PLATES[number];
 
 const DEFAULT_SPACING = 40;
-const EDIT_DEBOUNCE_MS = 300;
+// how near an added point may come to one already placed: the dot and its thickness label
+const POINT_CLEARANCE = 40;
+const EDIT_DEBOUNCE_MS = 500;
 // where each plate is drawn: the top at the origin, the back beside it as the plate contour lays them
 const PLATE_DX: Record<GraduationPlate, (p: ViolinFamilyParams) => number> = { top: () => 0, back: p => -p.body.width * PLATE_LAYOUT_GAP };
 const round = (v: number): number => Math.round(v * 10) / 10;
@@ -81,6 +83,8 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
   // whether the held pick places a twin across the joint as well
   pickMirror = false;
   private pending: ReturnType<typeof setTimeout> | undefined;
+  // a spacing being typed or stepped, laid as a grid once it settles
+  private gridPending: { plate: GraduationPlate; timer: ReturnType<typeof setTimeout> } | undefined;
   private unwatchTools =this.tools.onChange(() => {
     if (this.pickTool && this.tools.activeTool !== this.pickTool) this.pickTool = null;
   });
@@ -98,10 +102,11 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
   static seed(p: ViolinFamilyParams): void {
     if (p.graduation || !p.plateContour) return;
     let lining = familyStandards(p.body.height).lining;
-    p.graduation = { lining, edgeInset: lining + 2 * p.body.rib, blockMargin: 0, fHoleThickness: edgeThicknessOf(p, 'top'), top: { points: [] }, back: { points: [] } };
+    p.graduation = { lining, edgeInset: 2, blockMargin: 0, fHoleThickness: edgeThicknessOf(p, 'top'), top: { points: [] }, back: { points: [] } };
   }
 
   ngOnDestroy(): void {
+    this.layGridNow();
     if (this.pending !== undefined) this.recordEditAndRedraw();
     this.unwatchTools();
     if (this.pickTool) this.tools.selectTool(null);
@@ -119,13 +124,18 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
     let plate = this.active;
     let valid = (pt: Pt): boolean => {
       let ground = this.solve.ground;
-      return !!ground && pointInPolygon(this.toPlate(pt, plate), ground.loop);
+      let at = this.toPlate(pt, plate);
+      if (mirror && Math.abs(at.x) < POINT_CLEARANCE / 2) at = new Pt(0, at.y);
+      if (!ground || !pointInPolygon(at, ground.loop)) return false;
+      let pts = this.gr[plate].points;
+      return isPointClear(pts, at) && (at.x === 0 || !mirror || isPointClear(pts, new Pt(-at.x, at.y)));
     };
     let joint = mirror ? PLATE_DX[plate](this.params) : null;
     this.pickTool = new PickPointTool(this.pal.ink(4), joint, valid, pt => {
       let at = this.toPlate(pt, plate);
       let x = round(at.x), y = round(at.y), thickness = edgeThicknessOf(this.params, plate);
-      // a click on the joint is its own twin
+      // a mirrored click too near the joint for two points is taken onto it, its own twin
+      if (mirror && Math.abs(x) < POINT_CLEARANCE / 2) x = 0;
       let xs = mirror && x !== 0 ? [x, -x] : [x];
       for (let px of xs) this.points.push({ x: px, y, thickness });
       this.selected = xs.map((_, i) => this.points.length - xs.length + i);
@@ -158,8 +168,19 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
     this.editedSoon();
   }
 
+  layGridSoon(plate: GraduationPlate): void {
+    clearTimeout(this.gridPending?.timer);
+    this.gridPending = { plate, timer: setTimeout(() => this.layGridNow(), EDIT_DEBOUNCE_MS) };
+  }
+
+  layGridNow(): void {
+    if (this.gridPending) this.layout(this.gridPending.plate, 'grid');
+  }
+
   // lays that plate's points out afresh, the zones, a grid at its spacing, or none, and leaves the other's alone
   layout(plate: GraduationPlate, style: 'zones' | 'grid' | 'blank'): void {
+    clearTimeout(this.gridPending?.timer);
+    this.gridPending = undefined;
     let p = this.params;
     this.gr[plate].points = style === 'zones' ? zonePoints(p, plate) : style === 'grid' ? gridPoints(p, this.spacing[plate], plate) : [];
     if (plate === this.active) this.selected = [];
@@ -173,11 +194,13 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
     this.drawCanvas();
   }
 
-  // an added point starts on the joint at the boundary's middle, at the edge thickness
+  // an added point starts on the joint at the boundary's middle, at the edge thickness, or the
+  // nearest spot to it clear of the points already placed
   addPoint(): void {
     let ground = this.solve.ground;
-    let y = ground ? round((ground.minY + ground.maxY) / 2) : 0;
-    this.points.push({ x: 0, y, thickness: edgeThicknessOf(this.params, this.active) });
+    let at = ground ? calcClearSpot(ground, this.points) : new Pt(0, 0);
+    if (!at) return;
+    this.points.push({ x: at.x, y: at.y, thickness: edgeThicknessOf(this.params, this.active) });
     this.selected = [this.points.length - 1];
     this.recordEditAndRedraw();
   }
@@ -234,18 +257,12 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
     return values.length && values.every(v => v === values[0]) ? values[0] : null;
   }
 
-  setAll(value: number | null): void {
-    if (value === null || !Number.isFinite(value)) return;
-    for (let pt of this.picked) pt.thickness = value;
-    this.recordEditAndRedraw();
-  }
-
   // every picked point stepped by the same amount, so a mixed pick keeps its differences
   nudge(delta: number, e?: Event): void {
     e?.preventDefault();
     if (!this.picked.length) return;
     for (let pt of this.picked) pt.thickness = Math.max(0, Math.round((pt.thickness + delta) * 100) / 100);
-    this.recordEditAndRedraw();
+    this.editedSoon();
   }
 
   move(dx: number, dy: number, e?: Event): void {
@@ -255,7 +272,7 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
       pt.x = Math.round((pt.x + dx) * 100) / 100;
       pt.y = Math.round((pt.y + dy) * 100) / 100;
     }
-    this.recordEditAndRedraw();
+    this.editedSoon();
   }
 
   // the arrows move the pick on the plate, = and - step its thickness
@@ -470,6 +487,26 @@ export const renderGraduationPoints = (p: ViolinFamilyParams, active: Graduation
     });
   }
 };
+
+export function isPointClear(points: GraduationPoint[], at: Pt): boolean {
+  return points.every(pt => Math.hypot(pt.x - at.x, pt.y - at.y) >= POINT_CLEARANCE);
+}
+
+// the spot nearest the ground's middle on the joint that is inside the ground and clear of every
+// point, tried on a lattice at half the clearance with a column on the joint; null when the plate is full
+export function calcClearSpot(ground: GraduationGround, points: GraduationPoint[]): Pt | null {
+  let { loop, minX, maxX, minY, maxY } = ground;
+  let from = new Pt(0, round((minY + maxY) / 2));
+  let step = POINT_CLEARANCE / 2;
+  let spots: Pt[] = [];
+  for (let i = Math.ceil(minX / step); i <= Math.floor(maxX / step); i++) {
+    for (let j = Math.ceil((minY - from.y) / step); j <= Math.floor((maxY - from.y) / step); j++) {
+      spots.push(new Pt(i * step, round(from.y + j * step)));
+    }
+  }
+  spots.sort((a, b) => Math.hypot(a.x, a.y - from.y) - Math.hypot(b.x, b.y - from.y));
+  return spots.find(at => pointInPolygon(at, loop) && isPointClear(points, at)) ?? null;
+}
 
 // the zones a luthier graduates by, as the fewest points that draw them: an island on the joint
 // midway between the corner rows, with a point above and below it on those rows, where it gives
@@ -930,8 +967,7 @@ function solveGraduationUncached(p: ViolinFamilyParams, gr: GraduationParams): G
   });
   solveSection(s.failures, 'Edge inset', ['edgeInset'], () => {
     if (!Number.isFinite(gr.edgeInset)) return fail('Graduation: the edge inset needs a value.', ['edgeInset']);
-    if (!(gr.edgeInset >= gr.lining)) return fail('Graduation: the edge inset has to reach at least to the linings, or the gouge would cut the glue platform.', ['edgeInset']);
-    let made = loop(gr.edgeInset, 'edgeInset', 'boundary');
+    let made = loop(gr.lining + gr.edgeInset, 'edgeInset', 'boundary');
     if (!made) return null;
     if (!s.blocks) { s.boundary = made; return null; }
     let between = new Rectangle(new Pt(-p.body.width, faces.end), new Pt(p.body.width, faces.neck));
