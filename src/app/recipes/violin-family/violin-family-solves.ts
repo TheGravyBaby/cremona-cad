@@ -396,15 +396,24 @@ export interface GraduationSolve {
 
 export interface GraduationGround { loop: Pt[]; minX: number; maxX: number; minY: number; maxY: number }
 
-export type BassBarKey = 'bar';
+export type BassBarKey = 'bar' | 'shape';
 export type BassBarFailure = SolveFailure<BassBarKey>;
 
-// one face of the bar in the side view, as (z, y): where it meets the inside of the top, the foot
-// it hangs to with the ends that join the two, and the bar's height if the face holds its highest point
+// one face of the bar in the side view, as (z, s), s along the bar from its lower end: where it
+// meets the inside of the top, and the underside it hangs to with the ends that join the two
 export interface BassBarFace {
   edge: string;
-  foot: string;
-  height: string | null;
+  bottom: string;
+}
+
+// a knot the underside is carved through: on the underside in the side view as (z, s), the inside
+// of the top above it on the centreline, where it falls on the centreline in plan, and its row
+// among the points. A mirrored twin shares its row
+export interface BassBarKnot {
+  bottom: Pt;
+  topZ: number;
+  plan: Pt;
+  source: number;
 }
 
 export interface BassBarSolve {
@@ -414,7 +423,11 @@ export interface BassBarSolve {
   lowerRight: Pt | null;
   left: BassBarFace | null;
   right: BassBarFace | null;
-  // the foot is one flat across the bar, so both faces hang to it
-  footZ: number | null;
+  // the underside as (z, s), lower end to upper. It runs straight across the bar, so both faces
+  // hang to the one curve
+  bottom: Pt[];
+  knots: BassBarKnot[];
+  // the underside's lowest z, where the side view sets the two faces back to back
+  lowZ: number | null;
   failures: BassBarFailure[];
 }

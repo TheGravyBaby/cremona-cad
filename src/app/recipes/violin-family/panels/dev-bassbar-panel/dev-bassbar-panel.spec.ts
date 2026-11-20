@@ -50,11 +50,14 @@ describe('the bass bar', () => {
   });
 
   it('reports a cleared field rather than drawing it', () => {
-    for (const key of ['length', 'width', 'height'] as const) {
+    for (const key of ['length', 'width'] as const) {
       const p = seeded();
       (p.bassBar as any)[key] = null;
       expect(solveBassBar(p)!.failures.length, key).toBeGreaterThan(0);
     }
+    const p = seeded();
+    (p.bassBar!.points[0] as any).h = null;
+    expect(solveBassBar(p)!.failures.map(f => f.unsolved)).toEqual([['shape']]);
   });
 
   it('traces its left face along the inside of the top, the same curve at any step', () => {
@@ -68,26 +71,65 @@ describe('the bass bar', () => {
     expect(fine[fine.length - 1][0]).toBeCloseTo(coarse[coarse.length - 1][0], 6);
   });
 
-  it('closes each face, both on one foot below the top all along, the height short of it at the peak', () => {
+  it('reads each depth down from the top on the centreline, both faces hung to the one underside below the top', () => {
     const p = seeded();
     p.graduation!.top.points = gridPoints(p, 30, 'top').map(pt => ({ ...pt, thickness: 3 }));
     const read = (d: string) => d.slice(2).split(' L ').map(pair => pair.split(' ').map(Number));
     const b = solveBassBar(p)!;
-    const footZ = b.footZ!;
-    const holding = [b.left!, b.right!].filter(face => face.height);
-    expect(holding.length).toBe(1);
-    const height = read(holding[0].height!);
-    expect(height[1][0]).toBe(footZ);
-    expect(height[0][0] - footZ).toBeCloseTo(p.bassBar!.height, 6);
-    const tops: number[] = [];
+    expect(b.failures).toEqual([]);
+
+    for (const knot of b.knots) expect(knot.topZ - knot.bottom.x).toBeCloseTo(p.bassBar!.points[knot.source].h, 9);
+    const mirrored = p.bassBar!.points.findIndex(pt => pt.mirror && pt.t > 0);
+    const twins = b.knots.filter(k => k.source === mirrored);
+    expect(twins.length).toBe(2);
+    expect(twins[0].bottom.y + twins[1].bottom.y).toBeCloseTo(p.bassBar!.length, 9);
+
+    const ends = [b.knots[0], b.knots[b.knots.length - 1]];
+    expect(b.bottom[0].x).toBeCloseTo(ends[0].bottom.x, 9);
+    expect(b.bottom[b.bottom.length - 1].x).toBeCloseTo(ends[1].bottom.x, 9);
+    expect(b.lowZ).toBe(Math.min(...b.bottom.map(q => q.x)));
+
     for (const face of [b.left!, b.right!]) {
-      const edge = read(face.edge), foot = read(face.foot);
-      expect(foot[0]).toEqual(edge[0]);
-      expect(foot[foot.length - 1]).toEqual(edge[edge.length - 1]);
-      expect(foot[1][0]).toBe(footZ);
-      for (const [z] of edge) expect(z).toBeGreaterThan(footZ);
-      tops.push(...edge.map(([z]) => z));
+      const edge = read(face.edge), bottom = read(face.bottom);
+      expect(bottom[0]).toEqual(edge[0]);
+      expect(bottom[bottom.length - 1]).toEqual(edge[edge.length - 1]);
+      edge.forEach(([z, s], i) => {
+        expect(bottom[i + 1][1]).toBe(s);
+        expect(z).toBeGreaterThan(bottom[i + 1][0]);
+      });
     }
-    expect(Math.max(...tops)).toBe(height[0][0]);
+  });
+
+  it('follows the top when it is graduated again, however often it was read before', () => {
+    const p = seeded();
+    p.graduation!.top.points = gridPoints(p, 30, 'top').map(pt => ({ ...pt, thickness: 3 }));
+    const before = solveBassBar(p)!;
+    p.graduation!.top.points.forEach(pt => pt.thickness = 4);
+    const after = solveBassBar(p)!;
+    after.knots.forEach((knot, i) => {
+      expect(knot.topZ).toBeLessThan(before.knots[i].topZ);
+      expect(knot.topZ - knot.bottom.x).toBeCloseTo(before.knots[i].topZ - before.knots[i].bottom.x, 9);
+    });
+    expect(after.left!.edge).not.toBe(before.left!.edge);
+  });
+
+  it('wants a point at each end before it carves the underside', () => {
+    const p = seeded();
+    p.graduation!.top.points = gridPoints(p, 30, 'top').map(pt => ({ ...pt, thickness: 3 }));
+    p.bassBar!.points = p.bassBar!.points.filter(pt => pt.t > 0);
+    const b = solveBassBar(p)!;
+    expect(b.failures.map(f => f.unsolved)).toEqual([['shape']]);
+    expect(b.left).toBeNull();
+    expect(b.upperLeft).not.toBeNull();
+  });
+
+  it('marks where the underside comes up through the top', () => {
+    const p = seeded();
+    p.graduation!.top.points = gridPoints(p, 30, 'top').map(pt => ({ ...pt, thickness: 3 }));
+    p.bassBar!.points.find(pt => pt.t === 0)!.h = -1;
+    const b = solveBassBar(p)!;
+    expect(b.failures.length).toBe(1);
+    expect(b.failures[0].points!.length).toBeGreaterThan(0);
+    expect(b.left).not.toBeNull();
   });
 });

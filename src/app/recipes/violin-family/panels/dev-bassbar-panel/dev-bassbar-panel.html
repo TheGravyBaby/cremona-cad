@@ -3,31 +3,59 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Length</span>
-            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="bb.length" (input)="recordEditAndRedraw()" />
+            <input type="number" class="basic-input" step="1" min="1" [style.border-color]="pal.ink(faceInk)"
+                [(ngModel)]="bb.length" (input)="recordEditAndRedraw()"
+                (focus)="highlightPart('faces')" (blur)="clearHighlight()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Width</span>
-            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="bb.width" (input)="recordEditAndRedraw()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Height</span>
-            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="bb.height" (input)="recordEditAndRedraw()" />
+            <input type="number" class="basic-input" step="0.5" min="0" [style.border-color]="pal.ink(endInk)"
+                [(ngModel)]="bb.width" (input)="recordEditAndRedraw()"
+                (focus)="highlightPart('ends')" (blur)="clearHighlight()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">XOffset</span>
-            <input type="number" class="basic-input" step="1" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="bb.xOffset" (input)="recordEditAndRedraw()" />
+            <input type="number" class="basic-input" step="1" [(ngModel)]="bb.xOffset" (input)="recordEditAndRedraw()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Angle <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" step=".1" [style.border-color]="pal.ink(0)"
-                [(ngModel)]="bb.angle" (input)="recordEditAndRedraw()" />
-        </label>    
-    </div>  
+            <input type="number" class="basic-input" step=".1" [(ngModel)]="bb.angle" (input)="recordEditAndRedraw()" />
+        </label>
+    </div>
+</section>
 
+<section class="ui-group">
+    <div class="ui-group-title">Bass Bar Shape</div>
+    <div class="spline-points" appRowReorder (rowReorder)="moveRow($event)">
+        <div class="input-group basic-row spline-row spline-row--header">
+            <span class="field-cell">Depth</span>
+            <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
+            <span class="field-cell">Position <span class="unit-label">%</span></span>
+        </div>
+        @for (pt of bb.points; track $index; let i = $index) {
+        <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
+            <button type="button" class="row-grip" data-reorder-handle aria-label="Reorder row" docTip="reorderRow">⠿</button>
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="0.1" min="0" [style.border-color]="pal.ink(bottomInk)"
+                    [(ngModel)]="pt.h" (input)="recordEditAndRedraw()"
+                    (focus)="highlightPart(i)" (blur)="clearHighlight()" />
+            </div>
+            <span class="field-separator" aria-hidden="true"></span>
+            <div class="field-cell">
+                <input type="number" class="basic-input" step="1" min="0" max="100" [(ngModel)]="pt.t" (input)="recordEditAndRedraw()"
+                    (focus)="highlightPart(i)" (blur)="clearHighlight()" />
+            </div>
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="pt.mirror" (change)="recordEditAndRedraw()" /><span>Mirror</span>
+            </div>
+            <button type="button" class="info-icon" (click)="removePoint(i)" title="Remove point" aria-label="Remove point">×</button>
+        </div>
+        }
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <button type="button" class="panel-nav-btn" (click)="addPoint()">+ Add Point</button>
+        <button type="button" class="panel-nav-btn" (click)="sortPoints()">Sort by Position</button>
+    </div>
 </section>

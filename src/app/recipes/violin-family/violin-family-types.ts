@@ -311,14 +311,22 @@ export interface GraduationPoint {
   label?: string;
 }
 
-// the bass bar, glued under the top's bass side once the top is graduated. A placeholder: its
-// length, its width across, and its height at the middle
+// the bass bar, glued under the top's bass side once the top is graduated: its length, its width
+// across, where it sits and its heading in plan, and the points its underside is carved through
 export interface BassBarParams {
   length: number;
   width: number;
-  height: number;
   xOffset: number;
   angle: number;
+  points: BassBarPoint[];
+}
+
+// t is % along the bar from the lower end, h mm of wood below the inside of the top on the bar's
+// centreline; a mirrored point is repeated at 100 - t
+export interface BassBarPoint {
+  t: number;
+  h: number;
+  mirror: boolean;
 }
 
 // the neck set in the side elevation and its widths in plan. Length runs along the fingerboard
