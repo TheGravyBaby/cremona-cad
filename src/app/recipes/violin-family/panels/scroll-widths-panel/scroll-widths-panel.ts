@@ -1,9 +1,12 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { dist, lerpVec3, normalizeRadians, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
+import { dist, normalizeRadians, pointOnCircle, TURN } from '../../../../helpers/math/simpleGeometry';
 import { arcRun, joinedRun, riseAlongRun, Run, straightRun } from '../../../../helpers/math/draftMath';
-import { clipPolylineAtY, hermiteEvaluator, hymanFilterSlopes, naturalSplineSlopes, polylinePointAtY, rayPolylineIntersection } from '../../../../helpers/math/vibeMath';
-import { arcPathData, pathFromLine, pathFromPolygon, pathFromPolyline } from '../../../../helpers/math/pathMath';
+import {
+  calcArcSpans, calcHermiteSpan, calcLineSpan, clipSpansAtY, CubicSpan, hermiteEvaluator, hymanFilterSlopes, naturalSplineSlopes, rayPolylineIntersection, sliceSpans,
+  spansPointAt, spansPointAtY,
+} from '../../../../helpers/math/vibeMath';
+import { arcPathData, pathFromLine, pathFromPolygon, pathFromPolyline, pathFromSpans } from '../../../../helpers/math/pathMath';
 import { occludePath } from '../../../../helpers/math/pathVibes';
 import {
   renderCircle, renderCrosshair, renderDashLine, renderPath, renderPointHalo, renderSolveFailures, renderStroke, StrokeShape,
@@ -165,8 +168,8 @@ function coverAt(on: ScrollStretches, y: number, z: number, behind: boolean): nu
   let cover: number | null = null;
   for (let stretch of [on.back, on.turn1Front, on.turn2Back, on.turn2Front, on.turn3Back, on.turn3Front]) {
     // a stretch hides nothing at the height it turns over at: a line cut there stops on the turn's face
-    let turnsOver = Math.abs(y - stretch[0].y) < 1e-9 || Math.abs(y - stretch.at(-1)!.y) < 1e-9;
-    let over = turnsOver ? null : polylinePointAtY(stretch, y);
+    let turnsOver = Math.abs(y - stretch[0][0].y) < 1e-9 || Math.abs(y - stretch.at(-1)![3].y) < 1e-9;
+    let over = turnsOver ? null : spansPointAtY(stretch, y);
     if (!over || !(behind ? over.z < z - 1e-6 : over.z > z + 1e-6)) continue;
     cover = Math.max(cover ?? 0, over.x);
   }
@@ -178,25 +181,31 @@ function isHiddenAt(on: ScrollStretches, pt: Pt3D, behind: boolean): boolean {
 }
 
 // what of a line can be seen: its runs that no nearer stretch at least as wide hides, each cut
-// where the widths cross, so a turn's edge runs right up to the one that hides it
-function calcSeenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[][] {
-  let runs: Pt3D[][] = [[]];
+// where the widths cross, so a turn's edge runs right up to the one that hides it. Looked for a
+// millimetre or so apart along each span, then halved down to the crossing
+function calcSeenRuns(on: ScrollStretches, spans: CubicSpan[], behind: boolean): CubicSpan[][] {
+  let seen: [number, number][] = [];
+  let from: number | null = null;
   let was: boolean | null = null;
-  pts.forEach((pt, k) => {
-    let is = isHiddenAt(on, pt, behind);
-    if (was !== null && is !== was) {
-      let lo = 0, hi = 1;
-      for (let i = 0; i < 30; i++) {
-        let mid = (lo + hi) / 2;
-        if (isHiddenAt(on, lerpVec3(pts[k - 1], pt, mid), behind) === was) lo = mid; else hi = mid;
-      }
-      runs.at(-1)!.push(lerpVec3(pts[k - 1], pt, was ? hi : lo));
+  spans.forEach((span, i) => {
+    let n = Math.max(8, Math.ceil(dist(span[0], span[3])));
+    for (let k = i ? 1 : 0; k <= n; k++) {
+      let t = i + k / n;
+      let is = isHiddenAt(on, spansPointAt(spans, t), behind);
+      if (was !== null && is !== was) {
+        let lo = t - 1 / n, hi = t;
+        for (let j = 0; j < 30; j++) {
+          let mid = (lo + hi) / 2;
+          if (isHiddenAt(on, spansPointAt(spans, mid), behind) === was) lo = mid; else hi = mid;
+        }
+        if (was) from = hi;
+        else seen.push([from!, lo]);
+      } else if (was === null && !is) from = t;
+      was = is;
     }
-    if (!is) runs.at(-1)!.push(pt);
-    else if (!was) runs.push([]);
-    was = is;
   });
-  return runs.filter(run => run.length > 1);
+  if (!was && from !== null) seen.push([from, spans.length]);
+  return seen.filter(([a, b]) => b - a > 1e-9).map(([a, b]) => sliceSpans(spans, a, b));
 }
 
 // the pegbox's front, sawn straight through the blank: from the hips in to the nut's edge at its
@@ -238,6 +247,13 @@ function pushViewContour(parts: ScrollView, place: PlaceInView, pts: { x: number
   for (let side of [1, -1]) pushViewStroke(parts, pathFromPolyline(pts.map(pt => place(side * pt.x, pt.y))), part, STROKE_WEIGHT.trace, cover);
 }
 
+// a half outline as cubic spans, x out from the centreline, drawn on both sides of it. `place` is
+// affine wherever it's called from, so the spans' handles go through it with their ends
+function pushViewSpans(parts: ScrollView, place: PlaceInView, spans: CubicSpan[], part: ScrollViewPart, cover: string | string[] | null = null): void {
+  if (!spans.length) return;
+  for (let side of [1, -1]) pushViewStroke(parts, pathFromSpans(spans.map(span => span.map(pt => place(side * pt.x, pt.y)) as [Pt, Pt, Pt, Pt])), part, STROKE_WEIGHT.trace, cover);
+}
+
 function pushViewLine(parts: ScrollView, a: Pt, b: Pt, part: ScrollViewPart): void {
   parts[part].push({ line: [a, b], weight: STROKE_WEIGHT.trace });
 }
@@ -257,23 +273,26 @@ export function buildScrollBackViewStrokes(p: ViolinFamilyParams, s: ScrollSolve
   let eyeTop = eye.y + eye.r;
   let eyeBottom = eye.y - eye.r;
   let on = calcScrollPathStretches(p, s);
-  let start = on.back[0];
-  let crown = on.back.at(-1)!;
-  let turn1Bottom = on.turn1Front.at(-1)!;
-  let turn2Top = on.turn2Back.at(-1)!;
-  let turn2Bottom = on.turn2Front.at(-1)!;
-  let turn3Top = on.turn3Back.at(-1)!;
+  let start = on.back[0][0];
+  let crown = on.back.at(-1)![3];
+  let turn1Bottom = on.turn1Front.at(-1)![3];
+  let turn2Top = on.turn2Back.at(-1)![3];
+  let turn2Bottom = on.turn2Front.at(-1)![3];
+  let turn3Top = on.turn3Back.at(-1)![3];
   let parts = buildEmptyScrollView();
 
   // the back starts in the duck tail's round, the neck's back carried on round, its sides running on
   // straight up to the foot, and its own edges run up from there
   let r = calcDuckTailRadius(p);
   let roundTop = calcDuckTailRoundTop(p, s);
-  let round = Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: 0, y: roundTop, r }, TURN.half + TURN.half * i / 32)).map(pt => place(pt.x, pt.y));
-  if (start.y - roundTop > 1e-6) round = [place(-r, start.y), ...round, place(r, start.y)];
+  let roundSpans = calcArcSpans(new Circle(0, roundTop, r), TURN.half, TURN.full);
+  if (start.y - roundTop > 1e-6) {
+    roundSpans = [calcLineSpan(new Pt3D(-r, start.y, 0), new Pt3D(-r, roundTop, 0)), ...roundSpans, calcLineSpan(new Pt3D(r, roundTop, 0), new Pt3D(r, start.y, 0))];
+  }
+  let round = roundSpans.map(span => span.map(pt => place(pt.x, pt.y)) as [Pt, Pt, Pt, Pt]);
 
   // the neck's sides run on up until they meet the scroll's round
-  let overNeck = r > 0 ? [pathFromPolygon(round)] : null;
+  let overNeck = r > 0 ? [pathFromSpans(round, true)] : null;
   for (let side of [1, -1]) {
     pushViewStroke(parts, pathFromLine(place(side * scrollNeckHalfWidthAt(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidthAt(p, start.y), start.y)), 'neck', STROKE_WEIGHT.section, overNeck);
   }
@@ -281,12 +300,12 @@ export function buildScrollBackViewStrokes(p: ViolinFamilyParams, s: ScrollSolve
   // the head's back stands nearest and shows whole. Every other stretch shows wherever it stands out
   // past all those nearer at its height: a turn wider than the one inside it shows past it, a
   // narrower one hides behind it
-  pushViewContour(parts, place, on.back, 'back');
+  pushViewSpans(parts, place, on.back, 'back');
   for (let stretch of [on.turn1Front, on.turn2Back, on.turn2Front, on.turn3Back, on.turn3Front]) {
-    for (let run of calcSeenRuns(on, stretch, true)) pushViewContour(parts, place, run, 'turns');
+    for (let run of calcSeenRuns(on, stretch, true)) pushViewSpans(parts, place, run, 'turns');
   }
 
-  if (r > 0) parts.back.push({ d: pathFromPolyline(round), weight: STROKE_WEIGHT.trace });
+  if (r > 0) parts.back.push({ d: pathFromSpans(round), weight: STROKE_WEIGHT.trace });
 
   // each face runs in to the widest stretch standing nearer at its height
   pushViewFace(parts, place, crown.y, crown.x, null, 'backLight');
@@ -319,11 +338,11 @@ export function buildScrollFrontViewStrokes(p: ViolinFamilyParams, s: ScrollSolv
   let eyeTop = eye.y + eye.r;
   let eyeBottom = eye.y - eye.r;
   let on = calcScrollPathStretches(p, s);
-  let crown = on.back.at(-1)!;
-  let turn1Bottom = on.turn1Front.at(-1)!;
-  let turn2Top = on.turn2Back.at(-1)!;
-  let turn2Bottom = on.turn2Front.at(-1)!;
-  let turn3Top = on.turn3Back.at(-1)!;
+  let crown = on.back.at(-1)![3];
+  let turn1Bottom = on.turn1Front.at(-1)![3];
+  let turn2Top = on.turn2Back.at(-1)![3];
+  let turn2Bottom = on.turn2Front.at(-1)![3];
+  let turn3Top = on.turn3Back.at(-1)![3];
   let { walls, bottom } = calcPegboxFrontOutline(p, s);
   let parts = buildEmptyScrollView();
 
@@ -340,18 +359,18 @@ export function buildScrollFrontViewStrokes(p: ViolinFamilyParams, s: ScrollSolv
   // way up: behind the first turn above there, and the same line as its front below
   let pegboxTop = turn1Bottom.y;
   let pegboxFront = calcScrollFrontWidths(p, s);
-  pushViewContour(parts, place, clipPolylineAtY(pegboxFront, pegboxTop, 'below'), 'front', overPegbox);
+  pushViewSpans(parts, place, clipSpansAtY(pegboxFront, pegboxTop, 'below'), 'front', overPegbox);
 
   // a pegbox wider than the volute over it is the rare exception: above the first turn's bottom its
   // cheeks show wherever they stand out past the volute
-  for (let run of calcSeenRuns(on, clipPolylineAtY(pegboxFront, pegboxTop, 'above'), false)) pushViewContour(parts, place, run, 'front');
+  for (let run of calcSeenRuns(on, clipSpansAtY(pegboxFront, pegboxTop, 'above'), false)) pushViewSpans(parts, place, run, 'front');
 
   // the first turn's front stands nearest and shows whole. Every other stretch shows wherever it
   // stands out past all those nearer at its height, and the last turn's back only up to the eye's
   // bottom, the eye standing out in front of it to the last width
-  pushViewContour(parts, place, on.turn1Front, 'turns');
-  for (let stretch of [on.turn2Back, on.turn2Front, clipPolylineAtY(on.turn3Back, eyeBottom, 'below'), on.turn3Front]) {
-    for (let run of calcSeenRuns(on, stretch, false)) pushViewContour(parts, place, run, 'turns');
+  pushViewSpans(parts, place, on.turn1Front, 'turns');
+  for (let stretch of [on.turn2Back, on.turn2Front, clipSpansAtY(on.turn3Back, eyeBottom, 'below'), on.turn3Front]) {
+    for (let run of calcSeenRuns(on, stretch, false)) pushViewSpans(parts, place, run, 'turns');
   }
 
   // each face runs in to the widest stretch standing nearer at its height. The first turn has none
@@ -509,18 +528,18 @@ function buildPathWidth(p: ViolinFamilyParams, path: ScrollPath): (at: number) =
 }
 
 // the path as the back and front views draw it, in the stretches it falls into at the crown and the
-// turns: x the half-width, y and z the side view's y and x, a point a millimetre or so apart. Each
-// stretch runs down the volute's front or up its back, only rising or only falling, and ends on the
-// point the next starts on
-export type ScrollStretches = Record<'back' | 'turn1Front' | 'turn2Back' | 'turn2Front' | 'turn3Back' | 'turn3Front', Pt3D[]>;
+// turns: x the half-width, y and z the side view's y and x. Each stretch runs down the volute's front
+// or up its back, only rising or only falling, and ends on the point the next starts on. The widths
+// are all we're given between them, so each is one cubic from width to width, true at both ends and
+// on their tangents; the back takes two, the slope up to the poll being a straight line in the views
+export type ScrollStretches = Record<'back' | 'turn1Front' | 'turn2Back' | 'turn2Front' | 'turn3Back' | 'turn3Front', CubicSpan[]>;
 
-function calcStretch(path: ScrollPath, width: (at: number) => number, from: number, to: number): Pt3D[] {
-  let pieces = Math.ceil(to - from);
-  return Array.from({ length: pieces + 1 }, (_, k) => {
-    let at = from + (to - from) * k / pieces;
+function calcStretch(path: ScrollPath, width: (at: number) => number, from: number, to: number, knot: number | null = null): CubicSpan[] {
+  let ends = knot !== null && knot > from + 1e-6 && knot < to - 1e-6 ? [from, knot, to] : [from, to];
+  return ends.slice(1).map((end, i) => calcHermiteSpan(at => {
     let pt = path.at(at);
     return new Pt3D(width(at) / 2, pt.y, pt.x);
-  });
+  }, ends[i], end));
 }
 
 export function calcScrollPathStretches(p: ViolinFamilyParams, s: ScrollSolve): ScrollStretches {
@@ -528,7 +547,7 @@ export function calcScrollPathStretches(p: ViolinFamilyParams, s: ScrollSolve): 
   let width = buildPathWidth(p, path);
   let [turn1Bottom, turn2Top, turn2Bottom, turn3Top] = path.turns;
   return {
-    back: calcStretch(path, width, 0, path.crown),
+    back: calcStretch(path, width, 0, path.crown, path.poll),
     turn1Front: calcStretch(path, width, path.crown, turn1Bottom),
     turn2Back: calcStretch(path, width, turn1Bottom, turn2Top),
     turn2Front: calcStretch(path, width, turn2Top, turn2Bottom),
@@ -541,8 +560,9 @@ export function calcScrollPathStretches(p: ViolinFamilyParams, s: ScrollSolve): 
 // distance along the side profile, across it the back's width there, so laid on the carved back it
 // bends back into place and the maker draws round it. Below the path's start it is the duck tail's
 // round, closing to a point at the duck tail, and its straight; a foot wider than the round steps out
-// to it level, as the shoulders do
-export type ScrollBackStrip = { outline: Pt[]; length: number };
+// to it level, as the shoulders do. Up the strip is the path's own length, so from the poll on, where
+// the width is a cubic along it, each span between widths is that cubic exactly
+export type ScrollBackStrip = { d: string; length: number };
 
 export function buildScrollBackStrip(p: ViolinFamilyParams, s: ScrollSolve): ScrollBackStrip {
   let path = buildScrollPath(p, s);
@@ -550,24 +570,33 @@ export function buildScrollBackStrip(p: ViolinFamilyParams, s: ScrollSolve): Scr
   let r = calcDuckTailRadius(p);
   let roundTop = calcDuckTailRoundTop(p, s);
   let end = path.turns[2] ?? path.length;
-  let step = 0.25;
 
-  let side: Pt[] = [];
-  let n = Math.ceil((path.round - path.straight) / step);
-  for (let k = 0; k <= n && n > 0; k++) {
-    let at = -path.round + (path.round - path.straight) * k / n;
-    side.push(new Pt(Math.sqrt(Math.max(r * r - Math.max(roundTop - path.at(at).y, 0) ** 2, 0)), at + path.round));
+  // the round's width read along the back, by the angle round the round, in two spans: it leaves
+  // the duck tail level and meets the straight upright
+  let side: CubicSpan[] = [];
+  let climb = path.round - path.straight;
+  if (climb > 1e-6 && r > 0) {
+    let roundRun: Run = { length: climb, at: at => path.at(at - path.round) };
+    for (let [from, to] of [[0, TURN.quarter / 2], [TURN.quarter / 2, TURN.quarter]]) {
+      side.push(calcHermiteSpan(angle => new Pt3D(r * Math.sin(angle), riseAlongRun(roundRun, roundTop - r * Math.cos(angle), climb), 0), from, to));
+    }
   }
-  if (path.straight > 1e-6) side.push(new Pt(r, path.round));
+  if (path.straight > 1e-6 && r > 0) side.push(calcLineSpan(new Pt3D(r, climb, 0), new Pt3D(r, path.round, 0)));
 
   // the poll is a corner in the width, so the strip takes it exactly
-  let m = Math.max(Math.ceil(end / step), 1);
-  let along = Array.from({ length: m + 1 }, (_, k) => end * k / m);
-  if (path.poll !== null && path.poll < end) along.push(path.poll);
-  along.sort((a, b) => a - b);
-  for (let at of along) side.push(new Pt(width(at) / 2, at + path.round));
+  let knots = [path.poll, path.crown, ...path.turns].filter((at): at is number => at !== null && at > 1e-6 && at < end - 1e-6).sort((a, b) => a - b);
+  let ends = [0, ...knots, end];
+  for (let i = 0; i + 1 < ends.length; i++) side.push(calcHermiteSpan(at => new Pt3D(width(at) / 2, at + path.round, 0), ends[i], ends[i + 1]));
 
-  return { outline: [...side, ...[...side].reverse().map(pt => new Pt(-pt.x, pt.y))], length: end + path.round };
+  let outline: CubicSpan[] = [];
+  for (let span of side) {
+    let last = outline.at(-1)?.[3];
+    if (last && dist(last, span[0]) > 1e-9) outline.push(calcLineSpan(last, span[0]));
+    outline.push(span);
+  }
+  let top = outline.at(-1)![3];
+  let mirrored = [...outline].reverse().map(([a, c1, c2, b]) => [b, c2, c1, a].map(pt => new Pt3D(-pt.x, pt.y, 0)) as CubicSpan);
+  return { d: pathFromSpans([...outline, calcLineSpan(top, new Pt3D(-top.x, top.y, 0)), ...mirrored], true), length: end + path.round };
 }
 
 // the back's widths set out for a compass walk, the older way: the maker walks a compass up the
@@ -653,13 +682,17 @@ export function buildScrollCompassWalk(p: ViolinFamilyParams, s: ScrollSolve, st
 }
 
 // the front from the nut up to the throat the same way, as wide as the pegbox at each height
-export function calcScrollFrontWidths(p: ViolinFamilyParams, s: ScrollSolve): Pt3D[] {
+// a span between each height the width's taper changes at, the nut's top and the hips, so in the
+// front view each is the straight line the saw cut
+export function calcScrollFrontWidths(p: ViolinFamilyParams, s: ScrollSolve): CubicSpan[] {
   let front = buildScrollFront(p, s);
-  let pieces = Math.ceil(front.length);
-  return Array.from({ length: pieces + 1 }, (_, i) => {
-    let pt = front.at(front.length * i / pieces);
+  let hipY = Math.min(calcPegboxHipHeight(p), pointOnCircle(s.F1!, s.F1!.end).y);
+  let knots = [p.neck!.nutHeight, hipY].map(y => riseAlongRun(front, y, front.length)).sort((a, b) => a - b);
+  let ends = [0, ...knots, front.length].filter((at, i, all) => at >= 0 && at <= front.length && (i === 0 || at - all[i - 1] > 1e-6));
+  return ends.slice(1).map((end, i) => calcHermiteSpan(at => {
+    let pt = front.at(at);
     return new Pt3D(pegboxWidthAt(p, s, pt.y) / 2, pt.y, pt.x);
-  });
+  }, ends[i], end));
 }
 
 // where each of the panel's fields is marked in the side view, with the width there: the neck at

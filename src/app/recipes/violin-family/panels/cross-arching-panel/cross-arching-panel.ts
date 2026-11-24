@@ -2,7 +2,7 @@ import { Component, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { clamp, normalizeDegrees, smoothstep } from '../../../../helpers/math/simpleGeometry';
 import {
-  buildPolylineIndex, buildProjection, calcHalfChord, closestPointToPolylineIndexed, isInsideCrossings, isOnOrInsideCrossings, makeMonotoneSpline,
+  buildPolylineIndex, buildProjection, calcGraphSamples, calcHalfChord, closestPointToPolylineIndexed, isInsideCrossings, isOnOrInsideCrossings, makeMonotoneSpline,
   polylineCrossingsAtY, projectedBounds,
 } from '../../../../helpers/math/vibeMath';
 import {
@@ -885,26 +885,46 @@ export function surfaceZAt(surface: PlateSurface, x: number, y: number, row = ro
 
 export type SurfacePart = 'arch' | 'channel' | 'land';
 
+// what carved the surface at x on a station row
+function sectionPartAt(surface: PlateSurface, row: SurfaceRow, x: number, y: number): SurfacePart {
+  if (!isInsideCrossings(x, row.landCrossings)) return 'land';
+  return row.section && channelDistanceAt(surface, row, x, y) >= archContactDistanceAt(row.section, x) ? 'arch' : 'channel';
+}
+
+// a section is drawn to a fiftieth of a millimetre, well inside a pencil line or a laser's kerf.
+// The parts are found on a millimetre scan, a channel being several wide, then halved down to where
+// they meet
+const SECTION_TOLERANCE_MM = 0.02;
+const SECTION_MAX_STEP_MM = 10;
+const SECTION_SCAN_MM = 1;
+
 // the surface at a station edge to edge, split into runs by what carved each: the same height
 // field the overlays slice, so the section can't disagree with them at the corners
-export function calcSectionRuns(surface: PlateSurface, y: number, stepMm = 0.25): { part: SurfacePart; pts: Pt[] }[] {
+export function calcSectionRuns(surface: PlateSurface, y: number, tolMm = SECTION_TOLERANCE_MM): { part: SurfacePart; pts: Pt[] }[] {
   let row = rowAt(surface, y);
   let half = row.outerHalf;
   if (half === null) return [];
-  let section = row.section;
-  let n = Math.max(8, Math.ceil((2 * half) / stepMm));
-  let runs: { part: SurfacePart; pts: Pt[] }[] = [];
-  for (let i = 0; i <= n; i++) {
+  let n = Math.max(8, Math.ceil((2 * half) / SECTION_SCAN_MM));
+  let joins: { x: number; part: SurfacePart }[] = [{ x: -half, part: sectionPartAt(surface, row, -half, y) }];
+  let lastX = -half;
+  for (let i = 1; i <= n; i++) {
     let x = -half + (2 * half * i) / n;
-    let z = surfaceZAt(surface, x, y, row)!;
-    let part: SurfacePart = !isInsideCrossings(x, row.landCrossings) ? 'land'
-      : section && channelDistanceAt(surface, row, x, y) >= archContactDistanceAt(section, x) ? 'arch' : 'channel';
-    let pt = new Pt(x, z);
-    let last = runs[runs.length - 1];
-    if (last?.part === part) last.pts.push(pt);
-    else runs.push({ part, pts: last ? [last.pts[last.pts.length - 1], pt] : [pt] });
+    let part = sectionPartAt(surface, row, x, y);
+    let lastPart = joins[joins.length - 1].part;
+    if (part !== lastPart) {
+      let lo = lastX, hi = x;
+      while (hi - lo > 1e-4) {
+        let mid = (lo + hi) / 2;
+        if (sectionPartAt(surface, row, mid, y) === lastPart) lo = mid; else hi = mid;
+      }
+      joins.push({ x: hi, part });
+    }
+    lastX = x;
   }
-  return runs;
+  return joins.map((join, i) => {
+    let end = joins[i + 1]?.x ?? half;
+    return { part: join.part, pts: calcGraphSamples(x => surfaceZAt(surface, x, y, row)!, join.x, end, tolMm, SECTION_MAX_STEP_MM) };
+  });
 }
 
 // the surface as the samplers read it, one row's crossings and section shared down the row

@@ -1,11 +1,13 @@
 // @vitest-environment node
 import {
-  angleForBridgeRadius, buildPolylineIndex, distPointToPolyline, distPointToPolylineIndexed,
+  angleForBridgeRadius, buildPolylineIndex, calcArcSpans, calcGraphSamples, calcHermiteSpan, clipSpansAtY, cubicPointAt, distPointToPolyline, distPointToPolylineIndexed,
+  sliceCubic, spansPointAtY,
   makeC2SplineWithFlatKnot, makeMonotoneSpline, sweepForTangentLineRadius,
 } from './vibeMath';
 import { arcContinuingFrom, arcBetweenTravels, arcTangentToLine } from './draftMath';
 import { pointOnCircle, travelAtArcEnd } from './simpleGeometry';
-import { Circle } from '../../models/types';
+import { Circle, Pt3D } from '../../models/types';
+import { pathFromSpans } from './pathMath';
 
 describe('sweepForTangentLineRadius', () => {
   const deg = (d: number) => d * Math.PI / 180;
@@ -242,5 +244,69 @@ describe('makeC2SplineWithFlatKnot', () => {
     expect(makeC2SplineWithFlatKnot([0, 1], [0, 1], 0)).toBeNull();
     expect(makeC2SplineWithFlatKnot([0, 1, 2], [0, 1, 0], 0)).toBeNull(); // pinned at an end
     expect(makeC2SplineWithFlatKnot([0, 1, 2], [0, 1, 0], 2)).toBeNull();
+  });
+});
+
+describe('calcGraphSamples', () => {
+  it('keeps a curve within tolerance, ends exact, crowding where it bends', () => {
+    const r = 50;
+    const f = (x: number) => Math.sqrt(r * r - x * x);
+    const pts = calcGraphSamples(f, -0.95 * r, 0.95 * r, 0.02, 10);
+    expect(pts[0].x).toBe(-0.95 * r);
+    expect(pts.at(-1)!.x).toBe(0.95 * r);
+    for (let k = 0; k + 1 < pts.length; k++) {
+      const [a, b] = [pts[k], pts[k + 1]];
+      expect(b.x).toBeGreaterThan(a.x);
+      for (let i = 1; i < 10; i++) {
+        const x = a.x + (b.x - a.x) * i / 10;
+        expect(Math.abs(f(x) - (a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x)))).toBeLessThan(0.025);
+      }
+    }
+    const steps = pts.slice(1).map((pt, k) => pt.x - pts[k].x);
+    expect(steps[0]).toBeLessThan(steps[steps.length >> 1]);
+  });
+
+  it('leaves a straight line at the longest step', () => {
+    expect(calcGraphSamples(x => 2 * x + 1, 0, 35, 0.01, 10)).toHaveLength(5);
+  });
+});
+
+describe('cubic spans', () => {
+  it('take a cubic back exactly from its own Hermite span', () => {
+    const f = (s: number) => new Pt3D(s * s * s - 2 * s, 3 * s, s * s);
+    const span = calcHermiteSpan(f, -1, 2);
+    for (let k = 0; k <= 10; k++) {
+      const u = k / 10, exact = f(-1 + 3 * u), got = cubicPointAt(span, u);
+      expect(Math.hypot(got.x - exact.x, got.y - exact.y, got.z - exact.z)).toBeLessThan(1e-6);
+    }
+  });
+
+  it('slice a span into the same curve, its ends where they were asked for', () => {
+    const span = calcHermiteSpan(s => new Pt3D(Math.cos(s), Math.sin(s), s), 0, 2);
+    const part = sliceCubic(span, 0.2, 0.7);
+    for (let k = 0; k <= 10; k++) {
+      const u = k / 10, a = cubicPointAt(part, u), b = cubicPointAt(span, 0.2 + 0.5 * u);
+      expect(Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z)).toBeLessThan(1e-12);
+    }
+  });
+
+  it('lay arcs on their circle and clip rising spans at a height', () => {
+    const c = new Circle(3, -2, 10);
+    const spans = calcArcSpans(c, -Math.PI / 2, Math.PI / 2);
+    expect(spans).toHaveLength(2);
+    for (const span of spans) for (let k = 0; k <= 10; k++) {
+      const pt = cubicPointAt(span, k / 10);
+      expect(Math.abs(Math.hypot(pt.x - c.x, pt.y - c.y) - c.r)).toBeLessThan(0.003);
+    }
+    const below = clipSpansAtY(spans, 1, 'below');
+    expect(below.at(-1)![3].y).toBeCloseTo(1, 9);
+    expect(spansPointAtY(spans, 1)!.y).toBeCloseTo(1, 9);
+    expect(clipSpansAtY(spans, 1, 'above')[0][0].y).toBeCloseTo(1, 9);
+  });
+
+  it('write a span that runs straight as a line', () => {
+    const line = calcHermiteSpan(s => new Pt3D(2 * s, s, 0), 0, 5);
+    const bend = calcHermiteSpan(s => new Pt3D(s, s * s, 0), 0, 5);
+    expect(pathFromSpans([line, bend])).toMatch(/^M \S+ \S+ L \S+ \S+ C /);
   });
 });

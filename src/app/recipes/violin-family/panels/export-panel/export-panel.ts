@@ -388,7 +388,7 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
     case 'scrollBack': {
       // the back unrolled into a strip, on its own sheet from the duck tail up
       let scroll = solvedScroll(p);
-      return scroll?.widths ? sheet([black(pathFromPolygon(buildScrollBackStrip(p, scroll.s).outline))]) : null;
+      return scroll?.widths ? sheet([black(buildScrollBackStrip(p, scroll.s).d)]) : null;
     }
     case 'scrollCompass': {
       let t = compassSheet(p);

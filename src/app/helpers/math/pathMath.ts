@@ -1,4 +1,4 @@
-import { Pt, Pt3D, Circle, Rectangle, Arc } from '../../models/types';
+import { Pt, Pt3D, Circle, Rectangle, Arc, Vec2 } from '../../models/types';
 import { svgPathProperties } from 'svg-path-properties';
 import { normalizeRadians, TURN, pointOnCircle, intersectLines, lineFromTwoPoints } from './simpleGeometry';
 
@@ -69,6 +69,24 @@ export function pathFromRect(R: Rectangle): string {
 
 export function pathFromPolyline(points: Pt[], closed = false): string {
   return `M ${points.map(p => `${p.x} ${p.y}`).join(' L ')}${closed ? ' Z' : ''}`;
+}
+
+// cubic spans end to end, each [from, c1, c2, to], as one path. A span whose handles lie on its
+// chord, between its ends, is the line it is and is written as one
+export function pathFromSpans(spans: [Vec2, Vec2, Vec2, Vec2][], closed = false): string {
+  if (!spans.length) return '';
+  const onChord = ([a, c1, c2, b]: [Vec2, Vec2, Vec2, Vec2]): boolean => {
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+    if (len < 1e-12) return Math.hypot(c1.x - a.x, c1.y - a.y) < 1e-7 && Math.hypot(c2.x - a.x, c2.y - a.y) < 1e-7;
+    return [c1, c2].every(c => {
+      const along = ((c.x - a.x) * dx + (c.y - a.y) * dy) / len;
+      return Math.abs((c.y - a.y) * dx - (c.x - a.x) * dy) / len < 1e-7 && along >= -1e-7 && along <= len + 1e-7;
+    });
+  };
+  const commands = spans.map(span => onChord(span)
+    ? `L ${span[3].x} ${span[3].y}`
+    : `C ${span[1].x} ${span[1].y} ${span[2].x} ${span[2].y} ${span[3].x} ${span[3].y}`);
+  return `M ${spans[0][0].x} ${spans[0][0].y} ${commands.join(' ')}${closed ? ' Z' : ''}`;
 }
 
 // a polyline of 3D points through a projection such as buildProjection's

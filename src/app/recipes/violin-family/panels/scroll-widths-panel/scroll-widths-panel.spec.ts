@@ -1,8 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { pointOnCircle } from '../../../../helpers/math/simpleGeometry';
-import { polylinePointAtY } from '../../../../helpers/math/vibeMath';
-import { Pt, Pt3D } from '../../../../models/types';
+import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
+import { cubicPointAt, CubicSpan, spansPointAtY } from '../../../../helpers/math/vibeMath';
+import { Pt } from '../../../../models/types';
 import {
   calcPegboxCavity, calcPegboxHipHeight, pegboxWidthAt, buildScrollBackStrip, buildScrollBackViewStrokes, buildScrollFrontViewStrokes, calcScrollPathStretches, calcScrollWidthStations,
   solveScrollWidths,
@@ -45,7 +46,7 @@ describe('the scroll widths', () => {
     const s = whole(p);
     const round = pointOnCircle(s.S3!, s.S3!.start).y + p.scroll!.widths.duckTail / 2;
     expect(calcPegboxHipHeight(p)).toBeCloseTo(round, 9);
-    expect(calcScrollPathStretches(p, s).back[0].y).toBeCloseTo(round, 3);
+    expect(calcScrollPathStretches(p, s).back[0][0].y).toBeCloseTo(round, 3);
   });
 
   it('run the duck tail\'s round on straight up to the foot, the path starting there', () => {
@@ -54,9 +55,9 @@ describe('the scroll widths', () => {
     const s = whole(p);
     const r = p.scroll!.widths.duckTail / 2;
     const round = pointOnCircle(s.S3!, s.S3!.start).y + r;
-    expect(calcScrollPathStretches(p, s).back[0].y).toBeCloseTo(round + 6, 3);
+    expect(calcScrollPathStretches(p, s).back[0][0].y).toBeCloseTo(round + 6, 3);
     expect(calcScrollWidthStations(p, s).find(st => st.key === 'duckTail')!.at.y).toBeCloseTo(round, 3);
-    const straight = buildScrollBackStrip(p, s).outline.filter(pt => Math.abs(pt.x - r) < 1e-9).map(pt => pt.y);
+    const straight = samplePathToPolyline(buildScrollBackStrip(p, s).d, 0.1).filter(pt => Math.abs(pt.x - r) < 1e-6).map(pt => pt.y);
     expect(Math.max(...straight) - Math.min(...straight)).toBeGreaterThan(0);
   });
 
@@ -86,11 +87,13 @@ describe('the scroll widths', () => {
     const order = [on.back, on.turn1Front, on.turn2Back, on.turn2Front, on.turn3Back, on.turn3Front];
     order.forEach((stretch, i) => {
       const rising = i % 2 === 0;
-      for (let k = 1; k < stretch.length; k++) {
-        const dy = stretch[k].y - stretch[k - 1].y;
+      const pts = stretch.flatMap(span => Array.from({ length: 21 }, (_, k) => cubicPointAt(span, k / 20)));
+      for (let k = 1; k < pts.length; k++) {
+        const dy = pts[k].y - pts[k - 1].y;
         expect(rising ? dy : -dy, `stretch ${i} at ${k}`).toBeGreaterThan(-1e-6);
       }
-      if (i) expect(stretch[0]).toEqual(order[i - 1].at(-1));
+      for (let k = 1; k < stretch.length; k++) expect(stretch[k][0]).toEqual(stretch[k - 1][3]);
+      if (i) expect(stretch[0][0]).toEqual(order[i - 1].at(-1)![3]);
     });
   });
 
@@ -135,13 +138,10 @@ describe('the scroll widths', () => {
     w.turn2Top = w.crown + 2;
     const s = whole(p);
     const on = calcScrollPathStretches(p, s);
-    const top = on.turn2Back.at(-1)!;
-    const half = (stretch: Pt3D[], y: number) => polylinePointAtY(stretch, y)?.x ?? 0;
+    const top = on.turn2Back.at(-1)![3];
+    const half = (stretch: CubicSpan[], y: number) => spansPointAtY(stretch, y)?.x ?? 0;
     const back = buildScrollBackViewStrokes(p, s, (x, y) => new Pt(x, y), -20);
-    const shown = back.turns.flatMap(st => {
-      const n = 'd' in st ? st.d.match(/-?[\d.]+(e-?\d+)?/g)!.map(Number) : [];
-      return n.filter((_, i) => i % 2 === 0).map((x, i) => new Pt(Math.abs(x), n[2 * i + 1]));
-    });
+    const shown = back.turns.flatMap(st => 'd' in st ? samplePathToPolyline(st.d, 0.25).map(pt => new Pt(Math.abs(pt.x), pt.y)) : []);
     const past = shown.filter(pt => pt.y < top.y - 1
       && Math.abs(pt.x - half(on.turn1Front, pt.y)) < 0.05
       && pt.x > Math.max(half(on.back, pt.y), half(on.turn2Back, pt.y)) + 0.5);

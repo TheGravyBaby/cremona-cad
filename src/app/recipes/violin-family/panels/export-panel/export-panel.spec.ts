@@ -375,7 +375,7 @@ describe('the neck and scroll sheets', () => {
     const strip = buildScrollBackStrip(p, solveScroll(p)!);
     const [, , w, h] = viewBox(result!.text);
     expect(h).toBeGreaterThan(strip.length);
-    expect(w / 2).toBeGreaterThan(Math.max(...strip.outline.map(pt => pt.x)));
+    expect(w / 2).toBeGreaterThan(pathsBounds([strip.d]).maxX);
   });
 
   it('write the compass walk as a box holding the marks, the centres and the edges, every circle inside the box, each centre a star of three lines', async () => {

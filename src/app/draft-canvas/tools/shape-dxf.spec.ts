@@ -20,7 +20,10 @@ function parse(dxf: string): { layers: string[]; entities: Entity[] } {
       current = null;
       if (value === 'ENDSEC') section = '';
       else if (section === 'ENTITIES') entities.push(current = { type: value, codes: new Map() });
-      if (section === 'TABLES' && value === 'LAYER' && pairs[i + 1]?.[0] === 2) layers.push(pairs[i + 1][1]);
+      // a record's name is its first code 2, after the handle, owner and subclass markers R2000 puts first
+      if (section === 'TABLES' && value === 'LAYER') {
+        for (let j = i + 1; j < pairs.length && pairs[j][0] !== 0; j++) if (pairs[j][0] === 2) { layers.push(pairs[j][1]); break; }
+      }
       continue;
     }
     if (current) current.codes.set(code, [...(current.codes.get(code) ?? []), value]);
@@ -75,14 +78,13 @@ describe('shapesToDxf', () => {
     }
   });
 
-  it('closes a rect as four lines meeting end to end', () => {
-    const lines = parse(shapesToDxf([sample[3]])).entities;
-    expect(lines.every(e => e.type === 'LINE')).toBe(true);
-    for (let i = 0; i < lines.length; i++) {
-      const next = lines[(i + 1) % lines.length];
-      expect(num(lines[i], 11)).toBeCloseTo(num(next, 10));
-      expect(num(lines[i], 21)).toBeCloseTo(num(next, 20));
-    }
+  it('closes a rect as one closed polyline of its four corners', () => {
+    const [rect, ...rest] = parse(shapesToDxf([sample[3]])).entities;
+    expect(rest).toHaveLength(0);
+    expect(rect.type).toBe('LWPOLYLINE');
+    expect(rect.codes.get(70)).toEqual(['1']);
+    expect(rect.codes.get(10)).toHaveLength(4);
+    expect(rect.codes.get(20)).toHaveLength(4);
   });
 
   it('writes one TEXT per line of a multi-line text', () => {
@@ -91,7 +93,7 @@ describe('shapesToDxf', () => {
     expect(num(texts[0], 20)).toBeGreaterThan(num(texts[1], 20));
   });
 
-  it('puts each shape on its layer, declared in the table under a name R12 accepts', () => {
+  it('puts each shape on its layer, declared in the table under a name every reader accepts', () => {
     const dxf = shapesToDxf(sample, s => s.id === 'c' ? 'Purfling channel: outer' : s.id === 'pt' ? undefined : 'Outline');
     const { layers, entities } = parse(dxf);
     expect(entities.length).toBeGreaterThan(sample.length);

@@ -401,6 +401,122 @@ export function polylinePointAtY(pts: Pt3D[], y: number): Pt3D | null {
   return null;
 }
 
+// ===== Cubic spans =====
+// A curve drawn as cubic Béziers end to end, each [from, c1, c2, to]. Built as the Hermite span of
+// a function between two of its points, so a curve that is a cubic in its own parameter comes back
+// exactly, and one that isn't is fair and passes through its ends on their tangents. A run of spans
+// is walked by t, rising by one a span.
+
+export type CubicSpan = [Pt3D, Pt3D, Pt3D, Pt3D];
+
+// f from a to b as one cubic, leaving and arriving along f's own tangents, each read from points a
+// hair inside the span and carried out to the end: a corner at either end is taken from the side
+// the span lies on, and a step there costs only the end point
+export function calcHermiteSpan(f: (s: number) => Pt3D, a: number, b: number): CubicSpan {
+  const h = (b - a) * 1e-5;
+  const from = f(a), to = f(b);
+  const [a1, a2, a3] = [f(a + h), f(a + 2 * h), f(a + 3 * h)];
+  const [b1, b2, b3] = [f(b - h), f(b - 2 * h), f(b - 3 * h)];
+  // the differences stand 1.5 and 2.5 steps in; the tangent at the end is the line through them
+  const k = (b - a) / 3 / h;
+  const lead = (p1: number, p2: number, p3: number) => (2.5 * (p2 - p1) - 1.5 * (p3 - p2)) * k;
+  return [
+    from,
+    new Pt3D(from.x + lead(a1.x, a2.x, a3.x), from.y + lead(a1.y, a2.y, a3.y), from.z + lead(a1.z, a2.z, a3.z)),
+    new Pt3D(to.x + lead(b1.x, b2.x, b3.x), to.y + lead(b1.y, b2.y, b3.y), to.z + lead(b1.z, b2.z, b3.z)),
+    to,
+  ];
+}
+
+export function calcLineSpan(a: Pt3D, b: Pt3D): CubicSpan {
+  return [a, new Pt3D(a.x + (b.x - a.x) / 3, a.y + (b.y - a.y) / 3, a.z + (b.z - a.z) / 3), new Pt3D(a.x + 2 * (b.x - a.x) / 3, a.y + 2 * (b.y - a.y) / 3, a.z + 2 * (b.z - a.z) / 3), b];
+}
+
+// a circle's arc counterclockwise from one angle to the other, a span to each quarter turn or less,
+// in the plane z = 0
+export function calcArcSpans(c: Circle, from: number, to: number): CubicSpan[] {
+  const n = Math.max(1, Math.ceil(Math.abs(to - from) / TURN.quarter - 1e-9));
+  const step = (to - from) / n;
+  const k = 4 / 3 * Math.tan(step / 4) * c.r;
+  return Array.from({ length: n }, (_, i) => {
+    const a = from + step * i, b = a + step;
+    return [
+      new Pt3D(c.x + c.r * Math.cos(a), c.y + c.r * Math.sin(a), 0),
+      new Pt3D(c.x + c.r * Math.cos(a) - k * Math.sin(a), c.y + c.r * Math.sin(a) + k * Math.cos(a), 0),
+      new Pt3D(c.x + c.r * Math.cos(b) + k * Math.sin(b), c.y + c.r * Math.sin(b) - k * Math.cos(b), 0),
+      new Pt3D(c.x + c.r * Math.cos(b), c.y + c.r * Math.sin(b), 0),
+    ];
+  });
+}
+
+export function cubicPointAt(span: CubicSpan, u: number): Pt3D {
+  const v = 1 - u;
+  const [w0, w1, w2, w3] = [v * v * v, 3 * v * v * u, 3 * v * u * u, u * u * u];
+  const [p0, p1, p2, p3] = span;
+  return new Pt3D(w0 * p0.x + w1 * p1.x + w2 * p2.x + w3 * p3.x, w0 * p0.y + w1 * p1.y + w2 * p2.y + w3 * p3.y, w0 * p0.z + w1 * p1.z + w2 * p2.z + w3 * p3.z);
+}
+
+// the span between u0 and u1 as a cubic of its own, the same curve
+export function sliceCubic(span: CubicSpan, u0: number, u1: number): CubicSpan {
+  const split = ([p0, p1, p2, p3]: CubicSpan, u: number): [CubicSpan, CubicSpan] => {
+    const ab = lerpPt3D(p0, p1, u), bc = lerpPt3D(p1, p2, u), cd = lerpPt3D(p2, p3, u);
+    const abc = lerpPt3D(ab, bc, u), bcd = lerpPt3D(bc, cd, u);
+    const mid = lerpPt3D(abc, bcd, u);
+    return [[p0, ab, abc, mid], [mid, bcd, cd, p3]];
+  };
+  const head = u1 < 1 ? split(span, u1)[0] : span;
+  return u0 > 0 && u1 > 1e-12 ? split(head, u0 / u1)[1] : head;
+}
+
+function lerpPt3D(a: Pt3D, b: Pt3D, t: number): Pt3D {
+  return new Pt3D(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
+}
+
+export function spansPointAt(spans: CubicSpan[], t: number): Pt3D {
+  const i = clamp(Math.floor(t), 0, spans.length - 1);
+  return cubicPointAt(spans[i], t - i);
+}
+
+// the run between t = a and t = b, each span it crosses cut to it
+export function sliceSpans(spans: CubicSpan[], a: number, b: number): CubicSpan[] {
+  const out: CubicSpan[] = [];
+  for (let i = Math.max(Math.floor(a), 0); i < Math.min(Math.ceil(b), spans.length); i++) {
+    const u0 = Math.max(a - i, 0), u1 = Math.min(b - i, 1);
+    if (u1 - u0 > 1e-12) out.push(sliceCubic(spans[i], u0, u1));
+  }
+  return out;
+}
+
+// where spans that only rise or only fall first pass height y, as t, or null where they never do
+export function spansParamAtY(spans: CubicSpan[], y: number): number | null {
+  for (let i = 0; i < spans.length; i++) {
+    const ya = spans[i][0].y, yb = spans[i][3].y;
+    if (ya === yb || (ya - y) * (yb - y) > 0) continue;
+    let lo = 0, hi = 1;
+    for (let k = 0; k < 50; k++) {
+      const mid = (lo + hi) / 2;
+      if ((cubicPointAt(spans[i], mid).y < y) === (yb > ya)) lo = mid; else hi = mid;
+    }
+    return i + (lo + hi) / 2;
+  }
+  return null;
+}
+
+export function spansPointAtY(spans: CubicSpan[], y: number): Pt3D | null {
+  const t = spansParamAtY(spans, y);
+  return t === null ? null : spansPointAt(spans, t);
+}
+
+// the part of spans that only rise or only fall at or above height y, or at or below it
+export function clipSpansAtY(spans: CubicSpan[], y: number, keep: 'above' | 'below'): CubicSpan[] {
+  if (!spans.length) return [];
+  const first = spans[0][0].y;
+  const rising = spans[spans.length - 1][3].y > first;
+  const t = spansParamAtY(spans, y);
+  if (t === null) return (keep === 'above' ? first >= y : first <= y) ? spans : [];
+  return (keep === 'below') === rising ? sliceSpans(spans, 0, t) : sliceSpans(spans, t, spans.length);
+}
+
 // where a closed polyline crosses the line y = const, the x of each crossing sorted ascending.
 // Half-open on each edge, so a vertex exactly on the line counts once. With `closed` off the
 // polyline is a run, its last point not joined back to its first
@@ -435,6 +551,27 @@ export function isInsideCrossings(x: number, xs: number[]): boolean {
 export function isOnOrInsideCrossings(x: number, xs: number[]): boolean {
   for (const c of xs) if (Math.abs(c - x) <= 1e-9) return true;
   return isInsideCrossings(x, xs);
+}
+
+// the graph of f from x0 to x1 as a polyline, halved where a chord's middle strays more than tolMm
+// off the curve, so the points crowd where it bends and thin where it runs straight. It starts in
+// pieces no longer than maxStepMm, so a bump narrower than that can't hide under a chord that
+// happens to meet it at the middle
+export function calcGraphSamples(f: (x: number) => number, x0: number, x1: number, tolMm: number, maxStepMm: number, maxDepth = 12): Pt[] {
+  let pts = [new Pt(x0, f(x0))];
+  let halve = (a: Pt, b: Pt, depth: number): void => {
+    let mid = new Pt((a.x + b.x) / 2, f((a.x + b.x) / 2));
+    if (depth < maxDepth && Math.abs(mid.y - (a.y + b.y) / 2) > tolMm) {
+      halve(a, mid, depth + 1);
+      halve(mid, b, depth + 1);
+    } else pts.push(b);
+  };
+  let n = Math.max(1, Math.ceil((x1 - x0) / maxStepMm));
+  for (let i = 1; i <= n; i++) {
+    let x = i === n ? x1 : x0 + (x1 - x0) * i / n;
+    halve(pts[pts.length - 1], new Pt(x, f(x)), 0);
+  }
+  return pts;
 }
 
 // ===== Surface development =====

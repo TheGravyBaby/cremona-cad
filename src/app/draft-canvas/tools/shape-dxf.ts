@@ -37,8 +37,7 @@ function line(out: Out, a: Pt, b: Pt): void {
 }
 
 function polyline(out: Out, points: Pt[], closed = false): void {
-  for (let i = 1; i < points.length; i++) line(out, points[i - 1], points[i]);
-  if (closed && points.length > 2) line(out, points[points.length - 1], points[0]);
+  out.entities.push({ type: 'LWPOLYLINE', points: points.map(pt => ({ x: pt.x, y: pt.y })), closed: closed && points.length > 2 });
 }
 
 function arc(out: Out, center: Pt, r: number, startAngle: number, endAngle: number): void {
@@ -96,7 +95,7 @@ function shapeToDxf(shape: DraftShape, out: Out): void {
       line(out, shape.vertex, shape.end);
       arc(out, shape.vertex, shape.radius, startAngle, startAngle + sweep);
       const labelPos = pointOnCircle({ ...shape.vertex, r: shape.radius + 2 }, startAngle + sweep / 2);
-      // %%d is DXF's degree sign: R12 text isn't reliably UTF-8
+      // %%d is DXF's degree sign: text before R2007 isn't UTF-8
       return text(out, labelPos, `${(sweep / TURN.degree).toFixed(1)}%%d`, 3, 0, 'left');
     }
     case 'curve-length': {
