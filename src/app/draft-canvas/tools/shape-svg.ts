@@ -1,5 +1,5 @@
 import { Pt } from '../../models/types';
-import { Matrix2D, applyMatrix, multiplyMatrices, parseSvgTransform, pathFromPolyline, transformPath } from '../../helpers/math/pathMath';
+import { Matrix2D, applyMatrix, multiplyMatrices, pathFromPolyline, transformPath } from '../../helpers/math/pathMath';
 import { polylineCumulativeLengths } from '../../helpers/math/vibeMath';
 import { pointOnCircle, normalizeRadians } from '../../helpers/math/simpleGeometry';
 import { RecordedElement } from '../../helpers/layer-recorder';

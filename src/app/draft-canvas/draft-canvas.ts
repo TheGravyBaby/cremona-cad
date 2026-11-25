@@ -13,7 +13,7 @@ import { Input } from '@angular/core';
 import { Pt } from '../models/types';
 import { Bounds, Camera } from './camera';
 import { unionRenderedBounds } from './scene-bounds';
-import { AxisGridController, CanvasViewport } from './axis-grid-controller';
+import { AxisGridController } from './axis-grid-controller';
 import { AxisControlsComponent } from './axis-controls/axis-controls';
 import { DraftTool, DraftToolHost } from './tools/draft-tool';
 import { ToolRegistryService } from './tools/tool-registry';

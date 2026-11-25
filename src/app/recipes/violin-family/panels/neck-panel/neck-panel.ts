@@ -22,7 +22,7 @@ import { familyStandards } from '../../violin-family-seed';
 import { PLATE_LAYOUT_GAP, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
-  channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, ribHeightAt, calcSideViewOffsetX, solveLongArching, calcTopPlatePlacement,
+  placeOnTopPlate, renderBodySideProfile, ribHeightAt, calcSideViewOffsetX, solveLongArching, calcTopPlatePlacement,
 } from '../long-arching-panel/long-arching-panel';
 import { defineSideScrollPath } from '../pegbox-panel/pegbox-panel';
 import { ScrollView, buildScrollBackViewStrokes, buildScrollFrontViewStrokes, solveScrollWidths } from '../scroll-widths-panel/scroll-widths-panel';

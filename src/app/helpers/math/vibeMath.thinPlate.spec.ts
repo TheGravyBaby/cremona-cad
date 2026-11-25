@@ -1,8 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { makeThinPlateSpline, thinPlateSplineFitter as makeThinPlateSplineFitter, Reading } from './vibeMath';
+import { Reading, thinPlateSplineFitter } from './vibeMath';
 
 const at = (x: number, y: number, v: number): Reading => ({ x, y, v });
+// the spline through readings in one go: the fitter's sites, fitted to their own values
+const makeThinPlateSpline = (readings: Reading[]) => thinPlateSplineFitter(readings)?.(readings.map(r => r.v)) ?? null;
 
 describe('a thin-plate spline', () => {
   const readings = [at(0, 0, 4), at(50, 0, 2), at(0, 60, 3), at(-40, -30, 2.5), at(30, 45, 3.5)];
@@ -42,7 +44,7 @@ describe('a thin-plate spline', () => {
 
 describe('a thin-plate spline fitter', () => {
   const sites = [at(0, 0, 0), at(50, 0, 0), at(0, 60, 0), at(-40, -30, 0), at(30, 45, 0)];
-  const fit = makeThinPlateSplineFitter(sites)!;
+  const fit = thinPlateSplineFitter(sites)!;
 
   it('fits the same spline as a one-shot fit, and refits new values at the same sites', () => {
     const first = [4, 2, 3, 2.5, 3.5], second = [1, 1, 5, 1, 2];

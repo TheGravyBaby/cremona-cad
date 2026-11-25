@@ -4,9 +4,9 @@ import * as polygonClipping from 'polygon-clipping';
 import * as d3 from 'd3';
 import { dist, angleFromCenter, normalizeRadians, TURN, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY, cubicBezierPoint, signedPolygonArea, closestPointOnSegment, pointInPolygon, stepAlong3, unitVec3 } from './simpleGeometry';
 import { circleCircleIntersections } from './draftMath';
-import { battenBeziers } from './vibeMath';
+import { battenBeziers, calcFittedSpans } from './vibeMath';
 import { solveCatenaryA, ArchSplineControlPoint, archSplineKnots, makeArchSplineZOf, trochoidNorm } from './archMath';
-import { arcCenterFromEndpoints, combinePathStrings, pathFromArc, pathFromLine } from './pathMath';
+import { arcCenterFromEndpoints, combinePathStrings, pathFromArc, pathFromLine, pathFromSpans } from './pathMath';
 
 // path strings past one-at-a-time: joining runs into loops, the area booleans, occlusion,
 // offsetting, and the curve families sampled into paths
@@ -847,6 +847,16 @@ function strokeSegCrossings(seg: StrokeSeg, q0: Pt, q1: Pt): number[] {
 // `stepMm`: the corners stay exact, which sampling by length alone cuts. Each comes back as a ring,
 // its last point left off; `withEnds` adds it, a closed subpath's being its first again, for
 // telling an open run from a loop and walking either to its end
+// a path carried through a smooth map of the plane, each line, arc and cubic of it as cubic spans
+// through the map's own images, halved until they keep within tolMm. The map bends straight lines
+// and circles into curves of its own, so nothing comes back as a line or an arc
+export function warpPath(d: string, warp: (pt: Pt) => Pt, tolMm: number): string {
+  return combinePathStrings(parseStrokeSubpaths(d).map(sub => pathFromSpans(sub.segs.flatMap(seg => calcFittedSpans(t => {
+    const q = warp(strokeSegAt(seg, t));
+    return new Pt3D(q.x, q.y, 0);
+  }, 0, 1, tolMm)), sub.closed)));
+}
+
 export function flattenPath(d: string, stepMm: number, withEnds = false): Pt[][] {
   return parseStrokeSubpaths(d).map(sub => {
     const poly = flattenSubpath(sub, stepMm);

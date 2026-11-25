@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, HostListener, output, afterNextRender, inject, Injector } from '@angular/core';
+import { AfterViewInit, Component, HostListener, afterNextRender, inject, Injector } from '@angular/core';
 import { Output, EventEmitter } from "@angular/core";
 import { APP_VERSION, RecipeInterface } from '../models/types';
 import { PanelFlow, PanelDefinition } from '../helpers/panelFlow';

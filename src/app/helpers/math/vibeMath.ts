@@ -1,103 +1,5 @@
 import { Pt, Pt3D, Circle } from "../../models/types";
-import { TURN, normalizeRadians, clamp, closestPointOnSegment, cubicBezierPoint } from "./simpleGeometry";
-import { arcTangentToLine, arcBetweenTravels } from "./draftMath";
-
-// ===== Arc/line closed-form inverses =====
-// Harmonic-fit solves: the raw radius from arcTangentToLine/arcBetweenTravels is transcendental
-// in the unknown angle, but always of the form a + b·cos(θ) + c·sin(θ) — three samples pin that
-// harmonic exactly, turning "solve for the angle" into "intersect a line with the unit circle".
-// Closed form, no iteration, but a level past anything a compass and straightedge does.
-
-// inverse of arcTangentToLine: radius is given, sweep is the unknown. arcTangentToLine's raw
-// r = numer(travel)/denom(travel) is transcendental in the sweep that sets `travel` — but numer
-// and denom are each of the form a + b·cos(sweep) + c·sin(sweep), so their difference at a chosen
-// target radius is too. Three samples pin that harmonic exactly, turning "solve for sweep" into
-// "intersect a line with the unit circle" — closed form, no iteration.
-export function sweepForTangentLineRadius(
-  P: Pt, travel: number, radius: number, turnSign: 1 | -1,
-  A: Pt, lineDir: Pt, targetRadius: number,
-): number | null {
-  const start0 = travel - turnSign * TURN.quarter;
-  const exit = Math.atan2(lineDir.y, lineDir.x);
-  const mx = -lineDir.y, my = lineDir.x;
-
-  const pointAt = (s: number): Pt =>
-    new Pt(P.x + radius * (Math.cos(start0 + s) - Math.cos(start0)), P.y + radius * (Math.sin(start0 + s) - Math.sin(start0)));
-
-  // numer(s) - target·denom(s), zero where the tangent-to-line solve's raw radius is `target`
-  const h = (s: number, target: number): number => {
-    const t = travel + s, pt = pointAt(s);
-    const nx = -Math.sin(t) + Math.sin(exit), ny = Math.cos(t) - Math.cos(exit);
-    return mx * (A.x - pt.x) + my * (A.y - pt.y) - target * (mx * nx + my * ny);
-  };
-
-  // fold into (-π, π]; a valid sweep shares turnSign's sign and stays short of a full reversal
-  const fold = (s: number): number => {
-    const n = normalizeRadians(s);
-    return n > TURN.half ? n - TURN.full : n;
-  };
-  const EPS = 1e-6;
-  const inRange = (s: number) => Math.sign(s) === turnSign && Math.abs(s) > EPS && Math.abs(s) < TURN.half - EPS;
-
-  // the raw (signed) solve only ever hits +target on the direct branch; the reflex branch (the
-  // other tangent circle, arcTangentToLine's r < 0 case) shows up at -target instead
-  for (const target of [targetRadius, -targetRadius]) {
-    const a0 = h(0, target), aHalf = h(TURN.quarter, target), aPi = h(TURN.half, target);
-    const a = (a0 + aPi) / 2, b = a0 - a, c = aHalf - a;
-    const R = Math.hypot(b, c);
-    if (R < 1e-9 || Math.abs(a) > R + 1e-9) continue;
-
-    const delta = Math.atan2(c, b);
-    const offset = Math.acos(clamp(-a / R, -1, 1));
-    // the raw solve hits the target radius on the reflex turn too, which arcTangentToLine cannot
-    // build — so a candidate only counts once that closing arc actually comes back
-    const candidates = [fold(delta + offset), fold(delta - offset)].filter(inRange)
-      .filter(s => arcTangentToLine(pointAt(s), travel + s, A, lineDir) != null);
-    if (candidates.length) return candidates.reduce((best, s) => Math.abs(s) < Math.abs(best) ? s : best);
-  }
-  return null;
-}
-
-// inverse of arcBetweenTravels when the target is a point on a circle rather than a fixed point:
-// entry ray (P, travel) is fixed, target is pointOnCircle(circle, theta) with tangent theta +
-// turnSign·π/2 — theta is the unknown, angle rather than length or sweep this time, but the same
-// shape carries over: arcBetweenTravels' raw radius is numer(theta)/denom(theta) with both numer
-// and denom affine in (cos theta, sin theta), so the target-radius root is too. Found the same
-// closed-form way, then simply handed to arcBetweenTravels to confirm and build — cheaper and
-// safer than re-deriving its run/sign validity checks a second time.
-export function angleForBridgeRadius(
-  P: Pt, travel: number, circle: Circle, turnSign: 1 | -1, targetRadius: number,
-): number | null {
-  const ux = Math.cos(travel), uy = Math.sin(travel);
-
-  const pointAt = (theta: number): Pt =>
-    new Pt(circle.x + circle.r * Math.cos(theta), circle.y + circle.r * Math.sin(theta));
-
-  // raw numer/denom of arcBetweenTravels' radius, with the target point read off the circle
-  const h = (theta: number, target: number): number => {
-    const exit = theta + turnSign * TURN.quarter, pt = pointAt(theta);
-    const ex = Math.sin(exit) - Math.sin(travel), ey = Math.cos(travel) - Math.cos(exit);
-    const denom = ux * ey - uy * ex;
-    const dx = pt.x - P.x, dy = pt.y - P.y;
-    return (dy * ux - dx * uy) - target * denom;
-  };
-
-  for (const target of [targetRadius, -targetRadius]) {
-    const a0 = h(0, target), aHalf = h(TURN.quarter, target), aPi = h(TURN.half, target);
-    const a = (a0 + aPi) / 2, b = a0 - a, c = aHalf - a;
-    const R = Math.hypot(b, c);
-    if (R < 1e-9 || Math.abs(a) > R + 1e-9) continue;
-
-    const delta = Math.atan2(c, b);
-    const offset = Math.acos(clamp(-a / R, -1, 1));
-    for (const theta of [normalizeRadians(delta + offset), normalizeRadians(delta - offset)]) {
-      const exit = theta + turnSign * TURN.quarter;
-      const bridged = arcBetweenTravels(P, travel, pointAt(theta), exit);
-      if (bridged && Math.abs(bridged.arc.r - Math.abs(targetRadius)) < 1e-6) return theta;
-    }
-  }
-  return null;
-}
+import { TURN, clamp, closestPointOnSegment, cubicBezierPoint } from "./simpleGeometry";
 
 // ===== Polyline nearest-point index =====
 // Built for dense batch queries (contour grids, wireframe strips, STL export) where a single
@@ -373,34 +275,6 @@ export function slicePolyline(poly: Pt[], cum: number[], a: number, b: number): 
   return b < a ? out.reverse() : out;
 }
 
-// the part of a polyline at or above height y, or at or below it, with the crossing interpolated in
-export function clipPolylineAtY(pts: Pt3D[], y: number, keep: 'above' | 'below'): Pt3D[] {
-  const kept = (pt: Pt3D) => keep === 'above' ? pt.y >= y : pt.y <= y;
-  const out: Pt3D[] = [];
-  for (let k = 0; k < pts.length; k++) {
-    const pt = pts[k];
-    const last = pts[k - 1];
-    if (last && kept(last) !== kept(pt)) {
-      const t = (y - last.y) / (pt.y - last.y);
-      out.push(new Pt3D(last.x + (pt.x - last.x) * t, y, last.z + (pt.z - last.z) * t));
-    }
-    if (kept(pt)) out.push(pt);
-  }
-  return out;
-}
-
-// where a polyline first passes height y, or null where it never does
-export function polylinePointAtY(pts: Pt3D[], y: number): Pt3D | null {
-  for (let k = 1; k < pts.length; k++) {
-    const a = pts[k - 1];
-    const b = pts[k];
-    if (a.y === b.y || (a.y - y) * (b.y - y) > 0) continue;
-    const t = (y - a.y) / (b.y - a.y);
-    return new Pt3D(a.x + (b.x - a.x) * t, y, a.z + (b.z - a.z) * t);
-  }
-  return null;
-}
-
 // ===== Cubic spans =====
 // A curve drawn as cubic Béziers end to end, each [from, c1, c2, to]. Built as the Hermite span of
 // a function between two of its points, so a curve that is a cubic in its own parameter comes back
@@ -426,6 +300,18 @@ export function calcHermiteSpan(f: (s: number) => Pt3D, a: number, b: number): C
     new Pt3D(to.x + lead(b1.x, b2.x, b3.x), to.y + lead(b1.y, b2.y, b3.y), to.z + lead(b1.z, b2.z, b3.z)),
     to,
   ];
+}
+
+// f from a to b as Hermite spans, each halved until it keeps within tolMm of f at its quarters
+export function calcFittedSpans(f: (s: number) => Pt3D, a: number, b: number, tolMm: number, maxDepth = 8): CubicSpan[] {
+  const span = calcHermiteSpan(f, a, b);
+  const strays = [0.25, 0.5, 0.75].some(u => {
+    const on = f(a + (b - a) * u), got = cubicPointAt(span, u);
+    return Math.hypot(on.x - got.x, on.y - got.y, on.z - got.z) > tolMm;
+  });
+  if (!strays || maxDepth <= 0) return [span];
+  const mid = (a + b) / 2;
+  return [...calcFittedSpans(f, a, mid, tolMm, maxDepth - 1), ...calcFittedSpans(f, mid, b, tolMm, maxDepth - 1)];
 }
 
 export function calcLineSpan(a: Pt3D, b: Pt3D): CubicSpan {
@@ -582,10 +468,11 @@ export function calcGraphSamples(f: (x: number) => number, x0: number, x1: numbe
 // millimetre across an f-hole. zAt returning null is off the surface, read as level with the last
 // height found.
 
-// surface length of the plan segment a→b, the heights read off zAt every stepMm
-export function liftedLength(zAt: (x: number, y: number) => number | null, a: Pt, b: Pt, stepMm = 0.25): number {
+// surface length of the plan segment a→b, the heights read off zAt every stepMm, or at `steps`
+// even steps whatever its length: a count that holds still as b moves keeps the length smooth in b
+export function liftedLength(zAt: (x: number, y: number) => number | null, a: Pt, b: Pt, stepMm = 0.25, steps?: number): number {
   const plan = Math.hypot(b.x - a.x, b.y - a.y);
-  const n = Math.max(1, Math.ceil(plan / stepMm));
+  const n = steps ?? Math.max(1, Math.ceil(plan / stepMm));
   let len = 0, prevZ = zAt(a.x, a.y) ?? 0;
   for (let i = 1; i <= n; i++) {
     const z = zAt(a.x + (b.x - a.x) * i / n, a.y + (b.y - a.y) * i / n) ?? prevZ;
@@ -595,13 +482,17 @@ export function liftedLength(zAt: (x: number, y: number) => number | null, a: Pt
   return len;
 }
 
-// plan points carried onto a card bent over the surface along the spine x = spine.x: `spine` maps
-// to itself, and every other point sits its surface distances along and across from it, signed as
-// in plan. The spine is walked once over the points' reach and each point reads its height off it
-export function developOverSurface(zAt: (x: number, y: number) => number | null, points: Pt[], spine: Pt, stepMm = 0.25): Pt[] {
-  if (!points.length) return [];
-  let y0 = spine.y, y1 = spine.y;
-  for (const pt of points) { if (pt.y < y0) y0 = pt.y; if (pt.y > y1) y1 = pt.y; }
+// the development as a map from plan to card over a patch: the card bent over the surface along
+// the spine x = spine.x, `spine` mapping to itself and every other point sitting its surface
+// distances along and across from it, signed as in plan. The spine is walked once over the patch's
+// height and each point reads its distance along off it; across, every point takes the same count
+// of steps out from the spine, so the map is smooth and a curve carried through it keeps tangents
+// that can be read off it
+export function buildSurfaceDevelopment(
+  zAt: (x: number, y: number) => number | null, reach: { minX: number; maxX: number; minY: number; maxY: number }, spine: Pt, stepMm = 0.25,
+): (pt: Pt) => Pt {
+  const y0 = Math.min(reach.minY, spine.y), y1 = Math.max(reach.maxY, spine.y);
+  const across = Math.max(1, Math.ceil(Math.max(Math.abs(reach.minX - spine.x), Math.abs(reach.maxX - spine.x)) / stepMm));
   const n = Math.max(1, Math.ceil((y1 - y0) / stepMm));
   const cum = [0];
   let prevZ = zAt(spine.x, y0) ?? 0;
@@ -616,11 +507,11 @@ export function developOverSurface(zAt: (x: number, y: number) => number | null,
     return cum[i] + (cum[i + 1] - cum[i]) * (f - i);
   };
   const v0 = along(spine.y);
-  return points.map(pt => {
+  return pt => {
     const foot = new Pt(spine.x, pt.y);
-    const u = Math.sign(pt.x - spine.x) * liftedLength(zAt, foot, pt, stepMm);
+    const u = Math.sign(pt.x - spine.x) * liftedLength(zAt, foot, pt, stepMm, across);
     return new Pt(spine.x + u, spine.y + along(pt.y) - v0);
-  });
+  };
 }
 
 // The fair curve a thin even strip takes bent through pins, as cubic Bézier spans [from, c1, c2, to].
@@ -1062,13 +953,7 @@ export interface Reading { x: number; y: number; v: number }
 // the thin-plate spline through scattered readings: the surface of least bending that passes
 // through every one, a plane plus an r² log r bump at each reading, as a contour map is drawn
 // between survey points. Exact on each reading and smooth between them, with no bullseyes; it can
-// rise past the readings between them, which a caller can hold. Null when there is nothing to fit:
-// fewer than three readings, or two at one spot
-export function makeThinPlateSpline(readings: Reading[]): ((x: number, y: number) => number) | null {
-  return thinPlateSplineFitter(readings)?.(readings.map(r => r.v)) ?? null;
-}
-
-// the same spline for a set of sites whose values are still to come: the system depends on the sites
+// rise past the readings between them, which a caller can hold. The system depends on the sites
 // alone, so it is factored once and each set of values is then fitted in O(n²), as a survey is
 // refitted while its stations stand and their readings change. Null for fewer than three sites or
 // two at one spot

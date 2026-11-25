@@ -1,76 +1,11 @@
 // @vitest-environment node
 import {
-  angleForBridgeRadius, buildPolylineIndex, calcArcSpans, calcGraphSamples, calcHermiteSpan, clipSpansAtY, cubicPointAt, distPointToPolyline, distPointToPolylineIndexed,
+  buildPolylineIndex, calcArcSpans, calcGraphSamples, calcHermiteSpan, clipSpansAtY, cubicPointAt, distPointToPolyline, distPointToPolylineIndexed,
   sliceCubic, spansPointAtY,
-  makeC2SplineWithFlatKnot, makeMonotoneSpline, sweepForTangentLineRadius,
+  makeC2SplineWithFlatKnot, makeMonotoneSpline,
 } from './vibeMath';
-import { arcContinuingFrom, arcBetweenTravels, arcTangentToLine } from './draftMath';
-import { pointOnCircle, travelAtArcEnd } from './simpleGeometry';
 import { Circle, Pt3D } from '../../models/types';
 import { pathFromSpans } from './pathMath';
-
-describe('sweepForTangentLineRadius', () => {
-  const deg = (d: number) => d * Math.PI / 180;
-  const P = { x: 12, y: -4 };
-  const travel = deg(70);
-  const A = { x: -30, y: 60 };
-  const lineDir = { x: Math.cos(deg(160)), y: Math.sin(deg(160)) };
-
-  it('inverts arcTangentToLine: recovers a sweep landing on the radius that sweep produces', () => {
-    for (const [radius, turnSign, sweep] of [[18, 1, deg(30)], [9, -1, deg(-55)], [40, 1, deg(80)]] as const) {
-      const arm = arcContinuingFrom(P, travel, radius, sweep);
-      const landing = arcTangentToLine(pointOnCircle(arm, arm.end), travelAtArcEnd(arm), A, lineDir);
-      expect(landing).not.toBeNull();
-
-      const solvedSweep = sweepForTangentLineRadius(P, travel, radius, turnSign, A, lineDir, landing!.r);
-      expect(solvedSweep).not.toBeNull();
-
-      const rebuilt = arcContinuingFrom(P, travel, radius, solvedSweep!);
-      const rebuiltLanding = arcTangentToLine(pointOnCircle(rebuilt, rebuilt.end), travelAtArcEnd(rebuilt), A, lineDir);
-      expect(rebuiltLanding).not.toBeNull();
-      expect(rebuiltLanding!.r).toBeCloseTo(landing!.r, 6);
-    }
-  });
-
-  it('refuses a radius only the other turn direction reaches', () => {
-    // this radius is real, but only by sweeping the arm the other way — turnSign pins the
-    // search to one side, so it should come back null rather than a wrong-handed arc
-    const otherWay = arcContinuingFrom(P, travel, 18, deg(-60));
-    const landing = arcTangentToLine(pointOnCircle(otherWay, otherWay.end), travelAtArcEnd(otherWay), A, lineDir);
-    expect(sweepForTangentLineRadius(P, travel, 18, 1, A, lineDir, landing!.r)).toBeNull();
-  });
-});
-
-describe('angleForBridgeRadius', () => {
-  const deg = (d: number) => d * Math.PI / 180;
-  const P = { x: 5, y: 30 };
-  const travel = deg(-40);
-  const circle = new Circle(60, -10, 22);
-
-  it('inverts arcBetweenTravels: recovers an angle landing on the radius that angle produces', () => {
-    for (const [turnSign, theta0] of [[1, deg(200)], [-1, deg(140)], [1, deg(310)]] as const) {
-      const exit = theta0 + turnSign * Math.PI / 2;
-      const target = pointOnCircle(circle, theta0);
-      const bridged = arcBetweenTravels(P, travel, target, exit);
-      expect(bridged).not.toBeNull();
-
-      const solvedTheta = angleForBridgeRadius(P, travel, circle, turnSign, bridged!.arc.r);
-      expect(solvedTheta).not.toBeNull();
-
-      const rebuiltExit = solvedTheta! + turnSign * Math.PI / 2;
-      const rebuilt = arcBetweenTravels(P, travel, pointOnCircle(circle, solvedTheta!), rebuiltExit);
-      expect(rebuilt).not.toBeNull();
-      expect(rebuilt!.arc.r).toBeCloseTo(bridged!.arc.r, 6);
-    }
-  });
-
-  it('refuses a radius no point on this circle reaches, either turn direction', () => {
-    // unlike a sweep search, theta covers a full turn either way, so "wrong turn direction" isn't
-    // reliably unreachable here — a radius genuinely too big for the geometry is
-    expect(angleForBridgeRadius(P, travel, circle, 1, 1000)).toBeNull();
-    expect(angleForBridgeRadius(P, travel, circle, -1, 1000)).toBeNull();
-  });
-});
 
 describe('makeMonotoneSpline', () => {
   /**

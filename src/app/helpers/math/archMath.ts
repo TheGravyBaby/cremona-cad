@@ -1,4 +1,4 @@
-import { clamp, smoothstep, TURN } from './simpleGeometry';
+import { smoothstep, TURN } from './simpleGeometry';
 import { makeC2SplineWithFlatKnot, makeMonotoneSpline } from './vibeMath';
 
 // arching math for any carved plate: the channel a gouge cuts as a circular segment, the arch

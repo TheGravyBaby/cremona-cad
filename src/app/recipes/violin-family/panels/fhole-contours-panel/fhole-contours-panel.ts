@@ -20,7 +20,6 @@ import { FholeCutParams, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey,
 import { PanelComponentBase } from '../panel-component-base';
 import { FholeArcKey, FholeContoursSolve, FholeFailure } from '../../violin-family-solves';
 import { FHOLE_SEED_RATIOS, FholeRatios } from '../../violin-family-seed';
-import { renderBoutBounds } from '../main-bouts-panel/main-bouts-panel';
 import { FholeNotch, calcFholeNotches, renderFholeBounds, roundToQuarter, renderFholeNotches, renderFholePlate, renderFlutingEdgeGuide, calcStemEdgePoints } from '../fhole-placement-panel/fhole-placement-panel';
 
 // The f-hole contours: what bends between the eyes and the stem. From each eye a shoulder (U1/L1)

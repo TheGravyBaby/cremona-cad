@@ -5,10 +5,10 @@ import {
 } from '../../../../helpers/math/simpleGeometry';
 import {
   applyMatrix, arcPathData, combinePathStrings, Matrix2D, parseSvgTransform, pathFromArc, pathFromCircle, pathFromLine, pathFromPolygon, pathFromPolyline,
-  pathFromRect, pathsBounds, rotatePath180, samplePathToPolyline, transformPath, translatePath,
+  pathFromRect, pathFromSpans, pathsBounds, rotatePath180, samplePathToPolyline, transformPath, translatePath,
 } from '../../../../helpers/math/pathMath';
-import { occludePath, unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
-import { developOverSurface, polylineCrossingsAtY } from '../../../../helpers/math/vibeMath';
+import { occludePath, unifyConnectedSvgPaths, warpPath } from '../../../../helpers/math/pathVibes';
+import { buildSurfaceDevelopment, calcFittedSpans, calcLineSpan, cubicPointAt, CubicSpan, polylineCrossingsAtY } from '../../../../helpers/math/vibeMath';
 import {
   buildMirroredSvg, buildPackedSvg, downloadPdf, downloadSvgFile, pageSizeFor, paginatePieces, PaperPage, paperFor, PdfPage, PieceGroup,
   SvgPathExport, SvgTextExport,
@@ -20,7 +20,7 @@ import {
   buildDrawingPage, buildSchematicPage, DRAWING_TEXT, formatHeight, formatMm, SCHEMATIC_AREA, SHEET_SCREEN_FONT, SheetBlock, SheetHeading, SheetMark, SheetPageSpec, SheetRow, SheetStroke,
   SheetView, timesWidth,
 } from '../../../../helpers/sheetDraft';
-import { Arc, Circle, Pt, Rectangle } from '../../../../models/types';
+import { Arc, Circle, Pt, Pt3D, Rectangle } from '../../../../models/types';
 import { DASH, SHEET, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import {
@@ -44,7 +44,7 @@ import { calcStemEdgePoints, stemEdgeAt } from '../fhole-placement-panel/fhole-p
 import { definePurflingPath, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
-  calcRibLine, calcTopPlatePlacement, channelCenterlineZAt, defineArchPath, defineBodySideProfile, longArchHeightAt, placeOnTopPlate, solveLongArching,
+  archZAt, calcRibLine, calcTopPlatePlacement, channelCenterlineZAt, defineBodySideProfile, longArchHeightAt, placeOnTopPlate, solveLongArching,
 } from '../long-arching-panel/long-arching-panel';
 import {
   BodyLandmark, calcBodyLandmarks, calcSectionRuns, plateHalfChordAtY, rowAt, solveCrossArching, STATION_MERGE_EPS_MM, surfaceZAt,
@@ -125,6 +125,9 @@ export const EXPORT_GROUPS: ReadonlyArray<{ label: string; rows: ReadonlyArray<{
 ];
 
 const FHOLE_TEMPLATE_MARGIN = 10;
+// a curve a template is cut to keeps within a fiftieth of a millimetre of the hole or arch it's
+// drawn from, as the arch sections do
+const TEMPLATE_TOLERANCE = 0.02;
 // from the blank's right edge to the centre of the 'Arched' label, about half its width and a gap
 const FHOLE_LABEL_INSET = 11;
 // a sheet in its own frame is sized from its geometry, with this much round it
@@ -438,7 +441,7 @@ function fholeTemplate(p: ViolinFamilyParams, renderEyes: boolean, arched = fals
     if (!surface) return null;
     let flat = pathsBounds([raw]);
     let spine = new Pt((flat.minX + flat.maxX) / 2, (flat.minY + flat.maxY) / 2);
-    raw = pathFromPolygon(developOverSurface(plateZAt(surface), samplePathToPolyline(raw, 0.25), spine));
+    raw = warpPath(raw, buildSurfaceDevelopment(plateZAt(surface), flat, spine), TEMPLATE_TOLERANCE);
   }
   let b = pathsBounds([raw]);
   let width = Math.ceil(b.width + 2 * FHOLE_TEMPLATE_MARGIN);
@@ -495,7 +498,7 @@ function compassSheet(p: ViolinFamilyParams): { box: string; marks: string; cent
   walk.stations.forEach((st, k) => {
     marks.push(k === last
       ? combinePathStrings([
-        pathFromPolyline(Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: 0, y: y(st), r: st.half }, -TURN.half * i / 32))),
+        arcPathData(new Pt(0, y(st)), st.half, 0, -TURN.half, true),
         pathFromLine(new Pt(-st.half, y(st)), new Pt(st.half, y(st))),
       ])
       : pathFromCircle(new Circle(0, y(st), st.half)));
@@ -1063,27 +1066,16 @@ export interface TemplateShape {
   labelRotation: number;
 }
 
-// the vertices of a plain `M x y L x y …` polyline, exactly as written
-function parsePolyline(path: string): Pt[] {
-  return [...path.matchAll(/[ML]\s*(-?[\d.]+(?:e-?\d+)?)[\s,]+(-?[\d.]+(?:e-?\d+)?)/gi)].map(m => new Pt(+m[1], +m[2]));
-}
+const archSpan = (arch: CubicSpan[]) => dist(arch[0][0], arch[arch.length - 1][3]);
 
-const archSpan = (arch: Pt[]) => dist(arch[0], arch[arch.length - 1]);
-
-// the arch, the same arch lifted off the wood by `lift`, and the two ends joining them. The lifted
-// copy is handed over already walking back, since unify can only turn round a single segment. The
-// label sits at the crown, where the strip runs straightest
-function archTemplate(arch: Pt[], lift: Pt, label: string, labelRotation: number): TemplateShape {
-  let last = arch.length - 1;
-  let lifted = arch.map(pt => new Pt(pt.x + lift.x, pt.y + lift.y));
-  let path = unifyConnectedSvgPaths([
-    pathFromPolyline(arch),
-    pathFromLine(arch[last], lifted[last]),
-    pathFromPolyline([...lifted].reverse()),
-    pathFromLine(lifted[0], arch[0]),
-  ]) + ' Z';
-  let along = (pt: Pt) => pt.x * lift.x + pt.y * lift.y;
-  let crown = arch.reduce((a, b) => along(b) > along(a) ? b : a);
+// the arch, the same arch lifted off the wood by `lift` walking back, and the two ends joining
+// them, one closed path. The label sits at the crown, where the strip runs straightest
+function archTemplate(arch: CubicSpan[], lift: Pt, label: string, labelRotation: number): TemplateShape {
+  let start = arch[0][0], end = arch[arch.length - 1][3];
+  let lifted = [...arch].reverse().map(span => [span[3], span[2], span[1], span[0]].map(pt => new Pt3D(pt.x + lift.x, pt.y + lift.y, 0)) as CubicSpan);
+  let path = pathFromSpans([...arch, calcLineSpan(end, lifted[0][0]), ...lifted, calcLineSpan(lifted[lifted.length - 1][3], start)], true);
+  let along = (pt: Pt3D) => pt.x * lift.x + pt.y * lift.y;
+  let crown = arch.flatMap(span => [0, 1, 2, 3, 4, 5, 6, 7].map(k => cubicPointAt(span, k / 8))).reduce((a, b) => along(b) > along(a) ? b : a);
   return { path, label, labelPos: new Pt(crown.x + lift.x / 2, crown.y + lift.y / 2), labelRotation };
 }
 
@@ -1153,7 +1145,9 @@ export function crossArchTemplates(p: ViolinFamilyParams): TemplateShape[] {
     let signZ = plate === 'top' ? 1 : -1;
     return templateStations(p, plate).flatMap(({ y, code }) => {
       let arch = calcSectionRuns(surface, y).find(run => run.part === 'arch');
-      return arch ? [{ pts: arch.pts.map(pt => new Pt(pt.x, signZ * pt.y)), label: `${label} ${code ? `${code} ` : ''}${Math.round(y)}mm`, plate, signZ }] : [];
+      // the section is the sampler's own points, each joined to the next as it was measured
+      let pts = arch?.pts.map(pt => new Pt3D(pt.x, signZ * pt.y, 0));
+      return pts ? [{ pts: pts.slice(1).map((pt, i) => calcLineSpan(pts[i], pt)), label: `${label} ${code ? `${code} ` : ''}${Math.round(y)}mm`, plate, signZ }] : [];
     });
   });
   if (!arches.length) return [];
@@ -1176,7 +1170,7 @@ export function longArchTemplates(p: ViolinFamilyParams): TemplateShape[] {
     let la = a[plate];
     if (!la) continue;
     let sign: 1 | -1 = plate === 'top' ? 1 : -1;
-    let arch = parsePolyline(defineArchPath(la.lowered, la.span, la.yStart, 0, sign, la.farZ));
+    let arch = calcFittedSpans(s => new Pt3D(sign * archZAt(la.lowered, la.span, s, la.farZ), la.yStart + s, 0), 0, la.span, TEMPLATE_TOLERANCE);
     let shape = archTemplate(arch, new Pt(sign * templateWidth(archSpan(arch)), 0), `${label} Long`, 90);
     templates.push(plate === 'top' ? rotateTemplateShape180(shape) : shape);
   }
