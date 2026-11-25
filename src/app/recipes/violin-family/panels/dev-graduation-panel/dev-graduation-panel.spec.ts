@@ -4,7 +4,7 @@ import { dist, pointInPolygon } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
-import { calcClearSpot, calcHoleFill, calcLevelBridges, DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, thicknessBands, thicknessField, zonePoints } from './dev-graduation-panel';
+import { calcClearSpot, calcHoleFill, isPointClear, calcLevelBridges, DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, thicknessBands, thicknessField, zonePoints } from './dev-graduation-panel';
 import { definePurflingPath, PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
 import { MainBoutsPanel, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -16,7 +16,7 @@ import { MouldPanel } from '../mould-panel/mould-panel';
 import { ThemeService } from '../../../../theme/theme.service';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
-import { GraduationParams, ViolinFamilyParams } from '../../violin-family-types';
+import { GraduationParams, GraduationPoint, ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
 const blank = (): ViolinFamilyParams => JSON.parse(JSON.stringify(DEFAULT_VIOLIN_FAMILY_PARAMS));
@@ -96,7 +96,7 @@ describe('the graduation solve', () => {
     const { settings, solve: s } = solved(p);
     const rib = ribLine(p);
     const idx = buildPolylineIndex(rib);
-    for (const [d, inset] of [[s.lining!, settings.lining], [s.boundary!, settings.edgeInset]] as const) {
+    for (const [d, inset] of [[s.lining!, settings.lining], [s.boundary!, settings.lining + settings.edgeInset]] as const) {
       for (const pt of points(d)) {
         expect(pointInPolygon(pt, rib)).toBe(true);
         // sampled chords cut inside the arcs, so a hair of slack
@@ -199,8 +199,8 @@ describe('the graduation solve', () => {
     expect(s.boundary).not.toBeNull();
   });
 
-  it('refuses an edge inset short of the linings', () => {
-    const s = solved(seeded(), g => g.edgeInset = g.lining / 2).solve;
+  it('refuses an edge inset with no value', () => {
+    const s = solved(seeded(), g => g.edgeInset = NaN).solve;
     expect(s.lining).not.toBeNull();
     expect(s.boundary).toBeNull();
     expect(s.failures.map(f => f.unsolved)).toEqual([['edgeInset']]);
@@ -261,7 +261,7 @@ describe('the graduation grid', () => {
 
   it('is empty while the boundary is unsolved', () => {
     const p = seeded();
-    solved(p, s => s.edgeInset = s.lining / 2);
+    solved(p, s => s.edgeInset = NaN);
     expect(gridPoints(p, SPACING, 'top')).toEqual([]);
   });
 
@@ -275,18 +275,18 @@ describe('the graduation grid', () => {
 });
 
 describe('an added point', () => {
-  it('lands inside the ground, clear of every point already placed, on a grid as well', () => {
+  it('lands inside the ground, clear of every point already placed, until the plate is full', () => {
     const p = seeded();
     const { solve } = solved(p);
     const ground = solve.ground!;
-    const placed = gridPoints(p, SPACING, 'top');
-    for (let n = 0; n < 40; n++) {
-      const at = calcClearSpot(ground, placed)!;
+    const placed: GraduationPoint[] = [];
+    for (let at = calcClearSpot(ground, placed); at && placed.length < 500; at = calcClearSpot(ground, placed)) {
       expect(pointInPolygon(at, ground.loop)).toBe(true);
-      const nearest = Math.min(...placed.map(pt => Math.hypot(pt.x - at.x, pt.y - at.y)));
-      expect(nearest).toBeGreaterThanOrEqual(8);
+      expect(isPointClear(placed, at)).toBe(true);
       placed.push({ x: at.x, y: at.y, thickness: 3 });
     }
+    expect(placed.length).toBeGreaterThan(4);
+    expect(calcClearSpot(ground, placed)).toBeNull();
   });
 
   it('finds no spot on a plate already laid closer than the clearance', () => {
@@ -388,7 +388,7 @@ describe('the thickness field', () => {
   it('is nothing until the boundary solves', () => {
     const p = arched();
     const s = gridded(p);
-    s.edgeInset = s.lining / 2;
+    s.edgeInset = NaN;
     expect(thicknessField(p, 'back')).toBeNull();
   });
 
@@ -792,7 +792,7 @@ describe('the zones layout', () => {
   it('is empty until the boundary solves', () => {
     const p = seeded();
     const settings = grad(p);
-    settings.edgeInset = settings.lining / 2;
+    settings.edgeInset = NaN;
     expect(zonePoints(p, 'back')).toEqual([]);
   });
 });
