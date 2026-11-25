@@ -1,0 +1,104 @@
+<section class="ui-group">
+    <div class="ui-group-title">Mesh</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Plate</span>
+            <select [(ngModel)]="options.plate" (change)="drawCanvas()">
+                <option value="top">Top</option>
+                <option value="back">Back</option>
+            </select>
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Element size</span>
+            <input type="number" class="basic-input" step="0.5" min="0" [(ngModel)]="options.step" (input)="drawCanvas()" />
+        </label>
+    </div>
+    @if (hasBar) {
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="options.bar" (change)="drawCanvas()" /><span>Bass bar</span>
+        </div>
+    </div>
+    }
+    <div class="input-group basic-row field-row" role="group">
+        <button type="button" class="panel-nav-btn" (click)="buildMesh()">Build Mesh</button>
+    </div>
+    @if (s?.triangles?.length) {
+    <p class="hint">{{ s!.nodes.length }} nodes, {{ s!.triangles.length + s!.web.length }} elements, the sharpest corner {{ minAngle.toFixed(0) }}°.</p>
+    } @else {
+    <p class="hint">Building takes a few seconds. A change to the plate or to these fields clears the mesh.</p>
+    }
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">{{ options.plate === 'top' ? 'Top' : 'Back' }} Wood</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Species</span>
+            <select [(ngModel)]="plateWood.species" (change)="recordEditAndRedraw()">
+                <option value="spruce">Spruce</option>
+                <option value="maple">Maple</option>
+            </select>
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Cut</span>
+            <select [(ngModel)]="plateWood.cut" (change)="recordEditAndRedraw()">
+                <option value="quarter">On the quarter</option>
+                <option value="slab">On the slab</option>
+            </select>
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Density <span class="unit-label">kg/m³</span></span>
+            <input type="number" class="basic-input" step="5" min="0" [(ngModel)]="plateWood.density" (input)="recordEditAndRedraw()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Stiffness <span class="unit-label">GPa</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="plateWood.stiffness" (input)="recordEditAndRedraw()" />
+        </label>
+    </div>
+    @if (s?.triangles?.length) {
+    <p class="hint">The plate weighs {{ plateGrams.toFixed(1) }} g.</p>
+    }
+</section>
+
+@if (hasBar && options.bar) {
+<section class="ui-group">
+    <div class="ui-group-title">Bass Bar Wood</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Species</span>
+            <select [(ngModel)]="barWood.species" (change)="recordEditAndRedraw()">
+                <option value="spruce">Spruce</option>
+                <option value="maple">Maple</option>
+            </select>
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Density <span class="unit-label">kg/m³</span></span>
+            <input type="number" class="basic-input" step="5" min="0" [(ngModel)]="barWood.density" (input)="recordEditAndRedraw()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Stiffness <span class="unit-label">GPa</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="barWood.stiffness" (input)="recordEditAndRedraw()" />
+        </label>
+    </div>
+    @if (s?.web?.length) {
+    <p class="hint">The bar weighs {{ barGrams.toFixed(1) }} g.</p>
+    }
+</section>
+}
+
+<section class="ui-group">
+    <div class="ui-group-title">CalculiX Deck</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Modes</span>
+            <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="modes" />
+        </label>
+        <button type="button" class="panel-nav-btn" (click)="exportDeck()">Export .inp</button>
+    </div>
+    <p class="hint">The plate free, as it is tapped; exporting builds the mesh if it isn't built. Run it with <code>ccx</code>; the first six modes are the plate moving whole, the ones after are its own.</p>
+</section>

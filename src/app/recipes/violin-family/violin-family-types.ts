@@ -24,6 +24,7 @@ export interface ViolinFamilyParams {
   arching?: ArchingParams;
   graduation?: GraduationParams;
   bassBar?: BassBarParams;
+  wood?: WoodParams;
   neck?: NeckParams;
   scroll?: ScrollParams;
   stringSetup?: StringSetupParams;
@@ -329,6 +330,29 @@ export interface BassBarPoint {
   mirror: boolean;
 }
 
+// the wood each part is cut from, for analysis: what a maker can weigh and tap on the billet. The
+// density is in kg/m³ and the stiffness, Young's modulus along the grain, in GPa; the species
+// stands for the constants nobody measures, held as ratios to that stiffness. A plate's cut says
+// which way the rings stand: on the quarter they stand upright across the plate, on the slab they
+// lie in it. The bar is always on the quarter
+export interface WoodParams {
+  top: PlateWood;
+  back: PlateWood;
+  bassBar: Wood;
+}
+
+export type WoodSpecies = 'spruce' | 'maple';
+
+export interface Wood {
+  species: WoodSpecies;
+  density: number;
+  stiffness: number;
+}
+
+export interface PlateWood extends Wood {
+  cut: 'quarter' | 'slab';
+}
+
 // the neck set in the side elevation and its widths in plan. Length runs along the fingerboard
 // plane from the mortise floor to the nut's foot, which it places; the angle is the fingerboard
 // plane's tilt off the top plate's square, in degrees. The thicknesses are the wood alone, the upper
@@ -535,7 +559,7 @@ export const VIOLIN_FAMILY_RECIPE_NAME = 'violin-family-recipe';
 export const VIOLIN_FAMILY_VIEW_FLAGS_KEY = 'violinFamilyViewFlags';
 
 // ids are file-format vocabulary: reference images scope to them, and the session remembers one
-export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'plateContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'pegbox', 'scrollWidths', 'stringSetup', 'mould', 'export', 'devFingerboard', 'devGraduation', 'devBassBar', 'devExport'] as const;
+export const VIOLIN_FAMILY_PANEL_IDS = ['base', 'mainBouts', 'corners', 'plateContour', 'fluting', 'fHolePlacement', 'fHoleContours', 'longArching', 'crossArching', 'neck', 'volute', 'pegbox', 'scrollWidths', 'stringSetup', 'mould', 'export', 'devFingerboard', 'devGraduation', 'devBassBar', 'devFem', 'devExport'] as const;
 export type ViolinFamilyPanelId = typeof VIOLIN_FAMILY_PANEL_IDS[number];
 
 export interface ViolinFamilyRecipe extends RecipeInterface<ViolinFamilyParams> {

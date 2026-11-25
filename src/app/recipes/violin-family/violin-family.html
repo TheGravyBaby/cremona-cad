@@ -262,6 +262,16 @@
         </app-vf-dev-bassbar-panel>
         }
 
+        @if (openPanel === 'devFem') {
+        <app-vf-dev-fem-panel #panelRef
+            [params]="d.params"
+            [flags]="viewFlags"
+            [fileName]="d.fileName"
+            (drawn)="draftChange.emit($event)"
+            (edit)="onPanelEdit()">
+        </app-vf-dev-fem-panel>
+        }
+
         @if (openPanel === 'devExport') {
         @defer {
         <app-vf-dev-export-panel #panelRef

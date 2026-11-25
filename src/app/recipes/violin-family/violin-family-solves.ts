@@ -1,4 +1,4 @@
-import { Arc, Circle, Pt, Rectangle } from '../../models/types';
+import { Arc, Circle, Pt, Pt3D, Rectangle, Vec3 } from '../../models/types';
 import { SolveFailure } from '../../helpers/validators';
 import { PolylineIndex } from '../../helpers/math/vibeMath';
 import { ArchTakeoff } from '../../helpers/math/archMath';
@@ -428,4 +428,30 @@ export interface BassBarSolve {
   bottom: Pt[];
   knots: BassBarKnot[];
   failures: BassBarFailure[];
+}
+
+export type FemKey = 'mesh' | 'bar' | 'wood';
+export type FemFailure = SolveFailure<FemKey>;
+
+// one plate as shell elements. A node stands on the plate's mid-surface: `plan` is where it was
+// read on the outside, `nodes` that point carried in square to the outside by half the `thickness`
+// read there, along `normals`. The corner nodes come first, `corners` of them. `triangles` are the
+// plate's, six nodes each as an S6 takes them; `web` is the bass bar's, a row of eight-node
+// quadrilaterals standing on the bar's centreline and hanging to its underside, sharing the plate's
+// nodes along their upper edge. The volumes are in mm³: the bar's as it is carved, and the web's as
+// it stands, which starts half a plate higher. Empty until the plate is graduated
+export interface FemSolve {
+  plate: Plate;
+  plan: Pt[];
+  nodes: Pt3D[];
+  normals: Vec3[];
+  thickness: number[];
+  corners: number;
+  triangles: number[][];
+  web: number[][];
+  plateVolume: number;
+  barVolume: number;
+  webVolume: number;
+  minAngle: number;
+  failures: FemFailure[];
 }

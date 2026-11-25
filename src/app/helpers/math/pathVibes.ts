@@ -1508,7 +1508,7 @@ export function normalOffsetZAt(zAt: (x: number, y: number) => number | null, de
 
 // the unit normal, pointing up, by central differences; one-sided where a neighbour falls off the
 // field, level along an axis where both do
-function heightFieldNormalAt(zAt: (x: number, y: number) => number | null, x: number, y: number, z: number, h: number): Vec3 {
+export function heightFieldNormalAt(zAt: (x: number, y: number) => number | null, x: number, y: number, z: number, h: number): Vec3 {
   let slope = (plus: number | null, minus: number | null): number =>
     plus !== null && minus !== null ? (plus - minus) / (2 * h)
       : plus !== null ? (plus - z) / h
