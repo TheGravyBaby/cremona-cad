@@ -24,9 +24,9 @@
         <button type="button" class="panel-nav-btn" (click)="buildMesh()">Build Mesh</button>
     </div>
     @if (s?.triangles?.length) {
-    <p class="hint">{{ s!.nodes.length }} nodes, {{ s!.triangles.length + s!.web.length }} elements, the sharpest corner {{ minAngle.toFixed(0) }}°.</p>
+    <p class="hint">{{ s!.nodes.length }} nodes, {{ s!.triangles.length + s!.web.length }} elements.</p>
     } @else {
-    <p class="hint">Building takes a few seconds. A change to the plate or to these fields clears the mesh.</p>
+    <p class="hint">Building takes a few seconds :] </p>
     }
 </section>
 
@@ -59,7 +59,7 @@
         </label>
     </div>
     @if (s?.triangles?.length) {
-    <p class="hint">The plate weighs {{ plateGrams.toFixed(1) }} g.</p>
+    <p class="hint">Plate Weight:  {{ plateGrams.toFixed(1) }} g.</p>
     }
 </section>
 
@@ -86,7 +86,7 @@
         </label>
     </div>
     @if (s?.web?.length) {
-    <p class="hint">The bar weighs {{ barGrams.toFixed(1) }} g.</p>
+    <p class="hint">Bar Weight: {{ barGrams.toFixed(1) }} g.</p>
     }
 </section>
 }
@@ -100,5 +100,5 @@
         </label>
         <button type="button" class="panel-nav-btn" (click)="exportDeck()">Export .inp</button>
     </div>
-    <p class="hint">The plate free, as it is tapped; exporting builds the mesh if it isn't built. Run it with <code>ccx</code>; the first six modes are the plate moving whole, the ones after are its own.</p>
+    <p class="hint">Run mesh with it with the <code>ccx</code> command.</p>
 </section>
