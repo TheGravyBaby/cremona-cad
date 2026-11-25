@@ -836,19 +836,32 @@ describe('the schematic', () => {
     for (const pair of [...turns.widths, ...turns.heights]) expect(dimensions.some(m => dist(m.from, pair[0]) < 1e-9 && dist(m.to, pair[1]) < 1e-9)).toBe(true);
   });
 
-  it('calls each of the head\'s widths out at the height the widths solve hangs it, on the outline it measures', () => {
+  it('draws the head\'s side, front and back at one scale', () => {
+    const views = schematicPage(scrolled(), 'head')!.columns.flatMap(column => column.blocks).flatMap(block => 'view' in block ? [block] : []);
+    expect(views).toHaveLength(2);
+    expect(views.every(block => block.scales?.length === 1 && block.scales[0] === views[0].scales![0])).toBe(true);
+  });
+
+  it('draws each of the head\'s widths across its level, its height off the nut line stacked clear of the rest', () => {
     const p = scrolled();
     const stations = calcScrollWidthStations(p, solveScroll(p)!);
     for (const scale of [1, 2]) {
-      const [view] = pageViews(schematicPage(p, 'head')!, scale);
-      const callouts = marksOf(view, 'callout');
-      expect(callouts.length).toBeGreaterThan(8);
-      for (const callout of callouts) {
-        const match = stations.filter(st => st.at.y === callout.at.y && formatMm(st.width, 2) === callout.text);
-        expect(match.length, `${callout.sub} at ${callout.at.y}`).toBeGreaterThan(0);
+      const [, view] = pageViews(schematicPage(p, 'head')!, scale);
+      const dimensions = marksOf(view, 'dimension');
+      const level = dimensions.filter(m => Math.abs(m.from.y - m.to.y) < 1e-9);
+      const upright = dimensions.filter(m => Math.abs(m.from.x - m.to.x) < 1e-9);
+      for (const st of stations.filter(st => level.some(m => m.from.y === st.at.y && m.text === formatMm(st.width, 2)))) {
+        const across = level.find(m => m.from.y === st.at.y && m.text === formatMm(st.width, 2))!;
+        expect(dist(across.from, across.to)).toBeCloseTo(st.width, 9);
+        if (Math.abs(st.at.y) < 1e-6) continue;
+        const up = upright.filter(m => Math.abs(m.from.x - across.from.x) < 1e-9 || Math.abs(m.from.x - across.to.x) < 1e-9);
+        expect(up.some(m => Math.min(m.from.y, m.to.y) === Math.min(0, st.at.y) && Math.max(m.from.y, m.to.y) === Math.max(0, st.at.y))).toBe(true);
       }
-      // the leader starts out from the outline, never back across the view
-      for (const callout of callouts) expect(callout.dx).toBeGreaterThan(0);
+      expect(level.length).toBeGreaterThan(8);
+      // heights measured from one edge each sit at their own offset, none on another
+      const stacks = new Map<number, number[]>();
+      for (const m of upright.filter(m => m.through && m.through.y === 0)) stacks.set(m.through!.x, [...(stacks.get(m.through!.x) ?? []), m.offset!]);
+      for (const offsets of stacks.values()) expect(new Set(offsets).size).toBe(offsets.length);
     }
   });
 

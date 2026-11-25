@@ -17,8 +17,8 @@ import { downloadDxfFile } from '../../../../helpers/dxfExporter';
 import { buildHeightFieldStl, downloadStlFile, HeightFieldCut } from '../../../../helpers/stlExporter';
 import { renderFilledPath, renderPath, renderText, renderTranslatedLayers } from '../../../../helpers/renderFuncs';
 import {
-  buildDrawingPage, buildSchematicPage, DRAWING_TEXT, formatHeight, formatMm, SCHEMATIC_AREA, SHEET_SCREEN_FONT, SheetBlock, SheetHeading, SheetMark, SheetPageSpec, SheetRow, SheetStroke,
-  SheetView, timesWidth,
+  BLOCK_GAP, buildDrawingPage, buildSchematicPage, fitView, DRAWING_TEXT, formatHeight, formatMm, SCHEMATIC_AREA, SHEET_SCREEN_FONT, SheetBlock, SheetHeading, SheetMark, SheetPageSpec, SheetRow, SheetStroke,
+  SheetView,
 } from '../../../../helpers/sheetDraft';
 import { Arc, Circle, Pt, Pt3D, Rectangle } from '../../../../models/types';
 import { DASH, SHEET, STROKE_WEIGHT } from '../../../../theme/palettes';
@@ -957,28 +957,23 @@ export function calcVoluteTurns(s: ScrollSolve): { widths: [Pt, Pt][]; heights: 
   };
 }
 
-// which view shows each width, and what the sheet calls it
-const HEAD_WIDTHS: Partial<Record<ScrollStationKey, { view: 'front' | 'back'; name: string }>> = {
-  nut: { view: 'front', name: 'nut' },
-  hip: { view: 'front', name: 'hips' },
-  throat: { view: 'front', name: 'throat' },
-  turn2Bottom: { view: 'front', name: 'turn 2, bottom' },
-  eye: { view: 'front', name: 'eyes' },
-  turn2Top: { view: 'front', name: 'turn 2, top' },
-  crown: { view: 'front', name: 'crown' },
-  duckTail: { view: 'back', name: 'duck tail' },
-  foot: { view: 'back', name: 'foot' },
-  poll: { view: 'back', name: 'poll' },
-  turn1Bottom: { view: 'back', name: 'turn 1, bottom' },
+// which view shows each width
+const HEAD_WIDTHS: Partial<Record<ScrollStationKey, 'front' | 'back'>> = {
+  nut: 'front', hip: 'front', throat: 'front', turn2Bottom: 'front', eye: 'front', turn2Top: 'front', crown: 'front',
+  duckTail: 'back', foot: 'back', poll: 'back', turn1Bottom: 'back',
 };
-// how close two call-outs' texts, or two levels' labels, may stand on the paper
-const CALLOUT_PITCH = 6.2;
-const CALLOUT_REACH = 5;
-const LEVEL_PITCH = 2.4;
+// stacked dimensions on the paper: the first's offset, the pitch between, and the room a stack's text takes past its last
+const STACK = { first: 3, pitch: 3.8, text: 4 };
+// two widths' levels closer than this on the paper set their figures apart along the line
+const LEVEL_PITCH = 4;
+// the tables' width beside the side, and the side's clearance from them
+const HEAD_TABLE_WIDTH = 80;
+const HEAD_TABLE_CLEAR = 4;
 
-// the head from the side, the front and the back, all standing on the nut line. The side carries
-// each turn's width and height through the eye; the front and back each width, called out at the
-// height the widths solve hangs it at
+// the head from the side on one row, the tables beside it, and the front and back on the row under,
+// both standing on the nut line. The side carries each turn's width and height through the eye. The
+// front and back draw each width across the view at its level, with its height off the nut line
+// stacked outside the view: the front's to its left, the back's to its right
 function buildHeadPage(p: ViolinFamilyParams): SheetPageSpec | null {
   let scroll = solvedScroll(p);
   if (!scroll?.widths) return null;
@@ -991,46 +986,56 @@ function buildHeadPage(p: ViolinFamilyParams): SheetPageSpec | null {
   let sb = pathsBounds([side]), fb = pathsBounds([front]), bb = pathsBounds([back]);
   let turns = calcVoluteTurns(s);
   let extent = calcScrollExtent(s);
-  let widths = calcScrollWidthStations(p, s).filter(st => HEAD_WIDTHS[st.key]).sort((m, n) => m.at.y - n.at.y);
+  let stations = calcScrollWidthStations(p, s).filter(st => HEAD_WIDTHS[st.key]);
+  // two widths one view shows at the same level and size (the duck tail and the foot can be) are drawn once
+  let inView = (which: 'front' | 'back') => stations.filter(st => HEAD_WIDTHS[st.key] === which).sort((m, n) => m.at.y - n.at.y)
+    .filter((st, i, sts) => !sts.slice(0, i).some(o => Math.abs(o.at.y - st.at.y) < 1e-6 && formatMm(o.width, 2) === formatMm(st.width, 2)));
+  let fronts = inView('front'), backs = inView('back');
+  let stack = (n: number) => n ? STACK.first + STACK.pitch * (n - 1) + STACK.text : 0;
+  let risen = (sts: typeof stations) => sts.filter(st => Math.abs(st.at.y) > 1e-6).length;
 
-  let view = (scale: number): SheetView => {
-    // each call-out reads on its own level, the figure over the line and the name under it, a
-    // leader's reach out from the outline. One that would land on another's text steps out past it
-    let texts: Record<'front' | 'back', { from: number; to: number; level: number }[]> = { front: [], back: [] };
-    let placed = widths.map(st => {
-      let { view: which, name } = HEAD_WIDTHS[st.key]!;
-      let wide = Math.max(timesWidth(formatMm(st.width, 2), DRAWING_TEXT.label), timesWidth(name, DRAWING_TEXT.small));
-      let level = st.at.y / scale;
-      let from = st.width / 2 / scale + CALLOUT_REACH;
-      for (let t of texts[which]) if (Math.abs(t.level - level) < CALLOUT_PITCH && from < t.to + 1 && from + wide + 1 > t.from) from = t.to + 1 + CALLOUT_REACH;
-      texts[which].push({ from, to: from + wide + 1, level });
-      return { st, which, name, dx: from - st.width / 2 / scale };
-    });
-    let frontX = sb.maxX + 9 * scale - fb.minX;
-    let backX = frontX + (Math.max(...texts.front.map(t => t.to)) + 2) * scale - bb.minX;
-    let right = backX + bb.maxX + 2 * scale;
-    let top = Math.max(sb.maxY, fb.maxY, bb.maxY);
+  let sideView: SheetView = {
+    strokes: [{ d: side }, { d: pathFromLine(new Pt(sb.minX, 0), new Pt(sb.maxX, 0)), ink: 'note' }],
+    marks: [
+      ...turns.widths.map(([from, to], i): SheetMark => ({ kind: 'dimension', from, to, through: new Pt(0, sb.maxY), offset: 3 + 3.8 * i })),
+      ...turns.heights.map(([from, to], i): SheetMark => ({ kind: 'dimension', from, to, through: new Pt(sb.minX, 0), offset: 3 + 3.8 * i })),
+      { kind: 'dimension', from: new Pt(-extent.width, sb.minY), to: new Pt(0, sb.minY), offset: -5 },
+    ],
+  };
+
+  let facesView = (scale: number): SheetView => {
+    let frontX = stack(risen(fronts)) * scale - fb.minX;
+    let backX = frontX + fb.maxX + 9 * scale - bb.minX;
+    let right = backX + bb.maxX + (2 + stack(risen(backs))) * scale;
+    let top = Math.max(fb.maxY, bb.maxY);
     let strokes: SheetStroke[] = [
-      { d: side },
       { d: translatePath(front, frontX, 0) },
       { d: translatePath(back, backX, 0) },
-      { d: pathFromLine(new Pt(sb.minX, 0), new Pt(right, 0)), ink: 'note' },
+      { d: pathFromLine(new Pt(0, 0), new Pt(right, 0)), ink: 'note' },
       { d: pathFromLine(new Pt(frontX, -2 * scale), new Pt(frontX, top + 2 * scale)), ink: 'note', dashed: true },
       { d: pathFromLine(new Pt(backX, -2 * scale), new Pt(backX, top + 2 * scale)), ink: 'note', dashed: true },
     ];
     let marks: SheetMark[] = [];
-    turns.widths.forEach(([from, to], i) => marks.push({ kind: 'dimension', from, to, through: new Pt(0, sb.maxY), offset: 3 + 3.8 * i }));
-    turns.heights.forEach(([from, to], i) => marks.push({ kind: 'dimension', from, to, through: new Pt(sb.minX, 0), offset: 3 + 3.8 * i }));
-    marks.push({ kind: 'dimension', from: new Pt(-extent.width, sb.minY), to: new Pt(0, sb.minY), offset: -5 });
-
-    let labelled = -Infinity;
-    for (let { st, which, name, dx } of placed) {
-      let level = st.at.y / scale;
-      let clear = level - labelled >= LEVEL_PITCH;
-      marks.push({ kind: 'station', y: st.at.y, from: frontX + fb.minX - 2 * scale, to: right, sub: clear ? formatMm(st.at.y) : undefined });
-      if (clear) labelled = level;
-      let at = new Pt((which === 'front' ? frontX : backX) + st.width / 2, st.at.y);
-      marks.push({ kind: 'callout', at, dx, text: formatMm(st.width, 2), sub: name });
+    // heights stack from the nearest the nut outward; the measure runs up the width's own end, so
+    // its extension leaves the width's arrow and the nut line
+    for (let [sts, x, edge, outward] of [[fronts, frontX, frontX + fb.minX, 1], [backs, backX, backX + bb.maxX, -1]] as const) {
+      let level = -Infinity, apart = false;
+      for (let st of sts) {
+        let half = st.width / 2;
+        apart = st.at.y / scale - level < LEVEL_PITCH && !apart;
+        level = st.at.y / scale;
+        marks.push({ kind: 'dimension', from: new Pt(x - half, st.at.y), to: new Pt(x + half, st.at.y), text: formatMm(st.width, 2), textAt: apart ? 0.75 : 0.5 });
+      }
+      [...sts].filter(st => Math.abs(st.at.y) > 1e-6).sort((m, n) => Math.abs(m.at.y) - Math.abs(n.at.y)).forEach((st, i) => {
+        let end = x - outward * st.width / 2;
+        marks.push({
+          kind: 'dimension',
+          from: new Pt(end, Math.min(0, st.at.y)),
+          to: new Pt(end, Math.max(0, st.at.y)),
+          through: new Pt(edge, 0),
+          offset: outward * (STACK.first + STACK.pitch * i),
+        });
+      });
     }
     return { strokes, marks };
   };
@@ -1045,7 +1050,32 @@ function buildHeadPage(p: ViolinFamilyParams): SheetPageSpec | null {
     ['Nut width', formatValues([p.neck!.nutWidth])],
     ['Pegbox wall', formatValues([v.wall])],
   ]);
-  return { columns: [{ x: 0, w: SCHEMATIC_AREA.width, blocks: [{ view, h: SCHEMATIC_AREA.height - TABLE_ROOM }, { tables: [lengths, across], w: 66 }] }] };
+  // the side and the faces at one scale, so the head reads the same size from every side: the
+  // largest, up to full size, at which the side clears the tables and the two rows stand on the page
+  // together. The schematic prints no scale, so it needn't be a round one; the ladder's jump from
+  // 1:1 to 1:2 would leave a violin's head half the page
+  let tablesX = SCHEMATIC_AREA.width - HEAD_TABLE_WIDTH;
+  let fits = (k: number) => {
+    let sideAt = fitView(sideView, Infinity, Infinity, [k]).bounds, facesAt = fitView(facesView, Infinity, Infinity, [k]).bounds;
+    return sideAt.maxX - sideAt.minX <= tablesX - HEAD_TABLE_CLEAR && facesAt.maxX - facesAt.minX <= SCHEMATIC_AREA.width
+      && sideAt.maxY - sideAt.minY + BLOCK_GAP + facesAt.maxY - facesAt.minY <= SCHEMATIC_AREA.height;
+  };
+  let scale = 1;
+  if (!fits(1)) {
+    let lo = 1, hi = 2;
+    while (!fits(hi) && hi < 64) [lo, hi] = [hi, 2 * hi];
+    for (let i = 0; i < 12; i++) {
+      let mid = (lo + hi) / 2;
+      if (fits(mid)) hi = mid; else lo = mid;
+    }
+    scale = hi;
+  }
+  return {
+    columns: [
+      { x: 0, w: SCHEMATIC_AREA.width, blocks: [{ view: sideView, h: SCHEMATIC_AREA.height, scales: [scale] }, { view: facesView, h: SCHEMATIC_AREA.height, scales: [scale] }] },
+      { x: tablesX, w: HEAD_TABLE_WIDTH, blocks: [{ tables: [lengths], w: HEAD_TABLE_WIDTH }, { tables: [across], w: HEAD_TABLE_WIDTH }] },
+    ],
+  };
 }
 
 // Physical templates for hand-carving: a strip with the arch along both long edges, so one edge

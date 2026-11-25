@@ -47,10 +47,11 @@ export interface SheetView {
 export type SheetViewSource = SheetView | ((scale: number) => SheetView);
 
 // a page is columns across its drawing area, `x` in from the area's left and `w` wide, each a
-// stack of blocks from the top: a view, drawn as large as fits the column's width and `h`, or
-// tables side by side, each `w` wide. A table with no rows is left out
+// stack of blocks from the top: a view, drawn as large as fits the column's width and `h` (only
+// at `scales` when given, so views a page sets side by side can share one), or tables side by
+// side, each `w` wide. A table with no rows is left out
 export interface SheetRow { label: string; value: string }
-export type SheetBlock = { view: SheetViewSource; h: number } | { tables: SheetRow[][]; w: number };
+export type SheetBlock = { view: SheetViewSource; h: number; scales?: readonly number[] } | { tables: SheetRow[][]; w: number };
 export interface SheetColumn { x: number; w: number; blocks: SheetBlock[] }
 export interface SheetPageSpec { columns: SheetColumn[] }
 
@@ -68,7 +69,7 @@ export const DRAWING_TEXT = { label: 2.6, small: 2 } as const;
 // a view is drawn 1 : n, the largest of these that fits its cell; past the last, 1:10 and 1:20
 // keep an instrument larger than any here on the page
 export const SCALE_LADDER = [1, 2, 2.5, 4, 5] as const;
-const OVERSIZE_SCALES = [10, 20];
+export const SHEET_SCALES: readonly number[] = [...SCALE_LADDER, 10, 20];
 
 const ARROW = { length: 2.2, half: 0.4, tail: 2.5 };
 const EXTENSION = { gap: 0.6, overrun: 1.2 };
@@ -271,11 +272,11 @@ export function calcDrawingBounds(drawing: SheetDrawing): Box {
   };
 }
 
-// the view at the largest scale whose drawing, marks and all, fits w by h; the smallest there is
-// when none does
-export function fitView(source: SheetViewSource, w: number, h: number): { drawing: SheetDrawing; bounds: Box; scale: number } {
+// the view at the largest of `scales` whose drawing, marks and all, fits w by h; the smallest
+// there is when none does
+export function fitView(source: SheetViewSource, w: number, h: number, scales = SHEET_SCALES): { drawing: SheetDrawing; bounds: Box; scale: number } {
   let fitted!: { drawing: SheetDrawing; bounds: Box; scale: number };
-  for (let scale of [...SCALE_LADDER, ...OVERSIZE_SCALES]) {
+  for (let scale of scales) {
     let drawing = drawView(typeof source === 'function' ? source(scale) : source, scale);
     let bounds = calcDrawingBounds(drawing);
     fitted = { drawing, bounds, scale };
@@ -324,7 +325,7 @@ const SCHEMATIC_FRAME = drawFrame(SCHEMATIC_PAPER.width, SCHEMATIC_PAPER.height,
 // the schematic's drawing area, which a page's cells and tables are placed in
 export const SCHEMATIC_AREA = { width: SCHEMATIC_PAPER.width - 2 * SCHEMATIC_FACE.margin, height: SCHEMATIC_FRAME.bottom - SCHEMATIC_FRAME.top } as const;
 
-const BLOCK_GAP = 6;
+export const BLOCK_GAP = 6;
 const TABLE_GAP = 8;
 const ROW_PITCH = 1.85;
 
@@ -353,7 +354,7 @@ export function buildSchematicPage(spec: SheetPageSpec, heading: SheetHeading, f
     let y = 0;
     for (let block of column.blocks) {
       if ('view' in block) {
-        let { drawing, bounds } = fitView(block.view, column.w, Math.min(block.h, SCHEMATIC_AREA.height - y));
+        let { drawing, bounds } = fitView(block.view, column.w, Math.min(block.h, SCHEMATIC_AREA.height - y), block.scales);
         parts.push(moveDrawing(drawing, left + column.x - bounds.minX, top - y - bounds.maxY));
         y += bounds.maxY - bounds.minY + BLOCK_GAP;
       } else {

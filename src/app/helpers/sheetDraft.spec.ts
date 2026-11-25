@@ -93,6 +93,11 @@ describe('a view in its cell', () => {
     expect(fitView(square(100), 100, 20).scale).toBe(5);
   });
 
+  it('keeps to the scales it is given, even when the cell would take a larger one', () => {
+    expect(fitView(square(100), 100, 100, [2, 4]).scale).toBe(2);
+    expect(fitView(square(100), 10, 10, [2]).scale).toBe(2);
+  });
+
   it('counts its marks against the cell, not its paths alone', () => {
     const marked: SheetView = { strokes: [{ d: box(100, 100) }], marks: [{ kind: 'dimension', from: new Pt(0, 0), to: new Pt(0, 100), offset: 8 }] };
     expect(fitView(marked, 100, 100).scale).toBe(2);
