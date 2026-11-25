@@ -271,12 +271,31 @@ export function buildCalculixDeck(deck: FemDeck): string {
   return out.join('\n') + '\n';
 }
 
-export function downloadDeckFile(filename: string, text: string): void {
+// asks where to save and under what name; a browser with no save dialog asks for the name alone
+export async function saveDeckFile(suggested: string, text: string): Promise<void> {
+  let win = window as { showSaveFilePicker?: (o: object) => Promise<FileSystemFileHandle> };
+  if (win.showSaveFilePicker) {
+    try {
+      let handle = await win.showSaveFilePicker({
+        suggestedName: suggested,
+        types: [{ description: 'CalculiX deck', accept: { 'text/plain': ['.inp'] } }],
+      });
+      let writable = await handle.createWritable();
+      await writable.write(text);
+      await writable.close();
+      return;
+    } catch (e) {
+      if ((e as DOMException).name === 'AbortError') return;
+      console.error('Save dialog unavailable, falling back to a download:', e);
+    }
+  }
+  let name = prompt('Save deck as', suggested)?.trim();
+  if (!name) return;
   let blob = new Blob([text], { type: 'text/plain' });
   let url = URL.createObjectURL(blob);
   let link = document.createElement('a');
   link.href = url;
-  link.download = filename;
+  link.download = /\.inp$/i.test(name) ? name : `${name}.inp`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

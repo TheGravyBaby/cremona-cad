@@ -1,6 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { buildCalculixDeck, buildTriangleMesh, downloadDeckFile, FemMaterial, FemShellSet } from '../../../../helpers/femExporter';
+import { buildCalculixDeck, buildTriangleMesh, saveDeckFile, FemMaterial, FemShellSet } from '../../../../helpers/femExporter';
 import { cross3, stepAlong3, subVec3, TURN, vecAtAngle } from '../../../../helpers/math/simpleGeometry';
 import { makeMonotoneSpline } from '../../../../helpers/math/vibeMath';
 import { pathFromPolyline } from '../../../../helpers/math/pathMath';
@@ -138,7 +138,7 @@ export class DevFemPanel extends PanelComponentBase implements OnInit {
       return;
     }
     let name = this.fileName.trim() || 'violin-family';
-    downloadDeckFile(`${name}-${this.options.plate}.inp`, buildFemDeck(this.params, s, this.modes, name));
+    saveDeckFile(`${name}-${this.options.plate}.inp`, buildFemDeck(this.params, s, this.modes, name));
   }
 
   protected buildCanvasLayers(): RenderLayer[] {
