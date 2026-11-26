@@ -553,12 +553,12 @@
     "UCuttoUEye": 1.625,
     "LCuttoLEye": 2.0352941176470587,
     "StoEyeSpan": 0.539140587251914,
-    "U1toS": 0.25,
-    "U2toS": 0.25,
-    "U3toS": 0.5,
-    "L1toS": 0.2777777777777778,
-    "L2toS": 0.5,
-    "L3toS": 0.5
+    "U1toEyeSpan": 0.1347851468129785,
+    "U2toEyeSpan": 0.1347851468129785,
+    "U3toEyeSpan": 0.269570293625957,
+    "L1toEyeSpan": 0.1497612742366428,
+    "L2toEyeSpan": 0.269570293625957,
+    "L3toEyeSpan": 0.269570293625957
   },
   "referenceImages": [
     {

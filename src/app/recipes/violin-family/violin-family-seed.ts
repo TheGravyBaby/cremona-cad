@@ -54,12 +54,12 @@ export interface FholeRatios {
   UCuttoUEye: number;
   LCuttoLEye: number;
   StoEyeSpan: number;
-  U1toS: number;
-  U2toS: number;
-  U3toS: number;
-  L1toS: number;
-  L2toS: number;
-  L3toS: number;
+  U1toEyeSpan: number;
+  U2toEyeSpan: number;
+  U3toEyeSpan: number;
+  L1toEyeSpan: number;
+  L2toEyeSpan: number;
+  L3toEyeSpan: number;
 }
 
 // the one instrument the app drafts from nothing: a height, and the ratios every outline value is
@@ -123,12 +123,12 @@ export const FHOLE_SEED_RATIOS: FholeRatios & {
   UCuttoUEye: 2,
   LCuttoLEye: 8 / 5,
   StoEyeSpan: 5 / 8,
-  U1toS: 2 / 9,
-  U2toS: 1 / 4,
-  U3toS: 2 / 5,
-  L1toS: 3 / 10,
-  L2toS: 3 / 8,
-  L3toS: 1 / 2,
+  U1toEyeSpan: 1 / 7,
+  U2toEyeSpan: 3 / 20,
+  U3toEyeSpan: 1 / 4,
+  L1toEyeSpan: 3 / 16,
+  L2toEyeSpan: 7 / 30,
+  L3toEyeSpan: 5 / 16,
   U1End: 90,
   U3Angle: 85,
   UCutAt: 70,

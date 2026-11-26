@@ -46,35 +46,34 @@ export class FHoleContoursPanel extends PanelComponentBase<FholeHighlightKey, Fh
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showFholeBounds', 'showModuleArcs', 'showFlutingEdge', 'showModuleGuides'];
   protected readonly pal = ThemeService.getPalette('orchid');
 
-  // the Stradivari-pattern hole in FHOLE_SEED_RATIOS: every radius a fraction of the stem arc,
-  // itself set against the eye span, each cut a fraction of its eye, and the takeoff angles as
-  // drawn. A compound arm is seeded split halfway along the sweep the plain arm draws, so turning
+  // the Stradivari-pattern hole in FHOLE_SEED_RATIOS: every radius a fraction of the eye span,
+  // each cut a fraction of its eye, and the takeoff angles as drawn. A compound arm is seeded split halfway along the sweep the plain arm draws, so turning
   // it on changes nothing until a radius does
   static seed(p: ViolinFamilyParams): void {
     if (p.fHoleContours || !p.fHoles) return;
     let f = p.fHoles;
     let r = FHOLE_SEED_RATIOS;
-    let stemArcR = Math.round(dist(f.UEye, f.LEye) * r.StoEyeSpan);
+    let span = dist(f.UEye, f.LEye);
     p.fHoleContours = {
-      U1R: Math.round(stemArcR * r.U1toS),
+      U1R: Math.round(span * r.U1toEyeSpan),
       U1End: r.U1End,
-      U2R: Math.round(stemArcR * r.U2toS),
+      U2R: Math.round(span * r.U2toEyeSpan),
       U21DoubleArc: false,
-      U21R: Math.round(stemArcR * r.U2toS),
+      U21R: Math.round(span * r.U2toEyeSpan),
       U2Sweep: 0,
-      U3R: Math.round(stemArcR * r.U3toS),
+      U3R: Math.round(span * r.U3toEyeSpan),
       U3Angle: r.U3Angle,
       UCut: { angleOnEye: r.UCutAt, slope: r.UCutSlope, length: roundToQuarter(f.UEye.r * r.UCuttoUEye) },
-      L1R: Math.round(stemArcR * r.L1toS),
+      L1R: Math.round(span * r.L1toEyeSpan),
       L1End: r.L1End,
-      L2R: Math.round(stemArcR * r.L2toS),
+      L2R: Math.round(span * r.L2toEyeSpan),
       L21DoubleArc: false,
-      L21R: Math.round(stemArcR * r.L2toS),
+      L21R: Math.round(span * r.L2toEyeSpan),
       L2Sweep: 0,
-      L3R: Math.round(stemArcR * r.L3toS),
+      L3R: Math.round(span * r.L3toEyeSpan),
       L3Angle: r.L3Angle,
       LCut: { angleOnEye: r.LCutAt, slope: r.LCutSlope, length: roundToQuarter(f.LEye.r * r.LCuttoLEye) },
-      stemArcR,
+      stemArcR: Math.round(span * r.StoEyeSpan),
     };
     let s = solveFholeContours(p)!;
     p.fHoleContours.U2Sweep = calcHalfSweep(s.U2);
@@ -566,22 +565,21 @@ export function solveFholeContours(p: ViolinFamilyParams): FholeContoursSolve | 
   return s;
 }
 
-// the contours read back as the seed drew them: the stem arc against the eye span and every other
-// arc against the stem arc
+// the contours read back as the seed drew them: every radius against the eye span
 export function calcFholeContoursRatios(p: ViolinFamilyParams): Partial<FholeRatios> {
   let f = p.fHoles;
   let k = p.fHoleContours;
   if (!f || !k) return {};
-  let stem = k.stemArcR;
+  let span = dist(f.UEye, f.LEye);
   return {
     UCuttoUEye: k.UCut.length / f.UEye.r,
     LCuttoLEye: k.LCut.length / f.LEye.r,
-    StoEyeSpan: stem / dist(f.UEye, f.LEye),
-    U1toS: k.U1R / stem,
-    U2toS: k.U2R / stem,
-    U3toS: k.U3R / stem,
-    L1toS: k.L1R / stem,
-    L2toS: k.L2R / stem,
-    L3toS: k.L3R / stem,
+    StoEyeSpan: k.stemArcR / span,
+    U1toEyeSpan: k.U1R / span,
+    U2toEyeSpan: k.U2R / span,
+    U3toEyeSpan: k.U3R / span,
+    L1toEyeSpan: k.L1R / span,
+    L2toEyeSpan: k.L2R / span,
+    L3toEyeSpan: k.L3R / span,
   };
 }

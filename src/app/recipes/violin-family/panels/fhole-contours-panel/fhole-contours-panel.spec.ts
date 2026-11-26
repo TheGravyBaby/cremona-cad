@@ -149,10 +149,8 @@ describe('the contour ratios', () => {
     const p = seeded();
     const r = calcFholeContoursRatios(p);
     const { UEye, LEye } = p.fHoles!;
-    const stem = p.fHoleContours!.stemArcR;
-    expect(Math.abs(r.StoEyeSpan! - FHOLE_SEED_RATIOS.StoEyeSpan)).toBeLessThanOrEqual(0.5 / dist(UEye, LEye));
-    for (const key of ['U1toS', 'U2toS', 'U3toS', 'L1toS', 'L2toS', 'L3toS'] as const)
-      expect(Math.abs(r[key]! - FHOLE_SEED_RATIOS[key]), key).toBeLessThanOrEqual(0.5 / stem);
+    for (const key of ['StoEyeSpan', 'U1toEyeSpan', 'U2toEyeSpan', 'U3toEyeSpan', 'L1toEyeSpan', 'L2toEyeSpan', 'L3toEyeSpan'] as const)
+      expect(Math.abs(r[key]! - FHOLE_SEED_RATIOS[key]), key).toBeLessThanOrEqual(0.5 / dist(UEye, LEye));
     for (const [key, eye] of [['UCuttoUEye', UEye], ['LCuttoLEye', LEye]] as const)
       expect(Math.abs(r[key]! - FHOLE_SEED_RATIOS[key]), key).toBeLessThanOrEqual(0.125 / eye.r);
   });
