@@ -757,9 +757,10 @@ export const renderGuideMeasure = (base: Pt, at: Pt, color: string, offset = 0, 
     .attr('opacity', 0.9);
 };
 
-// a sheet's marks on the canvas at full size, arrows, extension lines and text drawn as the PDF does
+// a sheet's marks on the canvas at full size, arrows, extension lines and text drawn as the PDF
+// does. The extension lines rise from the curve itself: the print's gap reads as a miss on screen
 export const renderSheetMarks = (marks: SheetMark[], color: string) => (g: any, ui: any): void => {
-  let drawing = expandMarks(marks, 1);
+  let drawing = expandMarks(marks, 1, 0);
   for (let path of drawing.paths) {
     if (path.fill && path.fill !== 'none') renderFilledPath(path.d, color, 1)(g, ui);
     else renderPath(path.d, color, STROKE_WEIGHT.guide, 1, path.dash ? DASH.preview : undefined)(g, ui);

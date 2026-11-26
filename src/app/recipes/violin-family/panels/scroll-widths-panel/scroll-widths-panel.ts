@@ -6,10 +6,11 @@ import {
   calcArcSpans, calcHermiteSpan, calcLineSpan, clipSpansAtY, CubicSpan, hermiteEvaluator, hymanFilterSlopes, naturalSplineSlopes, rayPolylineIntersection, sliceSpans,
   spansPointAt, spansPointAtY,
 } from '../../../../helpers/math/vibeMath';
-import { arcPathData, pathFromLine, pathFromPolygon, pathFromPolyline, pathFromSpans } from '../../../../helpers/math/pathMath';
+import { arcPathData, combinePathStrings, pathFromLine, pathFromPolygon, pathFromPolyline, pathFromSpans, pathsBounds } from '../../../../helpers/math/pathMath';
+import { formatMm, SheetMark } from '../../../../helpers/sheetDraft';
 import { occludePath } from '../../../../helpers/math/pathVibes';
 import {
-  renderCircle, renderCrosshair, renderDashLine, renderPath, renderPointHalo, renderSolveFailures, renderStroke, StrokeShape,
+  renderCircle, renderCrosshair, renderDashLine, renderPath, renderPointHalo, renderSheetMarks, renderSolveFailures, renderStroke, StrokeShape,
 } from '../../../../helpers/renderFuncs';
 import { buildMiss, reportFailures } from '../../../../helpers/validators';
 import { Arc, Circle, Pt, Pt3D } from '../../../../models/types';
@@ -28,11 +29,21 @@ import {
   ScrollWidthsFailure,
   ScrollWidthsSolve,
 } from '../../violin-family-solves';
-import { calcNutThickness, renderScrollNeck, calcScrollExtent, calcScrollNeckStub } from '../volute-panel/volute-panel';
+import { buildVoluteMeasures, calcNutThickness, renderScrollNeck, calcScrollExtent, calcScrollNeckStub } from '../volute-panel/volute-panel';
 import { defineSideScrollPath, calcScrollLines, solveScroll } from '../pegbox-panel/pegbox-panel';
 
 export type ScrollStationKey = 'nut' | 'neck' | keyof ScrollWidths;
 export type ScrollStation = { key: ScrollStationKey; at: Pt; width: number };
+
+// which view shows each width
+const SCROLL_VIEW_WIDTHS: Partial<Record<ScrollStationKey, 'front' | 'back'>> = {
+  nut: 'front', hip: 'front', throat: 'front', turn2Bottom: 'front', eye: 'front', turn2Top: 'front', crown: 'front',
+  duckTail: 'back', foot: 'back', poll: 'back', turn1Bottom: 'back',
+};
+// stacked dimensions on the paper: the first's offset, the pitch between, and the room a stack's text takes past its last
+export const STACK = { first: 3, pitch: 3.8, text: 4 };
+// two widths' levels closer than this on the paper set their figures apart along the line
+const LEVEL_PITCH = 4;
 
 @Component({
   selector: 'app-vf-scroll-widths-panel',
@@ -41,7 +52,7 @@ export type ScrollStation = { key: ScrollStationKey; at: Pt; width: number };
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
 export class ScrollWidthsPanel extends PanelComponentBase<ScrollStationKey> {
-  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides'];
+  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'showScrollMeasurements'];
   protected readonly pal = ThemeService.getPalette('stones');
 
   // what the last draw solved; reportSolveFailures() reads it
@@ -60,7 +71,7 @@ export class ScrollWidthsPanel extends PanelComponentBase<ScrollStationKey> {
       renderScrollNeck(p, s, this.pal, false),
       ...(whole ? [
         renderPath(defineSideScrollPath(p, s), this.pal.neutral, STROKE_WEIGHT.trace),
-        renderScrollWidths(p, s, this.pal, this.highlightedPart, this.flags.showModuleGuides, this.flags.showModuleArcs),
+        renderScrollWidths(p, s, this.pal, this.highlightedPart, this.flags.showModuleGuides, this.flags.showModuleArcs, this.flags.showScrollMeasurements),
       ] : []),
       renderSolveFailures([...s.failures, ...w.failures], this.pal.alert),
     ];
@@ -97,6 +108,7 @@ export const renderScrollWidths = (
   focused: { key: ScrollStationKey; color: string } | null,
   showGuides: boolean,
   showArcs: boolean,
+  showMeasures: boolean,
 ): RenderLayer => {
   let w = p.scroll!.widths;
   let stations = calcScrollWidthStations(p, s);
@@ -110,6 +122,12 @@ export const renderScrollWidths = (
   let stub = calcScrollNeckStub(p);
   let backView = buildScrollBackViewStrokes(p, s, (x, y) => new Pt(back + x, y), -stub);
   let frontView = buildScrollFrontViewStrokes(p, s, (x, y) => new Pt(front + x, y), -stub);
+  // the head page's dimensions: the side's turns, and each view's widths outside its own edge
+  let measures: SheetMark[] = showMeasures ? [
+    ...buildVoluteMeasures(p, s),
+    ...buildScrollViewMeasures(calcScrollViewStations(p, s, 'front'), front, pathsBounds([defineScrollViewPath(frontView)]).minX, 'front'),
+    ...buildScrollViewMeasures(calcScrollViewStations(p, s, 'back'), back, pathsBounds([defineScrollViewPath(backView)]).maxX, 'back'),
+  ] : [];
 
   return (g: any, ui: any): void => {
     let marked = stations.find(station => station.key === focused?.key);
@@ -158,6 +176,7 @@ export const renderScrollWidths = (
       renderWidthCrosshairs(stations, 'turn2Bottom', back, pal.ink(2).faint(1))(g, ui);
       renderWidthCrosshairs(stations, 'eye', back, pal.ink(2).faint(-4))(g, ui);
     }
+    if (showMeasures) renderSheetMarks(measures, pal.neutral)(g, ui);
   };
 };
 
@@ -699,6 +718,46 @@ export function calcScrollFrontWidths(p: ViolinFamilyParams, s: ScrollSolve): Cu
 // the nut's foot, then the front's up the pegbox's front, the nut, the hips and the throat; the
 // back's from the top of the duck tail's round, then along the path from the foot in to the eye's
 // centre. A back with no poll has no station for it
+// the widths one view shows, from the nut up. Two at the same level and size (the duck tail and the
+// foot can be) are drawn once
+export function calcScrollViewStations(p: ViolinFamilyParams, s: ScrollSolve, which: 'front' | 'back'): ScrollStation[] {
+  return calcScrollWidthStations(p, s).filter(st => SCROLL_VIEW_WIDTHS[st.key] === which).sort((m, n) => m.at.y - n.at.y)
+    .filter((st, i, sts) => !sts.slice(0, i).some(o => Math.abs(o.at.y - st.at.y) < 1e-6 && formatMm(o.width, 2) === formatMm(st.width, 2)));
+}
+
+// a view's dimensions as the head page prints them: each width across the view at its level, and its
+// height off the nut line stacked outside the view, the front's to its left and the back's to its
+// right. `x` is the view's centreline, `edge` its outer side, and `scale` the paper's, which spaces
+// the figures. Heights stack from the nearest the nut outward; each runs up the width's own end, so
+// its extension leaves the width's arrow and the nut line
+export function buildScrollViewMeasures(sts: ScrollStation[], x: number, edge: number, which: 'front' | 'back', scale = 1): SheetMark[] {
+  let outward = which === 'front' ? 1 : -1;
+  let marks: SheetMark[] = [];
+  let level = -Infinity, apart = false;
+  for (let st of sts) {
+    let half = st.width / 2;
+    apart = st.at.y / scale - level < LEVEL_PITCH && !apart;
+    level = st.at.y / scale;
+    marks.push({ kind: 'dimension', from: new Pt(x - half, st.at.y), to: new Pt(x + half, st.at.y), text: formatMm(st.width, 2), textAt: apart ? 0.75 : 0.5 });
+  }
+  [...sts].filter(st => Math.abs(st.at.y) > 1e-6).sort((m, n) => Math.abs(m.at.y) - Math.abs(n.at.y)).forEach((st, i) => {
+    let end = x - outward * st.width / 2;
+    marks.push({
+      kind: 'dimension',
+      from: new Pt(end, Math.min(0, st.at.y)),
+      to: new Pt(end, Math.max(0, st.at.y)),
+      through: new Pt(edge, 0),
+      offset: outward * (STACK.first + STACK.pitch * i),
+    });
+  });
+  return marks;
+}
+
+// every stroke of a scroll view as one path
+export function defineScrollViewPath(view: ScrollView): string {
+  return combinePathStrings(Object.values(view).flat().map(s => 'line' in s ? pathFromLine(...s.line) : 'polygon' in s ? pathFromPolygon(s.polygon) : s.d));
+}
+
 export function calcScrollWidthStations(p: ViolinFamilyParams, s: ScrollSolve): ScrollStation[] {
   let w = p.scroll!.widths;
   let front = buildScrollFront(p, s);

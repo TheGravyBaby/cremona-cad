@@ -15,7 +15,7 @@ import { FHolePlacementPanel } from '../fhole-placement-panel/fhole-placement-pa
 import { FHoleContoursPanel } from '../fhole-contours-panel/fhole-contours-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { NeckPanel } from '../neck-panel/neck-panel';
-import { calcVoluteTurns, VolutePanel } from '../volute-panel/volute-panel';
+import { calcScrollExtent, calcVoluteTurns, VolutePanel } from '../volute-panel/volute-panel';
 import { solveStringSetup, StringSetupPanel } from '../string-setup-panel/string-setup-panel';
 import { neckHalfWidthAt } from '../neck-panel/neck-panel';
 import { MouldPanel } from '../mould-panel/mould-panel';
@@ -687,14 +687,15 @@ describe('the schematic', () => {
     expect(bodyRows(plated())).toBeLessThan(bodyRows(arched()));
   });
 
-  it('prints on every dimension the length between its two points, at whatever scale the view is drawn', () => {
+  it('prints on every dimension the length between its two points, or along its direction when it has one, at whatever scale the view is drawn', () => {
     let measured = 0;
     for (const { name, spec } of buildSchematicPages(finished())) {
       for (const scale of [1, 4]) {
         for (const view of pageViews(spec, scale)) {
           for (const mark of marksOf(view, 'dimension')) {
             if (mark.text !== undefined) continue;
-            expect(expandMarks([mark], scale).texts.map(t => t.text), name).toEqual([formatMm(dist(mark.from, mark.to))]);
+            const length = mark.along ? Math.abs((mark.to.x - mark.from.x) * mark.along.x + (mark.to.y - mark.from.y) * mark.along.y) : dist(mark.from, mark.to);
+            expect(expandMarks([mark], scale).texts.map(t => t.text), name).toEqual([formatMm(length)]);
             measured++;
           }
         }
@@ -805,7 +806,7 @@ describe('the schematic', () => {
     expect(string.text).toBe(`~${Math.round(dist(s.nutTop!, s.bridgeTop!))}`);
   });
 
-  it('pairs the volute\'s turns through the eye\'s centre from the inside out, each pair one either side of it', () => {
+  it('pairs the volute\'s turns either side of the eye\'s centre from the inside out, each at its furthest reach', () => {
     const p = scrolled();
     const s = solveScroll(p)!;
     const eye = s.eye!;
@@ -813,7 +814,6 @@ describe('the schematic', () => {
     expect(turns.widths.length).toBeGreaterThanOrEqual(2);
     expect(turns.heights.length).toBeGreaterThanOrEqual(2);
     turns.widths.forEach(([a, b], i) => {
-      expect([a.y, b.y]).toEqual([eye.y, eye.y]);
       expect(a.x).toBeLessThan(eye.x);
       expect(b.x).toBeGreaterThan(eye.x);
       if (i) {
@@ -822,7 +822,6 @@ describe('the schematic', () => {
       }
     });
     turns.heights.forEach(([a, b], i) => {
-      expect([a.x, b.x]).toEqual([eye.x, eye.x]);
       expect(a.y).toBeLessThan(eye.y);
       expect(b.y).toBeGreaterThan(eye.y);
       if (i) {
@@ -830,8 +829,9 @@ describe('the schematic', () => {
         expect(b.y).toBeGreaterThan(turns.heights[i - 1][1].y);
       }
     });
-    // the innermost is the eye itself, across
-    expect(dist(...turns.widths[0])).toBeCloseTo(2 * eye.r, 3);
+    // the innermost spans the eye at least, and the outermost height reaches the head's top, off the plumb
+    expect(turns.widths[0][1].x - turns.widths[0][0].x).toBeGreaterThanOrEqual(2 * eye.r - 1e-6);
+    expect(turns.heights.at(-1)![1].y).toBeCloseTo(calcScrollExtent(s).height, 2);
     const dimensions = marksOf(pageViews(schematicPage(p, 'head')!)[0], 'dimension');
     for (const pair of [...turns.widths, ...turns.heights]) expect(dimensions.some(m => dist(m.from, pair[0]) < 1e-9 && dist(m.to, pair[1]) < 1e-9)).toBe(true);
   });

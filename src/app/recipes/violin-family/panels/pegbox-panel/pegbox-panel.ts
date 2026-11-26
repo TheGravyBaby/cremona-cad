@@ -6,7 +6,7 @@ import {
 } from '../../../../helpers/math/simpleGeometry';
 import { circleCircleIntersections } from '../../../../helpers/math/draftMath';
 import { arcPathData, combinePathStrings, pathFromLine } from '../../../../helpers/math/pathMath';
-import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderPath, renderSegment, renderSegmentHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderPath, renderSegment, renderSegmentHalo, renderSheetMarks, renderSolveFailures } from '../../../../helpers/renderFuncs';
 import { reportFailures, solveSection } from '../../../../helpers/validators';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { Arc, Pt } from '../../../../models/types';
@@ -25,7 +25,7 @@ import {
   ScrollKey,
   ScrollSolve,
 } from '../../violin-family-solves';
-import { buildBadArcMiss, isLongArc, renderScrollNeck, renderVolute, calcScrollExtent, solveVolute } from '../volute-panel/volute-panel';
+import { buildBadArcMiss, buildVoluteMeasures, isLongArc, renderScrollNeck, renderVolute, calcScrollExtent, solveVolute } from '../volute-panel/volute-panel';
 import { calcNeckTaper } from '../neck-panel/neck-panel';
 
 export type PegboxHighlightKey = 'S3' | 'nape' | 'napeAngle' | 'F0' | 'F1' | 'backStraight' | 'flat' | 'frontStraight' | 'upperThickness';
@@ -38,7 +38,7 @@ export type ScrollLine = 'napeLine' | 'backStraight' | 'flat' | 'frontStraight';
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
 export class PegboxPanel extends PanelComponentBase<PegboxHighlightKey> {
-  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides'];
+  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'showScrollMeasurements'];
   protected readonly pal = ThemeService.getPalette('stones');
   protected readonly nearestFraction = nearestFraction;
 
@@ -63,14 +63,16 @@ export class PegboxPanel extends PanelComponentBase<PegboxHighlightKey> {
     let arc = key === 'S3' || key === 'nape' || key === 'F0' || key === 'F1' ? s[key] : null;
     // the volute as plain profile, so only what this panel edits is in colour. The profile needs
     // the whole scroll solved, so a miss falls back to the volute's own render
-    return [
+    let layers = [
       renderScrollNeck(p, s, this.pal, this.flags.showModuleGuides),
       s.failures.length
         ? renderVolute(p, s, this.pal, this.flags, false, null)
         : renderPath(defineSideScrollPath(p, s), this.pal.neutral, STROKE_WEIGHT.trace),
       renderPegbox(p, s, this.pal, this.flags, true, arc ? { arc, color } : null, line ? { line, color } : null),
-      renderSolveFailures(s.failures, this.pal.alert),
     ];
+    if (this.flags.showScrollMeasurements && !s.failures.length) layers.push(renderSheetMarks(buildVoluteMeasures(p, s), this.pal.neutral));
+    layers.push(renderSolveFailures(s.failures, this.pal.alert));
+    return layers;
   }
 }
 

@@ -55,8 +55,8 @@ import { fingerboardSurfaceZAt, PositionMarkSolve, solveScoop } from '../dev-fin
 import { buildVoluteMeasures, calcScrollExtent } from '../volute-panel/volute-panel';
 import { defineSideScrollPath } from '../pegbox-panel/pegbox-panel';
 import {
-  buildScrollBackStrip, buildScrollBackViewStrokes, buildScrollCompassWalk, buildScrollFrontViewStrokes, calcScrollWidthStations, ScrollStationKey, ScrollView,
-  solveScrollWidths,
+  buildScrollBackStrip, buildScrollBackViewStrokes, buildScrollCompassWalk, buildScrollFrontViewStrokes, buildScrollViewMeasures, calcScrollViewStations,
+  defineScrollViewPath, ScrollStation, solveScrollWidths, STACK,
 } from '../scroll-widths-panel/scroll-widths-panel';
 import { buildBlockLayout, MOULD_EXPORT_STEP, solveMould } from '../mould-panel/mould-panel';
 
@@ -516,11 +516,6 @@ function compassSheet(p: ViolinFamilyParams): { box: string; marks: string; cent
   };
 }
 
-// every stroke of a scroll view as one path
-function defineScrollViewPath(view: ScrollView): string {
-  return combinePathStrings(Object.values(view).flat().map(s => 'line' in s ? pathFromLine(...s.line) : 'polygon' in s ? pathFromPolygon(s.polygon) : s.d));
-}
-
 // The scaled drawings: every sheet at full size on one paper, the plan sheets a page each and the rest
 // packed after them, each page framed by helpers/sheetDraft.ts. A sheet's own PDF is one such page.
 
@@ -935,15 +930,6 @@ function buildNeckPage(p: ViolinFamilyParams): SheetPageSpec | null {
   };
 }
 
-// which view shows each width
-const HEAD_WIDTHS: Partial<Record<ScrollStationKey, 'front' | 'back'>> = {
-  nut: 'front', hip: 'front', throat: 'front', turn2Bottom: 'front', eye: 'front', turn2Top: 'front', crown: 'front',
-  duckTail: 'back', foot: 'back', poll: 'back', turn1Bottom: 'back',
-};
-// stacked dimensions on the paper: the first's offset, the pitch between, and the room a stack's text takes past its last
-const STACK = { first: 3, pitch: 3.8, text: 4 };
-// two widths' levels closer than this on the paper set their figures apart along the line
-const LEVEL_PITCH = 4;
 // the tables' width beside the side, and the side's clearance from them
 const HEAD_TABLE_WIDTH = 80;
 const HEAD_TABLE_CLEAR = 4;
@@ -963,13 +949,9 @@ function buildHeadPage(p: ViolinFamilyParams): SheetPageSpec | null {
   let back = defineScrollViewPath(buildScrollBackViewStrokes(p, s, (x, y) => new Pt(x, y), 0));
   let sb = pathsBounds([side]), fb = pathsBounds([front]), bb = pathsBounds([back]);
   let extent = calcScrollExtent(s);
-  let stations = calcScrollWidthStations(p, s).filter(st => HEAD_WIDTHS[st.key]);
-  // two widths one view shows at the same level and size (the duck tail and the foot can be) are drawn once
-  let inView = (which: 'front' | 'back') => stations.filter(st => HEAD_WIDTHS[st.key] === which).sort((m, n) => m.at.y - n.at.y)
-    .filter((st, i, sts) => !sts.slice(0, i).some(o => Math.abs(o.at.y - st.at.y) < 1e-6 && formatMm(o.width, 2) === formatMm(st.width, 2)));
-  let fronts = inView('front'), backs = inView('back');
+  let fronts = calcScrollViewStations(p, s, 'front'), backs = calcScrollViewStations(p, s, 'back');
   let stack = (n: number) => n ? STACK.first + STACK.pitch * (n - 1) + STACK.text : 0;
-  let risen = (sts: typeof stations) => sts.filter(st => Math.abs(st.at.y) > 1e-6).length;
+  let risen = (sts: ScrollStation[]) => sts.filter(st => Math.abs(st.at.y) > 1e-6).length;
 
   let sideView: SheetView = {
     strokes: [{ d: side }, { d: pathFromLine(new Pt(sb.minX, 0), new Pt(sb.maxX, 0)), ink: 'note' }],
@@ -988,28 +970,10 @@ function buildHeadPage(p: ViolinFamilyParams): SheetPageSpec | null {
       { d: pathFromLine(new Pt(frontX, -2 * scale), new Pt(frontX, top + 2 * scale)), ink: 'note', dashed: true },
       { d: pathFromLine(new Pt(backX, -2 * scale), new Pt(backX, top + 2 * scale)), ink: 'note', dashed: true },
     ];
-    let marks: SheetMark[] = [];
-    // heights stack from the nearest the nut outward; the measure runs up the width's own end, so
-    // its extension leaves the width's arrow and the nut line
-    for (let [sts, x, edge, outward] of [[fronts, frontX, frontX + fb.minX, 1], [backs, backX, backX + bb.maxX, -1]] as const) {
-      let level = -Infinity, apart = false;
-      for (let st of sts) {
-        let half = st.width / 2;
-        apart = st.at.y / scale - level < LEVEL_PITCH && !apart;
-        level = st.at.y / scale;
-        marks.push({ kind: 'dimension', from: new Pt(x - half, st.at.y), to: new Pt(x + half, st.at.y), text: formatMm(st.width, 2), textAt: apart ? 0.75 : 0.5 });
-      }
-      [...sts].filter(st => Math.abs(st.at.y) > 1e-6).sort((m, n) => Math.abs(m.at.y) - Math.abs(n.at.y)).forEach((st, i) => {
-        let end = x - outward * st.width / 2;
-        marks.push({
-          kind: 'dimension',
-          from: new Pt(end, Math.min(0, st.at.y)),
-          to: new Pt(end, Math.max(0, st.at.y)),
-          through: new Pt(edge, 0),
-          offset: outward * (STACK.first + STACK.pitch * i),
-        });
-      });
-    }
+    let marks = [
+      ...buildScrollViewMeasures(fronts, frontX, frontX + fb.minX, 'front', scale),
+      ...buildScrollViewMeasures(backs, backX, backX + bb.maxX, 'back', scale),
+    ];
     return { strokes, marks };
   };
 

@@ -7,7 +7,7 @@ import {
   renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashLine, renderPolygon, renderSegment, renderSheetMarks, renderSolveFailures, renderPath,
 } from '../../../../helpers/renderFuncs';
 import { arcPathData, combinePathStrings, pathsBounds, samplePathToPolyline } from '../../../../helpers/math/pathMath';
-import { polylineCrossingsAtY } from '../../../../helpers/math/vibeMath';
+import { polylineReachesAtY } from '../../../../helpers/math/vibeMath';
 import { SheetMark } from '../../../../helpers/sheetDraft';
 import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
@@ -214,9 +214,10 @@ export const renderVolute = (
   }
 };
 
-// the volute's turns as a maker callipers them: where the curve, from the eye's back under the eye
-// and out round the spiral and over the head's back, crosses the level and the plumb through the
-// eye's centre. They pair from the inside out, one each side of the centre; a crossing left with no
+// the volute's turns as a maker callipers them: each turn of the curve, from the eye's back under
+// the eye and out round the spiral and over the head's back, found where it crosses the level and
+// the plumb through the eye's centre, then followed out to its furthest reach, where the jaw
+// touches. They pair from the inside out, one each side of the centre; a turn left with no
 // partner, the back's own, is no turn's
 export function calcVoluteTurns(s: ScrollSolve): { widths: [Pt, Pt][]; heights: [Pt, Pt][] } {
   let eye = s.eye!;
@@ -226,13 +227,13 @@ export function calcVoluteTurns(s: ScrollSolve): { widths: [Pt, Pt][]; heights: 
   ]);
   let run = samplePathToPolyline(curve, 0.02, true);
   // a hair under the centre, so the eye's own two ends on the level each count once
-  let xs = polylineCrossingsAtY(run, eye.y - 1e-7, false);
-  let ys = polylineCrossingsAtY(run.map(pt => new Pt(pt.y, pt.x)), eye.x, false);
-  let left = xs.filter(x => x < eye.x).reverse(), right = xs.filter(x => x > eye.x);
-  let under = ys.filter(y => y < eye.y).reverse(), over = ys.filter(y => y > eye.y);
+  let xs = polylineReachesAtY(run, eye.y - 1e-7, eye.x);
+  let ys = polylineReachesAtY(run.map(pt => new Pt(pt.y, pt.x)), eye.x, eye.y).map(pt => new Pt(pt.y, pt.x));
+  let left = xs.filter(pt => pt.x < eye.x).reverse(), right = xs.filter(pt => pt.x > eye.x);
+  let under = ys.filter(pt => pt.y < eye.y).reverse(), over = ys.filter(pt => pt.y > eye.y);
   return {
-    widths: left.slice(0, right.length).map((x, i) => [new Pt(x, eye.y), new Pt(right[i], eye.y)]),
-    heights: under.slice(0, over.length).map((y, i) => [new Pt(eye.x, y), new Pt(eye.x, over[i])]),
+    widths: left.slice(0, right.length).map((pt, i) => [pt, right[i]]),
+    heights: under.slice(0, over.length).map((pt, i) => [pt, over[i]]),
   };
 }
 
@@ -243,8 +244,8 @@ export function buildVoluteMeasures(p: ViolinFamilyParams, s: ScrollSolve): Shee
   let turns = calcVoluteTurns(s);
   let extent = calcScrollExtent(s);
   return [
-    ...turns.widths.map(([from, to], i): SheetMark => ({ kind: 'dimension', from, to, through: new Pt(0, sb.maxY), offset: 3 + 3.8 * i })),
-    ...turns.heights.map(([from, to], i): SheetMark => ({ kind: 'dimension', from, to, through: new Pt(sb.minX, 0), offset: 3 + 3.8 * i })),
+    ...turns.widths.map(([from, to], i): SheetMark => ({ kind: 'dimension', from, to, along: new Pt(1, 0), through: new Pt(0, sb.maxY), offset: 3 + 3.8 * i })),
+    ...turns.heights.map(([from, to], i): SheetMark => ({ kind: 'dimension', from, to, along: new Pt(0, 1), through: new Pt(sb.minX, 0), offset: 3 + 3.8 * i })),
     { kind: 'dimension', from: new Pt(-extent.width, sb.minY), to: new Pt(0, sb.minY), offset: -5 },
   ];
 }

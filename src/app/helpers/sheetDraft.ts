@@ -25,15 +25,17 @@ export interface SheetStroke {
 
 // what a view carries, in the view's own world mm. Offsets and reaches are mm on the paper.
 //   dimension  arrows from `from` to `to`, parked `offset` off the measurement along its left
-//              normal, measured from `through` when given. Its text is the measured length unless
-//              `text` says otherwise, and sits `textAt` of the way along
+//              normal, measured from `through` when given. With `along`, a unit direction, it
+//              measures only that way: the arrows run square to each point's own extension line,
+//              so two points off one plumb still get one level measure. Its text is the measured
+//              length unless `text` says otherwise, and sits `textAt` of the way along
 //   station    a dashed level across the view, labelled at its `from` end
 //   callout    text beside a point, `dx`, `dy` off it, with a leader back unless `bare`
 //   ordinates  heights standing on a baseline at each station along it, the value (or the
 //              station's own `text`) written under the baseline or past the height's tip, the
 //              station's position on the baseline's other side when asked for
 export type SheetMark =
-  | { kind: 'dimension'; from: Pt; to: Pt; through?: Pt; offset?: number; text?: string; textAt?: number }
+  | { kind: 'dimension'; from: Pt; to: Pt; along?: Pt; through?: Pt; offset?: number; text?: string; textAt?: number }
   | { kind: 'station'; y: number; from: number; to: number; label?: string; sub?: string }
   | { kind: 'callout'; at: Pt; text: string; sub?: string; dx?: number; dy?: number; bare?: boolean; anchor?: 'start' | 'middle' | 'end' }
   | { kind: 'ordinates'; origin: Pt; axis: Pt; normal: Pt; length?: number; stations: { at: number; height: number; text?: string }[]; values: 'base' | 'tip' | 'none'; positions?: boolean };
@@ -135,20 +137,24 @@ type Ordinates = Extract<SheetMark, { kind: 'ordinates' }>;
 
 // the text reads left to right, bottom to top on an upright line, and stands over the line. A
 // measure too short for its own arrows takes them outside, pointing in, the text past the far one
-function drawDimension(out: SheetDrawing, mark: Dimension, k: number): void {
+function drawDimension(out: SheetDrawing, mark: Dimension, k: number, gap: number): void {
   let a = new Pt(mark.from.x * k, mark.from.y * k), b = new Pt(mark.to.x * k, mark.to.y * k);
-  let length = dist(a, b);
-  if (length < 1e-9) return;
-  let u = new Pt((b.x - a.x) / length, (b.y - a.y) / length);
+  let span = dist(a, b);
+  if (span < 1e-9) return;
+  let u = mark.along ?? new Pt((b.x - a.x) / span, (b.y - a.y) / span);
+  if ((b.x - a.x) * u.x + (b.y - a.y) * u.y < 0) u = new Pt(-u.x, -u.y);
   let n = new Pt(-u.y, u.x);
   let off = (mark.offset ?? 0) + (mark.through ? (mark.through.x * k - a.x) * n.x + (mark.through.y * k - a.y) * n.y : 0);
-  let A = along(a, n, off), B = along(b, n, off);
-  if (Math.abs(off) > 1e-6) {
-    let side = Math.sign(off);
-    out.paths.push(noteLine(along(a, n, side * EXTENSION.gap), along(A, n, side * EXTENSION.overrun)));
-    out.paths.push(noteLine(along(b, n, side * EXTENSION.gap), along(B, n, side * EXTENSION.overrun)));
+  let offB = off + (a.x - b.x) * n.x + (a.y - b.y) * n.y;
+  let A = along(a, n, off), B = along(b, n, offB);
+  let length = dist(A, B);
+  if (length < 1e-9) return;
+  for (let [foot, reach, end] of [[a, off, A], [b, offB, B]] as const) {
+    if (Math.abs(reach) <= 1e-6) continue;
+    let side = Math.sign(reach);
+    out.paths.push(noteLine(along(foot, n, side * gap), along(end, n, side * EXTENSION.overrun)));
   }
-  let label = mark.text ?? formatMm(dist(mark.from, mark.to));
+  let label = mark.text ?? formatMm(length / k);
   let reading = u.x < -1e-9 || (Math.abs(u.x) <= 1e-9 && u.y < 0) ? new Pt(-u.x, -u.y) : u;
   let rotationDeg = Math.atan2(reading.y, reading.x) * 180 / Math.PI;
   let size = DRAWING_TEXT.label;
@@ -226,12 +232,13 @@ function drawOrdinates(out: SheetDrawing, mark: Ordinates, k: number): void {
   });
 }
 
-// marks in world mm, drawn 1 : `scale` in mm on the paper about the world's own origin
-export function expandMarks(marks: SheetMark[], scale: number): SheetDrawing {
+// marks in world mm, drawn 1 : `scale` in mm on the paper about the world's own origin. `gap` is
+// what an extension line leaves between itself and the point it rises from
+export function expandMarks(marks: SheetMark[], scale: number, gap = EXTENSION.gap): SheetDrawing {
   let out: SheetDrawing = { paths: [], texts: [] };
   let k = 1 / scale;
   for (let mark of marks) {
-    if (mark.kind === 'dimension') drawDimension(out, mark, k);
+    if (mark.kind === 'dimension') drawDimension(out, mark, k, gap);
     else if (mark.kind === 'station') drawStation(out, mark, k);
     else if (mark.kind === 'callout') drawCallout(out, mark, k);
     else drawOrdinates(out, mark, k);

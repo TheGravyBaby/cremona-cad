@@ -415,6 +415,23 @@ export function polylineCrossingsAtY(poly: Pt[], y: number, closed = true): numb
   return xs.sort((m, n) => m - n);
 }
 
+// where an open run crosses y = const, each crossing followed along the run to the furthest it gets
+// from `centre` in x before turning back: where a calliper's jaw touches, not where the line cuts.
+// Sorted by x
+export function polylineReachesAtY(run: Pt[], y: number, centre: number): Pt[] {
+  const reaches: Pt[] = [];
+  for (let i = 0; i < run.length - 1; i++) {
+    const a = run[i], b = run[i + 1];
+    if ((a.y <= y) === (b.y <= y)) continue;
+    let reach = new Pt(a.x + ((y - a.y) / (b.y - a.y)) * (b.x - a.x), y);
+    const side = Math.sign(reach.x - centre);
+    for (let j = i + 1; j < run.length && side * (run[j].x - reach.x) >= 0; j++) reach = run[j];
+    for (let j = i; j >= 0 && side * (run[j].x - reach.x) >= 0; j--) reach = run[j];
+    reaches.push(reach);
+  }
+  return reaches.sort((m, n) => m.x - n.x);
+}
+
 // half width of the run of a loop that x = 0 sits in, bounded by the crossings either side of it.
 // Where the outline turns a corner it runs nearly flat and a line clips it more than once, leaving
 // a sliver out at the tip that isn't part of the run across the middle. With every crossing on one
