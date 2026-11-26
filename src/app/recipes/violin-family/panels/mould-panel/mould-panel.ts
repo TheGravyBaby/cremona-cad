@@ -20,7 +20,7 @@ import { MouldKey, MouldSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout, solveRibArcs } from '../center-bout-panel/center-bout-panel';
+import { solvedRibArcs } from '../center-bout-panel/center-bout-panel';
 import { defineChannelPath } from '../fluting-panel/fluting-panel';
 import { definePurflingPath } from '../plate-contour-panel/plate-contour-panel';
 
@@ -72,7 +72,7 @@ export class MouldPanel extends PanelComponentBase {
     let p = this.params;
     let s = this.s = solveMould(p)!;
     // the fluting channel's corner joins struck on the rib line: the wood the blocks have to fill
-    let rib = this.flags.showRibJoin ? solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!) : null;
+    let rib = this.flags.showRibJoin ? solvedRibArcs(p) : null;
     let join = rib ? defineChannelPath(p, rib, p.body.overhang + p.body.rib, p.body.overhang + p.body.rib).path : null;
     return [
       renderMould(s, this.pal, this.flags),
@@ -165,9 +165,9 @@ function isClampHoleClear(centre: Pt, r: number, edge: Pt[], edgeIndex: Polyline
 export function solveMould(p: ViolinFamilyParams, step = 1): MouldSolve | null {
   if (!p.mould || !p.corners || !p.bouts) return null;
   let s: MouldSolve = { blocks: null, ribOutline: null, outline: null, notchOutline: null, reliefs: [], clampBox: [], alignmentHoles: [], failures: [] };
-  let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+  let rib = solvedRibArcs(p);
   if (!rib) {
-    s.failures.push(buildMiss('Mould: every arc of the rib outline has to solve first.', [...BLOCK_KEYS, 'clampBox']));
+    s.failures.push(buildMiss('Mould: the rib outline doesn\'t close yet. Fix the bouts and corners first.', [...BLOCK_KEYS, 'clampBox']));
     return s;
   }
   let ribOutline = s.ribOutline = definePurflingPath(p, rib, 0)!;

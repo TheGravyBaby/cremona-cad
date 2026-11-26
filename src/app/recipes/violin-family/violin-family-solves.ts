@@ -3,6 +3,7 @@ import { SolveFailure } from '../../helpers/validators';
 import { PolylineIndex } from '../../helpers/math/vibeMath';
 import { ArchTakeoff } from '../../helpers/math/archMath';
 import { ScrollWidths } from './violin-family-types';
+import type { RibArcs } from './panels/center-bout-panel/center-bout-panel';
 
 // what each panel's solver derives from the params: arcs, points, failures. Never saved. A later
 // panel reads an earlier one's off `p.solved` once the stage is held there, and by calling its
@@ -40,6 +41,7 @@ export interface ThicknessBand {
 // when they were last looked at. updateSolved() (violin-family-solved.ts) clears;
 // `solved<Stage>(p)`, beside each solver, fills, and is how everything reads a stage
 export interface ViolinFamilySolved {
+  ribArcs: { solve: RibArcs | null | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
   plateContour: { solve: PlateContourSolve | null | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
   fluting: { solve: FlutingSolve | null | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
   // a plate's surface, with what kept it from solving

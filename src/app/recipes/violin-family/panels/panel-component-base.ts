@@ -29,6 +29,7 @@ export abstract class PanelComponentBase<HighlightKey = never, Ratios extends ob
 
   ngOnInit(): void {
     this.drawCanvas();
+    safeRun(() => this.reportSolveFailures());
   }
 
   // the shell calls this too, when the theme, a view toggle or an undo has changed the picture

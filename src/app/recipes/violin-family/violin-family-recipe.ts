@@ -20,7 +20,7 @@ import { PlateContourPanel, calcPlateContourRatios } from './panels/plate-contou
 import { FlutingPanel } from './panels/fluting-panel/fluting-panel';
 import { FHolePlacementPanel, calcFholePlacementRatios } from './panels/fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel, calcFholeContoursRatios } from './panels/fhole-contours-panel/fhole-contours-panel';
-import { LongArchingPanel, solveRibTaper } from './panels/long-arching-panel/long-arching-panel';
+import { LongArchingPanel } from './panels/long-arching-panel/long-arching-panel';
 import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
 import { NeckPanel } from './panels/neck-panel/neck-panel';
 import { VolutePanel } from './panels/volute-panel/volute-panel';
@@ -183,22 +183,20 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
       case 'mainBouts': return p.body.width > 0 && p.body.height > 0;
       case 'corners': {
         let m = solveMainBouts(p);
-        return !!(m?.U0 && m.U1 && m.L0 && m.L1);
+        return !!p.corners || !!(m?.U0 && m.U1 && m.L0 && m.L1);
       }
-      case 'plateContour':
-      case 'mould':
-      case 'export': {
+      case 'plateContour': {
         let cb = solveCenterBout(p);
-        return !!(cb?.C0 && cb.C2 && cb.C1);
+        return !!p.plateContour || !!(cb?.C0 && cb.C2 && cb.C1);
       }
+      case 'mould':
+      case 'export': return !!p.corners;
       case 'fluting':
-      // seeded params stand in for a solve here: this runs on every commit, and the contour and
-      // fluting it would solve are the ones an upstream edit has just cleared
-      case 'fHolePlacement': return !!p.plateContour && this.canOpenPanel('plateContour');
+      case 'fHolePlacement': return !!p.plateContour;
       case 'fHoleContours': return !!p.fHoles;
-      case 'longArching': return !!p.fluting && this.canOpenPanel('fluting');
-      case 'crossArching': return !!p.arching;
-      case 'neck': return !!p.arching && !!p.fluting && !!solveRibTaper(p);
+      case 'longArching': return !!p.fluting;
+      case 'crossArching':
+      case 'neck': return !!p.arching;
       case 'volute': return !!p.neck;
       case 'pegbox':
       case 'scrollWidths': return !!p.scroll;

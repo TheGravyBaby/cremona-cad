@@ -21,7 +21,7 @@ import { ChannelSolve, FlutingSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout, solveRibArcs, RibArcs } from '../center-bout-panel/center-bout-panel';
+import { solvedRibArcs, RibArcs } from '../center-bout-panel/center-bout-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import {
   solveOffsetArcs, defineOuterPath, PLATE_LAYOUT_GAP, renderPlateContour, solvedPlateContour, defineViolNeckTopLine,
@@ -388,7 +388,7 @@ export function solveFluting(p: ViolinFamilyParams): FlutingSolve | null {
   let f = p.fluting;
   let s: FlutingSolve = { flutingEdge: null, top: null, back: null, failures: [] };
 
-  let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+  let rib = solvedRibArcs(p);
   if (!rib || !solvedPlateContour(p)!.top) {
     s.failures.push({ message: 'Fluting: the plate edge has to solve first.', unsolved: ['top', 'back'], circles: [], segments: [] });
     return s;

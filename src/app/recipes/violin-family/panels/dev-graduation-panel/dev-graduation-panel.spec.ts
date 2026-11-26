@@ -6,9 +6,9 @@ import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../help
 import { Pt } from '../../../../models/types';
 import { calcClearSpot, calcHoleFill, isPointClear, calcLevelBridges, DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, solvedGraduation, solvedThicknessBands, solvedThicknessField, zonePoints } from './dev-graduation-panel';
 import { definePurflingPath, PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
-import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
-import { MainBoutsPanel, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
-import { solveCenterBout, solveRibArcs } from '../center-bout-panel/center-bout-panel';
+import { CornersPanel } from '../corners-panel/corners-panel';
+import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
+import { solvedRibArcs } from '../center-bout-panel/center-bout-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { FHolePlacementPanel } from '../fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel } from '../fhole-contours-panel/fhole-contours-panel';
@@ -55,7 +55,7 @@ const mirrored = (d: string, tolerance = 0.05): boolean => {
   return q.every(pt => distPointToPolylineIndexed(new Pt(-pt.x, pt.y), idx) < tolerance);
 };
 const ribLine = (p: ViolinFamilyParams): Pt[] =>
-  points(definePurflingPath(p, solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!)!, 0)!);
+  points(definePurflingPath(p, solvedRibArcs(p)!, 0)!);
 
 describe('the graduation solve', () => {
   it('never writes to the params', () => {

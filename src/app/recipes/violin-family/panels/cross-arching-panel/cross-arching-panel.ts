@@ -52,7 +52,7 @@ import { definePurflingPath, renderPlateContour, solvedPlateContour, PLATE_LAYOU
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout, solveRibArcs } from '../center-bout-panel/center-bout-panel';
+import { solvedRibArcs } from '../center-bout-panel/center-bout-panel';
 import {
   BACK_ARCH_INK, calcSideViewOffsetX, CHANNEL_INK, longArchHeightAt, renderBodySideProfile, ribHeightAt, solveLongArching, TOP_ARCH_INK,
 } from '../long-arching-panel/long-arching-panel';
@@ -150,12 +150,12 @@ export class CrossArchingPanel extends PanelComponentBase<{ plate: Plate; index:
       if (!surface) this.sampled[plate] = null;
     }
     if (this.ribOutline?.for !== pc) {
-      let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+      let rib = solvedRibArcs(p);
       let path = rib ? definePurflingPath(p, rib, 0) : null;
       this.ribOutline = { for: pc, poly: path ? samplePathToPolyline(path) : null };
     }
     let dx = -p.body.width * PLATE_LAYOUT_GAP;
-    let sideReach = sideX + Math.max(a.ribs!.zLower, a.ribs!.zUpper) + p.arching!.top.thickness + p.arching!.top.long.height + STATION_LINE_OVERRUN_MM;
+    let sideReach = sideX + Math.max(a.ribs?.zLower ?? 0, a.ribs?.zUpper ?? 0) + p.arching!.top.thickness + p.arching!.top.long.height + STATION_LINE_OVERRUN_MM;
     let stationLine = renderDashedLine(new Pt(dx - p.body.width / 2 - STATION_LINE_OVERRUN_MM, y), new Pt(sideReach, y), this.pal.neutral, DASH.guide, STROKE_WEIGHT.section, 0.7);
     let side = renderBodySideProfile(p, a, pc, this.pal, false, { ground: true, fluting: true });
     let shown = { top: this.shown('top'), back: this.shown('back') };

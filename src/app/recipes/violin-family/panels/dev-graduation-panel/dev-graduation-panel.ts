@@ -22,7 +22,7 @@ import { GraduationFailure, GraduationGround, GraduationSolve, Land, PlateContou
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout, solveRibArcs, RibArcs } from '../center-bout-panel/center-bout-panel';
+import { solvedRibArcs, RibArcs } from '../center-bout-panel/center-bout-panel';
 import { PLATE_LAYOUT_GAP, definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholePlate } from '../fhole-placement-panel/fhole-placement-panel';
 import { solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
@@ -338,7 +338,7 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
     let lo = all.length ? Math.floor(Math.min(...all) * 2) / 2 : 0;
     let hi = all.length ? Math.ceil(Math.max(...all) * 2) / 2 : 1;
     this.scale = { lo, hi: Math.max(hi, lo + 1) };
-    let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+    let rib = solvedRibArcs(p);
     let solve = this.solve = solvedGraduation(p)!;
     let pc = solvedPlateContour(p);
     return [
@@ -917,10 +917,10 @@ export function solveGraduation(p: ViolinFamilyParams): GraduationSolve | null {
   let s: GraduationSolve = { blocks: null, lining: null, boundary: null, ground: null, holes: [], failures: [] };
   let fail = (message: string, unsolved: GraduationFailure['unsolved']): GraduationFailure => ({ message, unsolved, circles: [], segments: [] });
 
-  let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+  let rib = solvedRibArcs(p);
   let ribLine = rib ? definePurflingPath(p, rib, 0) : null;
   if (!rib || !ribLine) {
-    s.failures.push(fail('Graduation: the rib outline has to solve first.', ['lining', 'edgeInset', 'blockMargin']));
+    s.failures.push(fail('Graduation: the rib outline doesn\'t close yet. Fix the bouts and corners first.', ['lining', 'edgeInset', 'blockMargin']));
     return s;
   }
   let edge = samplePathToPolyline(ribLine, 0.5);

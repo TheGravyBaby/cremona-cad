@@ -18,10 +18,11 @@ import { FholePlacementParams, FholeStemParams, RenderLayer, ViolinFamilyParams,
 import { PanelComponentBase } from '../panel-component-base';
 import { PlateContourSolve } from '../../violin-family-solves';
 import { FHOLE_SEED_RATIOS, FholeRatios } from '../../violin-family-seed';
-import { renderBoutBounds, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
+import { renderBoutBounds } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout, solveRibArcs, RibArcs } from '../center-bout-panel/center-bout-panel';
+import { solveCenterBout, solvedRibArcs, RibArcs } from '../center-bout-panel/center-bout-panel';
 import { definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { reportFailures } from '../../../../helpers/validators';
 import { renderFlutingInnerEdge, solvedFluting } from '../fluting-panel/fluting-panel';
 import { renderFholes, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 
@@ -97,7 +98,9 @@ export class FHolePlacementPanel extends PanelComponentBase<never, FholeRatios> 
   }
 
   // nothing solves here, so nothing to report; the contours panel reports what the placement broke
-  reportSolveFailures(): void {}
+  reportSolveFailures(): void {
+    reportFailures(solvedPlateContour(this.params)?.failures ?? [], 'F-hole placement');
+  }
 
   protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
@@ -111,7 +114,7 @@ export class FHolePlacementPanel extends PanelComponentBase<never, FholeRatios> 
     // the top edge down to the notch line, the stop as the trade reads it off a finished top
     this.notchStop = Math.round((p.body.height - f.stem.center.y) * 100) / 100;
     this.ratios = calcFholePlacementRatios(p);
-    let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+    let rib = solvedRibArcs(p);
     let pc = solvedPlateContour(p);
     let layers: RenderLayer[] = [renderFholePlate(p, pc, this.pal, rib, false)];
     if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));

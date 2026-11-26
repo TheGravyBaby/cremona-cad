@@ -39,9 +39,10 @@ import {
 } from '../../violin-family-solves';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout, solveRibArcs } from '../center-bout-panel/center-bout-panel';
+import { solveCenterBout, solvedRibArcs } from '../center-bout-panel/center-bout-panel';
 import { calcStemEdgePoints, stemEdgeAt } from '../fhole-placement-panel/fhole-placement-panel';
 import { definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { buildMiss, reportFailures } from '../../../../helpers/validators';
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
   archZAt, calcRibLine, calcTopPlatePlacement, channelCenterlineZAt, defineBodySideProfile, longArchHeightAt, placeOnTopPlate, solveLongArching,
@@ -171,7 +172,9 @@ export class ExportPanel extends PanelComponentBase {
   preview: ExportType | ExportDocument = 'schematic';
 
   // nothing is edited here, so an edit settling has nothing to say
-  reportSolveFailures(): void {}
+  reportSolveFailures(): void {
+    if (!solvedRibArcs(this.params)) reportFailures([buildMiss('Export: the rib outline doesn\'t close yet. Fix the bouts and corners first.', [])], 'Export');
+  }
 
   show(type: ExportType | ExportDocument): void {
     this.preview = type;
@@ -412,7 +415,7 @@ function sheetSize(p: ViolinFamilyParams, type: ExportType, sheet: ExportSheet):
 // the rib outline as one closed path, or null until every arc of it has solved
 function ribOutline(p: ViolinFamilyParams): string | null {
   if (!p.bouts || !p.corners) return null;
-  let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
+  let rib = solvedRibArcs(p);
   return rib && definePurflingPath(p, rib, 0);
 }
 

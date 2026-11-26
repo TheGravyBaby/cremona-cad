@@ -18,9 +18,9 @@ import { PanelComponentBase } from '../panel-component-base';
 import { updateSolved } from '../../violin-family-solved';
 import { PlateContourSolve, OuterCornerKey } from '../../violin-family-solves';
 import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
-import { solveMainBouts, calcViolNeckCap } from '../main-bouts-panel/main-bouts-panel';
+import { calcViolNeckCap } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
-import { calcCornerTurn, RibArcs, solveRibArcs, solveCenterBout } from '../center-bout-panel/center-bout-panel';
+import { calcCornerTurn, RibArcs, solvedRibArcs, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 
 // the back sits a body's width and a bit to the left of the top, as the sheets lay the plates out
@@ -412,18 +412,15 @@ export function solvedPlateContour(p: ViolinFamilyParams): PlateContourSolve | n
 // outline is solved again here, every stage of it, since the edge stands off all of it. Everything
 export function solvePlateContour(p: ViolinFamilyParams): PlateContourSolve | null {
   if (!p.plateContour || !p.corners || !p.bouts) return null;
-  let m = solveMainBouts(p)!;
-  let c = solveCorners(p)!;
-  let cb = solveCenterBout(p)!;
   let pc = p.plateContour;
   let k = p.corners;
   let inset = p.body.overhang + p.body.rib;
 
   let s: PlateContourSolve = { top: null, back: null, purfling: null, outerPurfling: null, corners: {}, button: null, failures: [] };
 
-  let rib = solveRibArcs(p, m, c, cb);
+  let rib = solvedRibArcs(p);
   if (!rib) {
-    s.failures.push({ message: 'Plate contour: every arc of the rib outline has to solve first.', unsolved: ['top', 'back', 'purfling'], circles: [], segments: [] });
+    s.failures.push({ message: 'Plate contour: the rib outline doesn\'t close yet. Fix the bouts and corners first.', unsolved: ['top', 'back', 'purfling'], circles: [], segments: [] });
     return s;
   }
 

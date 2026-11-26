@@ -85,7 +85,7 @@
         </label>
           <label class="field-cell">
             <span class="field-title">Height</span>
-            <div class="basic-display" aria-label="Scroll height">{{ extent.height.toFixed(1) }}</div>
+            <div class="basic-display" aria-label="Scroll height">{{ extent ? extent.height.toFixed(1) : '–' }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
@@ -101,7 +101,7 @@
         </label>
          <label class="field-cell">
             <span class="field-title">Width</span>
-            <div class="basic-display" aria-label="Scroll width">{{ extent.width.toFixed(1) }}</div>
+            <div class="basic-display" aria-label="Scroll width">{{ extent ? extent.width.toFixed(1) : '–' }}</div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
@@ -117,7 +117,7 @@
         </label>
           <label class="field-cell">
             <span class="field-title">H to W</span>
-            <div class="basic-display" aria-label="Scroll height to width">{{ nearestFraction(extent.height / extent.width) }}</div>
+            <div class="basic-display" aria-label="Scroll height to width">{{ extent ? nearestFraction(extent.height / extent.width) : '–' }}</div>
         </label>
     </div>
 </section>

@@ -23,7 +23,8 @@ import { MOULD_EXPORT_STEP, renderMould, solveMould } from '../mould-panel/mould
 import { definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout, solveRibArcs } from '../center-bout-panel/center-bout-panel';
+import { solvedRibArcs } from '../center-bout-panel/center-bout-panel';
+import { error } from '../../../../shared/message-emitter';
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { calcScrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
 import { solveScroll } from '../pegbox-panel/pegbox-panel';
@@ -83,7 +84,9 @@ export class DevExportPanel extends PanelComponentBase {
     this.recordEditAndRedraw();
   }
 
-  reportSolveFailures(): void {}
+  reportSolveFailures(): void {
+    if (this.toolpaths?.failures.length) error(this.toolpaths.failures.join(' '), 'Dev export');
+  }
 
   protected buildCanvasLayers(): RenderLayer[] {
     let bit = this.bit;
@@ -677,8 +680,8 @@ export function purflingToolpaths(p: ViolinFamilyParams, surface: PlateSurface, 
   if (!(g.purflingDepth > 0)) fail(out, 'The strip height has to be above 0.');
   if (!bit.feeds) fail(out, 'No feeds for this bit.');
   if (out.failures.length) return out;
-  let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
-  if (!rib) return fail(out, 'The rib outline has to solve first.');
+  let rib = solvedRibArcs(p);
+  if (!rib) return fail(out, 'The rib outline doesn\'t close yet. Fix the bouts and corners first.');
   let thickness = p.arching![g.plate].thickness;
   let inset = p.body.overhang + p.body.rib;
   let r = bit.diameter / 2;

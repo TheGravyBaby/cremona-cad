@@ -11,6 +11,7 @@ import { ViolinFamilySolved } from './violin-family-solves';
 export function updateSolved(p: ViolinFamilyParams): void {
   if (!p.solved) {
     let solved: ViolinFamilySolved = {
+      ribArcs: { solve: undefined, children: ['plateContour'], lastParams: '' },
       plateContour: { solve: undefined, children: ['fluting', 'graduation'], lastParams: '' },
       fluting: { solve: undefined, children: ['crossArchingTop', 'crossArchingBack'], lastParams: '' },
       crossArchingTop: { solve: undefined, children: ['landTop'], lastParams: '' },
@@ -29,7 +30,13 @@ export function updateSolved(p: ViolinFamilyParams): void {
   }
   let s = p.solved!;
 
-  let plateContour = JSON.stringify([p.body, p.bouts, p.corners, p.plateContour]);
+  let ribArcs = JSON.stringify([p.body, p.bouts, p.corners]);
+  if (s.ribArcs.lastParams !== ribArcs) {
+    s.ribArcs.lastParams = ribArcs;
+    clearSolved(s, 'ribArcs');
+  }
+
+  let plateContour = JSON.stringify(p.plateContour);
   if (s.plateContour.lastParams !== plateContour) {
     s.plateContour.lastParams = plateContour;
     clearSolved(s, 'plateContour');
