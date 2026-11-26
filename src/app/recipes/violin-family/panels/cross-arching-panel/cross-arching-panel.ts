@@ -32,6 +32,7 @@ import {
   ViolinFamilyToggleKey,
 } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
+import { updateSolved } from '../../violin-family-solved';
 import {
   ArchTakeoff,
   CrossArchingFailure,
@@ -46,8 +47,8 @@ import {
   SurfaceGouge,
   SurfaceRow,
 } from '../../violin-family-solves';
-import { renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
-import { definePurflingPath, renderPlateContour, solvePlateContour, PLATE_LAYOUT_GAP } from '../plate-contour-panel/plate-contour-panel';
+import { renderFluting, solvedFluting } from '../fluting-panel/fluting-panel';
+import { definePurflingPath, renderPlateContour, solvedPlateContour, PLATE_LAYOUT_GAP } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
@@ -136,11 +137,11 @@ export class CrossArchingPanel extends PanelComponentBase<{ plate: Plate; index:
 
   protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
-    let o = solvePlateContour(p)!;
-    let f = solveFluting(p)!;
+    let pc = solvedPlateContour(p)!;
+    let f = solvedFluting(p)!;
     let a = solveLongArching(p)!;
     let sideX = calcSideViewOffsetX(p);
-    let s = this.s = solveCrossArching(p)!;
+    let s = this.s = solvedCrossArching(p)!;
     let y = this.cursorY;
     for (let plate of this.plates) {
       let surface = s[plate];
@@ -148,22 +149,22 @@ export class CrossArchingPanel extends PanelComponentBase<{ plate: Plate; index:
       if (surface && this.sampled[plate]?.surface !== surface) this.sampled[plate] = { surface, contours: null, wireframe: null };
       if (!surface) this.sampled[plate] = null;
     }
-    if (this.ribOutline?.for !== o) {
+    if (this.ribOutline?.for !== pc) {
       let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
       let path = rib ? definePurflingPath(p, rib, 0) : null;
-      this.ribOutline = { for: o, poly: path ? samplePathToPolyline(path) : null };
+      this.ribOutline = { for: pc, poly: path ? samplePathToPolyline(path) : null };
     }
     let dx = -p.body.width * PLATE_LAYOUT_GAP;
     let sideReach = sideX + Math.max(a.ribs!.zLower, a.ribs!.zUpper) + p.arching!.top.thickness + p.arching!.top.long.height + STATION_LINE_OVERRUN_MM;
     let stationLine = renderDashedLine(new Pt(dx - p.body.width / 2 - STATION_LINE_OVERRUN_MM, y), new Pt(sideReach, y), this.pal.neutral, DASH.guide, STROKE_WEIGHT.section, 0.7);
-    let side = renderBodySideProfile(p, a, o, this.pal, false, { ground: true, fluting: true });
+    let side = renderBodySideProfile(p, a, pc, this.pal, false, { ground: true, fluting: true });
     let shown = { top: this.shown('top'), back: this.shown('back') };
     let section = renderCrossSection(p, s, a, this.ribOutline.poly, y, this.pal, {
       highlight: this.highlightedPart?.key ?? null, showGuides: this.flags.showModuleGuides, shown, sections: this.section,
     });
 
     let layers = [
-      renderPlateContour(p, o, this.pal, this.flags, false),
+      renderPlateContour(p, pc, this.pal, this.flags, false),
       renderFluting(p, f, this.pal, false),
       renderFholes(p, this.pal),
       renderTranslatedLayers([side], sideX),
@@ -968,21 +969,25 @@ export function wireframeStripAt(surface: PlateSurface, y: number, sampleStep: n
   return buildWireframeStrip(buildSurfaceField(surface), y, rowAt(surface, y), sampleStep);
 }
 
-// a later panel reads the surfaces by calling this; it returns and never writes to the params.
-// Each plate's last surface is kept against the params it reads (~90ms a plate, asked for on every
-// cursor move); nothing of it reaches the file
-let last: Record<Plate, { key: string; surface: PlateSurface | null; failures: CrossArchingFailure[] } | null> = { top: null, back: null };
+// both plates' surfaces as held on the params, each solved first if an edit has cleared it. The
+// plates are held apart, so an edit to one's arch leaves the other's surface standing
+export function solvedCrossArching(p: ViolinFamilyParams): CrossArchingSolve | null {
+  if (!p.arching || !p.fluting) return null;
+  updateSolved(p);
+  let top = p.solved!.crossArchingTop;
+  let back = p.solved!.crossArchingBack;
+  if (top.solve === undefined) top.solve = solvePlateSurface(p, 'top');
+  if (back.solve === undefined) back.solve = solvePlateSurface(p, 'back');
+  return { top: top.solve.surface, back: back.solve.surface, failures: [...top.solve.failures, ...back.solve.failures] };
+}
 
+// both plates' surfaces from the params, calculated at every call (~5ms a plate) and never writing
+// to them. Everything but a spec reads solvedCrossArching() rather than calling this
 export function solveCrossArching(p: ViolinFamilyParams): CrossArchingSolve | null {
   if (!p.arching || !p.fluting) return null;
-  let s: CrossArchingSolve = { top: null, back: null, failures: [] };
-  for (let plate of ['top', 'back'] as const) {
-    let key = JSON.stringify([p.body, p.bouts, p.corners, p.plateContour, p.fluting, p.arching[plate]]);
-    if (last[plate]?.key !== key) last[plate] = { key, ...solvePlateSurface(p, plate) };
-    s[plate] = last[plate]!.surface;
-    s.failures.push(...last[plate]!.failures);
-  }
-  return s;
+  let top = solvePlateSurface(p, 'top');
+  let back = solvePlateSurface(p, 'back');
+  return { top: top.surface, back: back.surface, failures: [...top.failures, ...back.failures] };
 }
 
 // one plate's surface from the loops the earlier stages solved, the gouge and the crown; a plate
@@ -995,10 +1000,10 @@ function solvePlateSurface(p: ViolinFamilyParams, plate: Plate): { surface: Plat
   solveSection(failures, label, [plate], () => {
     let pa = p.arching![plate];
     let cross = pa.cross;
-    let f = solveFluting(p)!;
-    let o = solvePlateContour(p)!;
+    let f = solvedFluting(p)!;
+    let pc = solvedPlateContour(p)!;
     let channel = f[plate];
-    let outline = plate === 'top' ? o.top : o.back;
+    let outline = plate === 'top' ? pc.top : pc.back;
     if (!channel || !outline || !f.flutingEdge) return buildMiss(`${label}: the fluting channel has to solve first.`, [plate]);
     if (!(pa.thickness > 0 && pa.long.height > 0)) return buildMiss(`${label}: the long arch has to solve first.`, [plate]);
 

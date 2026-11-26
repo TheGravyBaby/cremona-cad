@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { buildFemDeck, calcWoodMaterial, DevFemPanel, isFemBuilt, solveFem } from './dev-fem-panel';
+import { buildFemDeck, calcWoodMaterial, DevFemPanel, isFemBuilt, solvedFem } from './dev-fem-panel';
 import { DevBassBarPanel } from '../dev-bassbar-panel/dev-bassbar-panel';
 import { DevGraduationPanel, gridPoints, solveGraduation } from '../dev-graduation-panel/dev-graduation-panel';
 import { rowAt, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
@@ -43,8 +43,8 @@ const euler = (corners: number, triangles: number[][]): number => {
 describe('the plate as shell elements', () => {
   const p = seeded();
   const step = 8;
-  const top = solveFem(p, { plate: 'top', step, bar: true })!;
-  const back = solveFem(p, { plate: 'back', step, bar: true })!;
+  const top = solvedFem(p, { plate: 'top', step, bar: true })!;
+  const back = solvedFem(p, { plate: 'back', step, bar: true })!;
 
   it('seeds once the plates are graduated, once only, and never writes to the params', () => {
     const q = blank();
@@ -57,7 +57,7 @@ describe('the plate as shell elements', () => {
     expect(p.wood!.top.density).toBe(edited);
 
     const snapshot = JSON.stringify(p);
-    solveFem(p, { plate: 'top', step, bar: true });
+    solvedFem(p, { plate: 'top', step, bar: true });
     expect(JSON.stringify(p)).toBe(snapshot);
   });
 
@@ -95,14 +95,14 @@ describe('the plate as shell elements', () => {
     }
     expect(top.barVolume).toBeGreaterThan(0);
     expect(top.barVolume).toBeLessThan(top.webVolume);
-    expect(solveFem(p, { plate: 'top', step, bar: false })!.web).toEqual([]);
+    expect(solvedFem(p, { plate: 'top', step, bar: false })!.web).toEqual([]);
   });
 
   it('keeps a built mesh through a wood edit, and no longer once the plate or the mesh fields move', () => {
     const q = seeded();
     const options = { plate: 'back' as const, step, bar: false };
     expect(isFemBuilt(q, options)).toBe(false);
-    solveFem(q, options);
+    solvedFem(q, options);
     q.wood!.back.density += 10;
     expect(isFemBuilt(q, options)).toBe(true);
     expect(isFemBuilt(q, { ...options, step: step + 1 })).toBe(false);
@@ -113,17 +113,17 @@ describe('the plate as shell elements', () => {
   it('weighs more the thicker it is graduated', () => {
     const q = seeded();
     for (const pt of q.graduation!.back.points) pt.thickness = 4;
-    expect(solveFem(q, { plate: 'back', step, bar: false })!.plateVolume).toBeGreaterThan(back.plateVolume);
+    expect(solvedFem(q, { plate: 'back', step, bar: false })!.plateVolume).toBeGreaterThan(back.plateVolume);
   });
 
   it('reports a plate with no readings, a cleared wood field and a mesh too fine', () => {
     const q = seeded();
     q.graduation!.back.points = [];
-    expect(solveFem(q, { plate: 'back', step, bar: false })!.failures.map(f => f.unsolved)).toEqual([['mesh']]);
+    expect(solvedFem(q, { plate: 'back', step, bar: false })!.failures.map(f => f.unsolved)).toEqual([['mesh']]);
     const r = seeded();
     (r.wood!.back as any).density = null;
-    expect(solveFem(r, { plate: 'back', step, bar: false })!.failures.map(f => f.unsolved)).toEqual([['wood']]);
-    expect(solveFem(p, { plate: 'back', step: 0.1, bar: false })!.failures.map(f => f.unsolved)).toEqual([['mesh']]);
+    expect(solvedFem(r, { plate: 'back', step, bar: false })!.failures.map(f => f.unsolved)).toEqual([['wood']]);
+    expect(solvedFem(p, { plate: 'back', step: 0.1, bar: false })!.failures.map(f => f.unsolved)).toEqual([['mesh']]);
   });
 
   it('writes a deck whose elements name only nodes it holds', () => {

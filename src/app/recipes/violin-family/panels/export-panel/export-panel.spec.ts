@@ -15,7 +15,7 @@ import { FHolePlacementPanel } from '../fhole-placement-panel/fhole-placement-pa
 import { FHoleContoursPanel } from '../fhole-contours-panel/fhole-contours-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { NeckPanel } from '../neck-panel/neck-panel';
-import { VolutePanel } from '../volute-panel/volute-panel';
+import { calcVoluteTurns, VolutePanel } from '../volute-panel/volute-panel';
 import { solveStringSetup, StringSetupPanel } from '../string-setup-panel/string-setup-panel';
 import { neckHalfWidthAt } from '../neck-panel/neck-panel';
 import { MouldPanel } from '../mould-panel/mould-panel';
@@ -24,7 +24,7 @@ import { buildScrollBackStrip, buildScrollCompassWalk, calcScrollWidthStations }
 import { calcBodyLandmarks, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { solvePositionMarks } from '../dev-fingerboard-panel/dev-fingerboard-panel';
 import {
-  buildScaledDrawings, buildSchematic, buildSchematicPages, calcVoluteTurns, crossArchTemplates, ExportDocument, ExportPanel, ExportType, exportReady, exportSheet,
+  buildScaledDrawings, buildSchematic, buildSchematicPages, crossArchTemplates, ExportDocument, ExportPanel, ExportType, exportReady, exportSheet,
   fingerboardStl, SchematicPageName, plateStl,
 } from './export-panel';
 

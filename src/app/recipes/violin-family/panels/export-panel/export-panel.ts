@@ -41,18 +41,18 @@ import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout, solveRibArcs } from '../center-bout-panel/center-bout-panel';
 import { calcStemEdgePoints, stemEdgeAt } from '../fhole-placement-panel/fhole-placement-panel';
-import { definePurflingPath, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
   archZAt, calcRibLine, calcTopPlatePlacement, channelCenterlineZAt, defineBodySideProfile, longArchHeightAt, placeOnTopPlate, solveLongArching,
 } from '../long-arching-panel/long-arching-panel';
 import {
-  BodyLandmark, calcBodyLandmarks, calcSectionRuns, plateHalfChordAtY, rowAt, solveCrossArching, STATION_MERGE_EPS_MM, surfaceZAt,
+  BodyLandmark, calcBodyLandmarks, calcSectionRuns, plateHalfChordAtY, rowAt, solvedCrossArching, STATION_MERGE_EPS_MM, surfaceZAt,
 } from '../cross-arching-panel/cross-arching-panel';
 import { calcMortiseFloorY, neckHalfWidthAt, calcScrollOnNeck, solveNeck } from '../neck-panel/neck-panel';
 import { solveStringSetup } from '../string-setup-panel/string-setup-panel';
 import { fingerboardSurfaceZAt, PositionMarkSolve, solveScoop } from '../dev-fingerboard-panel/dev-fingerboard-panel';
-import { calcScrollExtent } from '../volute-panel/volute-panel';
+import { buildVoluteMeasures, calcScrollExtent } from '../volute-panel/volute-panel';
 import { defineSideScrollPath } from '../pegbox-panel/pegbox-panel';
 import {
   buildScrollBackStrip, buildScrollBackViewStrokes, buildScrollCompassWalk, buildScrollFrontViewStrokes, calcScrollWidthStations, ScrollStationKey, ScrollView,
@@ -226,7 +226,7 @@ export class ExportPanel extends PanelComponentBase {
   }
 
   downloadStl(plate: Plate): void {
-    let surface = this.params.arching ? solveCrossArching(this.params)?.[plate] : null;
+    let surface = this.params.arching ? solvedCrossArching(this.params)?.[plate] : null;
     if (!surface) return;
     downloadStlFile(`${this.baseName()}-${plate}-plate.stl`, plateStl(this.params, surface, plate));
   }
@@ -294,9 +294,9 @@ export function exportReady(p: ViolinFamilyParams): Set<ExportReady> {
   let ready = new Set<ExportReady>();
   if (!ribOutline(p)) return ready;
   ready.add('innerContour');
-  let o = solvePlateContour(p);
-  if (o?.top) ready.add('topPlate');
-  if (o?.back) ready.add('backPlate');
+  let pc = solvedPlateContour(p);
+  if (pc?.top) ready.add('topPlate');
+  if (pc?.back) ready.add('backPlate');
   if (p.fHoleContours && solveFholeContours(p)?.path) {
     ready.add('fholeTemplate');
     // fholeTemplateNoEyes still builds through exportSheet but isn't offered, so it is in no
@@ -305,7 +305,7 @@ export function exportReady(p: ViolinFamilyParams): Set<ExportReady> {
   if (p.arching) {
     let a = solveLongArching(p);
     if (a?.top || a?.back) ready.add('longArchTemplates');
-    let c = solveCrossArching(p);
+    let c = solvedCrossArching(p);
     if (c?.top || c?.back) ready.add('crossArchTemplates');
     if (c?.top) ready.add('stlTop');
     if (c?.back) ready.add('stlBack');
@@ -337,11 +337,11 @@ export function exportSheet(p: ViolinFamilyParams, type: ExportType): ExportShee
     case 'backPlate': {
       // outline, holes and purfling. The channel is not drawn here in any form: in plan it is only
       // two rims with nothing between them to say how deep, and the arch templates carry that whole
-      let o = solvePlateContour(p);
-      let plate = type === 'topPlate' ? o?.top : o?.back;
-      if (!o || !plate) return null;
+      let pc = solvedPlateContour(p);
+      let plate = type === 'topPlate' ? pc?.top : pc?.back;
+      if (!pc || !plate) return null;
       let holes = type === 'topPlate' ? fholes(p) : [];
-      return sheet([black(plate), ...holes.map(d => cutFirst(d)), ...[o.purfling, o.outerPurfling].map(d => d && etched(d))]);
+      return sheet([black(plate), ...holes.map(d => cutFirst(d)), ...[pc.purfling, pc.outerPurfling].map(d => d && etched(d))]);
     }
     case 'mould': {
       let m = solveMould(p, MOULD_EXPORT_STEP);
@@ -437,7 +437,7 @@ function fholeTemplate(p: ViolinFamilyParams, renderEyes: boolean, arched = fals
   let raw = s?.path ? defineFholePath(p, s, false, renderEyes) : null;
   if (!raw) return null;
   if (arched) {
-    let surface = p.arching ? solveCrossArching(p)?.top : null;
+    let surface = p.arching ? solvedCrossArching(p)?.top : null;
     if (!surface) return null;
     let flat = pathsBounds([raw]);
     let spine = new Pt((flat.minX + flat.maxX) / 2, (flat.minY + flat.maxY) / 2);
@@ -595,7 +595,7 @@ function buildRows(rows: [string, string | null][]): SheetRow[] {
 // a plate's arch height: the solved surface on the joint, above the plate's edge, where the long
 // arch stands highest
 function calcArchPeak(p: ViolinFamilyParams, plate: Plate): { y: number; height: number } | null {
-  let surface = p.arching ? solveCrossArching(p)?.[plate] : null;
+  let surface = p.arching ? solvedCrossArching(p)?.[plate] : null;
   let la = surface?.longArch;
   if (!surface || !la) return null;
   let y = la.yStart;
@@ -609,8 +609,8 @@ function calcArchPeak(p: ViolinFamilyParams, plate: Plate): { y: number; height:
 function buildBodyPage(p: ViolinFamilyParams): SheetPageSpec | null {
   let rib = ribOutline(p);
   if (!rib) return null;
-  let o = solvePlateContour(p);
-  let outline = o?.top ?? rib;
+  let pc = solvedPlateContour(p);
+  let outline = pc?.top ?? rib;
   let loop = samplePathToPolyline(outline, 0.25);
   let half = Math.max(...loop.map(pt => Math.abs(pt.x)));
   let foot = Math.min(...loop.map(pt => pt.y));
@@ -618,13 +618,13 @@ function buildBodyPage(p: ViolinFamilyParams): SheetPageSpec | null {
   let h = p.body.height;
   let landmarks = calcBodyLandmarks(p);
   let holes = fholes(p);
-  let a = p.arching && o ? solveLongArching(p) : null;
-  let side = a?.ribs && o ? defineBodySideProfile(p, a, o) : null;
+  let a = p.arching && pc ? solveLongArching(p) : null;
+  let side = a?.ribs && pc ? defineBodySideProfile(p, a, pc) : null;
   let ribs = a?.ribs && side ? calcRibLine(p, a.ribs) : null;
   let backPeak = side ? calcArchPeak(p, 'back') : null;
   let topPeak = side ? calcArchPeak(p, 'top') : null;
   let backThickness = p.arching?.back.thickness ?? 0;
-  let buttonHeight = o?.button ? p.plateContour!.button.height : 0;
+  let buttonHeight = pc?.button ? p.plateContour!.button.height : 0;
   // the belly's edge and crown where the tilted plate carries them in the side view
   let onRibs = a?.ribs ? calcTopPlatePlacement(p, a.ribs) : null;
   let topEdgeZ = a?.ribs ? a.ribs.zLower + p.arching!.top.thickness : 0;
@@ -641,9 +641,9 @@ function buildBodyPage(p: ViolinFamilyParams): SheetPageSpec | null {
       { d: outline },
       { d: pathFromLine(new Pt(0, foot - 3 * scale), new Pt(0, head + buttonHeight + 3 * scale)), ink: 'note', dashed: true },
     ];
-    for (let d of [o?.purfling, o?.outerPurfling]) if (d) strokes.push({ d, weight: 'light' });
+    for (let d of [pc?.purfling, pc?.outerPurfling]) if (d) strokes.push({ d, weight: 'light' });
     for (let d of holes) strokes.push({ d });
-    if (o?.button) strokes.push({ d: o.button.path, weight: 'light', dashed: true });
+    if (pc?.button) strokes.push({ d: pc.button.path, weight: 'light', dashed: true });
 
     let marks: SheetMark[] = [{ kind: 'dimension', from: new Pt(0, foot), to: new Pt(0, head), through: new Pt(left, 0) }];
     for (let m of landmarks) {
@@ -710,7 +710,7 @@ function calcSection(surface: PlateSurface, y: number): { half: number; profile:
 // each plate's sections at the upper bout, the waist and the lower bout, and both long
 // arches, every height read off the solved surface
 function buildArchingPage(p: ViolinFamilyParams): SheetPageSpec | null {
-  let c = p.arching ? solveCrossArching(p) : null;
+  let c = p.arching ? solvedCrossArching(p) : null;
   if (!c || (!c.top && !c.back)) return null;
   let h = p.body.height;
   let stations = calcBodyLandmarks(p).filter(m => SECTION_CODES.includes(m.code)).sort((m, n) => n.y - m.y);
@@ -799,7 +799,7 @@ function buildFholesPage(p: ViolinFamilyParams): SheetPageSpec | null {
   let s = p.fHoleContours ? solveFholeContours(p) : null;
   if (!s?.path || !s.UTip || !s.LTip) return null;
   let f = p.fHoles!;
-  let o = solvePlateContour(p);
+  let pc = solvedPlateContour(p);
   let { UEye, LEye, stem } = f;
   let bass = defineFholePath(p, s, true)!;
   let b = pathsBounds([s.path]);
@@ -815,8 +815,8 @@ function buildFholesPage(p: ViolinFamilyParams): SheetPageSpec | null {
     { d: pathFromLine(new Pt(0, b.minY - pad), new Pt(0, b.maxY + pad)), ink: 'note', dashed: true },
     { d: pathFromLine(new Pt(-notch.x, notch.y), notch), ink: 'note', dashed: true },
   ];
-  if (o?.top) strokes.push({ d: occludePath(o.top, box).hidden });
-  for (let d of [o?.purfling, o?.outerPurfling]) if (d) strokes.push({ d: occludePath(d, box).hidden, weight: 'light' });
+  if (pc?.top) strokes.push({ d: occludePath(pc.top, box).hidden });
+  for (let d of [pc?.purfling, pc?.outerPurfling]) if (d) strokes.push({ d: occludePath(d, box).hidden, weight: 'light' });
 
   // the two measures that run aslant, eye to eye and wing point to wing point, are drawn on the
   // bass hole and read off beside it, where their figures don't lie along the hole's own edge
@@ -875,8 +875,8 @@ function buildNeckPage(p: ViolinFamilyParams): SheetPageSpec | null {
   let lean = nk.angle * TURN.degree;
   let reach = 0.42 * nk.length;
   let a = solveLongArching(p);
-  let o = solvePlateContour(p);
-  let side = a && o ? defineBodySideProfile(p, a, o) : null;
+  let pc = solvedPlateContour(p);
+  let side = a && pc ? defineBodySideProfile(p, a, pc) : null;
   let body = side ? [side.ribs, side.back.frame, side.back.edge, side.back.arch, side.top.frame, side.top.edge, side.top.arch].filter((d): d is string => !!d) : [];
   let backThickness = p.arching!.back.thickness;
   let button = pathFromPolyline([new Pt(0, h), new Pt(0, n.tip!.y), new Pt(-backThickness, n.tip!.y), new Pt(-backThickness, h)]);
@@ -935,28 +935,6 @@ function buildNeckPage(p: ViolinFamilyParams): SheetPageSpec | null {
   };
 }
 
-// the volute's turns as a maker callipers them: where the curve, from the eye's back under the eye
-// and out round the spiral and over the head's back, crosses the level and the plumb through the
-// eye's centre. They pair from the inside out, one each side of the centre; a crossing left with no
-// partner, the back's own, is no turn's
-export function calcVoluteTurns(s: ScrollSolve): { widths: [Pt, Pt][]; heights: [Pt, Pt][] } {
-  let eye = s.eye!;
-  let curve = combinePathStrings([
-    arcPathData(eye, eye.r, -TURN.half, 0),
-    ...[...[...s.spiral!].reverse(), s.S0!, s.S1!, s.S2!].map(arc => arcPathData(arc, arc.r, arc.start, arc.end)),
-  ]);
-  let run = samplePathToPolyline(curve, 0.02, true);
-  // a hair under the centre, so the eye's own two ends on the level each count once
-  let xs = polylineCrossingsAtY(run, eye.y - 1e-7, false);
-  let ys = polylineCrossingsAtY(run.map(pt => new Pt(pt.y, pt.x)), eye.x, false);
-  let left = xs.filter(x => x < eye.x).reverse(), right = xs.filter(x => x > eye.x);
-  let under = ys.filter(y => y < eye.y).reverse(), over = ys.filter(y => y > eye.y);
-  return {
-    widths: left.slice(0, right.length).map((x, i) => [new Pt(x, eye.y), new Pt(right[i], eye.y)]),
-    heights: under.slice(0, over.length).map((y, i) => [new Pt(eye.x, y), new Pt(eye.x, over[i])]),
-  };
-}
-
 // which view shows each width
 const HEAD_WIDTHS: Partial<Record<ScrollStationKey, 'front' | 'back'>> = {
   nut: 'front', hip: 'front', throat: 'front', turn2Bottom: 'front', eye: 'front', turn2Top: 'front', crown: 'front',
@@ -984,7 +962,6 @@ function buildHeadPage(p: ViolinFamilyParams): SheetPageSpec | null {
   let front = defineScrollViewPath(buildScrollFrontViewStrokes(p, s, (x, y) => new Pt(x, y), 0));
   let back = defineScrollViewPath(buildScrollBackViewStrokes(p, s, (x, y) => new Pt(x, y), 0));
   let sb = pathsBounds([side]), fb = pathsBounds([front]), bb = pathsBounds([back]);
-  let turns = calcVoluteTurns(s);
   let extent = calcScrollExtent(s);
   let stations = calcScrollWidthStations(p, s).filter(st => HEAD_WIDTHS[st.key]);
   // two widths one view shows at the same level and size (the duck tail and the foot can be) are drawn once
@@ -996,11 +973,7 @@ function buildHeadPage(p: ViolinFamilyParams): SheetPageSpec | null {
 
   let sideView: SheetView = {
     strokes: [{ d: side }, { d: pathFromLine(new Pt(sb.minX, 0), new Pt(sb.maxX, 0)), ink: 'note' }],
-    marks: [
-      ...turns.widths.map(([from, to], i): SheetMark => ({ kind: 'dimension', from, to, through: new Pt(0, sb.maxY), offset: 3 + 3.8 * i })),
-      ...turns.heights.map(([from, to], i): SheetMark => ({ kind: 'dimension', from, to, through: new Pt(sb.minX, 0), offset: 3 + 3.8 * i })),
-      { kind: 'dimension', from: new Pt(-extent.width, sb.minY), to: new Pt(0, sb.minY), offset: -5 },
-    ],
+    marks: buildVoluteMeasures(p, s),
   };
 
   let facesView = (scale: number): SheetView => {
@@ -1167,7 +1140,7 @@ const TEMPLATE_PLATES: ReadonlyArray<{ plate: Plate; label: string }> = [{ plate
 // carved to. The back's arch hangs down in its own frame, so its blanks are turned over to bow the
 // same way as the top's. Each plate is cut at its own stations
 export function crossArchTemplates(p: ViolinFamilyParams): TemplateShape[] {
-  let c = p.arching ? solveCrossArching(p) : null;
+  let c = p.arching ? solvedCrossArching(p) : null;
   if (!c) return [];
   let arches = TEMPLATE_PLATES.flatMap(({ plate, label }) => {
     let surface = c[plate];

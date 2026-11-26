@@ -14,10 +14,11 @@ import { Pt, Pt3D, Vec3 } from '../../../../models/types';
 import { PlateWood, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, Wood, WoodSpecies } from '../../violin-family-types';
 import { FemSolve, Plate, SurfaceRow } from '../../violin-family-solves';
 import { PanelComponentBase } from '../panel-component-base';
-import { rowAt, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
-import { CONTOUR_INTERVAL, rampFill, solveGraduation, thicknessField } from '../dev-graduation-panel/dev-graduation-panel';
+import { updateSolved } from '../../violin-family-solved';
+import { rowAt, solvedCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
+import { CONTOUR_INTERVAL, rampFill, solvedGraduation, solvedThicknessField } from '../dev-graduation-panel/dev-graduation-panel';
 import { solveBassBar } from '../dev-bassbar-panel/dev-bassbar-panel';
-import { PLATE_LAYOUT_GAP, renderPlateContour, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { PLATE_LAYOUT_GAP, renderPlateContour, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 
 // A plate as shell elements for finite element analysis, tried out on localhost only, once the
@@ -124,7 +125,7 @@ export class DevFemPanel extends PanelComponentBase implements OnInit {
 
   // a mesh takes seconds, so it is built when asked for and never on a field's edit
   buildMesh(): void {
-    solveFem(this.params, this.options);
+    solvedFem(this.params, this.options);
     this.drawCanvas();
     this.reportSolveFailures();
   }
@@ -143,8 +144,9 @@ export class DevFemPanel extends PanelComponentBase implements OnInit {
 
   protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
-    let s = this.s = isFemBuilt(p, this.options) ? solveFem(p, this.options) : null;
-    let outlines = [renderPlateContour(p, solvePlateContour(p)!, this.pal, this.flags, false), renderFholes(p, this.pal)];
+    let s = this.s = isFemBuilt(p, this.options) ? solvedFem(p, this.options) : null;
+    let pc = solvedPlateContour(p)!;
+    let outlines = [renderPlateContour(p, pc, this.pal, this.flags, false), renderFholes(p, this.pal)];
     if (!s) return outlines;
     // the back lies to the top's left, as the plate contour lays the two out
     let dx = s.plate === 'back' ? -p.body.width * PLATE_LAYOUT_GAP : 0;
@@ -179,22 +181,23 @@ export const renderFemMesh = (s: FemSolve, pal: PanelPalette) => (g: any, ui: an
   }
 };
 
-// the mesh is the slow part and no wood field moves it, so it is kept against everything else
-let last: { key: string; mesh: FemSolve } | null = null;
-
-const femKey = (p: ViolinFamilyParams, options: FemMeshOptions): string => JSON.stringify([options, { ...p, wood: undefined }]);
-
-// whether the kept mesh is of these params and options, so reading it costs nothing
+// whether the mesh held on the params is of these options: built, and nothing it was built from
+// moved since. No wood field is among what clears it
 export function isFemBuilt(p: ViolinFamilyParams, options: FemMeshOptions): boolean {
-  return last?.key === femKey(p, options);
+  updateSolved(p);
+  return p.solved!.femMesh.solve?.options === JSON.stringify(options);
 }
 
-// a later panel reads the mesh by calling this; it returns and never writes to the params
-export function solveFem(p: ViolinFamilyParams, options: FemMeshOptions): FemSolve | null {
+// the mesh as held on the params, with the wood checked against it. It is built first if an edit
+// has cleared it or it was built with other options, which takes seconds: the panel asks only once
+// isFemBuilt() says it stands, or the button has been pressed
+export function solvedFem(p: ViolinFamilyParams, options: FemMeshOptions): FemSolve | null {
   if (!p.graduation) return null;
-  let key = femKey(p, options);
-  if (last?.key !== key) last = { key, mesh: solveFemMesh(p, options) };
-  let s: FemSolve = { ...last.mesh, failures: [...last.mesh.failures] };
+  updateSolved(p);
+  let held = p.solved!.femMesh;
+  let built = JSON.stringify(options);
+  if (held.solve?.options !== built) held.solve = { options: built, mesh: solveFemMesh(p, options) };
+  let s: FemSolve = { ...held.solve.mesh, failures: [...held.solve.mesh.failures] };
 
   solveSection(s.failures, 'Wood', ['wood'], () => {
     if (!p.wood) return null;
@@ -235,10 +238,10 @@ function solveFemMesh(p: ViolinFamilyParams, options: FemMeshOptions): FemSolve 
     if (blank) return blank;
     let finest = Math.round(10 * p.body.height * MIN_STEP_SHARE) / 10;
     if (step < finest) return buildMiss(`Mesh: an element size under ${finest} mm is finer than a plate's modes need.`, ['mesh']);
-    let surface = solveCrossArching(p)?.[plate];
-    let field = thicknessField(p, plate);
+    let surface = solvedCrossArching(p)?.[plate];
+    let field = solvedThicknessField(p, plate);
     if (!surface || !field) return buildMiss(`Mesh: the ${plate} has no thickness readings yet; graduate it first.`, ['mesh']);
-    let holes = plate === 'top' ? solveGraduation(p)?.holes ?? [] : [];
+    let holes = plate === 'top' ? solvedGraduation(p)?.holes ?? [] : [];
     let mesh = buildTriangleMesh(surface.outline, holes, foot ? [foot] : [], step, step * HOLE_STEP_SHARE);
 
     // a row is the slow part of a surface read; the lattice shares its rows

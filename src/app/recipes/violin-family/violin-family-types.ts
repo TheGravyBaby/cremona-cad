@@ -1,12 +1,13 @@
 import { APP_VERSION, Arc, Circle, Pt, RecipeInterface } from '../../models/types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS, FholeRatios, ViolinFamilyRatios } from './violin-family-seed';
+import type { ViolinFamilySolved } from './violin-family-solves';
 
 // The data shapes the Violin Family recipe saves and passes around. Three families:
 //
 //   params  what the user typed, or a seed wrote in their place. The file. Solvers only read it.
 //   solved  what each panel's solver derives from the params: arcs, points, failures. Rebuilt,
-//           never saved. A later panel reads an earlier one's by calling its solver. They live in
-//           violin-family-solves.ts.
+//           never saved. A later panel reads an earlier one's off `params.solved` where the stage
+//           is held there, and by calling its solver otherwise. They live in violin-family-solves.ts.
 //   ratios  the proportions the drawing reads at, for study. Derived like the solved stages, and
 //           stamped onto the file as a record; nothing reads them back.
 //
@@ -29,6 +30,9 @@ export interface ViolinFamilyParams {
   scroll?: ScrollParams;
   stringSetup?: StringSetupParams;
   mould?: MouldParams;
+  // not a param: what the params above solve to, held between draws and never written out. See
+  // updateSolved() in violin-family-solved.ts
+  solved?: ViolinFamilySolved;
 }
 
 // the outer envelope of the finished body. Every field is a number once typed, null while a field
@@ -513,6 +517,8 @@ export interface ViolinFamilyViewFlags {
   showRibJoin: boolean;
   // the figure a volute style finds its centres on
   showVoluteConstruction: boolean;
+  // the scroll's dimensions as the head page prints them
+  showScrollMeasurements: boolean;
   showFingerboard: boolean;
   // equal-tempered semitones marked up the string, as far as the board reaches
   showFretMarks: boolean;
@@ -539,6 +545,7 @@ export const DEFAULT_VIOLIN_FAMILY_VIEW_FLAGS: ViolinFamilyViewFlags = {
   showFlutingEdge: false,
   showRibJoin: false,
   showVoluteConstruction: true,
+  showScrollMeasurements: false,
   showFingerboard: true,
   showFretMarks: false,
   showScoopGuide: true,

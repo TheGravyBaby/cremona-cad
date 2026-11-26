@@ -18,6 +18,7 @@ import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, ViolinFamilyPanelId, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
+import { solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { StringSetupSolve } from '../../violin-family-solves';
 import { familyStandards, FamilyStandards } from '../../violin-family-seed';
 import { calcSideViewOffsetX } from '../long-arching-panel/long-arching-panel';
@@ -222,7 +223,8 @@ export class DevFingerboardPanel extends PanelComponentBase<DevFingerboardHighli
     if (this.flags.showFretMarks) side.push(renderFretTicks(s, this.markers.map(marker => marker.semitone), this.pal));
     if (highlighted && highlighted.key !== 'marks') side.push(renderScoopHighlight(p, s, k, highlighted.key, highlighted.color));
     side.push(renderSolveFailures([...k.failures, ...m.failures], this.pal.alert));
-    let views = renderStringSetupViews(p, s, this.pal, { fingerboard: this.flags.showFingerboard, front, side });
+    let pc = solvedPlateContour(p)!;
+    let views = renderStringSetupViews(p, s, pc, this.pal, { fingerboard: this.flags.showFingerboard, front, side });
     let origin = calcFingerboardFaceOrigin(p, s);
     if (origin) views.push(renderTranslatedLayers(face, origin.x, origin.y));
     return views;

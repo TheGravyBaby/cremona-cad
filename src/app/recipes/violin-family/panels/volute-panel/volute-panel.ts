@@ -4,8 +4,11 @@ import {
   angleFromCenter, arcReach, dist, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, TURN,
 } from '../../../../helpers/math/simpleGeometry';
 import {
-  renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashLine, renderPolygon, renderSegment, renderSolveFailures, renderPath,
+  renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashLine, renderPolygon, renderSegment, renderSheetMarks, renderSolveFailures, renderPath,
 } from '../../../../helpers/renderFuncs';
+import { arcPathData, combinePathStrings, pathsBounds, samplePathToPolyline } from '../../../../helpers/math/pathMath';
+import { polylineCrossingsAtY } from '../../../../helpers/math/vibeMath';
+import { SheetMark } from '../../../../helpers/sheetDraft';
 import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
 import { Arc, Circle, Pt } from '../../../../models/types';
@@ -40,7 +43,7 @@ export type VoluteHighlightKey = number | 'S0' | 'S1' | 'S2';
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
 export class VolutePanel extends PanelComponentBase<VoluteHighlightKey> {
-  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'showVoluteConstruction'];
+  static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'showVoluteConstruction', 'showScrollMeasurements'];
   protected readonly pal = ThemeService.getPalette('stones');
   protected readonly styles = Object.entries(VOLUTE_STYLE_LABELS).map(([id, label]) => ({ id, label }));
   protected readonly arcEnd = (i: number) => formatTurnsLabel((i + 1) / 4);
@@ -125,12 +128,12 @@ export class VolutePanel extends PanelComponentBase<VoluteHighlightKey> {
     let key = this.highlightedPart?.key ?? null;
     let arc = key === null ? null : typeof key === 'number' ? s.spiral?.[s.spiral.length - 1 - key] ?? null : s[key];
     // the rest of the scroll for context, under the volute's own arcs, once it all solves
-    return [
-      renderScrollNeck(p, s, this.pal, this.flags.showModuleGuides),
-      ...(s.failures.length ? [] : [renderPath(defineSideScrollPath(p, s), this.pal.neutral, STROKE_WEIGHT.trace)]),
-      renderVolute(p, s, this.pal, this.flags, true, arc ? { arc, color: this.highlightedPart!.color } : null),
-      renderSolveFailures(this.s.failures, this.pal.alert),
-    ];
+    let layers = [renderScrollNeck(p, s, this.pal, this.flags.showModuleGuides)];
+    if (!s.failures.length) layers.push(renderPath(defineSideScrollPath(p, s), this.pal.neutral, STROKE_WEIGHT.trace));
+    layers.push(renderVolute(p, s, this.pal, this.flags, true, arc ? { arc, color: this.highlightedPart!.color } : null));
+    if (this.flags.showScrollMeasurements && !s.failures.length) layers.push(renderSheetMarks(buildVoluteMeasures(p, s), this.pal.neutral));
+    layers.push(renderSolveFailures(this.s.failures, this.pal.alert));
+    return layers;
   }
 }
 
@@ -193,7 +196,7 @@ export const renderVolute = (
   if (currentModule && flags.showVoluteConstruction) {
     for (let line of calcVoluteConstruction(p, s)) {
       let placed = line.map(pt => new Pt(eye.x + pt.x, eye.y + pt.y));
-      for (let i = 1; i < placed.length; i++) renderSegment(placed[i - 1], placed[i], pal.ink(2).faint(2), STROKE_WEIGHT.guide, true)(g, ui);
+      for (let i = 1; i < placed.length; i++) renderSegment(placed[i - 1], placed[i], pal.ink(3), STROKE_WEIGHT.section)(g, ui);
     }
   }
   // innermost first, two tones alternating arc by arc, the same as the four point's fields
@@ -210,6 +213,41 @@ export const renderVolute = (
     if (s.S2) renderArcFromArc(s.S2, pal.ink(1).faint(-3), STROKE_WEIGHT.trace, isLongArc(s.S2))(g, ui);
   }
 };
+
+// the volute's turns as a maker callipers them: where the curve, from the eye's back under the eye
+// and out round the spiral and over the head's back, crosses the level and the plumb through the
+// eye's centre. They pair from the inside out, one each side of the centre; a crossing left with no
+// partner, the back's own, is no turn's
+export function calcVoluteTurns(s: ScrollSolve): { widths: [Pt, Pt][]; heights: [Pt, Pt][] } {
+  let eye = s.eye!;
+  let curve = combinePathStrings([
+    arcPathData(eye, eye.r, -TURN.half, 0),
+    ...[...[...s.spiral!].reverse(), s.S0!, s.S1!, s.S2!].map(arc => arcPathData(arc, arc.r, arc.start, arc.end)),
+  ]);
+  let run = samplePathToPolyline(curve, 0.02, true);
+  // a hair under the centre, so the eye's own two ends on the level each count once
+  let xs = polylineCrossingsAtY(run, eye.y - 1e-7, false);
+  let ys = polylineCrossingsAtY(run.map(pt => new Pt(pt.y, pt.x)), eye.x, false);
+  let left = xs.filter(x => x < eye.x).reverse(), right = xs.filter(x => x > eye.x);
+  let under = ys.filter(y => y < eye.y).reverse(), over = ys.filter(y => y > eye.y);
+  return {
+    widths: left.slice(0, right.length).map((x, i) => [new Pt(x, eye.y), new Pt(right[i], eye.y)]),
+    heights: under.slice(0, over.length).map((y, i) => [new Pt(eye.x, y), new Pt(eye.x, over[i])]),
+  };
+}
+
+// the side view's dimensions as the head page prints them: each turn's width stacked over the head,
+// its height stacked behind it, and the head's depth under it. Needs the whole scroll solved
+export function buildVoluteMeasures(p: ViolinFamilyParams, s: ScrollSolve): SheetMark[] {
+  let sb = pathsBounds([defineSideScrollPath(p, s)]);
+  let turns = calcVoluteTurns(s);
+  let extent = calcScrollExtent(s);
+  return [
+    ...turns.widths.map(([from, to], i): SheetMark => ({ kind: 'dimension', from, to, through: new Pt(0, sb.maxY), offset: 3 + 3.8 * i })),
+    ...turns.heights.map(([from, to], i): SheetMark => ({ kind: 'dimension', from, to, through: new Pt(sb.minX, 0), offset: 3 + 3.8 * i })),
+    { kind: 'dimension', from: new Pt(-extent.width, sb.minY), to: new Pt(0, sb.minY), offset: -5 },
+  ];
+}
 
 // the readouts, off the back as far as it solved: the nut up to the crown's top, and the neck's
 // front back to the scroll's furthest reach

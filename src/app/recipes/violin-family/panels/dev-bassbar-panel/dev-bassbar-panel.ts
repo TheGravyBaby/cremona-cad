@@ -11,15 +11,16 @@ import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { BassBarParams, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
-import { BassBarFace, BassBarSolve, LongArchingSolve, PlateSurface } from '../../violin-family-solves';
-import { renderPlateContour, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { updateSolved } from '../../violin-family-solved';
+import { BassBarFace, BassBarSolve, LongArchingSolve, PlateSurface, ThicknessField } from '../../violin-family-solves';
+import { renderPlateContour, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import { calcSideViewOffsetX, renderPlateSideProfile, solveLongArching } from '../long-arching-panel/long-arching-panel';
 import { stepAlong, TURN, vecAtAngle } from '../../../../helpers/math/simpleGeometry';
 import { makeMonotoneSpline } from '../../../../helpers/math/vibeMath';
 import { Matrix2D, pathFromPolyline, transformPath } from '../../../../helpers/math/pathMath';
-import { innerSurfaceZAt, thicknessField, ThicknessField } from '../dev-graduation-panel/dev-graduation-panel';
-import { solveCrossArching } from '../cross-arching-panel/cross-arching-panel';
+import { innerSurfaceZAt, solvedThicknessField } from '../dev-graduation-panel/dev-graduation-panel';
+import { solvedCrossArching } from '../cross-arching-panel/cross-arching-panel';
 import { Pt } from '../../../../models/types';
 
 // The bass bar, tried out on localhost only, once the top is graduated: where it sits in plan, and
@@ -34,8 +35,6 @@ const BOTTOM_INK = 3;
 const RIGHT_FAINT = 3;
 // two knots closer than this (% along the bar) collapse to the first
 const KNOT_EPS = 1e-3;
-// a fine export solve reads about a thousand points; past this the kept reads start over
-const TOP_READS_KEPT = 4000;
 
 // a violin's bar runs about three quarters of the body, 5.5 mm wide and 12 mm high at the middle,
 // falling off to a few mm at the ends; the bigger instruments scale from it. Placeholder figures
@@ -90,7 +89,7 @@ export class DevBassBarPanel extends PanelComponentBase<BassBarHighlight> {
 
   protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
-    let o = solvePlateContour(p)!;
+    let pc = solvedPlateContour(p)!;
     let a = solveLongArching(p)!;
     let b = this.b = solveBassBar(p)!;
     let highlight = this.highlightedPart?.key ?? null;
@@ -102,7 +101,7 @@ export class DevBassBarPanel extends PanelComponentBase<BassBarHighlight> {
     ], calcSideViewOffsetX(p) - a.ribs.zLower) : null;
 
     return [
-      renderPlateContour(p, o, this.pal, this.flags, false, false),
+      renderPlateContour(p, pc, this.pal, this.flags, false, false),
       renderFholes(p, this.pal),
       ...(side ? [side] : []),
       renderSolveFailures(b.failures, this.pal.alert),
@@ -251,25 +250,26 @@ export function solveBassBar(p: ViolinFamilyParams, step = 5): BassBarSolve | nu
       return buildMiss('Bass bar: the underside needs a point at each end, at 0 and 100 %.', ['shape']);
     }
     // a top with no readings has no inside to carve against yet
-    if (!thicknessField(p, 'top')) return null;
+    let surface = solvedCrossArching(p)?.top;
+    let field = solvedThicknessField(p, 'top');
+    if (!field) return null;
 
     let lowerMid = stepAlong(midpoint, along, -bb.length / 2);
     let offTop: Pt[] = [];
     for (let k of knots) {
       let s = bb.length * k.t / 100;
       let plan = stepAlong(lowerMid, along, s);
-      let topZ = topInsideZAt(p, plan.x, plan.y);
+      let topZ = surface ? innerSurfaceZAt(surface, field, plan.x, plan.y) : null;
       if (topZ === null) offTop.push(plan);
       else b.knots.push({ bottom: new Pt(topZ - k.h, s), topZ, plan, source: k.source });
     }
-    if (offTop.length) return buildMiss('Bass bar: a point falls off the inside of the top.', ['shape'], offTop);
+    if (offTop.length || !surface) return buildMiss('Bass bar: a point falls off the inside of the top.', ['shape'], offTop);
 
     let bottomZAt = makeMonotoneSpline(b.knots.map(k => k.bottom.y), b.knots.map(k => k.bottom.x));
     let n = Math.max(1, Math.ceil(bb.length / step));
     for (let i = 0; i <= n; i++) b.bottom.push(new Pt(bottomZAt(bb.length * i / n), bb.length * i / n));
 
-    let left = calcBassBarContact(p, lowerLeft, upperLeft, step);
-    let right = calcBassBarContact(p, lowerRight, upperRight, step);
+    let { left, right } = solvedBassBarContact(p, b, surface, field, step);
     b.left = buildBassBarFace(left, bottomZAt);
     b.right = buildBassBarFace(right, bottomZAt);
 
@@ -284,33 +284,33 @@ export function solveBassBar(p: ViolinFamilyParams, step = 5): BassBarSolve | nu
   return b;
 }
 
+// the inside of the top along the bar's two faces as held on the params, read first if an edit has
+// cleared it or it was last read at another step. A depth edit moves neither face, so it stands
+// through one: each read is slow, a few row solves
+function solvedBassBarContact(p: ViolinFamilyParams, b: BassBarSolve, surface: PlateSurface, field: ThicknessField, step: number): { step: number; left: Pt[]; right: Pt[] } {
+  updateSolved(p);
+  let held = p.solved!.bassBarContact;
+  if (held.solve === undefined || held.solve.step !== step) {
+    held.solve = {
+      step,
+      left: calcBassBarContact(surface, field, b.lowerLeft!, b.upperLeft!, step),
+      right: calcBassBarContact(surface, field, b.lowerRight!, b.upperRight!, step),
+    };
+  }
+  return held.solve;
+}
+
 // the inside of the top along one face of the bar, from one end to the other, as (z, s), s the
 // distance from `from`
-export function calcBassBarContact(p: ViolinFamilyParams, from: Pt, to: Pt, step: number): Pt[] {
+export function calcBassBarContact(surface: PlateSurface, field: ThicknessField, from: Pt, to: Pt, step: number): Pt[] {
   let length = Math.hypot(to.x - from.x, to.y - from.y);
   let n = Math.max(1, Math.ceil(length / step));
   let contact: Pt[] = [];
   for (let i = 0; i <= n; i++) {
-    let z = topInsideZAt(p, from.x + (to.x - from.x) * i / n, from.y + (to.y - from.y) * i / n);
+    let z = innerSurfaceZAt(surface, field, from.x + (to.x - from.x) * i / n, from.y + (to.y - from.y) * i / n);
     if (z !== null) contact.push(new Pt(z, length * i / n));
   }
   return contact;
-}
-
-// the inside of the top is a slow read, a few row solves each, and no point edit moves the faces:
-// the reads are kept against the surface and thickness field the solves hand back, which hold
-// between edits
-let topReads: { surface: PlateSurface; field: ThicknessField; z: Map<string, number | null> } | null = null;
-
-export function topInsideZAt(p: ViolinFamilyParams, x: number, y: number): number | null {
-  let surface = solveCrossArching(p)?.top;
-  let field = thicknessField(p, 'top');
-  if (!surface || !field) return null;
-  if (topReads?.surface !== surface || topReads.field !== field || topReads.z.size > TOP_READS_KEPT) topReads = { surface, field, z: new Map() };
-  let key = `${x} ${y}`;
-  let z = topReads.z.get(key);
-  if (z === undefined) topReads.z.set(key, z = innerSurfaceZAt(p, 'top', x, y));
-  return z;
 }
 
 // the face's edge on the top, and the underside below it with the ends that join the two

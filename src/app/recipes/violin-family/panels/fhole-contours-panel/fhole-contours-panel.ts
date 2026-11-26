@@ -18,6 +18,7 @@ import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { FholeCutParams, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
+import { solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { FholeArcKey, FholeContoursSolve, FholeFailure } from '../../violin-family-solves';
 import { FHOLE_SEED_RATIOS, FholeRatios } from '../../violin-family-seed';
 import { FholeNotch, calcFholeNotches, renderFholeBounds, roundToQuarter, renderFholeNotches, renderFholePlate, renderFlutingEdgeGuide, calcStemEdgePoints } from '../fhole-placement-panel/fhole-placement-panel';
@@ -92,7 +93,8 @@ export class FHoleContoursPanel extends PanelComponentBase<FholeHighlightKey, Fh
     let p = this.params;
     let s = this.s = solveFholeContours(p)!;
     this.ratios = calcFholeContoursRatios(p);
-    let layers: RenderLayer[] = [renderFholePlate(p, this.pal, null, true)];
+    let pc = solvedPlateContour(p);
+    let layers: RenderLayer[] = [renderFholePlate(p, pc, this.pal, null, true)];
     if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
     if (this.flags.showModuleGuides) layers.push(renderFholeAngleGuides(p, s, this.pal));
     if (this.flags.showFholeBounds) layers.push(renderFholeBounds(p.fHoles!, this.pal));

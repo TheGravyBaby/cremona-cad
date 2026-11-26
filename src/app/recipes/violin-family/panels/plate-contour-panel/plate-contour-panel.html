@@ -1,4 +1,4 @@
-@let o = params.plateContour!;
+@let pc = params.plateContour!;
 @let k = params.corners!;
 
 <section class="ui-group">
@@ -6,12 +6,12 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Width</span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="o.button.width" (input)="recordEditAndRedraw()"
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="pc.button.width" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(0)" />
         </label>
         <label class="field-cell">
             <span class="field-title">Height</span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="o.button.height" (input)="recordEditAndRedraw()"
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="pc.button.height" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(0)" />
         </label>
         <button type="button" class="info-icon" (click)="showFieldHelp('button')" title="More information"
@@ -28,20 +28,20 @@
         <label class="field-cell">
             <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
             @if (k.U31DoubleArc) {
-            <input type="number" class="basic-input" step="1" [(ngModel)]="o.U31Cutoff" (input)="recordEditAndRedraw()"
+            <input type="number" class="basic-input" step="1" [(ngModel)]="pc.U31Cutoff" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(4)" />
             } @else {
-            <input type="number" class="basic-input" step="1" [(ngModel)]="o.U3Cutoff" (input)="recordEditAndRedraw()"
+            <input type="number" class="basic-input" step="1" [(ngModel)]="pc.U3Cutoff" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(4)" />
             }
         </label>
         <label class="field-cell">
             <span class="field-title">Bottom Cutoff <span class="unit-label">°</span></span>
             @if (k.C21DoubleArc) {
-            <input type="number" class="basic-input" step="1" [(ngModel)]="o.C21Cutoff" (input)="recordEditAndRedraw()"
+            <input type="number" class="basic-input" step="1" [(ngModel)]="pc.C21Cutoff" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(4)" />
             } @else {
-            <input type="number" class="basic-input" step="1" [(ngModel)]="o.C2Cutoff" (input)="recordEditAndRedraw()"
+            <input type="number" class="basic-input" step="1" [(ngModel)]="pc.C2Cutoff" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(4)" />
             }
         </label>
@@ -51,7 +51,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Rounding</span>
-            <input type="number" class="basic-input" step=".01" min="0" max="1" [(ngModel)]="o.upperRounding" (input)="recordEditAndRedraw()" />
+            <input type="number" class="basic-input" step=".01" min="0" max="1" [(ngModel)]="pc.upperRounding" (input)="recordEditAndRedraw()" />
         </label>
     </div>
     }
@@ -66,20 +66,20 @@
         <label class="field-cell">
             <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
             @if (k.C11DoubleArc) {
-            <input type="number" class="basic-input" step="1" [(ngModel)]="o.C11Cutoff" (input)="recordEditAndRedraw()"
+            <input type="number" class="basic-input" step="1" [(ngModel)]="pc.C11Cutoff" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(2)" />
             } @else {
-            <input type="number" class="basic-input" step="1" [(ngModel)]="o.C1Cutoff" (input)="recordEditAndRedraw()"
+            <input type="number" class="basic-input" step="1" [(ngModel)]="pc.C1Cutoff" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(2)" />
             }
         </label>
         <label class="field-cell">
             <span class="field-title">Bottom Cutoff <span class="unit-label">°</span></span>
             @if (k.L31DoubleArc) {
-            <input type="number" class="basic-input" step="1" [(ngModel)]="o.L31Cutoff" (input)="recordEditAndRedraw()"
+            <input type="number" class="basic-input" step="1" [(ngModel)]="pc.L31Cutoff" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(2)" />
             } @else {
-            <input type="number" class="basic-input" step="1" [(ngModel)]="o.L3Cutoff" (input)="recordEditAndRedraw()"
+            <input type="number" class="basic-input" step="1" [(ngModel)]="pc.L3Cutoff" (input)="recordEditAndRedraw()"
                 [style.borderColor]="pal.ink(2)" />
             }
         </label>
@@ -89,7 +89,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Rounding</span>
-            <input type="number" class="basic-input" step=".01" min="0" max="1" [(ngModel)]="o.lowerRounding" (input)="recordEditAndRedraw()" />
+            <input type="number" class="basic-input" step=".01" min="0" max="1" [(ngModel)]="pc.lowerRounding" (input)="recordEditAndRedraw()" />
         </label>
     </div>
     }
@@ -100,11 +100,11 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Offset</span>
-            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="o.purflingOffset" (input)="recordEditAndRedraw()" />
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="pc.purflingOffset" (input)="recordEditAndRedraw()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Width</span>
-            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="o.purflingChannelDepth" (input)="recordEditAndRedraw()" />
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="pc.purflingChannelDepth" (input)="recordEditAndRedraw()" />
         </label>
     </div>
 </section>

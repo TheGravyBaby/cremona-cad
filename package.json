@@ -9,14 +9,13 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "test:fast": "ng test --watch=false --exclude \"src/app/recipes/violin-family/violin-family-stress.spec.ts\" --exclude \"src/app/recipes/violin-family/panels/{export,dev-export,dev-graduation}-panel/*.spec.ts\"",
+    "test:fast": "ng test --watch=false --exclude \"src/app/recipes/violin-family/panels/{export,dev-export,dev-graduation}-panel/*.spec.ts\"",
     "test:outline": "ng test --watch=false --include \"src/app/recipes/violin-family/panels/{base-measurements,main-bouts,corners,center-bout,plate-contour,fhole-placement,fhole-contours,mould,neck,volute,pegbox,scroll-widths,string-setup,dev-fingerboard,dev-graduation,dev-bassbar,dev-fem}-panel/*.spec.ts\" --include \"src/app/recipes/violin-family/templates/*.spec.ts\"",
     "test:arching": "ng test --watch=false --include \"src/app/recipes/violin-family/panels/{fluting,long-arching,cross-arching}-panel/*.spec.ts\"",
     "test:export": "ng test --watch=false --include \"src/app/recipes/violin-family/panels/{export,dev-export}-panel/*.spec.ts\"",
     "test:draft-canvas": "ng test --watch=false --include \"src/app/draft-canvas/**/*.spec.ts\"",
     "test:helpers": "ng test --watch=false --include \"src/app/helpers/**/*.spec.ts\"",
     "test:violin-family": "ng test --watch=false --include \"src/app/recipes/violin-family/**/*.spec.ts\"",
-    "test:stress": "ng test --watch=false -c stress --include \"src/app/recipes/violin-family/violin-family-stress.spec.ts\"",
     "test:shell": "ng test --watch=false --include \"src/app/app.spec.ts\" --include \"src/app/theme/**/*.spec.ts\" --include \"src/app/docs/**/*.spec.ts\" --include \"src/app/shared/**/*.spec.ts\" --include \"src/app/top-bar/**/*.spec.ts\" --include \"src/app/settings/**/*.spec.ts\" --include \"src/app/recipes/hello-world/**/*.spec.ts\" --include \"src/app/recipe-base/**/*.spec.ts\" --include \"src/app/recipe-toolbar/**/*.spec.ts\""
   },
   "prettier": {

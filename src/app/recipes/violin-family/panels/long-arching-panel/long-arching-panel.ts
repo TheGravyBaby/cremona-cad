@@ -20,8 +20,8 @@ import { ChannelParams, LongArchParams, PlateArchParams, RenderLayer, ViolinFami
 import { PanelComponentBase } from '../panel-component-base';
 import { ArchTakeoff, LongArchCurve, LongArchingSolve, LongArchSolve, PlateContourSolve, Plate, RibTaper, FlutingSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
-import { renderFluting, solveFluting } from '../fluting-panel/fluting-panel';
-import { renderPlateContour, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { renderFluting, solvedFluting } from '../fluting-panel/fluting-panel';
+import { renderPlateContour, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 
 // The arch along the body. The channel is cut first, at the gouge's own section; the arch is then
@@ -62,13 +62,13 @@ export class LongArchingPanel extends PanelComponentBase<{ plate: Plate; source:
 
   protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
-    let o = solvePlateContour(p)!;
-    let f = solveFluting(p)!;
+    let pc = solvedPlateContour(p)!;
+    let f = solvedFluting(p)!;
     let a = this.a = solveLongArching(p, f)!;
     let sideX = calcSideViewOffsetX(p);
-    let side = renderBodySideProfile(p, a, o, this.pal, true, { highlight: this.highlightedPart?.key ?? null, showGuides: this.flags.showModuleGuides });
+    let side = renderBodySideProfile(p, a, pc, this.pal, true, { highlight: this.highlightedPart?.key ?? null, showGuides: this.flags.showModuleGuides });
     return [
-      renderPlateContour(p, o, this.pal, this.flags, false, true),
+      renderPlateContour(p, pc, this.pal, this.flags, false, true),
       renderFluting(p, f, this.pal, false, true),
       renderFholes(p, this.pal),
       renderTranslatedLayers([side], sideX),
@@ -171,11 +171,11 @@ export interface SideProfileOpts {
 // does, since the plate's edge standing over the channel would hide it, and keeps the channel in its
 // own ink even on the ground
 export const renderBodySideProfile = (
-  p: ViolinFamilyParams, a: LongArchingSolve, o: PlateContourSolve, pal: PanelPalette, currentModule: boolean, opts: SideProfileOpts,
+  p: ViolinFamilyParams, a: LongArchingSolve, pc: PlateContourSolve, pal: PanelPalette, currentModule: boolean, opts: SideProfileOpts,
 ) => (g: any, ui: any): void => {
   let taper = a.ribs;
   if (!taper) return;
-  let flatEnds = calcCornerFlatEnds(o);
+  let flatEnds = calcCornerFlatEnds(pc);
   renderPath(defineRibSideProfile(p, taper), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   // the ui layer is Y-flipped, so its transform mirrors
   let { dx, dy, angleDeg, pivotX, pivotY } = calcTopPlatePlacement(p, taper);
@@ -228,8 +228,8 @@ export const renderPlateSideProfile = (
 };
 
 // where each corner's flat ends along the body, which the plate's edge is crossed at seen from the side
-function calcCornerFlatEnds(o: PlateContourSolve): number[] {
-  let c = o.corners;
+function calcCornerFlatEnds(pc: PlateContourSolve): number[] {
+  let c = pc.corners;
   return [c.U31 ?? c.U3, c.C21 ?? c.C2, c.C11 ?? c.C1, c.L31 ?? c.L3].flatMap(arc => arc ? [pointOnCircle(arc, arc.end).y] : []);
 }
 
@@ -290,9 +290,9 @@ export function definePlateSideProfile(
 // render tilts its own group: what a sheet draws. The back is on the left
 export interface BodySideProfile { ribs: string; top: PlateSideProfile; back: PlateSideProfile }
 
-export function defineBodySideProfile(p: ViolinFamilyParams, a: LongArchingSolve, o: PlateContourSolve, cut = false): BodySideProfile | null {
+export function defineBodySideProfile(p: ViolinFamilyParams, a: LongArchingSolve, pc: PlateContourSolve, cut = false): BodySideProfile | null {
   if (!a.ribs) return null;
-  let flatEnds = calcCornerFlatEnds(o);
+  let flatEnds = calcCornerFlatEnds(pc);
   let onRibs = calcTopPlateMatrix(calcTopPlatePlacement(p, a.ribs));
   let flat = definePlateSideProfile(p, a, 'top', flatEnds, cut);
   return {
@@ -516,7 +516,7 @@ export function solveLongArching(p: ViolinFamilyParams, f?: FlutingSolve): LongA
   if (!p.arching || !p.fluting) return null;
   let a = p.arching;
   let s: LongArchingSolve = { ribs: null, top: null, back: null, failures: [] };
-  f ??= solveFluting(p)
+  f ??= solvedFluting(p)
 
   solveSection(s.failures, 'Ribs', ['ribs'], () => {
     if (!(a.ribHeightLower > 0 && a.ribHeightUpper > 0)) return buildMiss('Ribs: both rib heights need a value above 0.', ['ribs']);

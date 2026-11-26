@@ -16,12 +16,13 @@ import { DASH, STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { FholePlacementParams, FholeStemParams, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
+import { PlateContourSolve } from '../../violin-family-solves';
 import { FHOLE_SEED_RATIOS, FholeRatios } from '../../violin-family-seed';
 import { renderBoutBounds, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout, solveRibArcs, RibArcs } from '../center-bout-panel/center-bout-panel';
-import { definePurflingPath, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
-import { renderFlutingInnerEdge, solveFluting } from '../fluting-panel/fluting-panel';
+import { definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { renderFlutingInnerEdge, solvedFluting } from '../fluting-panel/fluting-panel';
 import { renderFholes, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 
 // Where the two f-holes sit on the top plate: the eyes first, everything else hung off them. The
@@ -54,7 +55,7 @@ export class FHolePlacementPanel extends PanelComponentBase<never, FholeRatios> 
   static seed(p: ViolinFamilyParams): void {
     if (p.fHoles || !p.corners || !p.plateContour) return;
     let waist = calcWaist(p);
-    if (!waist || !solvePlateContour(p)?.top) return;
+    if (!waist || !solvedPlateContour(p)?.top) return;
     let r = FHOLE_SEED_RATIOS;
     let lowerCorner = p.corners.LCr;
     let lowerEyeR = roundToQuarter(p.body.width * r.LEyetoW);
@@ -111,7 +112,8 @@ export class FHolePlacementPanel extends PanelComponentBase<never, FholeRatios> 
     this.notchStop = Math.round((p.body.height - f.stem.center.y) * 100) / 100;
     this.ratios = calcFholePlacementRatios(p);
     let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
-    let layers: RenderLayer[] = [renderFholePlate(p, this.pal, rib, false)];
+    let pc = solvedPlateContour(p);
+    let layers: RenderLayer[] = [renderFholePlate(p, pc, this.pal, rib, false)];
     if (this.flags.showFlutingEdge) layers.push(renderFlutingEdgeGuide(p));
     if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, ThemeService.getPalette('classicCremona')));
     if (this.flags.showFholePlacementGuides && rib) layers.push(renderFholeEyePlacementGuides(p, rib, this.pal));
@@ -158,11 +160,10 @@ export const calcFholeBounds = (f: FholePlacementParams): Rectangle => {
 // in the purfling's place, the channel's inner edge when asked for, and the holes cut to their
 // contours as placed, where those have been drafted. With `purfling` the purfling lines instead
 // of the rib outline, as the contours panel shows them
-export const renderFholePlate = (p: ViolinFamilyParams, pal: PanelPalette, rib: RibArcs | null, purfling: boolean) => (g: any, ui: any): void => {
-  let o = solvePlateContour(p);
-  if (o?.top) renderPath(o.top, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
+export const renderFholePlate = (p: ViolinFamilyParams, pc: PlateContourSolve | null, pal: PanelPalette, rib: RibArcs | null, purfling: boolean) => (g: any, ui: any): void => {
+  if (pc?.top) renderPath(pc.top, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
   if (purfling) {
-    for (let d of [o?.purfling, o?.outerPurfling]) if (d) renderPath(d, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+    for (let d of [pc?.purfling, pc?.outerPurfling]) if (d) renderPath(d, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   }
   else if (rib) {
     let inner = definePurflingPath(p, rib, 0);
@@ -174,7 +175,7 @@ export const renderFholePlate = (p: ViolinFamilyParams, pal: PanelPalette, rib: 
 // the channel's inner edge on the top plate, faint, for either f-hole panel's toggle; nothing
 // until the fluting has been drafted
 export const renderFlutingEdgeGuide = (p: ViolinFamilyParams) => (g: any, ui: any): void => {
-  let f = p.fluting ? solveFluting(p) : null;
+  let f = p.fluting ? solvedFluting(p) : null;
   if (f) renderFlutingInnerEdge(f)(g, ui);
 };
 
@@ -246,12 +247,7 @@ const renderFholePlacement = (f: FholePlacementParams, lowerTip: Pt | null, pal:
   if (f.notches) renderFholeNotches(f, lowerTip, pal)(g, ui);
 };
 
-// the nicks cut into both edges of the stem, each a shallow V centred on its mark and cut square
-// to the edge, well under half as deep as its mouth is long (measured on a Stradivari cello,
-// 2026-10). The inner notch is centred where the stop line crosses the inner edge; the outer where
-// an arc struck from the lower wing's tip through the inner mark crosses the outer edge, so it
-// sits a little higher. Sized from the stem's width, so the nick reads against the edge it is cut
-// in, and never a field: the notch is a mark, not a shape the plate depends on
+// values determine the size of the notch
 const NOTCH_TO_STEM = { depth: 0.14, mouth: 0.4 };
 
 export interface FholeNotch {
@@ -371,7 +367,7 @@ export const renderBeardBoxes = (p: ViolinFamilyParams, pal: PanelPalette) => (g
   let edge = new Pt(waist.x + p.body.overhang + p.body.rib, waist.y);
   let half = new Arc(edge.x, edge.y, long.r / 2, TURN.half, angleFromCenter(edge, f.UEye) + 10 * TURN.degree);
   
-  renderMirroredArcFancy(long, pal.ink(0))(g, ui);
+  // renderMirroredArcFancy(long, pal.ink(0))(g, ui);
   // this one misses a lot, hard to know where the waist really is
   // for (let arc of [half, flipArcAboutY(half)]) renderArcFromArcFancy(arc, pal.ink(1))(g, ui);
 };

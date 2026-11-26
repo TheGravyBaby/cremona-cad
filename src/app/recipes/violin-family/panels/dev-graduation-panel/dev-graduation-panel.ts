@@ -17,16 +17,17 @@ import { contrastRatio, PanelPalette, parseHex, ThemeService, toHex } from '../.
 import { Pt, Rectangle } from '../../../../models/types';
 import { GraduationParams, GraduationPoint, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
-import { GraduationFailure, GraduationGround, GraduationSolve, PlateSurface, SurfaceRow } from '../../violin-family-solves';
+import { updateSolved } from '../../violin-family-solved';
+import { GraduationFailure, GraduationGround, GraduationSolve, Land, PlateContourSolve, PlateSurface, SurfaceRow, ThicknessBand, ThicknessField } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout, solveRibArcs, RibArcs } from '../center-bout-panel/center-bout-panel';
-import { PLATE_LAYOUT_GAP, definePurflingPath, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { PLATE_LAYOUT_GAP, definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholePlate } from '../fhole-placement-panel/fhole-placement-panel';
 import { solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { defineChannelLoop } from '../fluting-panel/fluting-panel';
-import { calcBodyLandmarks, loopHalfChordAtY, rowAt, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
+import { calcBodyLandmarks, loopHalfChordAtY, rowAt, solvedCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { MouldPanel, solveMould } from '../mould-panel/mould-panel';
 
 // Graduation, tried out on localhost only and carried without promise of support. The readings on
@@ -238,7 +239,8 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
     let key = JSON.stringify(pts.map(pt => [pt.x, pt.y]));
     let hit = this.mapCache[plate];
     if (hit?.key === key) return hit.map;
-    let map = plateMap(pts, solveGraduation(this.params)?.ground ?? null);
+    let ground = solvedGraduation(this.params)?.ground ?? null;
+    let map = plateMap(pts, ground);
     this.mapCache[plate] = { key, map };
     return map;
   }
@@ -330,18 +332,19 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
     // the boundary reads what the arching left over the flat, which can sit under every point, and
     // the top's holes carry the f-hole thickness
     for (let plate of GRADUATION_PLATES) {
-      let field = thicknessField(p, plate);
+      let field = solvedThicknessField(p, plate);
       if (field) all.push(field.range.lo, field.range.hi);
     }
     let lo = all.length ? Math.floor(Math.min(...all) * 2) / 2 : 0;
     let hi = all.length ? Math.ceil(Math.max(...all) * 2) / 2 : 1;
     this.scale = { lo, hi: Math.max(hi, lo + 1) };
     let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
-    let solve = this.solve = solveGraduation(p)!;
+    let solve = this.solve = solvedGraduation(p)!;
+    let pc = solvedPlateContour(p);
     return [
       renderThicknessMap(p, this.scale, this.pal),
-      renderFholePlate(p, this.pal, rib, false),
-      renderBackPlate(p, this.pal, rib),
+      renderFholePlate(p, pc, this.pal, rib, false),
+      renderBackPlate(p, pc, this.pal, rib),
       renderGraduation(p, solve, this.pal),
       ...(this.flags.showGraduationPoints ? [renderGraduationPoints(p, this.active, this.selected, this.pal)] : []),
       renderSolveFailures(solve.failures, this.pal.alert, true),
@@ -421,7 +424,7 @@ export function rampFill(pal: PanelPalette, scale: { lo: number; hi: number }, t
 export const renderThicknessMap = (p: ViolinFamilyParams, scale: { lo: number; hi: number }, pal: PanelPalette) => (g: any, ui: any): void => {
   for (let plate of GRADUATION_PLATES) {
     let dx = PLATE_DX[plate](p);
-    let bands = thicknessBands(p, plate);
+    let bands = solvedThicknessBands(p, plate);
     bands.forEach(({ level, polygons }, i) => {
       let d = polygons.map(poly => poly.map(ring => pathFromPolyline(ring.map(q => new Pt(q.x + dx, q.y)), true)).join(' ')).join(' ');
       let fill = rampFill(pal, scale, level + CONTOUR_INTERVAL / 2);
@@ -449,11 +452,10 @@ const spread = (values: number[]): string => {
   return lo === hi ? lo.toFixed(1) : `${lo.toFixed(1)}–${hi.toFixed(1)}`;
 };
 
-const renderBackPlate = (p: ViolinFamilyParams, pal: PanelPalette, rib: RibArcs | null) => (g: any, ui: any): void => {
-  let o = solvePlateContour(p);
+const renderBackPlate = (p: ViolinFamilyParams, pc: PlateContourSolve | null, pal: PanelPalette, rib: RibArcs | null) => (g: any, ui: any): void => {
   let dx = PLATE_DX.back(p);
-  if (o?.back) renderPath(translatePath(o.back, dx, 0), pal.neutral, STROKE_WEIGHT.trace)(g, ui);
-  if (o?.button) renderPath(translatePath(o.button.path, dx, 0), pal.neutral, STROKE_WEIGHT.trace)(g, ui);
+  if (pc?.back) renderPath(translatePath(pc.back, dx, 0), pal.neutral, STROKE_WEIGHT.trace)(g, ui);
+  if (pc?.button) renderPath(translatePath(pc.button.path, dx, 0), pal.neutral, STROKE_WEIGHT.trace)(g, ui);
   let inner = rib ? definePurflingPath(p, rib, 0) : null;
   if (inner) renderPath(translatePath(inner, dx, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
 };
@@ -515,7 +517,7 @@ export function calcClearSpot(ground: GraduationGround, points: GraduationPoint[
 // the four flanks fanning out from the island as an X. Each is placed off the boundary's half
 // chord at its row, so the zones scale with the outline. Read from the lower bout up
 export function zonePoints(p: ViolinFamilyParams, plate: GraduationPlate): GraduationPoint[] {
-  let ground = solveGraduation(p)?.ground;
+  let ground = solvedGraduation(p)?.ground;
   let marks = new Map(calcBodyLandmarks(p).map(k => [k.code, k.y]));
   let rows = (['LB', 'LC', 'UC', 'UB'] as const).map(code => marks.get(code));
   if (!ground || rows.some(y => y === undefined)) return [];
@@ -551,7 +553,7 @@ const ZONE = { channel: 0.82, flank: 0.55, edge: 0.6, edgeRow: 0.7 };
 // the points inside it and off the top's holes, where there is no wood to read, read top to bottom
 // and bass to treble. Empty until the boundary solves
 export function gridPoints(p: ViolinFamilyParams, spacing: number, plate: GraduationPlate): GraduationPoint[] {
-  let solve = solveGraduation(p);
+  let solve = solvedGraduation(p);
   let ground = solve?.ground;
   if (!solve || !ground || !(spacing > 0)) return [];
   let { loop, minX, maxX, minY, maxY } = ground;
@@ -652,17 +654,7 @@ export function plateMap(pts: GraduationPoint[], extent: { minX: number; maxX: n
 // a plate's thickness anywhere. Inside the boundary it is the thin-plate spline through the
 // readings: the points, the boundary and each f-hole sampled at their own thicknesses, as a surveyor
 // fixes a breakline, and the lines between neighbouring readings that agree. In a hole it is the
-// f-hole thickness, what its wings carry. Outside the boundary it is the land's. `interpolated` is the spline alone, unclamped and
-// defined everywhere, for the raster to read; `edgeAt` is the land's reading at the boundary's
-// nearest point
-export interface ThicknessField {
-  at(x: number, y: number): number;
-  interpolated(x: number, y: number): number;
-  edgeAt(x: number, y: number): number;
-  edge: number;
-  range: { lo: number; hi: number };
-  loop: Pt[];
-}
+// f-hole thickness, what its wings carry. Outside the boundary it is the land's
 
 // how far apart the boundary and the hole outlines are sampled; the holes closer, since a wing's
 // outline turns tight and its thickness can stand well off its neighbours'
@@ -671,24 +663,27 @@ const HOLE_STEP = 2;
 // two readings nearer than this are one spot to the spline; the first stands
 const SAME_SPOT = 0.5;
 
-const fieldCache: Partial<Record<GraduationPlate, { solve: GraduationSolve; key: string; field: ThicknessField }>> = {};
-// the sites stand while thicknesses are typed, so the spline's factors are kept against them
-const fitterCache: Partial<Record<GraduationPlate, { sites: string; fit: ReturnType<typeof thinPlateSplineFitter> }>> = {};
+// a plate's thickness field as held on the params, solved first if an edit has cleared it
+export function solvedThicknessField(p: ViolinFamilyParams, plate: GraduationPlate): ThicknessField | null {
+  updateSolved(p);
+  let held = plate === 'top' ? p.solved!.thicknessFieldTop : p.solved!.thicknessFieldBack;
+  if (held.solve === undefined) held.solve = solveThicknessField(p, plate);
+  return held.solve;
+}
 
-export function thicknessField(p: ViolinFamilyParams, plate: GraduationPlate): ThicknessField | null {
-  let solve = solveGraduation(p);
+// a plate's thickness field from the params, calculated at every call (~200ms) and never writing
+// to them. Everything but a spec reads solvedThicknessField() rather than calling this
+export function solveThicknessField(p: ViolinFamilyParams, plate: GraduationPlate): ThicknessField | null {
+  let solve = solvedGraduation(p);
   let s = p.graduation;
-  if (!solve?.ground || !s) return null;
+  let land = solvedLand(p, plate);
+  if (!solve?.ground || !s || !land) return null;
   let points = s[plate].points.filter(pt => Number.isFinite(pt.thickness));
   // with no readings the boundary alone would make up a plate nobody read
   if (!points.length) return null;
   let edge = edgeThicknessOf(p, plate);
   let holes = plate === 'top' && Number.isFinite(s.fHoleThickness) ? solve.holes : [];
-  let key = JSON.stringify([edge, p.fluting, p.arching?.[plate], s.fHoleThickness, points.map(pt => [pt.x, pt.y, pt.thickness])]);
-  let hit = fieldCache[plate];
-  if (hit && hit.solve === solve && hit.key === key) return hit.field;
   let { loop } = solve.ground;
-  let land = landOf(plate, loop, solveCrossArching(p)?.[plate] ?? null, edge);
   // the points first, so a sample landing on one gives way to it
   let readings: Reading[] = [];
   for (let r of [
@@ -699,9 +694,7 @@ export function thicknessField(p: ViolinFamilyParams, plate: GraduationPlate): T
   ]) {
     if (!readings.some(q => Math.hypot(q.x - r.x, q.y - r.y) < SAME_SPOT)) readings.push(r);
   }
-  let sites = JSON.stringify(readings.map(r => [r.x, r.y]));
-  let fit = fitterCache[plate]?.sites === sites ? fitterCache[plate]!.fit : thinPlateSplineFitter(readings);
-  fitterCache[plate] = { sites, fit };
+  let fit = thinPlateSplineFitter(readings);
   let values = readings.map(r => r.v);
   let lo = Math.min(...values), hi = Math.max(...values);
   let interpolated = fit?.(values) ?? (() => edge);
@@ -719,7 +712,6 @@ export function thicknessField(p: ViolinFamilyParams, plate: GraduationPlate): T
     range: { lo, hi },
     loop,
   };
-  fieldCache[plate] = { solve, key, field };
   return field;
 }
 
@@ -777,10 +769,7 @@ export function calcLevelBridges(points: GraduationPoint[], holes: Pt[][], holeT
 // the inside of a plate over (x, y): its outer surface carried in square to itself by the thickness
 // the calipers read where they stand, so on a slope the inside lands beside the reading, not under
 // it. Null off the plate or before it is graduated
-export function innerSurfaceZAt(p: ViolinFamilyParams, plate: GraduationPlate, x: number, y: number): number | null {
-  let surface = solveCrossArching(p)?.[plate];
-  let field = thicknessField(p, plate);
-  if (!surface || !field) return null;
+export function innerSurfaceZAt(surface: PlateSurface, field: ThicknessField, x: number, y: number): number | null {
   // a row is the slow part of a surface read, and the slopes read three points on each
   let rows = new Map<number, SurfaceRow>();
   return normalOffsetZAt((u, v) => {
@@ -792,19 +781,24 @@ export function innerSurfaceZAt(p: ViolinFamilyParams, plate: GraduationPlate, x
 // the land: the flat outside the boundary, left uncarved, so its thickness is whatever the outer
 // surface stands at over it, the edge thickness where the edge is, less wherever the fluting channel
 // dips, more where the arch has risen. `atBoundary` is that reading at the boundary's nearest point,
-// so where the gouge takes off it is the wood that is really there, not the edge thickness
-interface Land {
-  at(x: number, y: number): number;
-  atBoundary(x: number, y: number): number;
+// so where the gouge takes off it is the wood that is really there, not the edge thickness.
+// A plate's land as held on the params, solved first if an edit has cleared it. No point edit
+// clears it, which is why it is held apart from the thickness field
+function solvedLand(p: ViolinFamilyParams, plate: GraduationPlate): Land | null {
+  updateSolved(p);
+  let held = plate === 'top' ? p.solved!.landTop : p.solved!.landBack;
+  if (held.solve === undefined) held.solve = solveLand(p, plate);
+  return held.solve;
 }
 
-// the surface read at every vertex of the boundary is the slow part (a row solve per vertex), and
-// no point edit moves it: kept against the loop and surface the solves hand back, which hold between edits
-const landCache: Partial<Record<GraduationPlate, { loop: Pt[]; surface: PlateSurface | null; edge: number; land: Land }>> = {};
-
-function landOf(plate: GraduationPlate, loop: Pt[], surface: PlateSurface | null, edge: number): Land {
-  let kept = landCache[plate];
-  if (kept && kept.loop === loop && kept.surface === surface && kept.edge === edge) return kept.land;
+// a plate's land from the params, calculated at every call (~300ms: the surface read at every
+// vertex of the boundary, a row solve each). Null until the boundary has solved
+function solveLand(p: ViolinFamilyParams, plate: GraduationPlate): Land | null {
+  let ground = solvedGraduation(p)?.ground;
+  if (!ground) return null;
+  let { loop } = ground;
+  let surface = solvedCrossArching(p)?.[plate] ?? null;
+  let edge = edgeThicknessOf(p, plate);
   // off the plate, or with no surface solved, the edge thickness stands
   let at = (x: number, y: number): number => edge + ((surface && surfaceZAt(surface, x, y)) ?? 0);
   let along = loop.map(q => at(q.x, q.y));
@@ -816,9 +810,7 @@ function landOf(plate: GraduationPlate, loop: Pt[], surface: PlateSurface | null
     let t = len > 1e-9 ? Math.hypot(point.x - a.x, point.y - a.y) / len : 0;
     return along[index] + t * (along[(index + 1) % loop.length] - along[index]);
   };
-  let land = { at, atBoundary };
-  landCache[plate] = { loop, surface, edge, land };
-  return land;
+  return { at, atBoundary };
 }
 
 // points spaced evenly round a closed polyline, about `step` apart, counted from where it crosses
@@ -851,21 +843,27 @@ export const CONTOUR_INTERVAL = 0.25;
 const RASTER_COLUMNS = 80;
 // the clip needs no finer a loop than the raster; cutting to the boundary as sampled costs four times as much
 const CLIP_STEP = 2;
-const bandCache: Partial<Record<GraduationPlate, { field: ThicknessField; bands: { level: number; polygons: Pt[][][] }[] }>> = {};
 
-export function thicknessBands(p: ViolinFamilyParams, plate: GraduationPlate): { level: number; polygons: Pt[][][] }[] {
-  let field = thicknessField(p, plate);
+// a plate's bands as held on the params, solved first if an edit has cleared them
+export function solvedThicknessBands(p: ViolinFamilyParams, plate: GraduationPlate): ThicknessBand[] {
+  updateSolved(p);
+  let held = plate === 'top' ? p.solved!.thicknessBandsTop : p.solved!.thicknessBandsBack;
+  if (held.solve === undefined) held.solve = solveThicknessBands(p, plate);
+  return held.solve;
+}
+
+// a plate's bands from the params, calculated at every call (~120ms). Everything but a spec reads
+// solvedThicknessBands() rather than calling this
+export function solveThicknessBands(p: ViolinFamilyParams, plate: GraduationPlate): ThicknessBand[] {
+  let field = solvedThicknessField(p, plate);
   if (!field) return [];
-  let hit = bandCache[plate];
-  if (hit?.field === field) return hit.bands;
-  let solve = solveGraduation(p)!;
+  let solve = solvedGraduation(p)!;
   let box = solve.ground!;
   let cell = Math.max(1, (box.maxX - box.minX) / RASTER_COLUMNS);
   let levels: number[] = [];
   for (let k = Math.floor(field.range.lo / CONTOUR_INTERVAL - 0.5); (k + 0.5) * CONTOUR_INTERVAL <= field.range.hi; k++) levels.push((k + 0.5) * CONTOUR_INTERVAL);
   let holes = plate === 'top' ? solve.holes.map(hole => sampleLoop(hole, CLIP_STEP)) : [];
   let bands = fieldBands(field.interpolated, box, cell, levels, sampleLoop(field.loop, CLIP_STEP), holes);
-  bandCache[plate] = { field, bands };
   return bands;
 }
 
@@ -900,23 +898,22 @@ function blockShape(ribLine: string, rect: Rectangle, inward: 1 | -1): string {
 }
 
 
-// a later panel reads the loops by calling this; it returns and never writes to the params. Both
-// loops are the channel's construction run from the rib line rather than the fluting edge, and kept
-// inside the rib line itself. The last answer is kept against the params the loops read (the joins
-// are the slow part, as in the fluting), so a point edit never re-solves them
-let last: { key: string; solve: GraduationSolve } | null = null;
+// the loops as held on the params, solved first if an edit has cleared them. The points are not
+// among what clears them, so a point edit never re-solves the joins
+export function solvedGraduation(p: ViolinFamilyParams): GraduationSolve | null {
+  updateSolved(p);
+  let held = p.solved!.graduation;
+  if (held.solve === undefined) held.solve = solveGraduation(p);
+  return held.solve;
+}
 
+// the loops from the params, calculated at every call (~90ms, the joins the slow part, as in the
+// fluting) and never writing to them. Everything but a spec reads solvedGraduation() rather than
+// calling this. Both loops are the channel's construction run from the rib line rather than the
+// fluting edge, and kept inside the rib line itself
 export function solveGraduation(p: ViolinFamilyParams): GraduationSolve | null {
   let gr = p.graduation;
   if (!gr || !p.plateContour || !p.corners || !p.bouts) return null;
-  let key = JSON.stringify([p.body, p.bouts, p.corners, p.plateContour, p.fHoles, p.fHoleContours, gr.lining, gr.edgeInset, gr.blockMargin]);
-  if (last?.key === key) return last.solve;
-  let solve = solveGraduationUncached(p, gr);
-  last = { key, solve };
-  return solve;
-}
-
-function solveGraduationUncached(p: ViolinFamilyParams, gr: GraduationParams): GraduationSolve {
   let s: GraduationSolve = { blocks: null, lining: null, boundary: null, ground: null, holes: [], failures: [] };
   let fail = (message: string, unsolved: GraduationFailure['unsolved']): GraduationFailure => ({ message, unsolved, circles: [], segments: [] });
 

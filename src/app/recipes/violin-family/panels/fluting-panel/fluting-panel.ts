@@ -16,6 +16,7 @@ import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
+import { updateSolved } from '../../violin-family-solved';
 import { ChannelSolve, FlutingSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -23,7 +24,7 @@ import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout, solveRibArcs, RibArcs } from '../center-bout-panel/center-bout-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import {
-  solveOffsetArcs, defineOuterPath, PLATE_LAYOUT_GAP, renderPlateContour, solvePlateContour, defineViolNeckTopLine,
+  solveOffsetArcs, defineOuterPath, PLATE_LAYOUT_GAP, renderPlateContour, solvedPlateContour, defineViolNeckTopLine,
 } from '../plate-contour-panel/plate-contour-panel';
 
 // The fluting channel: the hollow cut into each plate inside the flat left round its edge. The
@@ -70,10 +71,10 @@ export class FlutingPanel extends PanelComponentBase {
 
   protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
-    let o = solvePlateContour(p)!;
-    let f = this.f = solveFluting(p)!;
+    let pc = solvedPlateContour(p)!;
+    let f = this.f = solvedFluting(p)!;
     return [
-      renderPlateContour(p, o, this.pal, this.flags, false),
+      renderPlateContour(p, pc, this.pal, this.flags, false),
       renderFholes(p, this.pal),
       renderFluting(p, f, this.pal, true),
       renderSolveFailures(f.failures, this.pal.alert, true),
@@ -369,29 +370,26 @@ function defineCachedChannelPath(cuts: Map<string, ReturnType<typeof defineChann
   return cuts.get(key)!;
 }
 
-// a later panel reads the channels by calling this; it returns and never writes to the params.
-// Each plate's channel is anchored at the fluting edge and grows inward by its width, so
-// its outer edge sits on the fluting edge by construction. A second width through the waist moves only
-// the C bout's inward offsets; the joins either side re-solve at the new radius.
-// The last answer is kept against the params it was solved from (~160ms a solve, and the arching
-// panels ask for it on every cursor move); nothing of it reaches the file
-let last: { key: string; solve: FlutingSolve } | null = null;
-
-export function solveFluting(p: ViolinFamilyParams): FlutingSolve | null {
-  if (!p.fluting || !p.plateContour || !p.corners || !p.bouts) return null;
-  let key = JSON.stringify([p.body, p.bouts, p.corners, p.plateContour, p.fluting]);
-  if (last?.key === key) return last.solve;
-  let solve = solveFlutingUncached(p);
-  last = { key, solve };
-  return solve;
+// the channels as held on the params, solved first if an edit has cleared them
+export function solvedFluting(p: ViolinFamilyParams): FlutingSolve | null {
+  updateSolved(p);
+  let held = p.solved!.fluting;
+  if (held.solve === undefined) held.solve = solveFluting(p);
+  return held.solve;
 }
 
-function solveFlutingUncached(p: ViolinFamilyParams): FlutingSolve {
-  let f = p.fluting!;
+// the channels from the params, calculated at every call (~90ms) and never writing to them.
+// Everything but a spec reads solvedFluting() rather than calling this.
+// Each plate's channel is anchored at the fluting edge and grows inward by its width, so
+// its outer edge sits on the fluting edge by construction. A second width through the waist moves only
+// the C bout's inward offsets; the joins either side re-solve at the new radius
+export function solveFluting(p: ViolinFamilyParams): FlutingSolve | null {
+  if (!p.fluting || !p.plateContour || !p.corners || !p.bouts) return null;
+  let f = p.fluting;
   let s: FlutingSolve = { flutingEdge: null, top: null, back: null, failures: [] };
 
   let rib = solveRibArcs(p, solveMainBouts(p)!, solveCorners(p)!, solveCenterBout(p)!);
-  if (!rib || !solvePlateContour(p)!.top) {
+  if (!rib || !solvedPlateContour(p)!.top) {
     s.failures.push({ message: 'Fluting: the plate edge has to solve first.', unsolved: ['top', 'back'], circles: [], segments: [] });
     return s;
   }

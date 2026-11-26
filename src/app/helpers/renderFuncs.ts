@@ -3,6 +3,7 @@ import { angleFromCenter, flipArcAboutY, flipPointAboutY, normalizeRadians, poin
 import { arcPathData } from "./math/pathMath";
 import { SolveFailure } from "./validators";
 import { DASH, STROKE_WEIGHT } from "../theme/palettes";
+import { expandMarks, SHEET_SCREEN_FONT, SheetMark } from "./sheetDraft";
 
 // - number[] => segment weights (e.g. [3,4,3])
 export const renderBoxLine = (
@@ -754,6 +755,18 @@ export const renderGuideMeasure = (base: Pt, at: Pt, color: string, offset = 0, 
     .attr('text-anchor', alongX ? (ux > 0 ? 'start' : 'end') : 'middle')
     .attr('dominant-baseline', 'central')
     .attr('opacity', 0.9);
+};
+
+// a sheet's marks on the canvas at full size, arrows, extension lines and text drawn as the PDF does
+export const renderSheetMarks = (marks: SheetMark[], color: string) => (g: any, ui: any): void => {
+  let drawing = expandMarks(marks, 1);
+  for (let path of drawing.paths) {
+    if (path.fill && path.fill !== 'none') renderFilledPath(path.d, color, 1)(g, ui);
+    else renderPath(path.d, color, STROKE_WEIGHT.guide, 1, path.dash ? DASH.preview : undefined)(g, ui);
+  }
+  for (let t of drawing.texts) {
+    renderText(new Pt(t.x, t.y), t.text, color, t.fontSize, t.rotationDeg ?? 0, { anchor: t.anchor, italic: t.italic, family: SHEET_SCREEN_FONT })(g, ui);
+  }
 };
 
 export type StrokeShape = { d: string } | { line: [Pt, Pt] } | { polygon: Pt[] };

@@ -287,6 +287,10 @@ export const ICONS = {
   'volute-construction': `<circle cx="12" cy="12" r="9" />
     <rect x="10.5" y="7" width="3" height="10" stroke-width="1.5" />
     <line x1="10.5" y1="12" x2="13.5" y2="12" stroke-width="1.5" />`,
+  'scroll-measurements': `<path d="M15 19A7 7 0 1 1 15 5" />
+    <circle cx="12" cy="12" r="2" />
+    <path d="M20 5V19" stroke-width="1.4" />
+    <path d="M18 5H22M18 19H22" stroke-width="1.4" />`,
   fingerboard: '<rect x="7" y="2" width="10" height="20" rx="3" />',
   'scoop-guide': `<line x1="3" y1="8" x2="21" y2="8" opacity="0.4" />
     <path d="M3 8 Q 12 17 21 8" />

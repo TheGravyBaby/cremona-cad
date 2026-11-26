@@ -19,7 +19,7 @@ import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../vi
 import { PanelComponentBase } from '../panel-component-base';
 import { NeckSolve, PlateContourSolve, ScrollSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
-import { PLATE_LAYOUT_GAP, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { PLATE_LAYOUT_GAP, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
   placeOnTopPlate, renderBodySideProfile, ribHeightAt, calcSideViewOffsetX, solveLongArching, calcTopPlatePlacement,
@@ -66,20 +66,20 @@ export class NeckPanel extends PanelComponentBase<NeckHighlightKey> {
     let p = this.params;
     let n = this.n = solveNeck(p)!;
     let a = solveLongArching(p)!;
-    let o = solvePlateContour(p)!;
+    let pc = solvedPlateContour(p)!;
     let w = p.scroll ? solveScrollWidths(p) : null;
     let scroll = w && !w.scroll.failures.length ? w.scroll : undefined;
     let scrollInPlan = scroll && !w!.failures.some(f => f.unsolved.length) ? scroll : null;
     let sideX = calcSideViewOffsetX(p);
     let side = [
-      renderBodySideProfile(p, a, o, this.pal, false, { ground: true }),
+      renderBodySideProfile(p, a, pc, this.pal, false, { ground: true }),
       renderNeck(p, n, this.pal, { guides: this.flags.showModuleGuides, scroll }),
       renderNeckHighlight(p, n, this.highlightedPart, 'side'),
       renderSolveFailures(n.failures, this.pal.alert),
     ];
     return [
-      renderNeckFrontView(p, n, o, scrollInPlan, this.pal),
-      renderNeckHighlight(p, n, this.highlightedPart, 'front', o.back ? -p.body.width * PLATE_LAYOUT_GAP : null),
+      renderNeckFrontView(p, n, pc, scrollInPlan, this.pal),
+      renderNeckHighlight(p, n, this.highlightedPart, 'front', pc.back ? -p.body.width * PLATE_LAYOUT_GAP : null),
       renderTranslatedLayers(side, sideX),
     ];
   }
@@ -235,21 +235,21 @@ const renderScrollViewOnNeck = (view: ScrollView, sides: boolean, pal: PanelPale
 // the instrument from the front, the top plate with whatever the neck covers cut away and the neck
 // over it, and beside it the back with the neck's sides coming out past its edge, the plate nearest
 // the eye. Only the two ends a width sets are in colour, the top the neck's and the root the root's
-const renderNeckFrontView = (p: ViolinFamilyParams, n: NeckSolve, o: PlateContourSolve, scroll: ScrollSolve | null, pal: PanelPalette) => (g: any, ui: any): void => {
+const renderNeckFrontView = (p: ViolinFamilyParams, n: NeckSolve, pc: PlateContourSolve, scroll: ScrollSolve | null, pal: PanelPalette) => (g: any, ui: any): void => {
   if (!n.neckTop) return;
   let nk = p.neck!;
   let neck = defineNeckInPlan(p, n);
   let holes = p.fHoleContours ? solveFholeContours(p)! : null;
   let fHoles = holes?.path ? [holes.path, defineFholePath(p, holes, true)!] : [];
-  if (o.top) renderPath(occludePath(o.top, neck).visible, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
-  for (let d of [o.purfling, o.outerPurfling, ...fHoles]) if (d) renderPath(occludePath(d, neck).visible, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+  if (pc.top) renderPath(occludePath(pc.top, neck).visible, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
+  for (let d of [pc.purfling, pc.outerPurfling, ...fHoles]) if (d) renderPath(occludePath(d, neck).visible, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   renderPath(neck, pal.neutral, STROKE_WEIGHT.section)(g, ui);
 
   let dx = -p.body.width * PLATE_LAYOUT_GAP;
-  if (o.back) {
-    let back = translatePath(o.back, dx, 0);
+  if (pc.back) {
+    let back = translatePath(pc.back, dx, 0);
     renderPath(back, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
-    for (let d of [o.purfling, o.outerPurfling]) if (d) renderPath(translatePath(d, dx, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+    for (let d of [pc.purfling, pc.outerPurfling]) if (d) renderPath(translatePath(d, dx, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
     let floorY = calcMortiseFloorY(p);
     for (let side of [1, -1]) {
       let edge = pathFromLine(new Pt(dx + side * nk.rootWidth / 2, floorY), new Pt(dx + side * nk.topWidth / 2, n.neckTop.y));
@@ -262,12 +262,12 @@ const renderNeckFrontView = (p: ViolinFamilyParams, n: NeckSolve, o: PlateContou
   if (scroll) {
     let onNeck = calcScrollOnNeck(p, n);
     renderScrollViewOnNeck(buildScrollFrontViewStrokes(p, scroll, (x, y) => new Pt(x, onNeck[3] * y + onNeck[5]), 0), false, pal)(g, ui);
-    if (o.back) renderScrollViewOnNeck(buildScrollBackViewStrokes(p, scroll, (x, y) => new Pt(dx + x, onNeck[3] * y + onNeck[5]), 0), true, pal)(g, ui);
+    if (pc.back) renderScrollViewOnNeck(buildScrollBackViewStrokes(p, scroll, (x, y) => new Pt(dx + x, onNeck[3] * y + onNeck[5]), 0), true, pal)(g, ui);
   }
 
   // drawn last, since they lie along the neck's own ends
   renderSegment(new Pt(-nk.topWidth / 2, n.neckTop.y), new Pt(nk.topWidth / 2, n.neckTop.y), pal.ink(2).faint(3), STROKE_WEIGHT.section)(g, ui);
-  if (o.back) renderSegment(new Pt(dx - nk.topWidth / 2, n.neckTop.y), new Pt(dx + nk.topWidth / 2, n.neckTop.y), pal.ink(2).faint(3), STROKE_WEIGHT.section)(g, ui);
+  if (pc.back) renderSegment(new Pt(dx - nk.topWidth / 2, n.neckTop.y), new Pt(dx + nk.topWidth / 2, n.neckTop.y), pal.ink(2).faint(3), STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(-nk.rootWidth / 2, calcMortiseFloorY(p)), new Pt(nk.rootWidth / 2, calcMortiseFloorY(p)), pal.ink(2).faint(-3), STROKE_WEIGHT.section)(g, ui);
 };
 

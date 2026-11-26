@@ -19,6 +19,7 @@ import {
   ViolinFamilyToggleKey,
 } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
+import { solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import {
   LongArchingSolve,
   PlateContourSolve,
@@ -26,7 +27,6 @@ import {
   StringSetupSolve,
 } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
-import { solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import {
   channelCenterlineZAt, placeOnTopPlate, renderBodySideProfile, calcSideViewOffsetX, solveLongArching, calcTopPlatePlacement,
@@ -69,7 +69,8 @@ export class StringSetupPanel extends PanelComponentBase<StringSetupHighlightKey
   protected buildCanvasLayers(): RenderLayer[] {
     let s = this.s = solveStringSetup(this.params)!;
     let side = this.flags.showFretMarks ? [renderFretTicks(s, FRET_LANDMARKS, this.pal)] : [];
-    return renderStringSetupViews(this.params, s, this.pal, { fingerboard: this.flags.showFingerboard, highlighted: this.highlightedPart, side });
+    let pc = solvedPlateContour(this.params)!;
+    return renderStringSetupViews(this.params, s, pc, this.pal, { fingerboard: this.flags.showFingerboard, highlighted: this.highlightedPart, side });
   }
 }
 
@@ -78,17 +79,17 @@ export class StringSetupPanel extends PanelComponentBase<StringSetupHighlightKey
 export function renderStringSetupViews(
   p: ViolinFamilyParams,
   s: StringSetupSolve,
+  pc: PlateContourSolve,
   pal: PanelPalette,
   opts: { fingerboard: boolean; highlighted?: { key: StringSetupHighlightKey; color: string } | null; front?: RenderLayer[]; side?: RenderLayer[] },
 ): RenderLayer[] {
   let a = solveLongArching(p)!;
-  let o = solvePlateContour(p)!;
   let w = p.scroll ? solveScrollWidths(p) : null;
   let scroll = w && !w.scroll.failures.length ? w.scroll : undefined;
   let scrollInPlan = scroll && !w!.failures.some(f => f.unsolved.length) ? scroll : null;
   let sideX = calcSideViewOffsetX(p);
   let side = [
-    renderBodySideProfile(p, a, o, pal, false, { ground: true }),
+    renderBodySideProfile(p, a, pc, pal, false, { ground: true }),
     renderNeck(p, s.neck, pal, { ground: true, scroll }),
     renderStringSetup(p, s, pal, { fingerboard: opts.fingerboard }),
     ...(opts.side ?? []),
@@ -96,7 +97,7 @@ export function renderStringSetupViews(
     renderSolveFailures([...s.neck.failures, ...s.failures], pal.alert),
   ];
   return [
-    renderStringSetupFrontView(p, s, o, scrollInPlan, pal, {
+    renderStringSetupFrontView(p, s, pc, scrollInPlan, pal, {
       fingerboard: opts.fingerboard,
       highlighted: opts.highlighted ?? null,
     }),
@@ -236,7 +237,7 @@ export function defineFingerboardInPlan(p: ViolinFamilyParams, s: StringSetupSol
 const renderStringSetupFrontView = (
   p: ViolinFamilyParams,
   s: StringSetupSolve,
-  o: PlateContourSolve,
+  pc: PlateContourSolve,
   scroll: ScrollSolve | null,
   pal: PanelPalette,
   opts: { fingerboard: boolean; highlighted: { key: StringSetupHighlightKey; color: string } | null },
@@ -255,8 +256,8 @@ const renderStringSetupFrontView = (
   let cover = board ? [neck, board] : [neck];
   let holes = p.fHoleContours ? solveFholeContours(p)! : null;
   let fHoles = holes?.path ? [holes.path, defineFholePath(p, holes, true)!] : [];
-  let plate = o.top ? occludePath(o.top, cover).visible : '';
-  let lines = [o.purfling, o.outerPurfling, ...fHoles].map(d => d ? occludePath(d, cover).visible : '');
+  let plate = pc.top ? occludePath(pc.top, cover).visible : '';
+  let lines = [pc.purfling, pc.outerPurfling, ...fHoles].map(d => d ? occludePath(d, cover).visible : '');
 
   // from above, the feet
   let bridge: Pt[] | null = null;

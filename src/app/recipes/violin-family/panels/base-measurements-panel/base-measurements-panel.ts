@@ -13,7 +13,7 @@ import { ViolinFamilyRatios } from '../../violin-family-seed';
 import { renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCorners, solveCorners } from '../corners-panel/corners-panel';
 import { renderCenterBout, solveCenterBout } from '../center-bout-panel/center-bout-panel';
-import { renderPlateContour, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { renderPlateContour, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 
 // The body's envelope: the box the outline is drawn inside, and the rib line's box inset from it.
@@ -47,14 +47,14 @@ export class BaseMeasurementsPanel extends PanelComponentBase<never, ViolinFamil
     let m = solveMainBouts(p);
     let c = solveCorners(p);
     let cb = solveCenterBout(p);
-    let o = solvePlateContour(p);
+    let pc = solvedPlateContour(p);
     let layers: RenderLayer[] = [];
 
     // a loaded instrument shows as built: the top plate's edge, purfling and f-holes. Otherwise
     // the instrument as far as it's been drafted, in grey under the envelope. Once there are
     // corners, the bouts end where the corners take over
-    if (o?.top) {
-      layers.push(renderPlateContour(p, o, this.pal, { showModuleArcs: false }, false, false));
+    if (pc?.top) {
+      layers.push(renderPlateContour(p, pc, this.pal, { showModuleArcs: false }, false, false));
       layers.push(renderFholes(p, this.pal));
     } else {
       if (m) {

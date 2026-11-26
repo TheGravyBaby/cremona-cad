@@ -4,7 +4,7 @@ import { dist, pointInPolygon } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
-import { calcClearSpot, calcHoleFill, isPointClear, calcLevelBridges, DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, thicknessBands, thicknessField, zonePoints } from './dev-graduation-panel';
+import { calcClearSpot, calcHoleFill, isPointClear, calcLevelBridges, DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, solvedGraduation, solvedThicknessBands, solvedThicknessField, zonePoints } from './dev-graduation-panel';
 import { definePurflingPath, PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
 import { MainBoutsPanel, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -63,7 +63,7 @@ describe('the graduation solve', () => {
     grad(p);
     const snapshot = JSON.stringify(p);
     solveGraduation(p);
-    thicknessField(p, 'top');
+    solvedThicknessField(p, 'top');
     expect(JSON.stringify(p)).toBe(snapshot);
   });
 
@@ -267,10 +267,11 @@ describe('the graduation grid', () => {
 
   it('leaves the loops alone when a point is edited', () => {
     const p = seeded();
-    const { settings, solve } = solved(p, s => s.top.points = gridPoints(p, SPACING, 'top'));
+    const { settings } = solved(p, s => s.top.points = gridPoints(p, SPACING, 'top'));
+    const loops = solvedGraduation(p);
     settings.top.points[0].thickness += 1;
     settings.top.points[0].x += 3;
-    expect(solveGraduation(p)).toBe(solve);
+    expect(solvedGraduation(p)).toBe(loops);
   });
 });
 
@@ -380,23 +381,23 @@ describe('the thickness field', () => {
     const p = arched();
     const s = gridded(p);
     s.back.points = [];
-    expect(thicknessField(p, 'back')).toBeNull();
-    expect(thicknessBands(p, 'back')).toEqual([]);
-    expect(thicknessField(p, 'top')).not.toBeNull();
+    expect(solvedThicknessField(p, 'back')).toBeNull();
+    expect(solvedThicknessBands(p, 'back')).toEqual([]);
+    expect(solvedThicknessField(p, 'top')).not.toBeNull();
   });
 
   it('is nothing until the boundary solves', () => {
     const p = arched();
     const s = gridded(p);
     s.edgeInset = NaN;
-    expect(thicknessField(p, 'back')).toBeNull();
+    expect(solvedThicknessField(p, 'back')).toBeNull();
   });
 
   it('reads every point\'s own thickness at the point, the boundary\'s own reading on the boundary, and the edge thickness off the plate', () => {
     const p = arched();
     const s = gridded(p);
     s.back.points.forEach((pt, i) => pt.thickness = 2 + (i % 5) * 0.5);
-    const f = thicknessField(p, 'back')!;
+    const f = solvedThicknessField(p, 'back')!;
     for (const pt of s.back.points) expect(f.at(pt.x, pt.y)).toBeCloseTo(pt.thickness, 9);
     // the boundary is read at samples along it, and the spline runs between them
     for (const q of f.loop.filter((_, i) => i % 7 === 0)) expect(Math.abs(f.interpolated(q.x, q.y) - f.edgeAt(q.x, q.y))).toBeLessThan(0.2);
@@ -407,7 +408,7 @@ describe('the thickness field', () => {
     const p = arched();
     const s = gridded(p);
     const surface = solveCrossArching(p)!.back!;
-    const f = thicknessField(p, 'back')!;
+    const f = solvedThicknessField(p, 'back')!;
     const readings = f.loop.map(q => f.edgeAt(q.x, q.y));
     // the boundary takes off inside the fluting, so somewhere the wood is thinner than the edge
     expect(Math.min(...readings)).toBeLessThan(f.edge - 0.1);
@@ -426,7 +427,7 @@ describe('the thickness field', () => {
     const p = arched();
     const s = gridded(p);
     s.back.points.forEach((pt, i) => pt.thickness = 2 + (i % 5) * 0.5);
-    const f = thicknessField(p, 'back')!;
+    const f = solvedThicknessField(p, 'back')!;
     const xs = f.loop.map(q => q.x), ys = f.loop.map(q => q.y);
     for (let y = Math.min(...ys); y <= Math.max(...ys); y += 7) {
       for (let x = Math.min(...xs); x <= Math.max(...xs); x += 7) {
@@ -442,7 +443,7 @@ describe('the thickness field', () => {
     const s = gridded(p);
     const c = centre(solveGraduation(p)!.ground!.loop);
     s.back.points = [{ x: c.x, y: c.y, thickness: 5 }];
-    const f = thicknessField(p, 'back')!;
+    const f = solvedThicknessField(p, 'back')!;
     expect(f.at(c.x, c.y)).toBeCloseTo(5, 9);
     // along the ray to the boundary the thickness falls the whole way, in small steps
     const q0 = f.loop[0];
@@ -463,7 +464,7 @@ describe('the thickness field', () => {
     const p = arched();
     const s = gridded(p);
     s.back.points.forEach(pt => pt.thickness = 2 + Math.abs(pt.x) / 50 + pt.y / 400);
-    const f = thicknessField(p, 'back')!;
+    const f = solvedThicknessField(p, 'back')!;
     const ys = f.loop.map(q => q.y);
     for (let y = Math.min(...ys) + 5; y <= Math.max(...ys) - 5; y += 15) {
       // the boundary is a sampled loop, its chords not quite mirrored
@@ -503,7 +504,7 @@ describe('the thickness field', () => {
     it('reads the f-hole thickness on each outline and in the hole, and the edge thickness clear of it', () => {
       const p = holed();
       const s = settled(p);
-      const f = thicknessField(p, 'top')!;
+      const f = solvedThicknessField(p, 'top')!;
       const g = solveGraduation(p)!;
       // the outline is read at samples along it, and the spline runs between them: it strays by a
       // small share of how far the f-hole thickness stands off the points' thickness
@@ -526,7 +527,7 @@ describe('the thickness field', () => {
     it('mirrors across the joint', () => {
       const p = holed();
       const s = settled(p);
-      const f = thicknessField(p, 'top')!;
+      const f = solvedThicknessField(p, 'top')!;
       const g = solveGraduation(p)!;
       const xs = g.holes[0].map(q => q.x), ys = g.holes[0].map(q => q.y);
       // the boundary's sampled chords are mirrored only to a hair, and the holes' contrast magnifies that
@@ -552,7 +553,7 @@ describe('the thickness field', () => {
     it('leaves the holes off the back altogether', () => {
       const p = holed();
       const s = settled(p);
-      const back = thicknessField(p, 'back')!;
+      const back = solvedThicknessField(p, 'back')!;
       expect(back.range.hi).toBeLessThan(s.fHoleThickness);
     });
 
@@ -560,8 +561,8 @@ describe('the thickness field', () => {
       const p = holed();
       const s = settled(p);
       const g = solveGraduation(p)!;
-      const f = thicknessField(p, 'top')!;
-      const bands = thicknessBands(p, 'top');
+      const f = solvedThicknessField(p, 'top')!;
+      const bands = solvedThicknessBands(p, 'top');
       expect(bands.length).toBeGreaterThan(1);
       for (const hole of g.holes) {
         const c = inside(hole);
@@ -591,7 +592,7 @@ describe('the thickness field', () => {
         ...[lo, (lo + hi) / 2, hi].map(y => ({ x: 0, y, thickness: s.fHoleThickness })),
         ...[lo - 60, hi + 60].map(y => ({ x: 0, y, thickness: edgeThicknessOf(p, 'top') - 1 })),
       ];
-      const f = thicknessField(p, 'top')!;
+      const f = solvedThicknessField(p, 'top')!;
       for (let y = lo + 5; y <= hi - 5; y += 5) {
         for (let x = 0; x < reach - 2; x += 3) expect(Math.abs(f.interpolated(x, y) - s.fHoleThickness)).toBeLessThan(0.05);
       }
@@ -614,7 +615,7 @@ describe('the thickness field', () => {
       const s = settled(p);
       const g = solveGraduation(p)!;
       expect(g.holes).toEqual([]);
-      expect(thicknessField(p, 'top')!.range.hi).toBeLessThan(s.fHoleThickness);
+      expect(solvedThicknessField(p, 'top')!.range.hi).toBeLessThan(s.fHoleThickness);
     });
   });
 
@@ -659,7 +660,7 @@ describe('the thickness field', () => {
       const c = centre(solveGraduation(p)!.ground!.loop);
       const thick = edgeThicknessOf(p, 'back') + 1.5;
       p.graduation!.back.points = [-40, 0, 40].map(dy => ({ x: 0, y: c.y + dy, thickness: thick }));
-      const f = thicknessField(p, 'back')!;
+      const f = solvedThicknessField(p, 'back')!;
       for (let dy = -40; dy <= 40; dy += 4) expect(Math.abs(f.interpolated(0, c.y + dy) - thick)).toBeLessThan(0.02);
     });
   });
@@ -669,7 +670,7 @@ describe('the thickness field', () => {
     grad(p);
     p.graduation!.back.points = zonePoints(p, 'back');
     const read = p.graduation!.back.points[0].thickness;
-    const bands = thicknessBands(p, 'back');
+    const bands = solvedThicknessBands(p, 'back');
     expect(bands.length).toBeGreaterThan(1);
     for (const { level, polygons } of bands) {
       expect(Math.abs(level - read)).toBeGreaterThan(0.1);
@@ -683,8 +684,8 @@ describe('the thickness field', () => {
     const p = arched();
     const s = gridded(p);
     s.back.points.forEach((pt, i) => pt.thickness = 2 + (i % 5) * 0.5);
-    const f = thicknessField(p, 'back')!;
-    const bands = thicknessBands(p, 'back');
+    const f = solvedThicknessField(p, 'back')!;
+    const bands = solvedThicknessBands(p, 'back');
     expect(bands.length).toBeGreaterThan(3);
     const idx = buildPolylineIndex(f.loop);
     for (let i = 1; i < bands.length; i++) expect(bands[i].level).toBeGreaterThan(bands[i - 1].level);
@@ -717,26 +718,26 @@ describe('the inner surface', () => {
     const p = seeded();
     FlutingPanel.seed(p);
     LongArchingPanel.seed(p);
-    expect(innerSurfaceZAt(p, 'top', 0, p.body.height / 2)).toBeNull();
+    expect(solvedThicknessField(p, 'top')).toBeNull();
   });
 
   it('stands under the outside, mirrored across the joint, and is nothing off the plate', () => {
     const p = graduated();
     const surface = solveCrossArching(p)!.top!;
-    const f = thicknessField(p, 'top')!;
+    const f = solvedThicknessField(p, 'top')!;
     const xs = f.loop.map(q => q.x), ys = f.loop.map(q => q.y);
     let read = 0;
     for (let y = Math.min(...ys) + 5; y < Math.max(...ys) - 5; y += 23) {
       for (let x = 3; x < Math.max(...xs) - 5; x += 17) {
         if (!pointInPolygon(new Pt(x, y), f.loop)) continue;
-        const inner = innerSurfaceZAt(p, 'top', x, y)!;
+        const inner = innerSurfaceZAt(surface, f, x, y)!;
         expect(inner).toBeLessThan(surfaceZAt(surface, x, y)!);
-        expect(innerSurfaceZAt(p, 'top', -x, y)!).toBeCloseTo(inner, 3);
+        expect(innerSurfaceZAt(surface, f, -x, y)!).toBeCloseTo(inner, 3);
         read++;
       }
     }
     expect(read).toBeGreaterThan(10);
-    expect(innerSurfaceZAt(p, 'top', p.body.width, p.body.height / 2)).toBeNull();
+    expect(innerSurfaceZAt(surface, f, p.body.width, p.body.height / 2)).toBeNull();
   });
 });
 

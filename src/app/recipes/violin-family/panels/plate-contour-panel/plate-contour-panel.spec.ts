@@ -68,18 +68,18 @@ describe('the plate contour solve', () => {
 
   it('seeds every cutoff running the corner on, never back, and the compound ones to the same run along the edge', () => {
     const p = seeded();
-    const o = p.plateContour!;
+    const pc = p.plateContour!;
     const inset = p.body.overhang + p.body.rib;
     const k = p.corners!;
-    for (const key of ['U3Cutoff', 'C2Cutoff', 'C1Cutoff', 'L3Cutoff'] as const) expect(o[key]).toBeGreaterThan(0);
-    expect(o.U31Cutoff * (k.U31R - inset)).toBeCloseTo(o.U3Cutoff * (k.U3R - inset), 9);
-    expect(o.L31Cutoff * (k.L31R - inset)).toBeCloseTo(o.L3Cutoff * (k.L3R - inset), 9);
+    for (const key of ['U3Cutoff', 'C2Cutoff', 'C1Cutoff', 'L3Cutoff'] as const) expect(pc[key]).toBeGreaterThan(0);
+    expect(pc.U31Cutoff * (k.U31R - inset)).toBeCloseTo(pc.U3Cutoff * (k.U3R - inset), 9);
+    expect(pc.L31Cutoff * (k.L31R - inset)).toBeCloseTo(pc.L3Cutoff * (k.L3R - inset), 9);
   });
 });
 
 describe('the plates', () => {
   const p = seeded();
-  const o = p.plateContour!;
+  const pc = p.plateContour!;
   const s = solvePlateContour(p)!;
   const inset = p.body.overhang + p.body.rib;
   const edge = points(s.top!);
@@ -118,7 +118,7 @@ describe('the plates', () => {
   it('run each corner arc on past the rib corner by its cutoff, along the arc\'s own travel', () => {
     const c = solveCorners(p)!;
     const cb = solveCenterBout(p)!;
-    for (const [outer, inner, cutoff] of [[s.corners.U3, c.U3, o.U3Cutoff], [s.corners.C2, cb.C2, o.C2Cutoff], [s.corners.C1, cb.C1, o.C1Cutoff], [s.corners.L3, c.L3, o.L3Cutoff]] as const) {
+    for (const [outer, inner, cutoff] of [[s.corners.U3, c.U3, pc.U3Cutoff], [s.corners.C2, cb.C2, pc.C2Cutoff], [s.corners.C1, cb.C1, pc.C1Cutoff], [s.corners.L3, c.L3, pc.L3Cutoff]] as const) {
       const dir = Math.sign(signedRadianDelta(inner!.end - inner!.start));
       expect(dir * signedRadianDelta(outer!.end - inner!.end) / TURN.degree).toBeCloseTo(cutoff, 9);
       expect(span(outer!)).toBeGreaterThan(span(inner!));
@@ -203,7 +203,7 @@ describe('the back and its button', () => {
 
 describe('the purfling', () => {
   const p = seeded();
-  const o = p.plateContour!;
+  const pc = p.plateContour!;
   const s = solvePlateContour(p)!;
   const edge = points(s.top!);
 
@@ -216,8 +216,8 @@ describe('the purfling', () => {
     // along the lower bout, where nothing is cut across, the lines sit their offsets in from the edge
     const low = (d: string) => points(d).filter(q => Math.abs(q.x) < p.body.width / 4 && q.y < p.body.height / 4);
     const idx = buildPolylineIndex(edge);
-    for (const q of low(s.purfling!)) expect(distPointToPolylineIndexed(q, idx)).toBeCloseTo(o.purflingOffset, 2);
-    for (const q of low(s.outerPurfling!)) expect(distPointToPolylineIndexed(q, idx)).toBeCloseTo(o.purflingOffset - o.purflingChannelDepth, 2);
+    for (const q of low(s.purfling!)) expect(distPointToPolylineIndexed(q, idx)).toBeCloseTo(pc.purflingOffset, 2);
+    for (const q of low(s.outerPurfling!)) expect(distPointToPolylineIndexed(q, idx)).toBeCloseTo(pc.purflingOffset - pc.purflingChannelDepth, 2);
   });
 
   // a corner arc that sits outside C0 (the tip out past C0's circle) shrinks as the purfling moves

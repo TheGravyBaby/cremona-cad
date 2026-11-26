@@ -449,12 +449,12 @@ describe('the arching toolpaths', () => {
 describe('the purfling channel toolpaths', () => {
   const p = seeded();
   const surface = solveCrossArching(p)!.top!;
-  const o = solvePlateContour(p)!;
+  const pc = solvePlateContour(p)!;
   const thickness = p.arching!.top.thickness;
   const width = p.plateContour!.purflingChannelDepth;
   const purfling = (over: Partial<PlateSettings> = {}): PlateSettings => ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.plate)), ...over });
   const cutter = (diameter: number): Bit => ({ diameter, shape: 'flat', feeds: { cutFeed: 1016, plungeFeed: 508, stepDown: 0.6 } });
-  const edges = [o.purfling!, o.outerPurfling!].map(d => buildPolylineIndex(samplePathToPolyline(d, 0.25)));
+  const edges = [pc.purfling!, pc.outerPurfling!].map(d => buildPolylineIndex(samplePathToPolyline(d, 0.25)));
 
   describe('with a bit the channel\'s width', () => {
     const g = purfling();
@@ -533,7 +533,7 @@ describe('the purfling channel toolpaths', () => {
 
 describe('the contour toolpaths', () => {
   const p = seeded();
-  const o = solvePlateContour(p)!;
+  const pc = solvePlateContour(p)!;
   const g: PlateSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.plate));
   const r = flat.diameter / 2;
 
@@ -541,9 +541,9 @@ describe('the contour toolpaths', () => {
     describe(`the ${plate}`, () => {
       const surface = solveCrossArching(p)![plate]!;
       const thickness = p.arching![plate].thickness;
-      const tp = contourToolpaths(p, surface, o, flat, { ...g, plate });
+      const tp = contourToolpaths(p, surface, pc, flat, { ...g, plate });
       const path = tp.paths[0];
-      const outline = buildPolylineIndex(samplePathToPolyline(plate === 'top' ? o.top! : o.back!, 0.25));
+      const outline = buildPolylineIndex(samplePathToPolyline(plate === 'top' ? pc.top! : pc.back!, 0.25));
 
       // a radius off along the edge; at a corner's point the offset runs a little further out,
       // which leaves the point fat for the knife rather than cutting into it
@@ -556,7 +556,7 @@ describe('the contour toolpaths', () => {
           const d = distPointToPolylineIndexed(pt, outline);
           expect(d, `at ${pt.x.toFixed(2)}, ${pt.y.toFixed(2)}`).toBeGreaterThan(r - 0.05);
           expect(d, `at ${pt.x.toFixed(2)}, ${pt.y.toFixed(2)}`).toBeLessThan(2 * r);
-          expect(pointInPolygon(pt, samplePathToPolyline(plate === 'top' ? o.top! : o.back!, 0.5))).toBe(false);
+          expect(pointInPolygon(pt, samplePathToPolyline(plate === 'top' ? pc.top! : pc.back!, 0.5))).toBe(false);
         }
       });
 
@@ -594,13 +594,13 @@ describe('the contour toolpaths', () => {
 
   it('wants a flat bit', () => {
     const surface = solveCrossArching(p)!.top!;
-    expect(contourToolpaths(p, surface, o, ball, g).failures.join(' ')).toMatch(/flat/);
+    expect(contourToolpaths(p, surface, pc, ball, g).failures.join(' ')).toMatch(/flat/);
   });
 });
 
 describe('the cradle toolpaths', () => {
   const p = seeded();
-  const o = solvePlateContour(p)!;
+  const pc = solvePlateContour(p)!;
   const cradle = (over: Partial<CradleSettings> = {}): CradleSettings => ({ ...JSON.parse(JSON.stringify(DEFAULT_SETTINGS.cradle)), ...over });
   const bed = -DEFAULT_SETTINGS.cradle.stock.thickness;
   const lip = -CRADLE.wall;
@@ -609,12 +609,12 @@ describe('the cradle toolpaths', () => {
   for (const plate of ['top', 'back'] as const) {
     describe(`for the ${plate}`, () => {
       const surface = solveCrossArching(p)![plate]!;
-      const outlineD = plate === 'top' ? o.top! : o.back!;
+      const outlineD = plate === 'top' ? pc.top! : pc.back!;
       const outline = buildPolylineIndex(samplePathToPolyline(outlineD, 0.25));
       const inside = samplePathToPolyline(outlineD, 0.5);
 
       it('clears the pocket in loops between the lip and the wall, clockwise, down to the lip', () => {
-        const tp = cradleToolpaths(p, surface, o, flat, cradle({ plate }));
+        const tp = cradleToolpaths(p, surface, pc, flat, cradle({ plate }));
         expect(tp.failures).toEqual([]);
         expect(tp.paths.length).toBeGreaterThan(1);
         let outermost = 0;
@@ -636,7 +636,7 @@ describe('the cradle toolpaths', () => {
       });
 
       it('cuts the hole through along the lip\'s inner edge, clockwise, held by mirrored tabs', () => {
-        const tp = cradleToolpaths(p, surface, o, flat, cradle({ plate, stage: 'hole' }));
+        const tp = cradleToolpaths(p, surface, pc, flat, cradle({ plate, stage: 'hole' }));
         expect(tp.failures).toEqual([]);
         expect(tp.paths.length).toBe(1);
         const path = tp.paths[0];
@@ -661,8 +661,8 @@ describe('the cradle toolpaths', () => {
       });
 
       it('centres the plate in the slab, the same for both stages, zeroed at the slab\'s own corner', () => {
-        const pocket = cradleToolpaths(p, surface, o, flat, cradle({ plate }));
-        const hole = cradleToolpaths(p, surface, o, flat, cradle({ plate, stage: 'hole' }));
+        const pocket = cradleToolpaths(p, surface, pc, flat, cradle({ plate }));
+        const hole = cradleToolpaths(p, surface, pc, flat, cradle({ plate, stage: 'hole' }));
         expect(hole.sheetOffset).toEqual(pocket.sheetOffset);
         const xs = surface.outline.map(pt => pt.x);
         expect(Math.min(...xs) + Math.max(...xs) + 2 * pocket.sheetOffset.x).toBeCloseTo(DEFAULT_SETTINGS.cradle.stock.width, 6);
@@ -674,17 +674,17 @@ describe('the cradle toolpaths', () => {
 
   it('refuses a ball, a slab the crown would touch the bed through, and a lip the arch reaches', () => {
     const surface = solveCrossArching(p)!.top!;
-    expect(cradleToolpaths(p, surface, o, ball, cradle()).failures.join(' ')).toMatch(/flat/);
-    const thin = cradleToolpaths(p, surface, o, flat, cradle({ stock: { thickness: 16, width: 230, length: 420 } }));
+    expect(cradleToolpaths(p, surface, pc, ball, cradle()).failures.join(' ')).toMatch(/flat/);
+    const thin = cradleToolpaths(p, surface, pc, flat, cradle({ stock: { thickness: 16, width: 230, length: 420 } }));
     expect(thin.failures.join(' ')).toMatch(/too thin/);
-    const wide = cradleToolpaths(p, surface, o, flat, cradle(), { ...CRADLE, lip: 14 });
+    const wide = cradleToolpaths(p, surface, pc, flat, cradle(), { ...CRADLE, lip: 14 });
     expect(wide.failures.join(' ')).toMatch(/lip (reaches under the arch|is too wide)/);
   });
 });
 
 describe('the f-hole toolpaths', () => {
   const p = seeded();
-  const o = solvePlateContour(p)!;
+  const pc = solvePlateContour(p)!;
   const s = solveFholeContours(p)!;
   const arching = solveCrossArching(p)!;
   const surface = arching.top!;
@@ -706,7 +706,7 @@ describe('the f-hole toolpaths', () => {
   describe('the eyes', () => {
     const bit = eyeBit();
     const r = bit.diameter / 2;
-    const tp = fholeToolpaths(p, s, surface, seat(cradle()), o, bit, cradle(), fholes(), true);
+    const tp = fholeToolpaths(p, s, surface, seat(cradle()), pc, bit, cradle(), fholes(), true);
 
     it('clear each eye both sides, inside the knife allowance, clockwise from the centre out', () => {
       expect(tp.failures).toEqual([]);
@@ -743,16 +743,16 @@ describe('the f-hole toolpaths', () => {
     });
 
     it('refuses a ball, a bit wider than an eye, and an eye over the cradle\'s lip', () => {
-      expect(fholeToolpaths(p, s, surface, seat(cradle()), o, ball, cradle(), fholes(), true).failures.join(' ')).toMatch(/flat/);
-      expect(fholeToolpaths(p, s, surface, seat(cradle()), o, flat, cradle(), fholes(), true).failures.join(' ')).toMatch(/too wide/);
-      const wide = fholeToolpaths(p, s, surface, seat(cradle()), o, bit, cradle(), fholes(), true, { ...CRADLE, lip: 30 });
+      expect(fholeToolpaths(p, s, surface, seat(cradle()), pc, ball, cradle(), fholes(), true).failures.join(' ')).toMatch(/flat/);
+      expect(fholeToolpaths(p, s, surface, seat(cradle()), pc, flat, cradle(), fholes(), true).failures.join(' ')).toMatch(/too wide/);
+      const wide = fholeToolpaths(p, s, surface, seat(cradle()), pc, bit, cradle(), fholes(), true, { ...CRADLE, lip: 30 });
       expect(wide.failures.join(' ')).toMatch(/lip/);
     });
   });
 
   describe('the scribe', () => {
     const bit = vBit();
-    const tp = fholeToolpaths(p, s, surface, seat(cradle()), o, bit, cradle(), fholes({ stage: 'scribe' }), true);
+    const tp = fholeToolpaths(p, s, surface, seat(cradle()), pc, bit, cradle(), fholes({ stage: 'scribe' }), true);
 
     it('draws both outlines as drawn, one pass a scribe depth under the surface', () => {
       expect(tp.failures).toEqual([]);
@@ -772,16 +772,16 @@ describe('the f-hole toolpaths', () => {
     });
 
     it('wants a V bit', () => {
-      expect(fholeToolpaths(p, s, surface, seat(cradle()), o, eyeBit(), cradle(), fholes({ stage: 'scribe' }), true).failures.join(' ')).toMatch(/V bit/);
+      expect(fholeToolpaths(p, s, surface, seat(cradle()), pc, eyeBit(), cradle(), fholes({ stage: 'scribe' }), true).failures.join(' ')).toMatch(/V bit/);
     });
   });
 
   it('sits where the cradle put the plate, under a safe height clearing the crown, and says what it expects', () => {
     for (const plate of ['top', 'back'] as const) {
       const c = cradle({ plate });
-      const pocket = cradleToolpaths(p, seat(c), o, flat, c);
+      const pocket = cradleToolpaths(p, seat(c), pc, flat, c);
       for (const fh of [fholes(), fholes({ stage: 'scribe' })]) {
-        const tp = fholeToolpaths(p, s, surface, seat(c), o, fh.stage === 'eyes' ? eyeBit() : vBit(), c, fh, true);
+        const tp = fholeToolpaths(p, s, surface, seat(c), pc, fh.stage === 'eyes' ? eyeBit() : vBit(), c, fh, true);
         expect(tp.failures).toEqual([]);
         expect(tp.sheetOffset).toEqual(pocket.sheetOffset);
         expect(tp.stockOrigin).toEqual({ x: 0, y: 0 });
@@ -798,7 +798,7 @@ describe('the f-hole toolpaths', () => {
     for (const fh of [fholes(), fholes({ stage: 'scribe' })]) {
       const bit = fh.stage === 'eyes' ? eyeBit() : vBit();
       const t = TOOLS.find(t => t.number === DEFAULT_SETTINGS.tools[fh.stage])!;
-      const tp = fholeToolpaths(p, s, surface, seat(cradle()), o, bit, cradle(), fh, true);
+      const tp = fholeToolpaths(p, s, surface, seat(cradle()), pc, bit, cradle(), fh, true);
       const job = gcodeJob(tp, t, t.feeds.soft!);
       expect(job.passes).toEqual([]);
       expect(job.safeZ).toBeGreaterThan(Math.max(...tp.surfaces.flatMap(run => run.pts.map(pt => pt.z))));

@@ -15,6 +15,7 @@ import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { ButtonParams, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
+import { updateSolved } from '../../violin-family-solved';
 import { PlateContourSolve, OuterCornerKey } from '../../violin-family-solves';
 import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
 import { solveMainBouts, calcViolNeckCap } from '../main-bouts-panel/main-bouts-panel';
@@ -70,22 +71,20 @@ export class PlateContourPanel extends PanelComponentBase<never, ViolinFamilyRat
     };
   }
 
-  // what the last draw solved; reportSolveFailures() reads it rather than solving again
-  o!: PlateContourSolve;
-
   reportSolveFailures(): void {
-    reportFailures(this.o.failures, 'Plate Contour');
+    let pc = solvedPlateContour(this.params)!;
+    reportFailures(pc.failures, 'Plate Contour');
   }
 
   protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
-    let o = this.o = solvePlateContour(p)!;
+    let pc = solvedPlateContour(p)!;
     this.ratios = calcPlateContourRatios(p);
     // the holes, once cut, ride on the top plate here as on every panel after this one
     return [
-      renderPlateContour(p, o, this.pal, this.flags, true),
+      renderPlateContour(p, pc, this.pal, this.flags, true),
       renderFholes(p, this.pal),
-      renderSolveFailures(o.failures, this.pal.alert, true),
+      renderSolveFailures(pc.failures, this.pal.alert, true),
     ];
   }
 }
@@ -95,7 +94,7 @@ export class PlateContourPanel extends PanelComponentBase<never, ViolinFamilyRat
 // inks over the neutral outlines; grey under a later panel's work
 export const renderPlateContour = (
   p: ViolinFamilyParams,
-  o: PlateContourSolve,
+  pc: PlateContourSolve,
   pal: PanelPalette,
   flags: Pick<ViolinFamilyViewFlags, 'showModuleArcs'>,
   currentModule: boolean,
@@ -107,36 +106,36 @@ export const renderPlateContour = (
   let button = currentModule ? pal.ink(0) : pal.neutral;
   let fancy = currentModule && flags.showModuleArcs;
 
-  if (o.top) renderPath(o.top, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
-  for (let d of [o.purfling, o.outerPurfling]) if (d) renderPath(d, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
-  if (showBack && o.back) {
-    renderPath(translatePath(o.back, dx, 0), pal.neutral, STROKE_WEIGHT.trace)(g, ui);
-    for (let d of [o.purfling, o.outerPurfling]) if (d) renderPath(translatePath(d, dx, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+  if (pc.top) renderPath(pc.top, pal.neutral, STROKE_WEIGHT.trace)(g, ui);
+  for (let d of [pc.purfling, pc.outerPurfling]) if (d) renderPath(d, pal.neutral, STROKE_WEIGHT.guide)(g, ui);
+  if (showBack && pc.back) {
+    renderPath(translatePath(pc.back, dx, 0), pal.neutral, STROKE_WEIGHT.trace)(g, ui);
+    for (let d of [pc.purfling, pc.outerPurfling]) if (d) renderPath(translatePath(d, dx, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
   }
-  if (showBack && o.button) {
-    renderPath(translatePath(o.button.path, dx, 0), button, STROKE_WEIGHT.trace)(g, ui);
-    if (fancy) renderArcFromArcFancy(arcFromCircle({ ...o.button.cap, x: o.button.cap.x + dx }, o.button.cap.start, o.button.cap.end), button)(g, ui);
+  if (showBack && pc.button) {
+    renderPath(translatePath(pc.button.path, dx, 0), button, STROKE_WEIGHT.trace)(g, ui);
+    if (fancy) renderArcFromArcFancy(arcFromCircle({ ...pc.button.cap, x: pc.button.cap.x + dx }, pc.button.cap.start, pc.button.cap.end), button)(g, ui);
   }
 
   // the corner arcs with their cutoffs, over the top plate's edge, where the fields can see them move
   if (fancy) {
-    if (o.corners.U3) renderMirroredArcFancy(o.corners.U3, upper)(g, ui);
-    if (o.corners.U31) renderMirroredArcFancy(o.corners.U31, upper)(g, ui);
-    if (o.corners.C2) renderMirroredArcFancy(o.corners.C2, upper)(g, ui);
-    if (o.corners.C21) renderMirroredArcFancy(o.corners.C21, upper)(g, ui);
-    if (o.corners.C1) renderMirroredArcFancy(o.corners.C1, lower)(g, ui);
-    if (o.corners.C11) renderMirroredArcFancy(o.corners.C11, lower)(g, ui);
-    if (o.corners.L3) renderMirroredArcFancy(o.corners.L3, lower)(g, ui);
-    if (o.corners.L31) renderMirroredArcFancy(o.corners.L31, lower)(g, ui);
+    if (pc.corners.U3) renderMirroredArcFancy(pc.corners.U3, upper)(g, ui);
+    if (pc.corners.U31) renderMirroredArcFancy(pc.corners.U31, upper)(g, ui);
+    if (pc.corners.C2) renderMirroredArcFancy(pc.corners.C2, upper)(g, ui);
+    if (pc.corners.C21) renderMirroredArcFancy(pc.corners.C21, upper)(g, ui);
+    if (pc.corners.C1) renderMirroredArcFancy(pc.corners.C1, lower)(g, ui);
+    if (pc.corners.C11) renderMirroredArcFancy(pc.corners.C11, lower)(g, ui);
+    if (pc.corners.L3) renderMirroredArcFancy(pc.corners.L3, lower)(g, ui);
+    if (pc.corners.L31) renderMirroredArcFancy(pc.corners.L31, lower)(g, ui);
   } else if (currentModule) {
-    if (o.corners.U3) renderMirroredArc(o.corners.U3, upper, STROKE_WEIGHT.trace)(g, ui);
-    if (o.corners.U31) renderMirroredArc(o.corners.U31, upper, STROKE_WEIGHT.trace)(g, ui);
-    if (o.corners.C2) renderMirroredArc(o.corners.C2, upper, STROKE_WEIGHT.trace)(g, ui);
-    if (o.corners.C21) renderMirroredArc(o.corners.C21, upper, STROKE_WEIGHT.trace)(g, ui);
-    if (o.corners.C1) renderMirroredArc(o.corners.C1, lower, STROKE_WEIGHT.trace)(g, ui);
-    if (o.corners.C11) renderMirroredArc(o.corners.C11, lower, STROKE_WEIGHT.trace)(g, ui);
-    if (o.corners.L3) renderMirroredArc(o.corners.L3, lower, STROKE_WEIGHT.trace)(g, ui);
-    if (o.corners.L31) renderMirroredArc(o.corners.L31, lower, STROKE_WEIGHT.trace)(g, ui);
+    if (pc.corners.U3) renderMirroredArc(pc.corners.U3, upper, STROKE_WEIGHT.trace)(g, ui);
+    if (pc.corners.U31) renderMirroredArc(pc.corners.U31, upper, STROKE_WEIGHT.trace)(g, ui);
+    if (pc.corners.C2) renderMirroredArc(pc.corners.C2, upper, STROKE_WEIGHT.trace)(g, ui);
+    if (pc.corners.C21) renderMirroredArc(pc.corners.C21, upper, STROKE_WEIGHT.trace)(g, ui);
+    if (pc.corners.C1) renderMirroredArc(pc.corners.C1, lower, STROKE_WEIGHT.trace)(g, ui);
+    if (pc.corners.C11) renderMirroredArc(pc.corners.C11, lower, STROKE_WEIGHT.trace)(g, ui);
+    if (pc.corners.L3) renderMirroredArc(pc.corners.L3, lower, STROKE_WEIGHT.trace)(g, ui);
+    if (pc.corners.L31) renderMirroredArc(pc.corners.L31, lower, STROKE_WEIGHT.trace)(g, ui);
   }
 };
 
@@ -154,23 +153,23 @@ function solveCutoffArc(arc: Arc, offset: number, cutoff: number): Arc {
 // compound corner's first arc is the plain offset and its second takes the cutoff. A viol corner
 // has none: its flank and C arc are cut where they meet
 function solveOuterCorners(p: ViolinFamilyParams, rib: RibArcs, inset: number): OuterCorners {
-  let o = p.plateContour!;
+  let pc = p.plateContour!;
   let k = p.corners!;
   let C2Sign = calcCornerTurn(rib.C2, rib.C0);
   let C1Sign = calcCornerTurn(rib.C1, rib.C0);
   let outer: OuterCorners = {};
 
   if (!k.useViolCornerUC) {
-    outer.U3 = k.U31DoubleArc ? offsetArcRadius(rib.U3!, -inset) : solveCutoffArc(rib.U3!, -inset, o.U3Cutoff);
-    if (k.U31DoubleArc) outer.U31 = solveCutoffArc(rib.U31!, -inset, o.U31Cutoff);
-    outer.C2 = k.C21DoubleArc ? offsetArcRadius(rib.C2, C2Sign * inset) : solveCutoffArc(rib.C2, C2Sign * inset, o.C2Cutoff);
-    if (k.C21DoubleArc) outer.C21 = solveCutoffArc(rib.C21!, C2Sign * inset, o.C21Cutoff);
+    outer.U3 = k.U31DoubleArc ? offsetArcRadius(rib.U3!, -inset) : solveCutoffArc(rib.U3!, -inset, pc.U3Cutoff);
+    if (k.U31DoubleArc) outer.U31 = solveCutoffArc(rib.U31!, -inset, pc.U31Cutoff);
+    outer.C2 = k.C21DoubleArc ? offsetArcRadius(rib.C2, C2Sign * inset) : solveCutoffArc(rib.C2, C2Sign * inset, pc.C2Cutoff);
+    if (k.C21DoubleArc) outer.C21 = solveCutoffArc(rib.C21!, C2Sign * inset, pc.C21Cutoff);
   }
   if (!k.useViolCornerLC) {
-    outer.C1 = k.C11DoubleArc ? offsetArcRadius(rib.C1, C1Sign * inset) : solveCutoffArc(rib.C1, C1Sign * inset, o.C1Cutoff);
-    if (k.C11DoubleArc) outer.C11 = solveCutoffArc(rib.C11!, C1Sign * inset, o.C11Cutoff);
-    outer.L3 = k.L31DoubleArc ? offsetArcRadius(rib.L3!, -inset) : solveCutoffArc(rib.L3!, -inset, o.L3Cutoff);
-    if (k.L31DoubleArc) outer.L31 = solveCutoffArc(rib.L31!, -inset, o.L31Cutoff);
+    outer.C1 = k.C11DoubleArc ? offsetArcRadius(rib.C1, C1Sign * inset) : solveCutoffArc(rib.C1, C1Sign * inset, pc.C1Cutoff);
+    if (k.C11DoubleArc) outer.C11 = solveCutoffArc(rib.C11!, C1Sign * inset, pc.C11Cutoff);
+    outer.L3 = k.L31DoubleArc ? offsetArcRadius(rib.L3!, -inset) : solveCutoffArc(rib.L3!, -inset, pc.L3Cutoff);
+    if (k.L31DoubleArc) outer.L31 = solveCutoffArc(rib.L31!, -inset, pc.L31Cutoff);
   }
   return outer;
 }
@@ -334,7 +333,7 @@ function defineCornerConnector(a1: Arc, a2: Arc, rounding: number): string {
 // and on the back the button. `offset` is the inset for the plates; a later panel takes the same
 // edge further in with a smaller offset, the flats moving in with it
 export function defineOuterPath(p: ViolinFamilyParams, rib: RibArcs, offset: number, withButton: boolean): { path: string; button: { path: string; cap: Arc } | null } {
-  let o = p.plateContour!;
+  let pc = p.plateContour!;
   let b = p.bouts!;
   let { bouts, corners, upperFlat, lowerFlat } = solveOffsetArcs(p, rib, offset, 'flat');
   if (!corners.length) throw new Error('the corner arcs do not meet');
@@ -342,9 +341,9 @@ export function defineOuterPath(p: ViolinFamilyParams, rib: RibArcs, offset: num
   // a button wider than the neck face has nothing to stand on, so it takes the face
   const neck = b.useViolNeck && rib.V0 ? calcViolNeckCap(rib.V0, b.viol!.neckRadius, offset) : null;
   let bt: ReturnType<typeof defineButton> = null;
-  if (withButton && neck) bt = defineButton({ width: Math.min(o.button.width, 2 * neck.topX), height: o.button.height }, neck.topY, null);
+  if (withButton && neck) bt = defineButton({ width: Math.min(pc.button.width, 2 * neck.topX), height: pc.button.height }, neck.topY, null);
   // U0 is the last arc pushed when there's no viol neck
-  else if (withButton && !b.useViolNeck) bt = defineButton(o.button, p.body.height, bouts[bouts.length - 1]);
+  else if (withButton && !b.useViolNeck) bt = defineButton(pc.button, p.body.height, bouts[bouts.length - 1]);
 
   let arcs = [...bouts, ...bouts.map(arc => flipArcAboutY(arc)), ...corners.flatMap(arc => [arc, flipArcAboutY(arc)])];
 
@@ -352,13 +351,13 @@ export function defineOuterPath(p: ViolinFamilyParams, rib: RibArcs, offset: num
 
   if (upperFlat) {
     const [a1, a2] = upperFlat;
-    paths.push(defineCornerConnector(a1, a2, o.upperRounding));
-    paths.push(defineCornerConnector(flipArcAboutY(a1), flipArcAboutY(a2), o.upperRounding));
+    paths.push(defineCornerConnector(a1, a2, pc.upperRounding));
+    paths.push(defineCornerConnector(flipArcAboutY(a1), flipArcAboutY(a2), pc.upperRounding));
   }
   if (lowerFlat) {
     const [a1, a2] = lowerFlat;
-    paths.push(defineCornerConnector(a1, a2, o.lowerRounding));
-    paths.push(defineCornerConnector(flipArcAboutY(a1), flipArcAboutY(a2), o.lowerRounding));
+    paths.push(defineCornerConnector(a1, a2, pc.lowerRounding));
+    paths.push(defineCornerConnector(flipArcAboutY(a1), flipArcAboutY(a2), pc.lowerRounding));
   }
 
   paths.push(...arcs.map(arc => pathFromArc(arc)));
@@ -402,26 +401,21 @@ export function definePurflingPath(p: ViolinFamilyParams, rib: RibArcs, arcOffse
   return unifyConnectedSvgPaths(paths);
 }
 
-// a later panel reads the plates by calling this; it returns and never writes to the params. The
-// rib outline is solved again here, every stage of it, since the edge stands off all of it. The
-// last answer is kept against the params it was solved from (~20ms a solve, and the arching panels
-// ask for it on every cursor move); nothing of it reaches the file
-let last: { key: string; solve: PlateContourSolve } | null = null;
-
-export function solvePlateContour(p: ViolinFamilyParams): PlateContourSolve | null {
-  if (!p.plateContour || !p.corners || !p.bouts) return null;
-  let key = JSON.stringify([p.body, p.bouts, p.corners, p.plateContour]);
-  if (last?.key === key) return last.solve;
-  let solve = solvePlateContourUncached(p);
-  last = { key, solve };
-  return solve;
+// the plates as held on the params, solved first if an edit has cleared them
+export function solvedPlateContour(p: ViolinFamilyParams): PlateContourSolve | null {
+  updateSolved(p);
+  let held = p.solved!.plateContour;
+  if (held.solve === undefined) held.solve = solvePlateContour(p);
+  return held.solve;
 }
 
-function solvePlateContourUncached(p: ViolinFamilyParams): PlateContourSolve {
+// outline is solved again here, every stage of it, since the edge stands off all of it. Everything
+export function solvePlateContour(p: ViolinFamilyParams): PlateContourSolve | null {
+  if (!p.plateContour || !p.corners || !p.bouts) return null;
   let m = solveMainBouts(p)!;
   let c = solveCorners(p)!;
   let cb = solveCenterBout(p)!;
-  let o = p.plateContour;
+  let pc = p.plateContour;
   let k = p.corners;
   let inset = p.body.overhang + p.body.rib;
 
@@ -435,10 +429,10 @@ function solvePlateContourUncached(p: ViolinFamilyParams): PlateContourSolve {
 
   solveSection(s.failures, 'Plate contour', ['top', 'back'], () => {
     let cutoffs = [
-      ...(k.useViolCornerUC ? [] : [k.U31DoubleArc ? o.U31Cutoff : o.U3Cutoff, k.C21DoubleArc ? o.C21Cutoff : o.C2Cutoff, o.upperRounding]),
-      ...(k.useViolCornerLC ? [] : [k.C11DoubleArc ? o.C11Cutoff : o.C1Cutoff, k.L31DoubleArc ? o.L31Cutoff : o.L3Cutoff, o.lowerRounding]),
+      ...(k.useViolCornerUC ? [] : [k.U31DoubleArc ? pc.U31Cutoff : pc.U3Cutoff, k.C21DoubleArc ? pc.C21Cutoff : pc.C2Cutoff, pc.upperRounding]),
+      ...(k.useViolCornerLC ? [] : [k.C11DoubleArc ? pc.C11Cutoff : pc.C1Cutoff, k.L31DoubleArc ? pc.L31Cutoff : pc.L3Cutoff, pc.lowerRounding]),
     ];
-    let missing = buildBlankMiss('Plate contour', ['top', 'back'], [...cutoffs, o.button.width, o.button.height]);
+    let missing = buildBlankMiss('Plate contour', ['top', 'back'], [...cutoffs, pc.button.width, pc.button.height]);
     if (missing) return missing;
 
     s.corners = solveOuterCorners(p, rib, inset);
@@ -450,10 +444,10 @@ function solvePlateContourUncached(p: ViolinFamilyParams): PlateContourSolve {
   });
 
   solveSection(s.failures, 'Purfling', ['purfling'], () => {
-    let missing = buildBlankMiss('Purfling', ['purfling'], [o.purflingOffset, o.purflingChannelDepth]);
+    let missing = buildBlankMiss('Purfling', ['purfling'], [pc.purflingOffset, pc.purflingChannelDepth]);
     if (missing) return missing;
-    let purfling = definePurflingPath(p, rib, inset - o.purflingOffset);
-    let outerPurfling = definePurflingPath(p, rib, inset - o.purflingOffset + o.purflingChannelDepth);
+    let purfling = definePurflingPath(p, rib, inset - pc.purflingOffset);
+    let outerPurfling = definePurflingPath(p, rib, inset - pc.purflingOffset + pc.purflingChannelDepth);
     if (!purfling || !outerPurfling)
       return { message: 'Purfling: the offset is too far in, and the corner circles no longer meet. Reduce the purfling offset.', unsolved: ['purfling'], circles: [], segments: [] };
     s.purfling = purfling;

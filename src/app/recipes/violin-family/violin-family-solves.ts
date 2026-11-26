@@ -4,8 +4,59 @@ import { PolylineIndex } from '../../helpers/math/vibeMath';
 import { ArchTakeoff } from '../../helpers/math/archMath';
 import { ScrollWidths } from './violin-family-types';
 
-// what each panel's solver derives from the params: arcs, points, failures. Rebuilt every draw,
-// never saved. A later panel reads an earlier one's by calling its solver.
+// what each panel's solver derives from the params: arcs, points, failures. Never saved. A later
+// panel reads an earlier one's off `p.solved` once the stage is held there, and by calling its
+// solver until then.
+
+// a plate's thickness over its plan, from the graduation's readings. `at` is the plate as carved:
+// the spline inside the boundary held to what was read, the f-hole thickness in a hole, the land's
+// outside. `interpolated` is the spline alone, unclamped and defined everywhere, for the raster to
+// read; `edgeAt` is the land's reading at the boundary's nearest point
+export interface ThicknessField {
+  at(x: number, y: number): number;
+  interpolated(x: number, y: number): number;
+  edgeAt(x: number, y: number): number;
+  edge: number;
+  range: { lo: number; hi: number };
+  loop: Pt[];
+}
+
+// the flat outside the graduation's boundary, left uncarved: its thickness over (x, y), and that
+// reading at the boundary's nearest point
+export interface Land {
+  at(x: number, y: number): number;
+  atBoundary(x: number, y: number): number;
+}
+
+// the ground at or above one level of the thickness map, as polygons with their holes
+export interface ThicknessBand {
+  level: number;
+  polygons: Pt[][][];
+}
+
+// the solves held on the params between draws, as `p.solved`. A stage's `solve` is undefined while
+// it is cleared and waiting to be solved, and null once solved with no answer. `children` names
+// the stages that read it, cleared along with it. `lastParams` is the stage's own params, as JSON text,
+// when they were last looked at. updateSolved() (violin-family-solved.ts) clears;
+// `solved<Stage>(p)`, beside each solver, fills, and is how everything reads a stage
+export interface ViolinFamilySolved {
+  plateContour: { solve: PlateContourSolve | null | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  fluting: { solve: FlutingSolve | null | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  // a plate's surface, with what kept it from solving
+  crossArchingTop: { solve: { surface: PlateSurface | null; failures: CrossArchingFailure[] } | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  crossArchingBack: { solve: { surface: PlateSurface | null; failures: CrossArchingFailure[] } | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  graduation: { solve: GraduationSolve | null | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  landTop: { solve: Land | null | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  landBack: { solve: Land | null | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  thicknessFieldTop: { solve: ThicknessField | null | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  thicknessFieldBack: { solve: ThicknessField | null | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  thicknessBandsTop: { solve: ThicknessBand[] | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  thicknessBandsBack: { solve: ThicknessBand[] | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  // the inside of the top along the bar's two faces, as (z, s), read `step` apart
+  bassBarContact: { solve: { step: number; left: Pt[]; right: Pt[] } | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  // the mesh as last built and the options it was built with, as text; cleared, it is not built again until asked for
+  femMesh: { solve: { options: string; mesh: FemSolve } | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+}
 
 export type BodyKey = 'height' | 'width' | 'overhang' | 'rib';
 export type BodyFailure = SolveFailure<BodyKey>;

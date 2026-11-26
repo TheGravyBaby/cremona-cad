@@ -20,8 +20,6 @@ While iterating, run only the area you touched (see `package.json` for the globs
 arching), `test:export` (export and dev export), `test:violin-family` (the whole recipe),
 `test:draft-canvas`, `test:helpers`, `test:shell`, `test:fast` (~35s, all but the export, dev export
 and graduation specs). A new spec file outside these globs only runs under the full `ng test`.
-`violin-family-stress.spec.ts` is work in progress, excluded in `angular.json`; only `test:stress`
-runs it.
 
 Development happens on an 8 GB machine with several agents running suites at once, so
 `vitest-base.config.ts` caps each run at 2 workers; don't raise it. A timeout here points to load or
@@ -34,7 +32,8 @@ a sleeping machine, not the test: don't rerun in a loop or raise the test's limi
 | `src/app/recipes/violin-family/` | The one instrument model. `violin-family-recipe.ts` is a shell owning panel order, seeding, the commit and the view toggles. |
 | `…/violin-family-types.ts` | The saved shapes: `params` (the file), `ratios` (stamped on the file, never read), view flags, panel ids. Read its header. |
 | `…/violin-family-solves.ts` | Every `*Solve`, its `*Key` and `*Failure`: derived, never saved. |
-| `…/panels/<stage>-panel/` | One folder per drafting stage. The `.ts` holds, top to bottom, the component, its `render*` layers and its `solve*`; a later stage reads an earlier one by calling its solver. Body side profile lives in `long-arching-panel`, the scroll views in `scroll-widths-panel`. |
+| `…/violin-family-solved.ts` | `updateSolved(p)`: clears every solve held on `p.solved` whose params have moved, and the stages that read it (`children`). Each held stage has a `solved<Stage>(p)` beside its solver that calls it and then solves the stage if it stands cleared. Held: plate contour, fluting, cross arching, graduation's boundary, land, thickness field and bands (a plate each where there are two), the bass bar's contact with the top, the FEM mesh. |
+| `…/panels/<stage>-panel/` | One folder per drafting stage. The `.ts` holds, top to bottom, the component, its `render*` layers and its `solve*`; a later stage reads an earlier one with `solved<Stage>(p)` where the stage is held (`solvedPlateContour(p)`, `solvedFluting(p)`, `solvedCrossArching(p)`, `solvedGraduation(p)`, `solvedThicknessField(p, plate)`), and by calling its solver otherwise. Body side profile lives in `long-arching-panel`, the scroll views in `scroll-widths-panel`. |
 | `…/templates/corpus/` | Served instruments, one JSON each, with `source` and image `credit`. `violin-family-templates.spec.ts` is the only spec that reads them. |
 | `src/app/recipes/hello-world/` | A four-circle toy recipe, about 150 lines: the starting point for trying out a new recipe. Recipes are picked in `app.ts`; each extends `recipe-base/`. |
 | `src/app/draft-canvas/` | SVG canvas, camera, snapping, pointer routing. `tools/` holds the toolbox. |
@@ -51,7 +50,9 @@ a sleeping machine, not the test: don't rerun in a loop or raise the test's limi
 Sort by what the code knows, not what feature it serves:
 
 - **A panel file**: math that knows it's a violin, for that stage. `solve<Stage>(p)` reads params
-  and returns a `<Stage>Solve` (arcs, points, `failures`), never writing to params. `render*` sits
+  and returns a `<Stage>Solve` (arcs, points, `failures`), never writing to params. It calculates
+  at every call and keeps nothing itself; a held stage's `solved<Stage>(p)` is what code calls, the
+  solver only by that and by specs. In a loop, read once into a variable. `render*` sits
   beside it; `static seed(p)` writes the stage's first params. View-only geometry still goes here
   if it's violin geometry.
 - **`helpers/math/`**: math that doesn't. The test is whether the name and signature would make
@@ -70,7 +71,8 @@ Sort by what the code knows, not what feature it serves:
   and view state (drag handlers, cursor) stay on the component.
 
 **Params hold what the user sets, and only that.** One optional sub-object per stage, absent until
-its panel seeds it. Solvers return `SolveFailure[]` on the solve via `solveSection` and never write
+its panel seeds it. The one exception is `p.solved`, which rides on the params without being one:
+it is not enumerable, so no file, undo entry or copy of the params carries it. Solvers return `SolveFailure[]` on the solve via `solveSection` and never write
 back. Don't add derived points or readouts to a params interface: derive them with an exported
 function beside the solver and call it from the solve, the render and the highlight. A radius or
 angle the user authors is a number on params; the arc built from it is on the solve.

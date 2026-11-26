@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { closestPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import {
   calcBodyLandmarks, buildSurfaceContours, crossArchKnotX, calcCrossArchKnots, calcCrossArchShape, buildCrossArchResolver, calcNearestCrossArchShape, rowAt, sectionAt,
-  calcSectionRuns, solveCrossArching, solveCrossArchSection, surfaceZAt,
+  calcSectionRuns, solveCrossArching, solvedCrossArching, solveCrossArchSection, surfaceZAt,
 } from './cross-arching-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { calcChannelHalfWidth, channelProfileSlopeAt } from '../../../../helpers/math/archMath';
@@ -59,10 +59,10 @@ describe('the cross arching solve', () => {
 
   it('hands back the same surface while the params it reads stand, and a new one once they move', () => {
     const p = seeded();
-    const first = solveCrossArching(p)!;
-    expect(solveCrossArching(JSON.parse(JSON.stringify(p)))!.top).toBe(first.top);
+    const first = solvedCrossArching(p)!;
+    expect(solvedCrossArching(p)!.top).toBe(first.top);
     p.arching!.top.cross.d += 5;
-    const next = solveCrossArching(p)!;
+    const next = solvedCrossArching(p)!;
     expect(next.top).not.toBe(first.top);
     expect(next.back).toBe(first.back);
   });

@@ -17,10 +17,10 @@ import { PanelComponentBase } from '../panel-component-base';
 import { Bit, CRADLE, CradleSettings, CradleSpec, DEFAULT_SETTINGS, DevExportSettings, EXPORTS, FHOLE, FholeSettings, Feeds, FINGERBOARD, FingerboardSettings, MACHINE, MOULD_TABS, PLATE_TABS, PlateSettings, PREVIEW_GRID, readSettings, SCROLL, ScrollSettings, Stage, STAGE_SHAPE, StageKey, stageOf, STOCK_OF, StockSettings, SURFACE, Tool, toolFor, TOOLS, ToolShape, Wood, writeSettings } from './dev-export-shop';
 import { Bounds, boundsOf, centreInSheet, climbingLoop, emptyToolpaths, evenStations, fail, gcodeJob, jobNotes, placeInSheet, serpentine, SHEET_MARGIN, tabsAlong, terrainGrid, tipHeights, Toolpaths, withTabs } from './dev-export-toolpaths';
 import { FholeContoursSolve, MouldRelief, MouldSolve, NeckSolve, PlateContourSolve, Plate, PlateSurface, ScrollSolve, StringSetupSolve } from '../../violin-family-solves';
-import { buildSurfaceContours, calcContourSampleSteps, rowAt, solveCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
+import { buildSurfaceContours, calcContourSampleSteps, rowAt, solvedCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { BACK_ARCH_INK, CHANNEL_INK, TOP_ARCH_INK } from '../long-arching-panel/long-arching-panel';
 import { MOULD_EXPORT_STEP, renderMould, solveMould } from '../mould-panel/mould-panel';
-import { definePurflingPath, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../corners-panel/corners-panel';
 import { solveCenterBout, solveRibArcs } from '../center-bout-panel/center-bout-panel';
@@ -230,40 +230,40 @@ export function planExport(p: ViolinFamilyParams, settings: DevExportSettings, b
       return { toolpaths, layers: [renderMould(s, pal, flags), renderSheet(toolpaths, settings.mould, pal), renderToolpaths(toolpaths, pal)] };
     }
     case 'plate': {
-      let surface = solveCrossArching(p)?.[b.plate];
+      let surface = solvedCrossArching(p)?.[b.plate];
       if (!surface) return null;
       let toolpaths = archingToolpaths(p, surface, bit, b, fine);
       return { toolpaths, layers: [renderOutline(surface, pal), renderArching(p, surface, b.plate, toolpaths, pal), renderSeam(b, toolpaths, pal), renderSheet(toolpaths, b, pal)] };
     }
     case 'purfling': {
-      let surface = solveCrossArching(p)?.[b.plate];
-      let o = solvePlateContour(p);
-      if (!surface || !o?.purfling) return null;
+      let surface = solvedCrossArching(p)?.[b.plate];
+      let pc = solvedPlateContour(p);
+      if (!surface || !pc?.purfling) return null;
       let toolpaths = purflingToolpaths(p, surface, bit, b, fine);
-      return { toolpaths, layers: [renderOutline(surface, pal), renderLines([o.purfling, o.outerPurfling], pal), renderToolpaths(toolpaths, pal), renderSeam(b, toolpaths, pal), renderSheet(toolpaths, b, pal)] };
+      return { toolpaths, layers: [renderOutline(surface, pal), renderLines([pc.purfling, pc.outerPurfling], pal), renderToolpaths(toolpaths, pal), renderSeam(b, toolpaths, pal), renderSheet(toolpaths, b, pal)] };
     }
     case 'contour': {
-      let surface = solveCrossArching(p)?.[b.plate];
-      let o = solvePlateContour(p);
-      if (!surface || !o) return null;
-      let toolpaths = contourToolpaths(p, surface, o, bit, b);
+      let surface = solvedCrossArching(p)?.[b.plate];
+      let pc = solvedPlateContour(p);
+      if (!surface || !pc) return null;
+      let toolpaths = contourToolpaths(p, surface, pc, bit, b);
       return { toolpaths, layers: [renderOutline(surface, pal), renderToolpaths(toolpaths, pal), renderSeam(b, toolpaths, pal), renderSheet(toolpaths, b, pal)] };
     }
     case 'cradle': {
-      let surface = solveCrossArching(p)?.[c.plate];
-      let o = solvePlateContour(p);
-      if (!surface || !o) return null;
-      let toolpaths = cradleToolpaths(p, surface, o, bit, c);
-      return { toolpaths, layers: [renderOutline(surface, pal), renderHole(o, c.plate, pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, c, pal)] };
+      let surface = solvedCrossArching(p)?.[c.plate];
+      let pc = solvedPlateContour(p);
+      if (!surface || !pc) return null;
+      let toolpaths = cradleToolpaths(p, surface, pc, bit, c);
+      return { toolpaths, layers: [renderOutline(surface, pal), renderHole(pc, c.plate, pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, c, pal)] };
     }
     case 'fholes': {
-      let arching = solveCrossArching(p);
+      let arching = solvedCrossArching(p);
       let surface = arching?.top, seat = arching?.[c.plate];
-      let o = solvePlateContour(p);
+      let pc = solvedPlateContour(p);
       let s = p.fHoleContours ? solveFholeContours(p) : null;
-      if (!surface || !seat || !o || !s?.path) return null;
-      let toolpaths = fholeToolpaths(p, s, surface, seat, o, bit, c, settings.fholes, fine);
-      return { toolpaths, layers: [renderOutline(surface, pal), renderHole(o, c.plate, pal), renderLines([s.path, defineFholePath(p, s, true)], pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, c, pal)] };
+      if (!surface || !seat || !pc || !s?.path) return null;
+      let toolpaths = fholeToolpaths(p, s, surface, seat, pc, bit, c, settings.fholes, fine);
+      return { toolpaths, layers: [renderOutline(surface, pal), renderHole(pc, c.plate, pal), renderLines([s.path, defineFholePath(p, s, true)], pal), renderToolpaths(toolpaths, pal), renderSheet(toolpaths, c, pal)] };
     }
     case 'scroll': {
       let n = solveNeck(p), s = solveScroll(p);
@@ -339,8 +339,8 @@ export const renderLines = (ds: (string | null)[], pal: PanelPalette) => (gr: an
 };
 
 // the cradle's hole, the lip's inner edge, dashed
-export const renderHole = (o: PlateContourSolve, plate: Plate, pal: PanelPalette) => (gr: any, ui: any): void => {
-  let hole = o[plate] && insideOutline(o[plate]!, CRADLE.lip);
+export const renderHole = (pc: PlateContourSolve, plate: Plate, pal: PanelPalette) => (gr: any, ui: any): void => {
+  let hole = pc[plate] && insideOutline(pc[plate]!, CRADLE.lip);
   if (hole) renderPath(hole, pal.neutral, STROKE_WEIGHT.guide, 0.8, DASH.guide)(gr, ui);
 };
 
@@ -541,7 +541,7 @@ function insideOutline(outline: string, distance: number): string | null {
 // the plan reads the arching over the lip and refuses a lip the arch would reach. The slab needs
 // no harness: it is clamped to the table and zeroed on its own top corner with the probe, the
 // plate centred in it
-export function cradleToolpaths(p: ViolinFamilyParams, surface: PlateSurface, o: PlateContourSolve, bit: Bit, g: CradleSettings, cradle: CradleSpec = CRADLE, machine = MACHINE): Toolpaths {
+export function cradleToolpaths(p: ViolinFamilyParams, surface: PlateSurface, pc: PlateContourSolve, bit: Bit, g: CradleSettings, cradle: CradleSpec = CRADLE, machine = MACHINE): Toolpaths {
   let bed = -g.stock.thickness;
   let land = -cradle.wall;
   let archHeight = p.arching![g.plate].long.height;
@@ -554,7 +554,7 @@ export function cradleToolpaths(p: ViolinFamilyParams, surface: PlateSurface, o:
   if (!(bit.diameter > 0)) fail(out, 'The bit diameter has to be above 0.');
   if (bit.shape !== 'flat') fail(out, 'The cradle takes a flat bit.');
   if (land - bed < archHeight + cradle.crownClearance) fail(out, `The slab is too thin: face down the crown hangs ${archHeight.toFixed(1)} mm below the lip, and the slab leaves ${(land - bed - archHeight).toFixed(1)} mm under it.`);
-  let outline = o[g.plate];
+  let outline = pc[g.plate];
   if (!outline) return fail(out, 'The outline has to solve first.');
   // the arch over the lip: nothing may stand above the land plane there
   for (let f of [1, 0.75, 0.5]) {
@@ -670,8 +670,8 @@ function surfacing(out: Toolpaths, job: SurfaceJob, bit: Bit, stage: Stage, fine
 // read for the plate's place in the blank, the same as the arching's
 export function purflingToolpaths(p: ViolinFamilyParams, surface: PlateSurface, bit: Bit, g: PlateSettings, fine = false): Toolpaths {
   let out = plateToolpaths(p, surface, g, 'purfling channel', bit);
-  let o = p.plateContour!;
-  let width = o.purflingChannelDepth;
+  let pc = p.plateContour!;
+  let width = pc.purflingChannelDepth;
   if (bit.shape !== 'flat') fail(out, 'The purfling channel takes a flat bit.');
   if (bit.diameter > width + 0.05) fail(out, `The bit is wider than the channel: ${width} mm.`);
   if (!(g.purflingDepth > 0)) fail(out, 'The strip height has to be above 0.');
@@ -692,7 +692,7 @@ export function purflingToolpaths(p: ViolinFamilyParams, surface: PlateSurface, 
   out.caution = SURFACED_PLATE;
   out.notes.push(`Channel ${width} wide in ${across} pass${across === 1 ? '' : 'es'} across, ${rounds.length} round${rounds.length === 1 ? '' : 's'} down to ${g.purflingDepth} under the edge`);
   for (let [i, off] of offsets.entries()) {
-    let d = definePurflingPath(p, rib, inset - o.purflingOffset + off);
+    let d = definePurflingPath(p, rib, inset - pc.purflingOffset + off);
     if (!d) return fail(out, 'The purfling line would not offset for this pass: the corners no longer meet.');
     let ring = samplePathToPolyline(d, fine ? 0.25 : 1);
     if (signedPolygonArea(ring) < 0) ring.reverse();
@@ -718,7 +718,7 @@ export function purflingToolpaths(p: ViolinFamilyParams, surface: PlateSurface, 
 // the slab. The plate sits where the cradle put it: centred by the outline the cradle was cut to
 export const GRADUATED_PLATE = 'EXPECTS THE GRADUATED TOP, FACE UP IN ITS CRADLE.';
 
-export function fholeToolpaths(p: ViolinFamilyParams, s: FholeContoursSolve, surface: PlateSurface, seat: PlateSurface, o: PlateContourSolve, bit: Bit, g: CradleSettings, fh: FholeSettings, fine = false, cradle: CradleSpec = CRADLE): Toolpaths {
+export function fholeToolpaths(p: ViolinFamilyParams, s: FholeContoursSolve, surface: PlateSurface, seat: PlateSurface, pc: PlateContourSolve, bit: Bit, g: CradleSettings, fh: FholeSettings, fine = false, cradle: CradleSpec = CRADLE): Toolpaths {
   let lipZ = -cradle.wall;
   let edge = p.arching!.top.thickness;
   let crown = lipZ + edge + p.arching!.top.long.height;
@@ -746,7 +746,7 @@ export function fholeToolpaths(p: ViolinFamilyParams, s: FholeContoursSolve, sur
     for (let [name, eye] of eyes) {
       if (eye.r - FHOLE.allowance - r < 0.05) fail(out, `The bit is too wide for the ${name.toLowerCase()}: ${(2 * (eye.r - FHOLE.allowance)).toFixed(1)} mm inside the knife allowance.`);
     }
-    let outline = o[g.plate];
+    let outline = pc[g.plate];
     let holeD = outline && insideOutline(outline, cradle.lip);
     if (!holeD) fail(out, 'The cradle\'s hole has to solve first.');
     else {
@@ -813,11 +813,11 @@ function roundsTo(depth: number, stepDown: number): number[] {
 // round the outline is at the edge's height) down through the bed's overcut, held by tabs at the
 // widest of each bout and the waist of each C. Cut last: once it is through, only the tabs hold
 // the plate. The blank's seam still stands above the land, so the safe height is kept off it
-export function contourToolpaths(p: ViolinFamilyParams, surface: PlateSurface, o: PlateContourSolve, bit: Bit, g: PlateSettings, tabs = PLATE_TABS, machine = MACHINE): Toolpaths {
+export function contourToolpaths(p: ViolinFamilyParams, surface: PlateSurface, pc: PlateContourSolve, bit: Bit, g: PlateSettings, tabs = PLATE_TABS, machine = MACHINE): Toolpaths {
   let out = plateToolpaths(p, surface, g, 'contour', bit);
   if (bit.shape !== 'flat') fail(out, 'The contour takes a flat bit.');
   if (out.failures.length) return out;
-  let outline = o[g.plate];
+  let outline = pc[g.plate];
   if (!outline) return fail(out, 'The outline has to solve first.');
   let thickness = p.arching![g.plate].thickness;
   let d = offsetPath(outline, bit.diameter / 2);

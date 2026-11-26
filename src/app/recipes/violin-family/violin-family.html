@@ -361,6 +361,13 @@
     </button>
     }
 
+    @if (renderToggleButtons.includes('showScrollMeasurements')) {
+    <button type="button" class="vt-btn" [class.active]="viewFlags.showScrollMeasurements"
+        (click)="onRenderToggle('showScrollMeasurements')" title="Show Scroll Measurements" aria-label="Show Scroll Measurements">
+        <svg icon="scroll-measurements" width="18" height="18"></svg>
+    </button>
+    }
+
     @if (renderToggleButtons.includes('showFingerboard')) {
     <button type="button" class="vt-btn" [class.active]="viewFlags.showFingerboard"
         (click)="onRenderToggle('showFingerboard')" title="Show Fingerboard" aria-label="Show Fingerboard">

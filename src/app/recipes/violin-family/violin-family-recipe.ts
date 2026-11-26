@@ -16,8 +16,8 @@ import { BaseMeasurementsPanel, calcBodyRatios } from './panels/base-measurement
 import { MainBoutsPanel, solveMainBouts, calcMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel, calcCornersRatios } from './panels/corners-panel/corners-panel';
 import { solveCenterBout, calcCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
-import { PlateContourPanel, solvePlateContour, calcPlateContourRatios } from './panels/plate-contour-panel/plate-contour-panel';
-import { FlutingPanel, solveFluting } from './panels/fluting-panel/fluting-panel';
+import { PlateContourPanel, solvedPlateContour, calcPlateContourRatios } from './panels/plate-contour-panel/plate-contour-panel';
+import { FlutingPanel, solvedFluting } from './panels/fluting-panel/fluting-panel';
 import { FHolePlacementPanel, calcFholePlacementRatios } from './panels/fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel, calcFholeContoursRatios } from './panels/fhole-contours-panel/fhole-contours-panel';
 import { LongArchingPanel, solveLongArching } from './panels/long-arching-panel/long-arching-panel';
@@ -191,11 +191,11 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
         let cb = solveCenterBout(p);
         return !!(cb?.C0 && cb.C2 && cb.C1);
       }
-      case 'fluting': return !!solvePlateContour(p)?.top;
-      case 'fHolePlacement': return !!solvePlateContour(p)?.top;
+      case 'fluting':
+      case 'fHolePlacement': return !!solvedPlateContour(p)?.top;
       case 'fHoleContours': return !!p.fHoles;
       case 'longArching': {
-        let f = solveFluting(p);
+        let f = solvedFluting(p);
         return !!(f?.top && f.back);
       }
       case 'crossArching': return !!p.arching;
