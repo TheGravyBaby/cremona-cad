@@ -14,8 +14,7 @@ import {
 } from './violin-family-types';
 import { BaseMeasurementsPanel, calcBodyRatios } from './panels/base-measurements-panel/base-measurements-panel';
 import { MainBoutsPanel, solveMainBouts, calcMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
-import { CornersPanel, calcCornersRatios } from './panels/corners-panel/corners-panel';
-import { solveCenterBout, calcCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
+import { CornersPanel, calcCornersRatios, solveCorners } from './panels/corners-panel/corners-panel';
 import { PlateContourPanel, calcPlateContourRatios } from './panels/plate-contour-panel/plate-contour-panel';
 import { FlutingPanel } from './panels/fluting-panel/fluting-panel';
 import { FHolePlacementPanel, calcFholePlacementRatios } from './panels/fhole-placement-panel/fhole-placement-panel';
@@ -186,8 +185,8 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
         return !!p.corners || !!(m?.U0 && m.U1 && m.L0 && m.L1);
       }
       case 'plateContour': {
-        let cb = solveCenterBout(p);
-        return !!p.plateContour || !!(cb?.C0 && cb.C2 && cb.C1);
+        let c = solveCorners(p);
+        return !!p.plateContour || !!(c?.C0 && c.C2 && c.C1);
       }
       case 'mould':
       case 'export': return !!p.corners;
@@ -252,7 +251,6 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
       ...calcBodyRatios(p),
       ...calcMainBoutsRatios(p),
       ...calcCornersRatios(p),
-      ...calcCenterBoutRatios(p),
       ...calcPlateContourRatios(p),
       ...calcFholePlacementRatios(p),
       ...calcFholeContoursRatios(p),

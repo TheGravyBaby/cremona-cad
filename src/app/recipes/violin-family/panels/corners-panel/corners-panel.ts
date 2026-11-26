@@ -3,23 +3,24 @@ import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompoundBySweep } from '../../../../helpers/math/draftMath';
 import { angleFromCenter, dist, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromPointAndSlope, offsetArcRadius, pointOnCircle, signedArcSweep, TURN } from '../../../../helpers/math/simpleGeometry';
 import { renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderMirroredArc, renderMirroredArcFancy, renderPointHalo, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { buildBlankMiss, reportFailures, SolveFailure, solveSection } from '../../../../helpers/validators';
+import { buildBlankMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
 import { RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, ViolinFamilyViewFlags } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
-import { CenterBoutKey, CenterBoutSolve, CornerFailure, CornerKey, CornersSolve, MainBoutsSolve } from '../../violin-family-solves';
+import { CornerFailure, CornerKey, CornersSolve, MainBoutsSolve } from '../../violin-family-solves';
 import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
+import { updateSolved } from '../../violin-family-solved';
 import { renderBoutBounds, renderMainBoutCircles, renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
-import { calcCenterBoutRatios, isCenterBoutKey, renderCenterBout, renderCenterBoutCircles, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 
-// The corners: each bout's join arc (U2, L2, the main bouts' own) is ended by a corner arc (U3, L3)
-// that runs onto the typed corner tip, or through a compound pair (U3 then U31) where one arc can't make the
-// turn, or in one sweep (U4, L4) for a viol. The panel also carries the center bout's fields, since
-// its arcs leave the same tips; that stage's renders and solve stay in center-bout-panel. Panel and
-// renders, then solve and ratios.
+// The corners and the C bout. Each bout's join arc (U2, L2, the main bouts' own) is ended by a
+// corner arc (U3, L3) that runs onto the typed corner tip, or through a compound pair (U3 then U31)
+// where one arc can't make the turn, or in one sweep (U4, L4) for a viol. C0, the C's own arc, is
+// placed by its width and height or fitted to touch both join arcs (Kelly's four circles), and the
+// corner arcs C2 and C1 turn it onto the same tips, each plain or compound. C0's numbers live with
+// the bouts. Panel and renders, then solve and ratios.
 type CornerHighlightKey = CornerKey | 'UCr' | 'LCr';
 
 @Component({
@@ -28,7 +29,7 @@ type CornerHighlightKey = CornerKey | 'UCr' | 'LCr';
   templateUrl: './corners-panel.html',
   styleUrls: ['../../../../sidebar.css', '../../violin-family.css'],
 })
-export class CornersPanel extends PanelComponentBase<CornerHighlightKey | CenterBoutKey, ViolinFamilyRatios> {
+export class CornersPanel extends PanelComponentBase<CornerHighlightKey, ViolinFamilyRatios> {
   static readonly renderToggles: readonly ViolinFamilyToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleCircles', 'showAllCircles', 'showModuleGuides', 'renderOuterPath'];
   protected readonly pal = ThemeService.getPalette('classicCremona');
 
@@ -69,15 +70,14 @@ export class CornersPanel extends PanelComponentBase<CornerHighlightKey | Center
   // what the last draw solved; the template and reportSolveFailures() read these rather than solving again
   m!: MainBoutsSolve;
   c!: CornersSolve;
-  cb!: CenterBoutSolve;
 
   // turning the fit off keeps the width and height it found, so the hand fields carry on from
   // the fitted shape rather than jumping back to what was typed before it
   fitChanged(): void {
     let b = this.params.bouts!;
-    if (!b.useKellyC0 && this.cb.C0 && this.cb.CBW != null) {
-      b.CBW = Math.round(this.cb.CBW * 10) / 10;
-      b.C0Y = Math.round(this.cb.C0.y * 10) / 10;
+    if (!b.useKellyC0 && this.c.C0 && this.c.CBW != null) {
+      b.CBW = Math.round(this.c.CBW * 10) / 10;
+      b.C0Y = Math.round(this.c.C0.y * 10) / 10;
     }
     this.recordEditAndRedraw();
   }
@@ -93,46 +93,40 @@ export class CornersPanel extends PanelComponentBase<CornerHighlightKey | Center
 
   reportSolveFailures(): void {
     reportFailures(this.c.failures, 'Corners');
-    reportFailures(this.cb.failures, 'Center Bout');
   }
 
   protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
     let m = this.m = solveMainBouts(p)!;
     let c = this.c = solveCorners(p)!;
-    let cb = this.cb = solveCenterBout(p)!;
-    this.ratios = { ...calcCornersRatios(p), ...calcCenterBoutRatios(p) };
-    let h = this.highlightedPart;
-    let cornerPart = h && !isCenterBoutKey(h.key) ? { key: h.key, color: h.color } : null;
-    let boutPart = h && isCenterBoutKey(h.key) ? { key: h.key, color: h.color } : null;
+    this.ratios = calcCornersRatios(p);
     let layers: RenderLayer[] = [];
 
     if (this.flags.showModuleGuides) {
       let hw = p.body.width / 2;
       layers.push(renderBoutBounds(p, this.pal));
       // the height C0 is placed at, or was fitted to
-      if (cb.C0) layers.push(renderDashedLine(new Pt(-hw, cb.C0.y), new Pt(hw, cb.C0.y), this.pal.ink(3)));
+      if (c.C0) layers.push(renderDashedLine(new Pt(-hw, c.C0.y), new Pt(hw, c.C0.y), this.pal.ink(3)));
     }
-    if (this.flags.showModuleCircles || this.flags.showAllCircles) layers.push(renderCornerCircles(p, c, this.pal), renderCenterBoutCircles(p, cb, this.pal));
+    if (this.flags.showModuleCircles || this.flags.showAllCircles) layers.push(renderCornerCircles(p, c, this.pal));
     if (this.flags.showAllCircles) layers.push(renderMainBoutCircles(m, this.pal));
     // the bouts in grey under this panel's corners and C bout
     layers.push(
       renderMainBouts(p, { ...m, U2: c.U2 ?? m.U2, L2: c.L2 ?? m.L2 }, this.pal, this.flags, false, null),
       renderSolveFailures(m.failures, this.pal.alert, true),
-      renderCorners(p, c, this.pal, this.flags, true, cornerPart),
-      renderCenterBout(p, cb, this.pal, this.flags, true, boutPart),
+      renderCorners(p, c, this.pal, this.flags, true, this.highlightedPart),
       renderSolveFailures(c.failures, this.pal.alert, true),
-      renderSolveFailures(cb.failures, this.pal.alert, true),
     );
     return layers;
   }
 }
 
-// each corner arc carried round to its full circle, in the arc's own ink
+// each corner and C bout arc carried round to its full circle, in the arc's own ink
 export const renderCornerCircles = (p: ViolinFamilyParams, c: CornersSolve, pal: PanelPalette) => (g: any, ui: any): void => {
   let k = p.corners!;
   let upperSide = pal.ink(1).faint(-2);
   let upperTip = pal.ink(4);
+  let bout = pal.ink(3);
   let lowerSide = pal.ink(0).faint(-2);
   let lowerTip = pal.ink(2);
 
@@ -148,11 +142,17 @@ export const renderCornerCircles = (p: ViolinFamilyParams, c: CornersSolve, pal:
     if (c.L3) renderCircle(c.L3, lowerTip, true)(g, ui);
     if (k.L31DoubleArc && c.L31) renderCircle(c.L31, lowerTip, true)(g, ui);
   }
+  if (c.C2) renderCircle(c.C2, upperTip, true)(g, ui);
+  if (k.C21DoubleArc && c.C21) renderCircle(c.C21, upperTip, true)(g, ui);
+  if (c.C1) renderCircle(c.C1, lowerTip, true)(g, ui);
+  if (k.C11DoubleArc && c.C11) renderCircle(c.C11, lowerTip, true)(g, ui);
+  if (c.C0) renderCircle(c.C0, bout, true)(g, ui);
 };
 
-// the corners in their own colours on this panel, where their fields are; grey under another
-// panel's work unless all arcs are shown. The plate edge offsets out from the bout-side arcs, in from the
-// corner arcs that turn back onto the tip. A corner whose section failed isn't drawn; its failure is
+// the corners and C bout in their own colours on this panel, where their fields are; grey under
+// another panel's work unless all arcs are shown. The plate edge offsets out from the bout-side
+// arcs and in from the corner arcs that turn back onto the tip; in from C0, and from a C corner
+// arc whichever way that arc turns (calcCornerTurn). A section that failed isn't drawn; its failure is
 export const renderCorners = (
   p: ViolinFamilyParams,
   c: CornersSolve,
@@ -167,6 +167,7 @@ export const renderCorners = (
 
   let upperSide = pal.ink(1).faint(-2);
   let upperTip = pal.ink(4);
+  let bout = pal.ink(3);
   let lowerSide = pal.ink(0).faint(-2);
   let lowerTip = pal.ink(2);
 
@@ -205,13 +206,21 @@ export const renderCorners = (
       if (c.L3) renderMirroredArcFancy(c.L3, lowerTip)(g, ui);
       if (k.L31DoubleArc && c.L31) renderMirroredArcFancy(c.L31, lowerTip)(g, ui);
     }
+    if (c.C2) renderMirroredArcFancy(c.C2, upperTip)(g, ui);
+    if (k.C21DoubleArc && c.C21) renderMirroredArcFancy(c.C21, upperTip)(g, ui);
+    if (c.C1) renderMirroredArcFancy(c.C1, lowerTip)(g, ui);
+    if (k.C11DoubleArc && c.C11) renderMirroredArcFancy(c.C11, lowerTip)(g, ui);
+    if (c.C0) renderMirroredArcFancy(c.C0, bout)(g, ui);
   }
 
   // the outline at offset d from the rib line: 0 is the rib, unless the module arcs stand in
   // for it, and the inset is the plate's edge
   let offsets = [...(moduleArcs ? [] : [0]), ...(flags.renderOuterPath ? [inset] : [])];
+  let upperOut = calcCornerTurn(c.C2, c.C0);
+  let lowerOut = calcCornerTurn(c.C1, c.C0);
   let upperSideTrace = currentModule ? upperSide : pal.neutral;
   let upperTipTrace = currentModule ? upperTip : pal.neutral;
+  let boutTrace = currentModule ? bout : pal.neutral;
   let lowerSideTrace = currentModule ? lowerSide : pal.neutral;
   let lowerTipTrace = currentModule ? lowerTip : pal.neutral;
   for (let d of offsets) {
@@ -227,8 +236,19 @@ export const renderCorners = (
       if (c.L3) renderMirroredArc(offsetArcRadius(c.L3, -d), lowerTipTrace, STROKE_WEIGHT.trace)(g, ui);
       if (k.L31DoubleArc && c.L31) renderMirroredArc(offsetArcRadius(c.L31, -d), lowerTipTrace, STROKE_WEIGHT.trace)(g, ui);
     }
+    if (c.C2) renderMirroredArc(offsetArcRadius(c.C2, upperOut * d), upperTipTrace, STROKE_WEIGHT.trace)(g, ui);
+    if (k.C21DoubleArc && c.C21) renderMirroredArc(offsetArcRadius(c.C21, upperOut * d), upperTipTrace, STROKE_WEIGHT.trace)(g, ui);
+    if (c.C1) renderMirroredArc(offsetArcRadius(c.C1, lowerOut * d), lowerTipTrace, STROKE_WEIGHT.trace)(g, ui);
+    if (k.C11DoubleArc && c.C11) renderMirroredArc(offsetArcRadius(c.C11, lowerOut * d), lowerTipTrace, STROKE_WEIGHT.trace)(g, ui);
+    if (c.C0) renderMirroredArc(offsetArcRadius(c.C0, -d), boutTrace, STROKE_WEIGHT.trace)(g, ui);
   }
 };
+
+// which way a C corner arc's plate edge offsets. C0 is tangent to each corner arc, so one centred
+// further than C0's radius from C0's centre sits outside it and its plate edge is the larger
+// circle (1); one that has inverted into the C offsets the other way (-1). A compound corner's
+// second arc follows its first
+export const calcCornerTurn = (arc: Arc | null, C0: Arc | null): 1 | -1 => arc && C0 && dist(arc, C0) > C0.r ? 1 : -1;
 
 // where a corner tip goes before the maker has placed it, courtesy of David Beard: a line at the
 // ratio height of the body, and a guide circle drawn from the bout to that line; where they cross
@@ -241,8 +261,6 @@ export function calcDefaultCornerTips(p: ViolinFamilyParams): { UCr: Pt; LCr: Pt
   let LBW = p.body.width;
   let UBW = p.bouts.UBW;
 
-  // we set a line at the ratio height of the body, then draw a guide circle from the bout to that line
-  // the intersection defines the "default" corner position
   let lgPt = new Pt(-LBW / 2, m.L1.y);
   let lgC = new Circle(lgPt.x, lgPt.y, LBW)
   let lgH = p.body.height * SEED_RATIOS.LCYtoH
@@ -259,16 +277,60 @@ export function calcDefaultCornerTips(p: ViolinFamilyParams): { UCr: Pt; LCr: Pt
   };
 }
 
-// a later panel reads the corners by calling this; it returns and never writes to the params. The
-// main bouts are solved again here rather than passed in, so every stage is a function of params
+// the rib outline's arcs, gathered from the main bouts and the corners, the bout arcs as the
+// corners trimmed them. Null unless every arc the options call for has solved.
+// A later panel stands its own lines off this outline
+export type RibArcs = {
+  U0: Arc; U1: Arc; L0: Arc; L1: Arc; C0: Arc; C2: Arc; C1: Arc;
+  U2: Arc | null; U3: Arc | null; U31: Arc | null; U4: Arc | null;
+  L2: Arc | null; L3: Arc | null; L31: Arc | null; L4: Arc | null;
+  C21: Arc | null; C11: Arc | null;
+  V0: Arc | null;
+};
+
+export function solvedRibArcs(p: ViolinFamilyParams): RibArcs | null {
+  updateSolved(p);
+  let held = p.solved!.ribArcs;
+  if (held.solve === undefined) held.solve = solveRibArcs(p);
+  return held.solve;
+}
+
+export function solveRibArcs(p: ViolinFamilyParams): RibArcs | null {
+  let m = solveMainBouts(p), c = solveCorners(p);
+  if (!m || !c) return null;
+  let k = p.corners!;
+  let rib = {
+    U0: m.U0, U1: c.U1, L0: m.L0, L1: c.L1, C0: c.C0, C2: c.C2, C1: c.C1,
+    U2: c.U2, U3: c.U3, U31: c.U31, U4: c.U4,
+    L2: c.L2, L3: c.L3, L31: c.L31, L4: c.L4,
+    C21: c.C21, C11: c.C11,
+    V0: m.V0,
+  };
+  let needed = [
+    rib.U0, rib.U1, rib.L0, rib.L1, rib.C0, rib.C2, rib.C1,
+    ...(k.useViolCornerUC ? [rib.U4] : [rib.U2, rib.U3, ...(k.U31DoubleArc ? [rib.U31] : [])]),
+    ...(k.useViolCornerLC ? [rib.L4] : [rib.L2, rib.L3, ...(k.L31DoubleArc ? [rib.L31] : [])]),
+    ...(k.C21DoubleArc ? [rib.C21] : []),
+    ...(k.C11DoubleArc ? [rib.C11] : []),
+    ...(p.bouts!.useViolNeck ? [rib.V0] : []),
+  ];
+  return needed.every(arc => !!arc) ? rib as RibArcs : null;
+}
+
+// a later panel reads the corners and the C bout by calling this; it returns and never writes to
+// the params. The main bouts are solved again here rather than passed in, so every stage is a
+// function of params
 export function solveCorners(p: ViolinFamilyParams): CornersSolve | null {
   if (!p.corners || !p.bouts) return null;
   let m = solveMainBouts(p)!;
+  let b = p.bouts;
   let k = p.corners;
+  let inset = p.body.overhang + p.body.rib;
 
   let s: CornersSolve = {
     U1: m.U1, U2: null, U3: null, U31: null, U4: null,
     L1: m.L1, L2: null, L3: null, L31: null, L4: null,
+    C0: null, C2: null, C21: null, C1: null, C11: null, CBW: null,
     failures: [],
   };
 
@@ -365,6 +427,128 @@ export function solveCorners(p: ViolinFamilyParams): CornersSolve | null {
     return null
   });
 
+  // C0's circle once it is placed, by hand or by the fit; the C corner arcs stand on it
+  let placed: Arc | null = null;
+  solveSection(s.failures, 'Center bout', ['C0', 'C2', 'C21', 'C1', 'C11'], () => {
+    let missing = buildBlankMiss('Center bout', ['C0', 'C2', 'C21', 'C1', 'C11'], b.useKellyC0 ? [b.C0R] : [b.C0R, b.C0Y, b.CBW]);
+    if (missing) return missing;
+
+    if (b.useKellyC0) {
+      let U2 = s.U2;
+      let L2 = s.L2;
+      let kellyMiss: CornerFailure = {
+        message: `Fit C0 to Bouts: no C0 of this radius touches both U2 and L2. Enlarge C0, or place it by hand.`,
+        unsolved: ['C0', 'C2', 'C21', 'C1', 'C11'],
+        circles: [U2, L2].filter((arc): arc is Arc => !!arc),
+        segments: [],
+      };
+      if (!U2 || !L2)
+        return { ...kellyMiss, message: 'Fit C0 to Bouts: both corners have to solve first.' };
+      let C0 = new Arc(0, b.C0Y, b.C0R);
+
+      let UtoL = dist(U2, L2);  // these joining circles are the ones that must intercept with C0, modified kelly theory
+      let UtoC = U2.r + C0.r;
+      let LtoC = L2.r + C0.r;
+
+      let theta = Math.acos((UtoL * UtoL + UtoC * UtoC - LtoC * LtoC) / (2 * UtoL * UtoC));  // angle off U2 to C0, but with the Y axis as the line from U2 to L2
+      // outside acos's domain no triangle closes, and the NaN would sail past the distance check below
+      if (!Number.isFinite(theta))
+        return kellyMiss
+
+      // now we need to begin converting this to the proper coordinate space
+      // first, the above theta needs to be referenced added to 3/2 pi, as it is pointing down
+      theta = theta + 3 * TURN.quarter; // angle from U2 to C0, with the line from U2 to L2 as reference
+
+      // now we need to convert the angle to the standard xy plane
+      let angleFromU2toL2 = Math.atan2(L2.y - U2.y, L2.x - U2.x);
+      let diffFromYAxis = TURN.quarter + angleFromU2toL2; // angle from the line U2 to L2, to the Y axis
+      theta = theta + diffFromYAxis; // angle from U2 to C0, with the standard xy plane as reference
+
+      // cos(finalAngle) = o / r = (C0.x - U2.x) / (C0.r + U2.r)
+      // sin(finalAngle) = a / r = (U2.y - C0.y) / (C0.r + U2.r)
+      C0.x = Math.abs(U2.x + Math.cos(theta) * UtoC);
+      C0.y = Math.abs(U2.y + Math.sin(theta) * UtoC);
+
+      let C0toL2 = dist(C0, L2);
+      let C0toU2 = dist(C0, U2);
+      let C0rU2r = C0.r + L2.r
+      let C0rL2r = C0.r + U2.r
+      let tolerance = .1
+      if (C0toL2 > C0rU2r + tolerance || C0toU2 > C0rL2r + tolerance)
+        return kellyMiss
+
+      // makes sense to recalculate center bout width here
+      s.CBW = (C0.x - C0.r + inset) * 2;
+      placed = C0;
+    }
+    else {
+      placed = new Arc(b.CBW / 2 - inset + b.C0R, b.C0Y, b.C0R);
+      s.CBW = b.CBW;
+    }
+    return null
+  });
+
+  let CUIntercept: Pt | undefined;
+  let CLIntercept: Pt | undefined;
+
+  // the C corner arcs have nothing to stand on until C0 is placed; its failure says so
+  solveSection(s.failures, 'Upper corner', ['C0', 'C2', 'C21'], () => {
+    let C0 = placed;
+    if (!C0) return null;
+    let missing = buildBlankMiss('Upper corner', ['C0', 'C2', 'C21'], [k.UCr.x, k.UCr.y, k.C2R, ...(k.C21DoubleArc ? [k.C21R, k.C21Sweep] : [])]);
+    if (missing) return missing;
+    if (k.C21DoubleArc) {
+      // drawn from C0 out to its tip, the upper corner turns clockwise and the lower
+      // counterclockwise; the second arc turns through the typed sweep onto the tip
+      let sweep = -k.C21Sweep * TURN.degree;
+      let compoundCircles = interceptCirclesAndPointCompoundBySweep(C0, k.UCr, k.C2R, k.C21R, sweep).sort((a, b) => a.C1.y - b.C1.y)[0];
+      if (!compoundCircles)
+        return buildCornerMiss('Upper corner', 'C0', C0, 'C2', k.UCr, true, ['C0', 'C2', 'C21'])
+      CUIntercept = circleCircleIntersections(compoundCircles.C1, C0)[1]
+      let C21start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
+
+      s.C2 = arcFromCircleAndPoints(compoundCircles.C1, CUIntercept, C21start);
+      s.C21 = arcFromCircleAndPoints(compoundCircles.C2, C21start, k.UCr);
+    }
+    else {
+      let CU = interceptCirclesAndPoint(C0, k.UCr, k.C2R).sort((a, b) => b.y - a.y)[1];
+      if (!CU)
+        return buildCornerMiss('Upper corner', 'C0', C0, 'C2', k.UCr, false, ['C0', 'C2', 'C21'])
+      CUIntercept = circleCircleIntersections(C0, CU).sort((a, b) => b.y - a.y)[0];
+      s.C2 = arcFromCircleAndPoints(CU, CUIntercept, k.UCr);
+    }
+    return null
+  });
+
+  solveSection(s.failures, 'Lower corner', ['C0', 'C1', 'C11'], () => {
+    let C0 = placed;
+    if (!C0) return null;
+    let missing = buildBlankMiss('Lower corner', ['C0', 'C1', 'C11'], [k.LCr.x, k.LCr.y, k.C1R, ...(k.C11DoubleArc ? [k.C11R, k.C11Sweep] : [])]);
+    if (missing) return missing;
+    if (k.C11DoubleArc) {
+      let sweep = k.C11Sweep * TURN.degree;
+      let compoundCircles = interceptCirclesAndPointCompoundBySweep(C0, k.LCr, k.C1R, k.C11R, sweep).sort((a, b) => a.C1.y - b.C1.y)[1];
+      if (!compoundCircles)
+        return buildCornerMiss('Lower corner', 'C0', C0, 'C1', k.LCr, true, ['C0', 'C1', 'C11'])
+      CLIntercept = circleCircleIntersections(compoundCircles.C1, C0)[1]
+      let C11start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
+
+      s.C1 = arcFromCircleAndPoints(compoundCircles.C1, CLIntercept, C11start);
+      s.C11 = arcFromCircleAndPoints(compoundCircles.C2, C11start, k.LCr);
+    }
+    else {
+      let CL = interceptCirclesAndPoint(C0, k.LCr, k.C1R).sort((a, b) => a.y - b.y)[1];
+      if (!CL)
+        return buildCornerMiss('Lower corner', 'C0', C0, 'C1', k.LCr, false, ['C0', 'C1', 'C11'])
+      CLIntercept = circleCircleIntersections(C0, CL).sort((a, b) => a.y - b.y)[1];
+      s.C1 = arcFromCircleAndPoints(CL, CLIntercept, k.LCr);
+    }
+    return null
+  });
+
+  if (placed && CUIntercept && CLIntercept)
+    s.C0 = arcFromCircleAndPoints(placed, CUIntercept, CLIntercept);
+
   return s;
 }
 
@@ -375,17 +559,8 @@ function buildBlankCornerMiss(section: string, unsolved: CornerKey[], boutName: 
 }
 
 // an arc of radius r tangent to `from` and through the corner needs r to span half the gap
-// between them; the compound pair has no closed form, so it only gets the generic advice. The
-// center bout's corner arcs miss the same way
-export function buildCornerMiss<K extends string>(
-  section: string,
-  fromKey: K,
-  from: Circle,
-  arcKey: K,
-  corner: Pt,
-  compound: boolean,
-  unsolved: K[],
-): SolveFailure<K> {
+// between them; the compound pair has no closed form, so it only gets the generic advice
+function buildCornerMiss(section: string, fromKey: CornerKey, from: Circle, arcKey: CornerKey, corner: Pt, compound: boolean, unsolved: CornerKey[]): CornerFailure {
   let needed = Math.abs(dist(from, corner) - from.r) / 2
   return {
     message: compound
@@ -399,12 +574,16 @@ export function buildCornerMiss<K extends string>(
 }
 
 // read off the params every solve, so they can't drift from the instrument. The radius ratios are
-// taken against the inner width, the width less the inset both sides
+// taken against the inner width, the width less the inset both sides. While the fit is on, the
+// width is the fitted one, since that is what the drawing shows
 export function calcCornersRatios(p: ViolinFamilyParams): Partial<ViolinFamilyRatios> {
   if (!p.corners || !p.bouts) return {};
+  let b = p.bouts;
   let k = p.corners;
   let inset = p.body.overhang + p.body.rib;
-  let LBWI = p.body.width - 2 * inset;
+  let LBW = p.body.width;
+  let LBWI = LBW - 2 * inset;
+  let CBW = (b.useKellyC0 ? solveCorners(p)!.CBW : null) ?? b.CBW;
 
   return {
     U3toLBW: k.U3R / LBWI,
@@ -413,5 +592,11 @@ export function calcCornersRatios(p: ViolinFamilyParams): Partial<ViolinFamilyRa
     L31toLBW: k.L31R / LBWI,
     UCYtoH: k.UCr.y / p.body.height,
     LCYtoH: k.LCr.y / p.body.height,
+    CBWtoLBW: CBW / LBW,
+    C0toLBW: b.C0R / LBWI,
+    C2toLBW: k.C2R / LBWI,
+    C21toLBW: k.C21R / LBWI,
+    C1toLBW: k.C1R / LBWI,
+    C11toLBW: k.C11R / LBWI,
   };
 }

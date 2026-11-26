@@ -6,9 +6,8 @@ import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../help
 import { Pt } from '../../../../models/types';
 import { calcClearSpot, calcHoleFill, isPointClear, calcLevelBridges, DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, solvedGraduation, solvedThicknessBands, solvedThicknessField, zonePoints } from './dev-graduation-panel';
 import { definePurflingPath, PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
-import { CornersPanel } from '../corners-panel/corners-panel';
+import { CornersPanel, solvedRibArcs } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { solvedRibArcs } from '../center-bout-panel/center-bout-panel';
 import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { FHolePlacementPanel } from '../fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel } from '../fhole-contours-panel/fhole-contours-panel';

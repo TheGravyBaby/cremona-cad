@@ -5,8 +5,7 @@ import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Arc, Pt } from '../../../../models/types';
 import { PlateContourPanel, solvePlateContour } from './plate-contour-panel';
-import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
-import { calcCornerTurn, solveCenterBout } from '../center-bout-panel/center-bout-panel';
+import { CornersPanel, solveCorners, calcCornerTurn } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
@@ -117,8 +116,7 @@ describe('the plates', () => {
 
   it('run each corner arc on past the rib corner by its cutoff, along the arc\'s own travel', () => {
     const c = solveCorners(p)!;
-    const cb = solveCenterBout(p)!;
-    for (const [outer, inner, cutoff] of [[s.corners.U3, c.U3, pc.U3Cutoff], [s.corners.C2, cb.C2, pc.C2Cutoff], [s.corners.C1, cb.C1, pc.C1Cutoff], [s.corners.L3, c.L3, pc.L3Cutoff]] as const) {
+    for (const [outer, inner, cutoff] of [[s.corners.U3, c.U3, pc.U3Cutoff], [s.corners.C2, c.C2, pc.C2Cutoff], [s.corners.C1, c.C1, pc.C1Cutoff], [s.corners.L3, c.L3, pc.L3Cutoff]] as const) {
       const dir = Math.sign(signedRadianDelta(inner!.end - inner!.start));
       expect(dir * signedRadianDelta(outer!.end - inner!.end) / TURN.degree).toBeCloseTo(cutoff, 9);
       expect(span(outer!)).toBeGreaterThan(span(inner!));
@@ -227,8 +225,8 @@ describe('the purfling', () => {
   it('fails, leaving the plates drawn, once the offset has eaten a corner arc', () => {
     const q = seeded();
     const outside = (p: ViolinFamilyParams) => {
-      const cb = solveCenterBout(p)!;
-      return !!cb.C2 && !!cb.C0 && calcCornerTurn(cb.C2, cb.C0) === 1 && solvePlateContour(p)!.failures.length === 0;
+      const c = solveCorners(p)!;
+      return !!c.C2 && !!c.C0 && calcCornerTurn(c.C2, c.C0) === 1 && solvePlateContour(p)!.failures.length === 0;
     };
     const seedC0R = q.bouts!.C0R;
     for (const fraction of [0.5, 0.4, 0.3, 0.25, 0.2, 0.15]) {

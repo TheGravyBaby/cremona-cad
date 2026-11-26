@@ -5,7 +5,6 @@ import { VIOLIN_FAMILY_PANEL_IDS, VIOLIN_FAMILY_RECIPE_NAME } from '../violin-fa
 import { APP_VERSION, compareVersions } from '../../../models/types';
 import { solveMainBouts } from '../panels/main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../panels/corners-panel/corners-panel';
-import { solveCenterBout } from '../panels/center-bout-panel/center-bout-panel';
 import { solvePlateContour } from '../panels/plate-contour-panel/plate-contour-panel';
 import { solveFluting } from '../panels/fluting-panel/fluting-panel';
 import { solveFholeContours } from '../panels/fhole-contours-panel/fhole-contours-panel';
@@ -52,7 +51,6 @@ describe('CORPUS_TEMPLATES', () => {
       const stages: Stage[] = [
         ['main bouts', solveMainBouts(p)],
         ['corners', solveCorners(p)],
-        ['center bout', solveCenterBout(p)],
         ['plate contour', solvePlateContour(p)],
       ];
       if (p.fluting) stages.push(['fluting', solveFluting(p)]);

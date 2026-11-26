@@ -19,8 +19,7 @@ import { updateSolved } from '../../violin-family-solved';
 import { PlateContourSolve, OuterCornerKey } from '../../violin-family-solves';
 import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
 import { calcViolNeckCap } from '../main-bouts-panel/main-bouts-panel';
-import { solveCorners } from '../corners-panel/corners-panel';
-import { calcCornerTurn, RibArcs, solvedRibArcs, solveCenterBout } from '../center-bout-panel/center-bout-panel';
+import { solveCorners, calcCornerTurn, RibArcs, solvedRibArcs } from '../corners-panel/corners-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 
 // the back sits a body's width and a bit to the left of the top, as the sheets lay the plates out
@@ -42,13 +41,13 @@ export class PlateContourPanel extends PanelComponentBase<never, ViolinFamilyRat
   // same; the purfling a channel's width in from the edge; the button off the seed ratios
   static seed(p: ViolinFamilyParams): void {
     if (p.plateContour || !p.corners) return;
-    let cb = solveCenterBout(p);
-    if (!cb?.C0 || !cb.C2 || !cb.C1) return;
+    let c = solveCorners(p);
+    if (!c?.C0 || !c.C2 || !c.C1) return;
     let k = p.corners;
     let inset = p.body.overhang + p.body.rib;
     let buttonWidth = Math.round(p.body.width * SEED_RATIOS.BWtoLBW);
-    let C2Sign = calcCornerTurn(cb.C2, cb.C0);
-    let C1Sign = calcCornerTurn(cb.C1, cb.C0);
+    let C2Sign = calcCornerTurn(c.C2, c.C0);
+    let C1Sign = calcCornerTurn(c.C1, c.C0);
     let U3Cutoff = 2.5;
     let C2Cutoff = 10;
     let C1Cutoff = 5;

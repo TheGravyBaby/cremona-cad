@@ -20,8 +20,7 @@ import { updateSolved } from '../../violin-family-solved';
 import { ChannelSolve, FlutingSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
-import { solveCorners } from '../corners-panel/corners-panel';
-import { solvedRibArcs, RibArcs } from '../center-bout-panel/center-bout-panel';
+import { solveCorners, solvedRibArcs, RibArcs } from '../corners-panel/corners-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import {
   solveOffsetArcs, defineOuterPath, PLATE_LAYOUT_GAP, renderPlateContour, solvedPlateContour, defineViolNeckTopLine,

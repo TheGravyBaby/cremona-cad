@@ -51,8 +51,7 @@ import { renderFluting, solvedFluting } from '../fluting-panel/fluting-panel';
 import { definePurflingPath, renderPlateContour, solvedPlateContour, PLATE_LAYOUT_GAP } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
-import { solveCorners } from '../corners-panel/corners-panel';
-import { solvedRibArcs } from '../center-bout-panel/center-bout-panel';
+import { solveCorners, solvedRibArcs } from '../corners-panel/corners-panel';
 import {
   BACK_ARCH_INK, calcSideViewOffsetX, CHANNEL_INK, longArchHeightAt, renderBodySideProfile, ribHeightAt, solveLongArching, TOP_ARCH_INK,
 } from '../long-arching-panel/long-arching-panel';

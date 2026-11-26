@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { pointOnCircle, signedRadianDelta } from '../../../helpers/math/simpleGeometry';
 import { solveMainBouts } from '../panels/main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../panels/corners-panel/corners-panel';
-import { solveCenterBout } from '../panels/center-bout-panel/center-bout-panel';
 import { solvePlateContour } from '../panels/plate-contour-panel/plate-contour-panel';
 import { calcChannelSweep } from '../../../helpers/math/archMath';
 import { solveFluting } from '../panels/fluting-panel/fluting-panel';
@@ -91,11 +90,9 @@ describe.each(LEGACY)('a legacy Ceruti file: %s', (name, file) => {
     for (const k of ['U2', 'U3', 'L2', 'L3'] as const) sameCircle(s[k], c.bouts[k], k);
     if (o.U31DoubleArc) sameSpan(s.U31, c.bouts.U31, 'U31');
     if (o.L31DoubleArc) sameSpan(s.L31, c.bouts.L31, 'L31');
-    const cb = solveCenterBout(p)!;
-    expect(unsolved(cb)).toEqual([]);
-    for (const k of ['C0', 'C2', 'C1'] as const) sameCircle(cb[k], c.bouts[k], k);
-    if (o.C21DoubleArc) sameSpan(cb.C21, c.bouts.C21, 'C21');
-    if (o.C11DoubleArc) sameSpan(cb.C11, c.bouts.C11, 'C11');
+    for (const k of ['C0', 'C2', 'C1'] as const) sameCircle(s[k], c.bouts[k], k);
+    if (o.C21DoubleArc) sameSpan(s.C21, c.bouts.C21, 'C21');
+    if (o.C11DoubleArc) sameSpan(s.C11, c.bouts.C11, 'C11');
   });
 
   it('cuts the plate corners off where it saved them, and stands the button to the same tip', () => {

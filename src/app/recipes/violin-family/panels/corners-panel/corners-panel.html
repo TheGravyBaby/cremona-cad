@@ -126,7 +126,7 @@
         <label class="field-cell">
             <span class="field-title">Total Width</span>
             @if (bouts.useKellyC0) {
-            <div class="basic-display" aria-label="Fitted center bout width">{{ cb.CBW?.toFixed(1) ?? '–' }}</div>
+            <div class="basic-display" aria-label="Fitted center bout width">{{ c.CBW?.toFixed(1) ?? '–' }}</div>
             } @else {
             <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="bouts.CBW" (input)="recordEditAndRedraw()" />
             }
@@ -150,7 +150,7 @@
             <label class="field-cell">
                 <span class="field-title">C0 Y</span>
                 @if (bouts.useKellyC0) {
-                <div class="basic-display" aria-label="Fitted C0 height">{{ cb.C0?.y?.toFixed(1) ?? '–' }}</div>
+                <div class="basic-display" aria-label="Fitted C0 height">{{ c.C0?.y?.toFixed(1) ?? '–' }}</div>
                 } @else {
                 <input type="number" class="basic-input" step="1" [(ngModel)]="bouts.C0Y" (input)="recordEditAndRedraw()"
                     [style.borderColor]="pal.ink(3)"

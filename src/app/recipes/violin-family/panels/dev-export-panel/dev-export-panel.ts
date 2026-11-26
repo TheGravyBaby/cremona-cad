@@ -22,8 +22,7 @@ import { BACK_ARCH_INK, CHANNEL_INK, TOP_ARCH_INK } from '../long-arching-panel/
 import { MOULD_EXPORT_STEP, renderMould, solveMould } from '../mould-panel/mould-panel';
 import { definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
-import { solveCorners } from '../corners-panel/corners-panel';
-import { solvedRibArcs } from '../center-bout-panel/center-bout-panel';
+import { solveCorners, solvedRibArcs } from '../corners-panel/corners-panel';
 import { error } from '../../../../shared/message-emitter';
 import { defineFholePath, solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { calcScrollOnNeck, solveNeck } from '../neck-panel/neck-panel';

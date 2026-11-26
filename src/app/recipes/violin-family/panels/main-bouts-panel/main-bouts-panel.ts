@@ -14,7 +14,6 @@ import { PanelComponentBase } from '../panel-component-base';
 import { MainBoutFailure, MainBoutsSolve, ViolNeckCap, ViolNeckJoin } from '../../violin-family-solves';
 import { SEED_RATIOS, ViolinFamilyRatios } from '../../violin-family-seed';
 import { renderCornerCircles, renderCorners, solveCorners } from '../corners-panel/corners-panel';
-import { renderCenterBout, renderCenterBoutCircles, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 
 // The main bouts: the upper and lower bouts' three arcs each, set by their widths and radii, and the
 // viol neck that can take the place of the upper bout's top. The third arc of each, the join arc,
@@ -93,17 +92,14 @@ export class MainBoutsPanel extends PanelComponentBase<MainBoutArcKey, ViolinFam
     // the join arcs end on their corner once there is one
     let joins = { U2: c?.U2 ?? m.U2, L2: c?.L2 ?? m.L2 };
     let arc = this.highlightedPart ? { ...m, ...joins }[this.highlightedPart.key] : null;
-    let cb = solveCenterBout(p);
     let layers: RenderLayer[] = [];
 
     if (this.flags.showModuleGuides) layers.push(renderBoutBounds(p, this.pal));
     if (this.flags.showModuleCircles || this.flags.showAllCircles) layers.push(renderMainBoutCircles(m, this.pal));
     if (this.flags.showAllCircles && c) layers.push(renderCornerCircles(p, c, this.pal));
-    if (this.flags.showAllCircles && cb) layers.push(renderCenterBoutCircles(p, cb, this.pal));
     // the corners and the center bout as far as they've been drafted, in grey under this
     // panel's bouts
     if (c) layers.push(renderCorners(p, c, this.pal, this.flags, false, null));
-    if (cb) layers.push(renderCenterBout(p, cb, this.pal, this.flags, false, null));
     layers.push(
       renderMainBouts(p, { ...m, ...joins }, this.pal, this.flags, true, arc ? { arc, color: this.highlightedPart!.color } : null),
       renderSolveFailures(m.failures, this.pal.alert, true),

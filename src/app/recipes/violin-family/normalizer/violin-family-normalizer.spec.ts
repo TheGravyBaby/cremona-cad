@@ -2,7 +2,6 @@
 import { describe, expect, it } from 'vitest';
 import { solveMainBouts } from '../panels/main-bouts-panel/main-bouts-panel';
 import { solveCorners } from '../panels/corners-panel/corners-panel';
-import { solveCenterBout } from '../panels/center-bout-panel/center-bout-panel';
 import { solvePlateContour } from '../panels/plate-contour-panel/plate-contour-panel';
 import { solveFholeContours } from '../panels/fhole-contours-panel/fhole-contours-panel';
 import { solveLongArching } from '../panels/long-arching-panel/long-arching-panel';
@@ -20,7 +19,7 @@ describe('a 0.9.0 file', () => {
   it('is recognised by its version, and solves at every stage the release changed', () => {
     expect(recipeFormat(amati)).toBe('0.9.0');
     const p = normalizeViolinFamilyRecipe(file090())!.params;
-    for (const solve of [solveMainBouts, solveCorners, solveCenterBout, solvePlateContour, solveFholeContours, solveLongArching, solveMould, solveNeck, solveStringSetup]) {
+    for (const solve of [solveMainBouts, solveCorners, solvePlateContour, solveFholeContours, solveLongArching, solveMould, solveNeck, solveStringSetup]) {
       expect(solve(p)!.failures.map(f => f.message), solve.name).toEqual([]);
     }
   });

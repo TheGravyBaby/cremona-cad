@@ -38,8 +38,7 @@ import {
   SurfaceRow,
 } from '../../violin-family-solves';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
-import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout, solvedRibArcs } from '../center-bout-panel/center-bout-panel';
+import { solveCorners, solvedRibArcs } from '../corners-panel/corners-panel';
 import { calcStemEdgePoints, stemEdgeAt } from '../fhole-placement-panel/fhole-placement-panel';
 import { definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { buildMiss, reportFailures } from '../../../../helpers/validators';
@@ -674,7 +673,7 @@ function buildBodyPage(p: ViolinFamilyParams): SheetPageSpec | null {
   let measures = buildRows([
     ['Body length', formatValues([h])],
     ['Upper bout width', formatValues([p.bouts?.UBW])],
-    ['Middle bout width', formatValues([solveCenterBout(p)?.CBW])],
+    ['Middle bout width', formatValues([solveCorners(p)?.CBW])],
     ['Lower bout width', formatValues([p.body.width])],
     ['Overhang', formatValues([p.body.overhang])],
   ]);

@@ -19,8 +19,7 @@ import { PanelComponentBase } from '../panel-component-base';
 import { MouldKey, MouldSolve } from '../../violin-family-solves';
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
-import { solveCorners } from '../corners-panel/corners-panel';
-import { solvedRibArcs } from '../center-bout-panel/center-bout-panel';
+import { solveCorners, solvedRibArcs } from '../corners-panel/corners-panel';
 import { defineChannelPath } from '../fluting-panel/fluting-panel';
 import { definePurflingPath } from '../plate-contour-panel/plate-contour-panel';
 

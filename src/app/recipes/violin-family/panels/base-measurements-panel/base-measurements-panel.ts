@@ -12,7 +12,6 @@ import { BodyFailure, BodyKey, BodySolve } from '../../violin-family-solves';
 import { ViolinFamilyRatios } from '../../violin-family-seed';
 import { renderMainBouts, solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCorners, solveCorners } from '../corners-panel/corners-panel';
-import { renderCenterBout, solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import { renderPlateContour, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 
@@ -46,7 +45,6 @@ export class BaseMeasurementsPanel extends PanelComponentBase<never, ViolinFamil
     this.ratios = calcBodyRatios(p);
     let m = solveMainBouts(p);
     let c = solveCorners(p);
-    let cb = solveCenterBout(p);
     let pc = solvedPlateContour(p);
     let layers: RenderLayer[] = [];
 
@@ -64,10 +62,6 @@ export class BaseMeasurementsPanel extends PanelComponentBase<never, ViolinFamil
       if (c) {
         layers.push(renderCorners(p, c, this.pal, { showModuleArcs: false, showAllArcs: false, renderOuterPath: false }, false, null));
         layers.push(renderSolveFailures(c.failures, this.pal.alert, true));
-      }
-      if (cb) {
-        layers.push(renderCenterBout(p, cb, this.pal, { showModuleArcs: false, showAllArcs: false, renderOuterPath: false }, false, null));
-        layers.push(renderSolveFailures(cb.failures, this.pal.alert, true));
       }
     }
     if (this.body.outer && this.body.ribBox) {

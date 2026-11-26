@@ -19,8 +19,7 @@ import { PanelComponentBase } from '../panel-component-base';
 import { PlateContourSolve } from '../../violin-family-solves';
 import { FHOLE_SEED_RATIOS, FholeRatios } from '../../violin-family-seed';
 import { renderBoutBounds } from '../main-bouts-panel/main-bouts-panel';
-import { solveCorners } from '../corners-panel/corners-panel';
-import { solveCenterBout, solvedRibArcs, RibArcs } from '../center-bout-panel/center-bout-panel';
+import { solveCorners, solvedRibArcs, RibArcs } from '../corners-panel/corners-panel';
 import { definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { reportFailures } from '../../../../helpers/validators';
 import { renderFlutingInnerEdge, solvedFluting } from '../fluting-panel/fluting-panel';
@@ -377,7 +376,7 @@ export const renderBeardBoxes = (p: ViolinFamilyParams, pal: PanelPalette) => (g
 
 // where the waist meets the centre bout's own arc: the point the upper eye's guides are struck from
 export function calcWaist(p: ViolinFamilyParams): Pt | null {
-  let C0 = solveCenterBout(p)?.C0;
+  let C0 = solveCorners(p)?.C0;
   return C0 ? new Pt(C0.x - C0.r, C0.y) : null;
 }
 

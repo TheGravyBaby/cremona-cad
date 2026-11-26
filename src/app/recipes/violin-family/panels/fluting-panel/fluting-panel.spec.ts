@@ -7,9 +7,8 @@ import { Pt } from '../../../../models/types';
 import { calcChannelHalfWidth } from '../../../../helpers/math/archMath';
 import { FlutingPanel, solveFluting } from './fluting-panel';
 import { PlateContourPanel, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
-import { CornersPanel } from '../corners-panel/corners-panel';
+import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
-import { solveCenterBout } from '../center-bout-panel/center-bout-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
 import { ChannelSolve } from '../../violin-family-solves';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
@@ -173,7 +172,7 @@ describe('the channel', () => {
     const one = seeded();
     one.fluting!.top.useCBoutGouge = false;
     const single = solveFluting(one)!.top!;
-    const C0 = solveCenterBout(p)!.C0!;
+    const C0 = solveCorners(p)!.C0!;
     const waist = (d: string) => Math.min(...points(d).filter(q => Math.abs(q.y - C0.y) < 5).map(q => Math.abs(q.x)));
     const lowerBout = (d: string) => points(d).filter(q => q.y < 60);
 

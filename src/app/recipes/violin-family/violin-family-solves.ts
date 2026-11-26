@@ -3,7 +3,7 @@ import { SolveFailure } from '../../helpers/validators';
 import { PolylineIndex } from '../../helpers/math/vibeMath';
 import { ArchTakeoff } from '../../helpers/math/archMath';
 import { ScrollWidths } from './violin-family-types';
-import type { RibArcs } from './panels/center-bout-panel/center-bout-panel';
+import type { RibArcs } from './panels/corners-panel/corners-panel';
 
 // what each panel's solver derives from the params: arcs, points, failures. Never saved. A later
 // panel reads an earlier one's off `p.solved` once the stage is held there, and by calling its
@@ -105,12 +105,13 @@ export interface ViolNeckJoin {
   headroom: number;
 }
 
-export type CornerKey = 'U2' | 'U3' | 'U31' | 'U4' | 'L2' | 'L3' | 'L31' | 'L4';
+export type CornerKey = 'U2' | 'U3' | 'U31' | 'U4' | 'L2' | 'L3' | 'L31' | 'L4' | 'C0' | 'C1' | 'C11' | 'C2' | 'C21';
 export type CornerFailure = SolveFailure<CornerKey>;
 
-// the right-hand corners; renders mirror them. U1 and L1 are the main bouts' own arcs, and U2 and
-// L2 the main bouts' join arcs ended where the corner arc takes over. A corner whose section
-// failed leaves its arcs null
+// the right-hand corners and C bout; renders mirror them. U1 and L1 are the main bouts' own arcs,
+// and U2 and L2 the main bouts' join arcs ended where the corner arc takes over. C0 runs from where
+// C2 takes over down to where C1 does, and is null until both C corners solve. CBW is the width in
+// use: the typed one, or the one the fit found. A section that failed leaves its arcs null
 export interface CornersSolve {
   U1: Arc | null;
   U2: Arc | null;
@@ -122,23 +123,13 @@ export interface CornersSolve {
   L3: Arc | null;
   L31: Arc | null;
   L4: Arc | null;
-  failures: CornerFailure[];
-}
-
-export type CenterBoutKey = 'C0' | 'C1' | 'C11' | 'C2' | 'C21';
-export type CenterBoutFailure = SolveFailure<CenterBoutKey>;
-
-// the right-hand C bout; renders mirror it. C0 runs from where C2 takes over down to where C1
-// does, and is null until both corners solve. CBW is the width in use: the typed one, or the one
-// the fit found
-export interface CenterBoutSolve {
   C0: Arc | null;
   C2: Arc | null;
   C21: Arc | null;
   C1: Arc | null;
   C11: Arc | null;
   CBW: number | null;
-  failures: CenterBoutFailure[];
+  failures: CornerFailure[];
 }
 
 export type PlateContourKey = 'top' | 'back' | 'purfling';
