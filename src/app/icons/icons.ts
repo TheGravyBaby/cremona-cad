@@ -275,22 +275,25 @@ export const ICONS = {
   'fhole-bounds': `<rect x="3" y="4" width="18" height="16" rx="1" stroke-dasharray="3 2.5" />
     <line x1="11" y1="4" x2="9" y2="20" stroke-dasharray="2 2" />
     <line x1="17" y1="4" x2="15" y2="20" stroke-dasharray="2 2" />`,
-  'placement-guides': `<circle cx="8" cy="15" r="6" opacity="0.45" />
-    <circle cx="16" cy="13" r="7" opacity="0.45" />
-    <circle cx="12.4" cy="9.4" r="1.7" ${DOT} />`,
-  'beard-guides': `<rect x="5" y="3" width="14" height="18" rx="1" opacity="0.45" />
-    <rect x="5" y="10" width="14" height="8" ${GUIDE} />`,
+  // the lower eye, and the circle about it that just reaches the inner edge
+  'placement-guides': `<path d="M20 2Q13 12 20 22" />
+    <circle cx="10" cy="12" r="7" ${GUIDE} />
+    <circle cx="10" cy="12" r="2" ${DOT} />`,
+  // the body cut in thirds each way, the centre ninth standing out
+  'beard-guides': `<rect x="3" y="3" width="18" height="18" stroke-width="1.4" />
+    <path d="M9 3V21M15 3V21M3 9H21M3 15H21" ${GUIDE} />
+    <rect x="9" y="9" width="6" height="6" />`,
   'fluting-edge': `<path d="M4 19a15 15 0 0 1 15-15" />
     <path d="M4 12a8 8 0 0 1 8-8" opacity="0.45" />`,
-  'rib-join': `<path d="M4 20V9a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v11" opacity="0.45" />
-    <path d="M4 20V12q0-2 2-2t2-2 2-2h4q2 0 2 2t2 2 2 2v8" />`,
-  'volute-construction': `<circle cx="12" cy="12" r="9" />
-    <rect x="10.5" y="7" width="3" height="10" stroke-width="1.5" />
-    <line x1="10.5" y1="12" x2="13.5" y2="12" stroke-width="1.5" />`,
-  'scroll-measurements': `<path d="M15 19A7 7 0 1 1 15 5" />
-    <circle cx="12" cy="12" r="2" />
-    <path d="M20 5V19" stroke-width="1.4" />
-    <path d="M18 5H22M18 19H22" stroke-width="1.4" />`,
+  // a corner faint, and the curve that cuts across inside its tip
+  'rib-join': `<path d="M3 2Q8 11 21 12Q8 13 3 22" opacity="0.45" />
+    <path d="M9.1 8.5Q13 12 9.1 15.5" />`,
+  // a volute of half turns struck from two centres, over the lines they're found on
+  'volute-construction': `<path d="M11 10a2 2 0 0 1 0 4a4 4 0 0 1 0-8a6 6 0 0 1 0 12" />
+    <path d="M11 2V22M2 12H20" ${GUIDE} />`,
+  // the same volute with a dimension across it
+  'scroll-measurements': `<path d="M11 7a2 2 0 0 1 0 4a4 4 0 0 1 0-8a6 6 0 0 1 0 12" />
+    <path d="M7 20H17M7 17.5V22.5M17 17.5V22.5" stroke-width="1.4" />`,
   fingerboard: '<rect x="7" y="2" width="10" height="20" rx="3" />',
   'scoop-guide': `<line x1="3" y1="8" x2="21" y2="8" opacity="0.4" />
     <path d="M3 8 Q 12 17 21 8" />
