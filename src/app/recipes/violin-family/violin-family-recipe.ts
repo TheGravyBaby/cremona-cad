@@ -16,15 +16,15 @@ import { BaseMeasurementsPanel, calcBodyRatios } from './panels/base-measurement
 import { MainBoutsPanel, solveMainBouts, calcMainBoutsRatios } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel, calcCornersRatios } from './panels/corners-panel/corners-panel';
 import { solveCenterBout, calcCenterBoutRatios } from './panels/center-bout-panel/center-bout-panel';
-import { PlateContourPanel, solvedPlateContour, calcPlateContourRatios } from './panels/plate-contour-panel/plate-contour-panel';
-import { FlutingPanel, solvedFluting } from './panels/fluting-panel/fluting-panel';
+import { PlateContourPanel, calcPlateContourRatios } from './panels/plate-contour-panel/plate-contour-panel';
+import { FlutingPanel } from './panels/fluting-panel/fluting-panel';
 import { FHolePlacementPanel, calcFholePlacementRatios } from './panels/fhole-placement-panel/fhole-placement-panel';
 import { FHoleContoursPanel, calcFholeContoursRatios } from './panels/fhole-contours-panel/fhole-contours-panel';
-import { LongArchingPanel, solveLongArching } from './panels/long-arching-panel/long-arching-panel';
+import { LongArchingPanel, solveRibTaper } from './panels/long-arching-panel/long-arching-panel';
 import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
 import { NeckPanel } from './panels/neck-panel/neck-panel';
 import { VolutePanel } from './panels/volute-panel/volute-panel';
-import { PegboxPanel, solveScroll } from './panels/pegbox-panel/pegbox-panel';
+import { PegboxPanel } from './panels/pegbox-panel/pegbox-panel';
 import { ScrollWidthsPanel } from './panels/scroll-widths-panel/scroll-widths-panel';
 import { StringSetupPanel } from './panels/string-setup-panel/string-setup-panel';
 import { MouldPanel } from './panels/mould-panel/mould-panel';
@@ -192,20 +192,16 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
         return !!(cb?.C0 && cb.C2 && cb.C1);
       }
       case 'fluting':
-      case 'fHolePlacement': return !!solvedPlateContour(p)?.top;
+      // seeded params stand in for a solve here: this runs on every commit, and the contour and
+      // fluting it would solve are the ones an upstream edit has just cleared
+      case 'fHolePlacement': return !!p.plateContour && this.canOpenPanel('plateContour');
       case 'fHoleContours': return !!p.fHoles;
-      case 'longArching': {
-        let f = solvedFluting(p);
-        return !!(f?.top && f.back);
-      }
+      case 'longArching': return !!p.fluting && this.canOpenPanel('fluting');
       case 'crossArching': return !!p.arching;
-      case 'neck': return !!p.arching && !!solveLongArching(p)?.ribs;
+      case 'neck': return !!p.arching && !!p.fluting && !!solveRibTaper(p);
       case 'volute': return !!p.neck;
-      case 'pegbox': return !!p.scroll;
-      case 'scrollWidths': {
-        let s = solveScroll(p);
-        return !!s && !s.failures.length;
-      }
+      case 'pegbox':
+      case 'scrollWidths': return !!p.scroll;
       case 'stringSetup': return !!p.neck;
       case 'devFingerboard': return isLocalHost() && !!p.neck;
       case 'devGraduation': return isLocalHost() && !!p.arching;

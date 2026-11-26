@@ -59,7 +59,7 @@
     },
     "plateContour": {
       "button": {
-        "width": 20,
+        "width": 32,
         "height": 22
       },
       "purflingOffset": 6.05,
@@ -323,9 +323,14 @@
       "duckTailStraight": 7.5
     },
     "stringSetup": {
+      "bridgeWidth": 90,
+      "soundPostOffset": {
+        "x": -10,
+        "y": -15
+      },
+      "soundPostDiameter": 11,
       "bodyStop": 400,
       "bridgeHeight": 90,
-      "bridgeWidth": 90,
       "nutThickness": 11,
       "fingerboardLength": 580,
       "fingerboardThickness": 7.5,
@@ -333,12 +338,7 @@
       "fingerboardEndRadius": 64,
       "scoopAt": 290,
       "scoopBass": 1.5,
-      "scoopTreble": 1,
-      "soundPostOffset": {
-        "x": -10,
-        "y": -15
-      },
-      "soundPostDiameter": 11
+      "scoopTreble": 1
     }
   },
   "ratios": {
@@ -350,9 +350,9 @@
     "L0toLBW": 1.2523148148148149,
     "L1toLBW": 0.36342592592592593,
     "U2toUBW": 0.9309309309309309,
+    "L2toLBW": 0.5462962962962963,
     "U3toLBW": 0.09027777777777778,
     "U31toLBW": 0.0625,
-    "L2toLBW": 0.5462962962962963,
     "L3toLBW": 0.47453703703703703,
     "L31toLBW": 0.0763888888888889,
     "UCYtoH": 0.6512717536813922,
@@ -363,8 +363,8 @@
     "C21toLBW": 0.0625,
     "C1toLBW": 0.1111111111111111,
     "C11toLBW": 0.0763888888888889,
-    "BWtoLBW": 0.045454545454545456,
-    "BHtoBW": 1.1,
+    "BWtoLBW": 0.07272727272727272,
+    "BHtoBW": 0.6875,
     "LEyetoW": 0.020454545454545454,
     "UEyetoLEye": 0.6666666666666666,
     "URisetoUEye": 1.2166666666666666,
