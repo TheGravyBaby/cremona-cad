@@ -44,3 +44,4 @@ The button, a semicircle which is eventually used to secure the neck, can also b
 |---|---|
 | Offset | The distance from the outer edge in to the purfling. |
 | Width | The width of the purfling channel. |
+| Neck Radius | Viol neck only. The purfling turns across under the neck on one arc, touching the purfling on both sides; this is its radius on the inner line. The smallest radius just reaches the neck's top face, and larger ones sit lower and flatter. |

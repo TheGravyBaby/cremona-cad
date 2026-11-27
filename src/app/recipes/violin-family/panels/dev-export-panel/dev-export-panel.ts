@@ -20,7 +20,7 @@ import { FholeContoursSolve, MouldRelief, MouldSolve, NeckSolve, PlateContourSol
 import { buildSurfaceContours, calcContourSampleSteps, rowAt, solvedCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
 import { BACK_ARCH_INK, CHANNEL_INK, TOP_ARCH_INK } from '../long-arching-panel/long-arching-panel';
 import { MOULD_EXPORT_STEP, renderMould, solveMould } from '../mould-panel/mould-panel';
-import { definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { calcNeckPurflingRadius, definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners, solvedRibArcs } from '../corners-panel/corners-panel';
 import { error } from '../../../../shared/message-emitter';
@@ -694,7 +694,7 @@ export function purflingToolpaths(p: ViolinFamilyParams, surface: PlateSurface, 
   out.caution = SURFACED_PLATE;
   out.notes.push(`Channel ${width} wide in ${across} pass${across === 1 ? '' : 'es'} across, ${rounds.length} round${rounds.length === 1 ? '' : 's'} down to ${g.purflingDepth} under the edge`);
   for (let [i, off] of offsets.entries()) {
-    let d = definePurflingPath(p, rib, inset - pc.purflingOffset + off);
+    let d = definePurflingPath(p, rib, inset - pc.purflingOffset + off, calcNeckPurflingRadius(p, rib));
     if (!d) return fail(out, 'The purfling line would not offset for this pass: the corners no longer meet.');
     let ring = samplePathToPolyline(d, fine ? 0.25 : 1);
     if (signedPolygonArea(ring) < 0) ring.reverse();

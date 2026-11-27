@@ -93,7 +93,6 @@ export interface MainBoutsSolve {
 
 export interface ViolNeckCap {
   v0Start: number;
-  fillet: Arc | null;
   topX: number;
   topY: number;
 }

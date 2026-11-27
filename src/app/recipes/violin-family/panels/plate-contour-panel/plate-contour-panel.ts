@@ -2,13 +2,13 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { circleCircleIntersections } from '../../../../helpers/math/draftMath';
 import {
-  angleFromCenter, dist, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints, offsetArcRadius,
+  angleFromCenter, dist, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints, normalizeRadians, offsetArcRadius,
   pointOnCircle, signedRadianDelta, TURN,
 } from '../../../../helpers/math/simpleGeometry';
 import { combinePathStrings, pathFromArc, pathFromCornerCubic, pathFromLine, translatePath } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
 import { renderArcFromArcFancy, renderMirroredArc, renderMirroredArcFancy, renderPath, renderSolveFailures } from '../../../../helpers/renderFuncs';
-import { buildBlankMiss, reportFailures, solveSection } from '../../../../helpers/validators';
+import { buildBlankMiss, buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { Arc, arcFromCircle, Circle, Pt } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
@@ -38,9 +38,17 @@ export class PlateContourPanel extends PanelComponentBase<never, ViolinFamilyRat
   // the first draft of the plate edge, once the C bout has solved: each corner arc runs on a few
   // degrees past the rib corner so the plate's corner stands proud of the ribs', a compound
   // corner carrying that on its second arc scaled by radius so the run along the edge is the
-  // same; the purfling a channel's width in from the edge; the button off the seed ratios
+  // same; the purfling a channel's width in from the edge; the button off the seed ratios. A viol
+  // neck's purfling arc is seeded whenever the neck is on and it isn't, since the neck can be
+  // turned on after the plates were drafted
   static seed(p: ViolinFamilyParams): void {
-    if (p.plateContour || !p.corners) return;
+    if (p.plateContour) {
+      let rib = p.bouts?.useViolNeck && p.plateContour.neckPurflingRadius === undefined ? solvedRibArcs(p) : null;
+      let r = rib ? calcNeckPurflingRadius(p, rib) : null;
+      if (r !== null) p.plateContour.neckPurflingRadius = r;
+      return;
+    }
+    if (!p.corners) return;
     let c = solveCorners(p);
     if (!c?.C0 || !c.C2 || !c.C1) return;
     let k = p.corners;
@@ -68,6 +76,7 @@ export class PlateContourPanel extends PanelComponentBase<never, ViolinFamilyRat
       upperRounding: 0,
       lowerRounding: 0,
     };
+    PlateContourPanel.seed(p);
   }
 
   reportSolveFailures(): void {
@@ -225,8 +234,9 @@ export type OffsetArcs = { bouts: Arc[]; corners: Arc[]; upperFlat: [Arc, Arc] |
 
 // the rib outline's arcs stood off by `offset` (out when positive), one side of the centreline.
 // `corners` comes back empty when an offset is too far in for a corner's arcs to meet. C0 alone can
-// take its own offset, for a channel that narrows through the waist
-export function solveOffsetArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, finish: CornerFinish, centerOffset = offset): OffsetArcs {
+// take its own offset, for a channel that narrows through the waist. `neckStart` is where V0 leaves
+// a purfling arc turned across the neck, in place of the neck's top face
+export function solveOffsetArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, finish: CornerFinish, centerOffset = offset, neckStart?: number): OffsetArcs {
   let k = p.corners!;
   let b = p.bouts!;
   let bouts: Arc[] = [];
@@ -241,11 +251,11 @@ export function solveOffsetArcs(p: ViolinFamilyParams, rib: RibArcs, offset: num
   bouts.push(offsetArcRadius(rib.U1, offset));
   bouts.push(offsetArcRadius(rib.U0, offset));
   if (b.useViolNeck && rib.V0) {
-    let cap = calcViolNeckCap(rib.V0, offset);
+    let cap = neckStart === undefined ? calcViolNeckCap(rib.V0, offset) : null;
     let V0off = offsetArcRadius(rib.V0, -offset);
-    if (cap) V0off.start = cap.v0Start;
+    if (neckStart !== undefined) V0off.start = neckStart;
+    else if (cap) V0off.start = cap.v0Start;
     bouts.push(V0off);
-    if (cap?.fillet) bouts.push(cap.fillet);
   }
 
   let none: OffsetArcs = { bouts, corners: [], upperFlat: null, lowerFlat: null };
@@ -320,6 +330,45 @@ export function defineViolNeckTopLine(p: ViolinFamilyParams, rib: RibArcs, d: nu
   return cap ? pathFromLine({ x: cap.topX, y: cap.topY }, { x: -cap.topX, y: cap.topY }) : null;
 }
 
+// the radii a viol neck's purfling arc can take, on the inner line. It stands on the centreline
+// touching the purfling's run down V0 both sides; a larger radius touches lower and flattens. The
+// least is the arc whose crown just meets the line across the neck's top face, the most the one
+// touching V0 at its end, past which it would have to land on U0
+export function calcNeckPurflingRange(p: ViolinFamilyParams, rib: RibArcs): { min: number; max: number } | null {
+  if (!p.bouts!.useViolNeck || !rib.V0) return null;
+  let V0 = rib.V0;
+  let o = p.body.overhang + p.body.rib - p.plateContour!.purflingOffset;
+  let Rp = V0.r - o;
+  let a = V0.y - (pointOnCircle(V0, V0.start).y + o);
+  let min = (V0.x * V0.x + a * a - Rp * Rp) / (2 * (Rp - a));
+  let max = Math.cos(V0.end) < 0 ? -V0.x / Math.cos(V0.end) - Rp : Infinity;
+  return { min, max };
+}
+
+// the inner line's radius as set, or as the seed would set it where the panel hasn't been opened
+// since the viol neck went on: the least radius, rounded up
+export function calcNeckPurflingRadius(p: ViolinFamilyParams, rib: RibArcs): number | null {
+  let range = calcNeckPurflingRange(p, rib);
+  if (!range) return null;
+  // a cleared field is null, and stays so for the blank check
+  let r = p.plateContour!.neckPurflingRadius;
+  return r === undefined ? Math.min(Math.ceil(range.min), range.max) : r;
+}
+
+// the purfling arc across a viol neck, for the line `arcOffset` off the rib outline. Every line of
+// the channel shares the inner line's centre, so each stays tangent to its own offset of V0. Null
+// where the arc can't reach V0
+export function solveNeckPurflingArc(p: ViolinFamilyParams, rib: RibArcs, arcOffset: number, r: number): { arc: Arc; v0Start: number } | null {
+  let V0 = rib.V0!;
+  let o = p.body.overhang + p.body.rib - p.plateContour!.purflingOffset;
+  let reach = r + V0.r - o;
+  if (reach <= V0.x) return null;
+  let cy = V0.y - Math.sqrt(reach * reach - V0.x * V0.x);
+  let v0Start = normalizeRadians(Math.atan2(cy - V0.y, -V0.x));
+  let arc = arcFromCircle({ x: 0, y: cy, r: r + arcOffset - o }, v0Start - TURN.half, TURN.full - v0Start);
+  return arc.r > 0 ? { arc, v0Start } : null;
+}
+
 // a corner's flat: rounding > 0 uses a shaped bezier, 0 a straight line
 function defineCornerConnector(a1: Arc, a2: Arc, rounding: number): string {
   return rounding > 0
@@ -337,7 +386,8 @@ export function defineOuterPath(p: ViolinFamilyParams, rib: RibArcs, offset: num
   let { bouts, corners, upperFlat, lowerFlat } = solveOffsetArcs(p, rib, offset, 'flat');
   if (!corners.length) throw new Error('the corner arcs do not meet');
 
-  // a button wider than the neck face has nothing to stand on, so it takes the face
+  // the face runs out to the plate's edge, so a button as wide as the face stands flush with it, and
+  // one wider has nothing to stand on
   const neck = b.useViolNeck && rib.V0 ? calcViolNeckCap(rib.V0, offset) : null;
   let bt: ReturnType<typeof defineButton> = null;
   if (withButton && neck) bt = defineButton({ width: Math.min(pc.button.width, 2 * neck.topX), height: pc.button.height }, neck.topY, null);
@@ -361,8 +411,7 @@ export function defineOuterPath(p: ViolinFamilyParams, rib: RibArcs, offset: num
 
   paths.push(...arcs.map(arc => pathFromArc(arc)));
 
-  // the neck's fillets already came through solveOffsetArcs above and were mirrored with the
-  // rest; all that is left is the top face they run out onto
+  // V0 already came through solveOffsetArcs above, run on to the face; all that is left is the face
   if (neck) {
     const faceEnd = { x: neck.topX, y: neck.topY };
     if (bt) {
@@ -388,14 +437,17 @@ export function calcPlateContourRatios(p: ViolinFamilyParams): Partial<ViolinFam
 
 // a purfling line: the rib outline at `arcOffset` out (in when negative), its corners pure offsets
 // of the corner arcs meeting at a new tip rather than cut across; at 0 the rib outline itself. Null
-// once the offset is too far in for a corner's arcs to meet
-export function definePurflingPath(p: ViolinFamilyParams, rib: RibArcs, arcOffset: number): string | null {
-  const { bouts, corners } = solveOffsetArcs(p, rib, arcOffset, 'meet');
+// once the offset is too far in for a corner's arcs to meet. Given `neckR`, the purfling's inner
+// line radius, a viol neck turns across on an arc rather than along its top face
+export function definePurflingPath(p: ViolinFamilyParams, rib: RibArcs, arcOffset: number, neckR: number | null = null): string | null {
+  const neck = neckR !== null ? solveNeckPurflingArc(p, rib, arcOffset, neckR) : null;
+  if (neckR !== null && !neck) return null;
+  const { bouts, corners } = solveOffsetArcs(p, rib, arcOffset, 'meet', arcOffset, neck?.v0Start);
   if (!corners.length) return null;
   const arcs = [...bouts, ...corners];
   const mirrored = arcs.map(arc => flipArcAboutY(arc));
   const paths = [...arcs, ...mirrored].map(arc => pathFromArc(arc));
-  const top = defineViolNeckTopLine(p, rib, arcOffset);
+  const top = neck ? pathFromArc(neck.arc) : defineViolNeckTopLine(p, rib, arcOffset);
   if (top) paths.push(top);
   return unifyConnectedSvgPaths(paths);
 }
@@ -440,10 +492,16 @@ export function solvePlateContour(p: ViolinFamilyParams): PlateContourSolve | nu
   });
 
   solveSection(s.failures, 'Purfling', ['purfling'], () => {
-    let missing = buildBlankMiss('Purfling', ['purfling'], [pc.purflingOffset, pc.purflingChannelDepth]);
+    let neckR = calcNeckPurflingRadius(p, rib);
+    let missing = buildBlankMiss('Purfling', ['purfling'], [pc.purflingOffset, pc.purflingChannelDepth, ...(neckR === null ? [] : [neckR])]);
     if (missing) return missing;
-    let purfling = definePurflingPath(p, rib, inset - pc.purflingOffset);
-    let outerPurfling = definePurflingPath(p, rib, inset - pc.purflingOffset + pc.purflingChannelDepth);
+    let range = calcNeckPurflingRange(p, rib);
+    if (range && neckR! < range.min)
+      return buildMiss(`Purfling: at ${neckR}mm this radius is too small to join the purfling. Raise the neck radius to at least ${range.min.toFixed(1)}mm.`, ['purfling']);
+    if (range && neckR! > range.max)
+      return buildMiss(`Purfling: at ${neckR}mm this radius is too large to join the purfling. Bring the neck radius down to ${range.max.toFixed(1)}mm or less.`, ['purfling']);
+    let purfling = definePurflingPath(p, rib, inset - pc.purflingOffset, neckR);
+    let outerPurfling = definePurflingPath(p, rib, inset - pc.purflingOffset + pc.purflingChannelDepth, neckR);
     if (!purfling || !outerPurfling)
       return { message: 'Purfling: the offset is too far in, and the corner circles no longer meet. Reduce the purfling offset.', unsolved: ['purfling'], circles: [], segments: [] };
     s.purfling = purfling;

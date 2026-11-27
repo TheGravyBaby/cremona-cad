@@ -107,4 +107,12 @@
             <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="pc.purflingChannelDepth" (input)="recordEditAndRedraw()" />
         </label>
     </div>
+    @if (params.bouts!.useViolNeck) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Neck Radius</span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="pc.neckPurflingRadius" (input)="recordEditAndRedraw()" />
+        </label>
+    </div>
+    }
 </section>

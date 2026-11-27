@@ -119,6 +119,9 @@ export interface PlateContourParams {
   button: ButtonParams;
   purflingOffset: number;
   purflingChannelDepth: number;
+  // a viol neck's purfling turns across under the neck on one arc, this the inner line's radius.
+  // Absent until this panel is opened with the viol neck on
+  neckPurflingRadius?: number;
   U3Cutoff: number;
   U31Cutoff: number;
   C2Cutoff: number;

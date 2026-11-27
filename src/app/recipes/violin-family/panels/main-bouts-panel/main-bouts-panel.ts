@@ -131,7 +131,6 @@ export const renderBoutBounds = (p: ViolinFamilyParams, pal: PanelPalette) => (g
 // each bout arc carried round to its full circle, in the arc's own ink
 export const renderMainBoutCircles = (m: MainBoutsSolve, pal: PanelPalette) => (g: any, ui: any): void => {
   if (m.V0) renderCircle(m.V0, pal.ink(1), true)(g, ui);
-  if (m.violCap?.fillet) renderCircle(m.violCap.fillet, pal.ink(1), true)(g, ui);
   if (m.U0 && m.U1) {
     // U0 only leaves the centreline to follow a viol neck
     renderCircle(m.U0, pal.ink(1), !!m.V0)(g, ui);
@@ -147,10 +146,8 @@ export const renderMainBoutCircles = (m: MainBoutsSolve, pal: PanelPalette) => (
 
 // the main bouts in their own colours on this panel, where their fields are; grey under another
 // panel's work unless all arcs are shown. A bout whose section failed isn't drawn; its failure is
-// the join and the neck's top face, mirrored. Derived rather than authored, so plain even in the
-// module view. The rib corner is sharp; only an outward offset rounds it
-const renderViolNeckJoin = (cap: ViolNeckCap, color: string) => (g: any, ui: any): void => {
-  if (cap.fillet) renderMirroredArc(cap.fillet, color, STROKE_WEIGHT.trace)(g, ui);
+// the neck's top face. Derived rather than authored, so plain even in the module view
+const renderViolNeckFace = (cap: ViolNeckCap, color: string) => (g: any, ui: any): void => {
   renderSegment(new Pt(cap.topX, cap.topY), new Pt(-cap.topX, cap.topY), color, STROKE_WEIGHT.trace)(g, ui);
 };
 
@@ -177,9 +174,7 @@ export const renderMainBouts = (
   if (moduleArcs) {
     if (viol) {
       renderMirroredArcFancy(m.V0!, pal.ink(1))(g, ui);
-      // V0 draws in full: it is seated against the join, so its start is the tangency and there
-      // is nothing for the join to trim off
-      if (m.violCap) renderViolNeckJoin(m.violCap, pal.ink(1))(g, ui);
+      if (m.violCap) renderViolNeckFace(m.violCap, pal.ink(1))(g, ui);
     }
     if (m.U0 && m.U1) {
       // the upper bout's top arc runs across the centreline, unless the neck has taken that ground
@@ -204,13 +199,13 @@ export const renderMainBouts = (
   let offsets = [...(moduleArcs ? [] : [0]), ...(flags.renderOuterPath ? [inset] : [])];
 
   for (let d of offsets) {
-    // V0 trimmed back to the join, then the join: the same neck the outer trace will draw
+    // V0 run on or trimmed back to the face, then the face: the same neck the outer trace will draw
     let cap = d === 0 ? m.violCap : m.violOuterCap;
     if (viol && cap) {
       let V0 = offsetArcRadius(m.V0!, -d);
       V0.start = cap.v0Start;
       renderMirroredArc(V0, top, STROKE_WEIGHT.trace)(g, ui);
-      renderViolNeckJoin(cap, top)(g, ui);
+      renderViolNeckFace(cap, top)(g, ui);
     }
     if (m.U0 && m.U1) {
       if (viol) renderMirroredArc(offsetArcRadius(m.U0, d), top, STROKE_WEIGHT.trace)(g, ui);
@@ -411,20 +406,14 @@ export function calcViolNeckJoinLimit(p: ViolinFamilyParams): ViolNeckJoin | nul
   return { reach, limit, headroom: limit - reach };
 }
 
-// where the neck meets its top face at offset d: V0's new start, the join arc, and the face's end
+// where the neck meets its top face at offset d: V0's offset runs on (out) or is trimmed back (in)
+// to the face's height, so the corner stays sharp. V0's new start and the face's end
 export function calcViolNeckCap(V0: Arc, d: number): ViolNeckCap | null {
   let C = pointOnCircle(V0, V0.start);
-
-  // offset outward, the sharp corner rounds about itself
-  if (d > 1e-9) {
-    if (C.x <= 0) return null;
-    return { v0Start: V0.start, fillet: new Arc(C.x, C.y, d, V0.start + TURN.half, TURN.quarter), topX: C.x, topY: C.y + d };
-  }
-
   let topY = C.y + d;
   let P = calcNeckSeat(V0, V0.r - d, topY, C);
   if (!P || P.x <= 0) return null;
-  return { v0Start: angleFromCenter(V0, P), fillet: null, topX: P.x, topY };
+  return { v0Start: angleFromCenter(V0, P), topX: P.x, topY };
 }
 
 // where a circle about V0's centre crosses a height, on whichever branch the neck sits on

@@ -214,13 +214,14 @@ describe('the viol neck', () => {
     const v = p.bouts!.viol!;
     expect(normalizeRadians(-travelAtArcStart(m.V0!)) / TURN.degree).toBeCloseTo(v.joinTurn, 9);
     expect(signedArcSweep(m.V0!) / TURN.degree).toBeCloseTo(v.V0Sweep, 9);
-    const fillet = m.violOuterCap!.fillet!;
-    expect(normalizeRadians(fillet.end - fillet.start) / TURN.degree).toBeCloseTo(v.joinTurn, 9);
   });
 
-  it('closes the neck under the rib box\'s head', () => {
+  it('closes the neck under the rib box\'s head, the outer edge running V0\'s offset on to a sharp corner', () => {
     expect(m.violCap!.topY).toBeCloseTo(p.body.height - inset, 9);
-    expect(m.violOuterCap!.topY).toBeCloseTo(p.body.height, 9);
+    const outer = m.violOuterCap!;
+    expect(outer.topY).toBeCloseTo(p.body.height, 9);
+    expect(dist(m.V0!, { x: outer.topX, y: outer.topY })).toBeCloseTo(m.V0!.r - inset, 9);
+    expect(pointOnCircle({ ...m.V0!, r: m.V0!.r - inset }, outer.v0Start).y).toBeCloseTo(outer.topY, 9);
   });
 
   it('reads the join limit\'s reach off the solved V0, not just the closed form', () => {

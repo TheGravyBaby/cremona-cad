@@ -4,9 +4,9 @@ import { dist, pointInPolygon, pointOnCircle, signedRadianDelta, TURN } from '..
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Arc, Pt } from '../../../../models/types';
-import { PlateContourPanel, solvePlateContour } from './plate-contour-panel';
-import { CornersPanel, solveCorners, calcCornerTurn } from '../corners-panel/corners-panel';
-import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
+import { calcNeckPurflingRange, PlateContourPanel, solveNeckPurflingArc, solvePlateContour } from './plate-contour-panel';
+import { CornersPanel, solveCorners, calcCornerTurn, solvedRibArcs } from '../corners-panel/corners-panel';
+import { calcViolNeckCap, MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
 
@@ -240,6 +240,96 @@ describe('the purfling', () => {
     expect(far.failures[0].message).toContain('Purfling');
     expect(far.purfling).toBeNull();
     expect(far.top).not.toBeNull();
+  });
+});
+
+describe('the purfling across a viol neck', () => {
+  const violSeeded = (): ViolinFamilyParams => {
+    const p = withCenterBout();
+    p.bouts!.useViolNeck = true;
+    MainBoutsPanel.seed(p);
+    PlateContourPanel.seed(p);
+    return p;
+  };
+  const p = violSeeded();
+  const pc = p.plateContour!;
+  const rib = solvedRibArcs(p)!;
+  const inner = p.body.overhang + p.body.rib - pc.purflingOffset;
+  const range = calcNeckPurflingRange(p, rib)!;
+
+  it('seeds a radius inside its range, and draws both lines as one closed loop inside the plate', () => {
+    expect(pc.neckPurflingRadius).toBeGreaterThanOrEqual(range.min);
+    expect(pc.neckPurflingRadius).toBeLessThanOrEqual(range.max);
+    const s = solvePlateContour(p)!;
+    expect(s.failures).toEqual([]);
+    const edge = points(s.top!);
+    for (const d of [s.purfling!, s.outerPurfling!]) {
+      expect(subpaths(d)).toBe(1);
+      expect(closed(d)).toBe(true);
+      for (const q of points(d)) expect(pointInPolygon(q, edge)).toBe(true);
+    }
+  });
+
+  it('meets each line\'s offset of V0 at a shared point, along a shared tangent', () => {
+    for (const r of [range.min, (range.min + range.max) / 2]) {
+      for (const offset of [inner, inner + pc.purflingChannelDepth]) {
+        const neck = solveNeckPurflingArc(p, rib, offset, r)!;
+        const V0 = { x: rib.V0!.x, y: rib.V0!.y, r: rib.V0!.r - offset };
+        const meet = pointOnCircle(V0, neck.v0Start);
+        expect(dist(meet, pointOnCircle(neck.arc, neck.arc.start))).toBeCloseTo(0, 9);
+        expect(dist(V0, neck.arc)).toBeCloseTo(V0.r + neck.arc.r, 9);
+        expect(neck.arc.x).toBe(0);
+      }
+    }
+  });
+
+  it('reaches the neck\'s top face at its least radius, and sits lower above it', () => {
+    const face = pointOnCircle(rib.V0!, rib.V0!.start).y + inner;
+    const crown = (r: number) => { const a = solveNeckPurflingArc(p, rib, inner, r)!.arc; return a.y + a.r; };
+    expect(crown(range.min)).toBeCloseTo(face, 9);
+    expect(crown(range.min + 1)).toBeLessThan(face);
+  });
+
+  it('fails the purfling alone outside its range, leaving the plates drawn', () => {
+    for (const r of [range.min - 1, range.max + 1]) {
+      const q = violSeeded();
+      q.plateContour!.neckPurflingRadius = r;
+      const s = solvePlateContour(q)!;
+      expect(s.failures.map(f => f.unsolved)).toEqual([['purfling']]);
+      expect(s.purfling).toBeNull();
+      expect(s.top).not.toBeNull();
+    }
+  });
+});
+
+describe('a viol neck\'s button', () => {
+  const p = withCenterBout();
+  p.bouts!.useViolNeck = true;
+  MainBoutsPanel.seed(p);
+  PlateContourPanel.seed(p);
+  const rib = solvedRibArcs(p)!;
+  const cap = calcViolNeckCap(rib.V0!, p.body.overhang + p.body.rib)!;
+  const flush = 2 * cap.topX;
+  const backAt = (width: number) => {
+    const q: ViolinFamilyParams = JSON.parse(JSON.stringify(p));
+    q.plateContour!.button.width = width;
+    return solvePlateContour(q)!;
+  };
+
+  it('stands on the neck\'s face out to the plate\'s edge, as one closed loop', () => {
+    for (const width of [flush / 2, flush - 1, flush]) {
+      const s = backAt(width);
+      expect(s.failures).toEqual([]);
+      expect(subpaths(s.back!)).toBe(1);
+      expect(closed(s.back!)).toBe(true);
+    }
+  });
+
+  it('runs its sides flush with the edge at the widest, and goes no wider', () => {
+    const s = backAt(flush);
+    const side = points(s.back!).filter(q => q.y > cap.topY + 1 && Math.abs(Math.abs(q.x) - flush / 2) < 1e-3);
+    expect(side.length).toBeGreaterThan(0);
+    expect(backAt(flush + 10).back).toBe(s.back);
   });
 });
 
