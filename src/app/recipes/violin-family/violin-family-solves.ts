@@ -422,13 +422,13 @@ export type GraduationKey = 'lining' | 'edgeInset' | 'blockMargin' | 'fHoleThick
 export type GraduationFailure = SolveFailure<GraduationKey>;
 
 // the ground the plates are graduated on. The neck and end blocks sit inside the rib line, their
-// inner faces flat and the corners of those faces rounded. The lining line is the glue platform's
-// inner edge: a loop inside the rib line with the corners bypassed as the fluting channel does,
-// stepping round the blocks. The boundary is the loop the gouge starts at, cut straight across at
+// inner faces flat and the corners of those faces rounded; the corner blocks are the mould's, cut
+// to the rib line, treble then bass, upper then lower. The linings are strips from the rib line to
+// its plain offset, one between each pair of blocks, ending where they meet a block. The boundary is the loop the gouge starts at, cut straight across at
 // each block's inner face. Null when a loop can't be made; shared by both plates, the back's drawn
 // beside the top
 export interface GraduationSolve {
-  blocks: { neck: string; end: string } | null;
+  blocks: { neck: string; end: string; corners: string[] } | null;
   lining: string | null;
   boundary: string | null;
   // the boundary as a polyline with its extent, what the layouts, the field and the map all read

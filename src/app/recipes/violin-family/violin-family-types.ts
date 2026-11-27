@@ -286,11 +286,11 @@ export interface CrossArchPoint {
 }
 
 // the plates' thicknesses. The glue platform is shared: `lining` and `edgeInset` are read in from
-// the rib line (the ribs' inner face), the lining being the strip glued inside the ribs, so the
-// platform ends that far in, and the edge inset where the gouge may start; `blockMargin` is read
-// from the neck and end blocks' inner faces, positive holding the gouge short of a block, negative
-// trimming the block back as blocks are once off the mould. The lining sits here only until the
-// linings have a stage of their own. The f-holes are the top's own: each hole's outline reads
+// the rib line (the ribs' inner face), the lining being the strip glued inside the ribs between
+// the blocks, so the platform ends that far in, and the edge inset where the gouge may start;
+// `blockMargin` is read from the neck and end blocks' inner faces, positive holding the gouge short
+// of a block, negative trimming the block back as blocks are once off the mould. The lining sits
+// here only until the linings have a stage of their own. The f-holes are the top's own: each hole's outline reads
 // `fHoleThickness`, what its wings carry. Inside the boundary each plate's thickness is its
 // readings, no mirroring: the two halves are read apart. A template carries no readings unless
 // they were read off a real instrument

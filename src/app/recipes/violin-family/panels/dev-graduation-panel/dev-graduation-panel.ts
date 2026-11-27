@@ -1,6 +1,6 @@
 import { Component, inject, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { pointInPolygon } from '../../../../helpers/math/simpleGeometry';
+import { flipRectAboutY, pointInPolygon } from '../../../../helpers/math/simpleGeometry';
 import { filletRightAngleCorner } from '../../../../helpers/math/draftMath';
 import { pathFromPolyline, pathFromRect, samplePathToPolyline, translatePath } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, closestPointToPolylineIndexed, distPointToPolylineIndexed, minCostAssignment, pointAtPolylineLength, polylineCumulativeLengths, Reading, thinPlateSplineFitter } from '../../../../helpers/math/vibeMath';
@@ -35,9 +35,9 @@ import { MouldPanel, solveMould } from '../mould-panel/mould-panel';
 // the spline is read onto a raster, and contours are traced at a fixed interval and filled as bands,
 // thin to thick. Under the map lies the ground: the plates each with the rib line inside their edge,
 // the top with both holes, the back to its left with the button, as the plate contour lays them out,
-// and inside the rib line the neck and end blocks and the two loops the solve makes, the linings'
-// inner face and the boundary the graduation starts at. Panel and render first, then the layouts a
-// plate's readings start from, the sidebar's plate map, the field and its contours, and the solve.
+// and inside the rib line the six blocks, the linings running between them, and the boundary the
+// graduation starts at. Panel and render first, then the layouts a plate's readings start from, the
+// sidebar's plate map, the field and its contours, and the solve.
 
 export const GRADUATION_PLATES = ['top', 'back'] as const;
 export type GraduationPlate = typeof GRADUATION_PLATES[number];
@@ -459,14 +459,17 @@ const renderBackPlate = (p: ViolinFamilyParams, pc: PlateContourSolve | null, pa
   if (inner) renderPath(translatePath(inner, dx, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
 };
 
-// the blocks as faint fills, the lining line and the boundary, on both plates, each in its own ink
+// the blocks and linings as faint fills and the boundary, on both plates, each in its own ink
 export const renderGraduation = (p: ViolinFamilyParams, s: GraduationSolve, pal: PanelPalette) => (g: any, ui: any): void => {
   for (let dx of GRADUATION_PLATES.map(plate => PLATE_DX[plate](p))) {
-    for (let block of s.blocks ? [s.blocks.neck, s.blocks.end] : []) {
+    for (let block of s.blocks ? [s.blocks.neck, s.blocks.end, ...s.blocks.corners] : []) {
       renderFilledPath(translatePath(block, dx, 0), pal.ink(2), 0.15)(g, ui);
       renderPath(translatePath(block, dx, 0), pal.ink(2), STROKE_WEIGHT.guide)(g, ui);
     }
-    if (s.lining) renderPath(translatePath(s.lining, dx, 0), pal.ink(0), STROKE_WEIGHT.guide)(g, ui);
+    if (s.lining) {
+      renderFilledPath(translatePath(s.lining, dx, 0), pal.ink(0), 0.15)(g, ui);
+      renderPath(translatePath(s.lining, dx, 0), pal.ink(0), STROKE_WEIGHT.guide)(g, ui);
+    }
     if (s.boundary) renderPath(translatePath(s.boundary, dx, 0), pal.ink(1), STROKE_WEIGHT.trace)(g, ui);
   }
 };
@@ -878,22 +881,21 @@ function trimBlock(rect: Rectangle, inward: 1 | -1, trim: number): Rectangle | n
   return new Rectangle(new Pt(rect.Pt1.x, near), new Pt(rect.Pt2.x, face));
 }
 
-// a neck or end block as the mould sizes it, trimmed to the rib line, its inner face flat and the
-// face's two corners rounded. `inward` is +1 for a block whose face looks down the body (the neck
-// block), -1 for one looking up (the end block). The loop reaches past the rib line and is cut to
-// it, so the block's outer face is the ribs' inner face whatever the outline does there
-function blockShape(ribLine: string, rect: Rectangle, inward: 1 | -1): string {
+// a neck or end block as the mould sizes it, its inner face flat and the face's two corners
+// rounded. `inward` is +1 for a block whose face looks down the body (the neck block), -1 for one
+// looking up (the end block). The loop reaches past the rib line, to be cut to it, so the block's
+// outer face is the ribs' inner face whatever the outline does there
+function defineBlockLoop(rect: Rectangle, inward: 1 | -1): string {
   let halfWidth = Math.abs(rect.Pt2.x - rect.Pt1.x) / 2;
   let height = Math.abs(rect.Pt2.y - rect.Pt1.y);
   let face = inward > 0 ? Math.min(rect.Pt1.y, rect.Pt2.y) : Math.max(rect.Pt1.y, rect.Pt2.y);
   let beyond = face + inward * (height + 10);
   let r = Math.min(BLOCK_FILLET * height, halfWidth);
   let fillet = filletRightAngleCorner(new Pt(halfWidth, face), new Pt(-1, inward), r)!;
-  let loop = mirroredLoop(
+  return mirroredLoop(
     [[new Pt(halfWidth, beyond), new Pt(halfWidth, face + inward * r)], fillet, [new Pt(halfWidth - r, face), new Pt(0, face)]],
     [[new Pt(halfWidth, beyond), new Pt(-halfWidth, beyond)]],
   );
-  return intersectionFromTwoPaths(ribLine, loop);
 }
 
 
@@ -908,7 +910,7 @@ export function solvedGraduation(p: ViolinFamilyParams): GraduationSolve | null 
 
 // the loops from the params, calculated at every call (~90ms, the joins the slow part, as in the
 // fluting) and never writing to them. Everything but a spec reads solvedGraduation() rather than
-// calling this. Both loops are the channel's construction run from the rib line rather than the
+// calling this. The boundary is the channel's construction run from the rib line rather than the
 // fluting edge, and kept inside the rib line itself
 export function solveGraduation(p: ViolinFamilyParams): GraduationSolve | null {
   let gr = p.graduation;
@@ -929,6 +931,9 @@ export function solveGraduation(p: ViolinFamilyParams): GraduationSolve | null {
   MouldPanel.seed(q);
   let blocks = solveMould(q)?.blocks ?? null;
   let faces = { neck: Infinity, end: -Infinity };
+  // the blocks before they are cut to the rib line: what the linings are cut back by, since a
+  // block's own outer face runs along the rib line and would leave slivers all down it
+  let uncut: string[] = [];
   solveSection(s.failures, 'Blocks', ['blockMargin'], () => {
     if (!blocks) return fail('Graduation: the neck and end blocks have to solve first.', ['blockMargin']);
     if (!Number.isFinite(gr.blockMargin)) return fail('Graduation: the block margin needs a value.', ['blockMargin']);
@@ -940,7 +945,10 @@ export function solveGraduation(p: ViolinFamilyParams): GraduationSolve | null {
     faces.neck = Math.min(neck.Pt1.y, neck.Pt2.y) - hold;
     faces.end = Math.max(end.Pt1.y, end.Pt2.y) + hold;
     if (!(faces.end < faces.neck)) return fail('Graduation: the blocks meet in the middle; nothing is left to graduate.', ['blockMargin']);
-    s.blocks = { neck: blockShape(ribLine, neck, 1), end: blockShape(ribLine, end, -1) };
+    let corners = [blocks.upperCorner, flipRectAboutY(blocks.upperCorner), blocks.lowerCorner, flipRectAboutY(blocks.lowerCorner)];
+    uncut = [defineBlockLoop(neck, 1), defineBlockLoop(end, -1), ...corners.map(r => pathFromRect(r))];
+    let [neckShape, endShape, ...cornerShapes] = uncut.map(d => intersectionFromTwoPaths(ribLine, d));
+    s.blocks = { neck: neckShape, end: endShape, corners: cornerShapes };
     return null;
   });
 
@@ -956,9 +964,10 @@ export function solveGraduation(p: ViolinFamilyParams): GraduationSolve | null {
 
   solveSection(s.failures, 'Lining', ['lining'], () => {
     if (!(Number.isFinite(gr.lining) && gr.lining > 0)) return fail('Graduation: the lining needs a thickness above 0.', ['lining']);
-    let made = loop(gr.lining, 'lining', 'lining line');
-    // the linings run into the blocks, so the platform's edge steps round them
-    s.lining = made && s.blocks ? differenceFromManyPaths(made, [s.blocks.neck, s.blocks.end]) : made;
+    let inset = definePurflingPath(p, rib!, -gr.lining);
+    if (!inset) return fail('Graduation: the lining is too thick for the corners to take. Bring it in less, or open the corners.', ['lining']);
+    // each lining runs along the ribs into a block and stops where it meets it
+    s.lining = differenceFromManyPaths(ribLine, [inset, ...uncut]);
     return null;
   });
   solveSection(s.failures, 'Edge inset', ['edgeInset'], () => {

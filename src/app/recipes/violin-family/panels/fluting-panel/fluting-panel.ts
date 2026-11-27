@@ -340,7 +340,7 @@ function solveChannelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, c
 // one closed loop `offset` from the rib line (in when negative), the C bout's run at `centerOffset`,
 // the corners bypassed by the channel's S joins and kept inside `edge`. `joined` false when the C
 // bout can't be joined to the bouts; no path with it true when the loop doesn't close, as across a
-// neck face the loop has eaten. The graduation reads its lining and boundary loops through this
+// neck face the loop has eaten. The graduation reads its boundary loop through this
 export function defineChannelLoop(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, edge: Pt[] | null): { path: string | null; joined: boolean } {
   let arcs = solveChannelArcs(p, rib, offset, centerOffset, edge);
   if (!arcs) return { path: null, joined: false };

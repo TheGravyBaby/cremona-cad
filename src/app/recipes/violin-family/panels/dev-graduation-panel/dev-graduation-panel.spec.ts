@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { dist, pointInPolygon } from '../../../../helpers/math/simpleGeometry';
-import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
+import { samplePathToPolyline, splitPathStrings } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
 import { calcClearSpot, calcHoleFill, isPointClear, calcLevelBridges, DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, solvedGraduation, solvedThicknessBands, solvedThicknessField, zonePoints } from './dev-graduation-panel';
@@ -48,10 +48,11 @@ const closed = (d: string): boolean => {
   const q = points(d);
   return dist(q[0], q[q.length - 1]) < 1e-5;
 };
+// each subpath sampled apart, so no chord joins one piece to the next
 const mirrored = (d: string, tolerance = 0.05): boolean => {
-  const q = points(d);
-  const idx = buildPolylineIndex(q);
-  return q.every(pt => distPointToPolylineIndexed(new Pt(-pt.x, pt.y), idx) < tolerance);
+  const pieces = splitPathStrings(d).map(points);
+  const indexes = pieces.map(q => buildPolylineIndex(q));
+  return pieces.flat().every(pt => indexes.some(idx => distPointToPolylineIndexed(new Pt(-pt.x, pt.y), idx) < tolerance));
 };
 const ribLine = (p: ViolinFamilyParams): Pt[] =>
   points(definePurflingPath(p, solvedRibArcs(p)!, 0)!);
@@ -81,35 +82,73 @@ describe('the graduation solve', () => {
     expect(s.back.points).toEqual([]);
   });
 
-  it('makes two closed, mirrored loops with nothing to report', () => {
+  it('makes a closed, mirrored boundary and closed, mirrored linings with nothing to report', () => {
     const s = solved(seeded()).solve;
     expect(s.failures).toEqual([]);
-    for (const d of [s.lining!, s.boundary!]) {
-      expect(closed(d)).toBe(true);
-      expect(mirrored(d)).toBe(true);
-    }
+    for (const d of [s.boundary!, ...splitPathStrings(s.lining!)]) expect(closed(d)).toBe(true);
+    expect(mirrored(s.boundary!)).toBe(true);
+    // sampling cuts the sharp corners where a lining's end meets the ribs
+    expect(mirrored(s.lining!, 0.1)).toBe(true);
   });
 
-  it('keeps each loop inside the rib line by at least its own inset', () => {
+  it('keeps the boundary inside the rib line by at least its own inset', () => {
     const p = seeded();
     const { settings, solve: s } = solved(p);
     const rib = ribLine(p);
     const idx = buildPolylineIndex(rib);
-    for (const [d, inset] of [[s.lining!, settings.lining], [s.boundary!, settings.lining + settings.edgeInset]] as const) {
-      for (const pt of points(d)) {
-        expect(pointInPolygon(pt, rib)).toBe(true);
-        // sampled chords cut inside the arcs, so a hair of slack
-        expect(distPointToPolylineIndexed(pt, idx)).toBeGreaterThan(inset - 0.05);
-      }
+    for (const pt of points(s.boundary!)) {
+      expect(pointInPolygon(pt, rib)).toBe(true);
+      // sampled chords cut inside the arcs, so a hair of slack
+      expect(distPointToPolylineIndexed(pt, idx)).toBeGreaterThan(settings.lining + settings.edgeInset - 0.05);
     }
   });
 
-  it('keeps the boundary inside the lining line', () => {
+  it('lays the linings against the rib line, no wider than the lining', () => {
+    const p = seeded();
+    const { settings, solve: s } = solved(p);
+    const rib = ribLine(p);
+    const idx = buildPolylineIndex(rib);
+    for (const pt of points(s.lining!)) {
+      expect(pointInPolygon(pt, rib) || distPointToPolylineIndexed(pt, idx) < 0.05).toBe(true);
+      expect(distPointToPolylineIndexed(pt, idx)).toBeLessThan(settings.lining + 0.05);
+    }
+  });
+
+  it('runs each lining from one block to the next, and never into one', () => {
     const s = solved(seeded()).solve;
-    const lining = points(s.lining!);
-    const idx = buildPolylineIndex(lining);
-    // with no block margin the two share their run along each block's face
-    for (const pt of points(s.boundary!)) expect(pointInPolygon(pt, lining) || distPointToPolylineIndexed(pt, idx) < 0.05).toBe(true);
+    const blocks = [s.blocks!.neck, s.blocks!.end, ...s.blocks!.corners].map(points);
+    const indexes = blocks.map(block => buildPolylineIndex(block));
+    const strips = splitPathStrings(s.lining!);
+    expect(strips.length).toBe(2 * (blocks.length - 3));
+    for (const strip of strips) {
+      const q = points(strip);
+      const touched = indexes.filter(idx => q.some(pt => distPointToPolylineIndexed(pt, idx) < 0.05));
+      expect(touched.length).toBe(2);
+      for (const pt of q) blocks.forEach((block, i) => expect(pointInPolygon(pt, block) && distPointToPolylineIndexed(pt, indexes[i]) > 0.05).toBe(false));
+    }
+  });
+
+  it('keeps the boundary clear of the linings', () => {
+    const s = solved(seeded()).solve;
+    const strips = splitPathStrings(s.lining!).map(points);
+    const indexes = strips.map(strip => buildPolylineIndex(strip));
+    for (const pt of points(s.boundary!)) strips.forEach((strip, i) => expect(pointInPolygon(pt, strip) && distPointToPolylineIndexed(pt, indexes[i]) > 0.05).toBe(false));
+  });
+
+  it('cuts the four corner blocks to the rib line, mirrored pair by pair', () => {
+    const p = seeded();
+    const s = solved(p).solve;
+    const rib = ribLine(p);
+    const idx = buildPolylineIndex(rib);
+    expect(s.blocks!.corners.length).toBe(4);
+    for (const d of s.blocks!.corners) {
+      expect(closed(d)).toBe(true);
+      // sampling cuts across the corner's tip
+      for (const pt of points(d)) expect(pointInPolygon(pt, rib) || distPointToPolylineIndexed(pt, idx) < 0.1).toBe(true);
+    }
+    const [upper, upperBass, lower, lowerBass] = s.blocks!.corners;
+    expect(mirrored(`${upper} ${upperBass}`, 0.1)).toBe(true);
+    expect(mirrored(`${lower} ${lowerBass}`, 0.1)).toBe(true);
   });
 
   it('makes two closed blocks on the rib line, each with a flat inner face', () => {
@@ -132,7 +171,7 @@ describe('the graduation solve', () => {
     }
   });
 
-  it('cuts the boundary straight across at the blocks and steps the lining line round them', () => {
+  it('cuts the boundary straight across at the blocks and runs the linings up beside them', () => {
     const s = solved(seeded()).solve;
     const neck = points(s.blocks!.neck);
     const end = points(s.blocks!.end);
@@ -149,15 +188,9 @@ describe('the graduation solve', () => {
       const onFace = boundary.filter(pt => Math.abs(pt.y - face) < 1e-6);
       expect(Math.max(...onFace.map(pt => pt.x)) - Math.min(...onFace.map(pt => pt.x))).toBeGreaterThan(10);
     }
-    // the lining line passes beside the blocks up to the rib line, but never through them
+    // the linings pass beside the neck block, past its face
     const lining = points(s.lining!);
-    expect(closed(s.lining!)).toBe(true);
     expect(Math.max(...lining.map(pt => pt.y))).toBeGreaterThan(neckFace + 1);
-    const inside = (pt: Pt, block: Pt[]) => pointInPolygon(pt, block) && distPointToPolylineIndexed(pt, buildPolylineIndex(block)) > 0.05;
-    for (const pt of lining) {
-      expect(inside(pt, neck)).toBe(false);
-      expect(inside(pt, end)).toBe(false);
-    }
   });
 
   it('holds the boundary off the blocks by a positive block margin, leaving the blocks alone', () => {
