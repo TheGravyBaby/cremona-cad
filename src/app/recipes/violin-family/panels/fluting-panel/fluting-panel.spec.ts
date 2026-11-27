@@ -249,7 +249,7 @@ describe('the channel across a viol neck', () => {
     expect(neck.arc).toBeNull();
     const V0 = { x: rib.V0!.x, y: rib.V0!.y, r: rib.V0!.r - deep };
     expect(pointOnCircle(V0, neck.v0Start).x).toBeCloseTo(0, 9);
-    const loop = defineChannelLoop(p, rib, deep, deep, null, r);
+    const loop = defineChannelLoop(p, rib, deep, deep, r);
     expect(loop.path).not.toBeNull();
     expect(subpaths(loop.path!)).toBe(1);
     expect(closed(loop.path!)).toBe(true);

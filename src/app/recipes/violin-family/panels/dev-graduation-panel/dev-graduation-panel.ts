@@ -954,7 +954,6 @@ export function solveGraduation(p: ViolinFamilyParams): GraduationSolve | null {
     s.failures.push(fail('Graduation: the rib outline doesn\'t close yet. Fix the bouts and corners first.', ['lining', 'edgeInset', 'blockMargin']));
     return s;
   }
-  let edge = samplePathToPolyline(ribLine, 0.5);
 
   // the blocks are the mould's; before the mould is drafted they are what its seed would make
   let q = p.mould ? p : { ...p };
@@ -991,7 +990,7 @@ export function solveGraduation(p: ViolinFamilyParams): GraduationSolve | null {
   });
 
   let loop = (inset: number, key: 'lining' | 'edgeInset', label: string): string | null => {
-    let made = defineChannelLoop(p, rib!, -inset, -inset, edge);
+    let made = defineChannelLoop(p, rib!, -inset, -inset);
     if (!made.joined) {
       s.failures.push(fail(`Graduation: the ${label} can't be carried round the C bout at these corners. Bring it in less, or open the corners.`, [key]));
       return null;

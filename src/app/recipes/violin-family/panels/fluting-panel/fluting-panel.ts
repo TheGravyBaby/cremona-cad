@@ -1,17 +1,16 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
-import { findJoiningArcs, solveBiarcAt } from '../../../../helpers/math/draftMath';
+import { solveBiarcAt } from '../../../../helpers/math/draftMath';
 import { calcChannelHalfWidth, calcChannelSweep } from '../../../../helpers/math/archMath';
 import {
-  angleFromCenter, closestPointOnSegment, dist, flipArcAboutY, normalizeRadians, offsetArcRadius, pointInPolygon, pointOnCircle,
-  signedRadianDelta, TURN,
+  angleFromCenter, dist, flipArcAboutY, normalizeRadians, offsetArcRadius, pointOnCircle, signedRadianDelta, TURN,
 } from '../../../../helpers/math/simpleGeometry';
-import { pathFromArc, samplePathToPolyline, translatePath } from '../../../../helpers/math/pathMath';
+import { pathFromArc, translatePath } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
 import { renderFilledPath, renderPath, renderSolveFailures } from '../../../../helpers/renderFuncs';
 import { buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
-import { Arc, Pt } from '../../../../models/types';
+import { Arc } from '../../../../models/types';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
@@ -119,170 +118,6 @@ export const renderFlutingInnerEdge = (f: FlutingSolve) => (g: any, ui: any): vo
   if (f.top) renderPath(f.top.inner, ThemeService.getPalette('classicCremona').ink(TOP_CHANNEL_INK).faint(3), STROKE_WEIGHT.guide)(g, ui);
 };
 
-// some center bout / main bout fluting combinations degenerate, this catches those
-const MAX_JOIN_RADIUS_TO_CHORD = 10;
-// how far the search below is willing to walk the c-bout arc's own endpoint back before
-// admitting no join is possible and falling back to the error
-const MAX_CBOUT_RETREAT_DEG = 45;
-
-function isJoinLooping(join: Arc[], mid: Pt, chord: number): boolean {
-  return dist(pointOnCircle(join[0], join[0].end), mid) > chord / 2;
-}
-
-function isJoinFitting(join: Arc[], chord: number): boolean {
-  return join[0].r <= MAX_JOIN_RADIUS_TO_CHORD * chord && join[0].r >= chord / 2;
-}
-
-function isOutsideEdge(q: Pt, edge: Pt[]): boolean {
-  return !pointInPolygon(q, edge)
-    && edge.every((a, i) => i === 0 || closestPointOnSegment(q, edge[i - 1], a).dist > 0.01);
-}
-
-function isJoinCrossing(join: Arc[], edge: Pt[]): boolean {
-  return join.some(arc => {
-    const sweep = signedRadianDelta(arc.end - arc.start);
-    const steps = Math.max(16, Math.ceil(arc.r * Math.abs(sweep) / 0.5));
-    return Array.from({ length: steps + 1 }, (_, i) => pointOnCircle(arc, arc.start + sweep * i / steps)).some(q => isOutsideEdge(q, edge));
-  });
-}
-
-// the join is an S, and which way round depends on which side of the chord each tangent falls. an
-// inverted corner swings C0's end past the chord and the usual S loops out to reach it, its joint
-// straying off the chord; flipping both inverts mirrors the S, and that's tried only then, so
-// anything the usual S handled is left to it. a join tighter than half its chord curls into the
-// corner the channel is meant to bypass, and one that crosses the fluting edge at the corner is cut
-// outside the flat it bypasses
-function solveSJoin(arc1: Arc, side1: 'start' | 'end', arc2: Arc, side2: 'start' | 'end', invert: boolean, edge: Pt[] | null): Arc[] | null {
-  const P1 = pointOnCircle(arc1, side1 === 'end' ? arc1.end : arc1.start);
-  const P2 = pointOnCircle(arc2, side2 === 'end' ? arc2.end : arc2.start);
-  const chord = dist(P1, P2);
-  const mid = new Pt((P1.x + P2.x) / 2, (P1.y + P2.y) / 2);
-
-  let join = findJoiningArcs(arc1, side1, arc2, side2, invert);
-  if (join.length === 0) return null;
-  if (isJoinLooping(join, mid, chord)) join = findJoiningArcs(arc1, side1, arc2, side2, !invert, true);
-  return join.length > 0 && !isJoinLooping(join, mid, chord) && isJoinFitting(join, chord) && (edge === null || !isJoinCrossing(join, edge)) ? join : null;
-}
-
-// a c-bout usually ends heading within a few degrees of the bout arc it joins, but one whose corner
-// wraps around it ends turned out towards the corner, and a join from there scoops. past the
-// trigger its end is drawn back along C0 until the headings agree to the target, though no further
-// than the given share of the way to the waist. the trigger sits clear of every ordinary corner
-const JOIN_HEADING_TRIGGER = 15 * TURN.degree;
-const JOIN_HEADING_TARGET = 4 * TURN.degree;
-const MAX_CBOUT_EASE_TO_WAIST = 0.8;
-// then the S itself. Run from one arc into the other, it should turn first with the arc it leaves
-// and then with the one it enters, carrying on from each rather than doubling back along it, and
-// the shorter of its two arcs should turn at least this share of the longer. One that leaves the
-// bout straight, turns nearly all its way at one end, or wiggles the other way round has no room
-// between the two ends: they are drawn back, each on its own up to the given degrees or half its
-// run, the least drawback in all that gives a balanced S still inside the fluting edge, else the
-// best balanced that cuts. None cutting, the ends stay
-const JOIN_BALANCE = 0.5;
-const MAX_JOIN_DRAWBACK_DEG = 25;
-
-function isRunningOn(a: number, sa: number, b: number, sb: number): boolean {
-  return sa * sb * Math.cos(a - b) > 0;
-}
-
-function calcJoinBalance(join: Arc[] | null, arc1: Arc, side1: 'start' | 'end', arc2: Arc, side2: 'start' | 'end', turn1: number, turn2: number): number {
-  if (join?.length !== 2) return -1;
-  const [a, b] = join.map(j => signedRadianDelta(j.end - j.start));
-  if (Math.sign(a) !== turn1 || Math.sign(b) !== turn2) return -1;
-  if (!isRunningOn(side1 === 'end' ? arc1.end : arc1.start, turn1, join[0].start, turn1)) return -1;
-  if (!isRunningOn(join[1].end, turn2, side2 === 'end' ? arc2.end : arc2.start, turn2)) return -1;
-  return Math.min(Math.abs(a), Math.abs(b)) / Math.max(Math.abs(a), Math.abs(b));
-}
-
-type JoinEnd = [Arc, 'start' | 'end', number, number];
-
-function drawBackJoinEnds(ends: JoinEnd[], ...degrees: number[]): void {
-  ends.forEach(([arc, s, start, end], i) => {
-    const angle = calcRetreatAngle(start, end, s, degrees[i]);
-    if (s === 'end') arc.end = angle; else arc.start = angle;
-  });
-}
-
-function easeCBoutEnd(
-  arc1: Arc, side1: 'start' | 'end',
-  arc2: Arc, side2: 'start' | 'end',
-  invert: boolean,
-  cBoutSide: 1 | 2,
-  edge: Pt[] | null,
-): void {
-  const [cBout, side, bout, boutSide] = cBoutSide === 1 ? [arc1, side1, arc2, side2] : [arc2, side2, arc1, side1];
-  // tangents are square to their radii, so two headings differ by the angle between the radii, mod pi
-  let gap = ((side === 'end' ? cBout.end : cBout.start) - (boutSide === 'end' ? bout.end : bout.start)) % TURN.half;
-  if (gap > TURN.quarter) gap -= TURN.half;
-  if (gap < -TURN.quarter) gap += TURN.half;
-  const span = signedRadianDelta(cBout.end - cBout.start);
-  const inward = side === 'end' ? -Math.sign(span) : Math.sign(span);
-  const move = Math.sign(gap) * JOIN_HEADING_TARGET - gap;
-  if (Math.abs(gap) > JOIN_HEADING_TRIGGER && Math.sign(move) === inward) {
-    const eased = Math.sign(move) * Math.min(Math.abs(move), Math.abs(span) / 2 * MAX_CBOUT_EASE_TO_WAIST);
-    if (side === 'end') cBout.end += eased; else cBout.start += eased;
-  }
-
-  // +1 turning counterclockwise as the channel runs arc1 → join → arc2
-  const turn1 = (side1 === 'end' ? 1 : -1) * Math.sign(signedRadianDelta(arc1.end - arc1.start));
-  const turn2 = (side2 === 'end' ? -1 : 1) * Math.sign(signedRadianDelta(arc2.end - arc2.start));
-
-  const ends: JoinEnd[] = [[arc1, side1, arc1.start, arc1.end], [arc2, side2, arc2.start, arc2.end]];
-  const [reach1, reach2] = ends.map(([, , start, end]) =>
-    Math.floor(Math.min(MAX_JOIN_DRAWBACK_DEG, Math.abs(signedRadianDelta(end - start)) / 2 / TURN.degree)));
-  let best = [0, 0], bestBalance = -Infinity;
-  for (let total = 0; total <= reach1 + reach2; total++) {
-    const tries: [number, number][] = [];
-    for (let d1 = Math.max(0, total - reach2); d1 <= Math.min(total, reach1); d1++) {
-      drawBackJoinEnds(ends, d1, total - d1);
-      const b = calcJoinBalance(findJoiningArcs(arc1, side1, arc2, side2, invert), arc1, side1, arc2, side2, turn1, turn2);
-      if (b >= 0 && b > Math.min(bestBalance, JOIN_BALANCE)) tries.push([b, d1]);
-    }
-    for (const [, d1] of tries.sort((x, y) => y[0] - x[0])) {
-      drawBackJoinEnds(ends, d1, total - d1);
-      const b = calcJoinBalance(solveSJoin(arc1, side1, arc2, side2, invert, edge), arc1, side1, arc2, side2, turn1, turn2);
-      if (b >= JOIN_BALANCE) return;
-      if (b >= 0 && b > bestBalance) [best, bestBalance] = [[d1, total - d1], b];
-    }
-  }
-  drawBackJoinEnds(ends, best[0], best[1]);
-}
-
-function calcRetreatAngle(startAngle: number, endAngle: number, side: 'start' | 'end', degrees: number): number {
-  const delta = signedRadianDelta(endAngle - startAngle);
-  const dir = Math.sign(delta) || 1;
-  return side === 'end' ? endAngle - dir * degrees * TURN.degree : startAngle + dir * degrees * TURN.degree;
-}
-
-// some arcs cannot be joined given their ends, this system will "peel back" the c-bout's end a
-// degree at a time until a suitable angle is found for a join. Null once the retreat is spent,
-// the c-bout's ends put back
-function solveSJoinWithRetreat(
-  arc1: Arc, side1: 'start' | 'end',
-  arc2: Arc, side2: 'start' | 'end',
-  invert: boolean,
-  cBoutSide: 1 | 2,
-  edge: Pt[] | null,
-): Arc[] | null {
-  const cBoutArc = cBoutSide === 1 ? arc1 : arc2;
-  const cBoutJoinSide = cBoutSide === 1 ? side1 : side2;
-  const originalStart = cBoutArc.start;
-  const originalEnd = cBoutArc.end;
-
-  for (let degrees = 0; degrees <= MAX_CBOUT_RETREAT_DEG; degrees++) {
-    if (degrees > 0) {
-      const angle = calcRetreatAngle(originalStart, originalEnd, cBoutJoinSide, degrees);
-      if (cBoutJoinSide === 'end') cBoutArc.end = angle; else cBoutArc.start = angle;
-    }
-    const join = solveSJoin(arc1, side1, arc2, side2, invert, edge);
-    if (join) return join;
-  }
-
-  cBoutArc.start = originalStart;
-  cBoutArc.end = originalEnd;
-  return null;
-}
-
 // where the S's joint sits between the bout arc's end (0) and C0's (1), along the circle every
 // joint between those two ends lies on. 0.5 is the S with the least jump in curvature at its joint
 const JOIN_JOINT_FROM_BOUT = 0.5;
@@ -340,7 +175,7 @@ function pushFlankArc(arcs: Arc[], arc: Arc, offset: number): Arc {
 // the channel's arcs at `offset` from the rib line (in when negative), C0 at its own: the bouts'
 // offset arcs, and in place of each corner the S joining C0 to the bout arc beside it. A viol
 // corner's flank is followed FLANK_TAKEOFF_ALONG of the way to its tip. Null when a join can't be made
-function solveChannelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, edge: Pt[] | null, neckStart?: number): Arc[] | null {
+function solveChannelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, neckStart?: number): Arc[] | null {
   let k = p.corners!;
   let arcs = solveOffsetArcs(p, rib, offset, 'none', centerOffset, neckStart).bouts;
   // L0, L1, L2, C0, U2, U1, U0: whichever side is viol, its corner arc (L2/U2) drops out,
@@ -362,15 +197,15 @@ function solveChannelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, c
 }
 
 // one closed loop `offset` from the rib line (in when negative), the C bout's run at `centerOffset`,
-// the corners bypassed by the channel's S joins and kept inside `edge`. `joined` false when the C
+// the corners bypassed by the channel's S joins. `joined` false when the C
 // bout can't be joined to the bouts; no path with it true when the loop doesn't close, as across a
 // neck face the loop has eaten. Given `neckR`, the purfling's inner line radius, a viol neck is
 // crossed on the purfling's arc rather than along its face. The graduation reads its boundary loop
 // through this
-export function defineChannelLoop(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, edge: Pt[] | null, neckR: number | null = null): { path: string | null; joined: boolean } {
+export function defineChannelLoop(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, neckR: number | null = null): { path: string | null; joined: boolean } {
   let neck = neckR !== null ? solveNeckPurflingArc(p, rib, offset, neckR) : null;
   if (neckR !== null && !neck) return { path: null, joined: true };
-  let arcs = solveChannelArcs(p, rib, offset, centerOffset, edge, neck?.v0Start);
+  let arcs = solveChannelArcs(p, rib, offset, centerOffset, neck?.v0Start);
   if (!arcs) return { path: null, joined: false };
   let paths = [...arcs, ...arcs.map(arc => flipArcAboutY(arc))].map(arc => pathFromArc(arc));
   let top = neck ? neck.arc && pathFromArc(neck.arc) : defineViolNeckTopLine(p, rib, offset);
@@ -382,13 +217,10 @@ export function defineChannelLoop(p: ViolinFamilyParams, rib: RibArcs, offset: n
   }
 }
 
-// one edge of the channel, `offset` in from the plate edge, the C bout's run at `centerOffset`. The
-// fluting edge it has to stay inside is taken at the outer of the two, or C0's own end would sit
-// outside it
+// one edge of the channel, `offset` in from the plate edge, the C bout's run at `centerOffset`
 export function defineChannelPath(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, neckR: number | null = null): { path: string | null; joined: boolean } {
   let inset = p.body.overhang + p.body.rib;
-  let edge = defineFlutingEdgePath(p, rib, Math.min(offset, centerOffset), neckR);
-  return defineChannelLoop(p, rib, inset - offset, inset - centerOffset, edge ? samplePathToPolyline(edge, 0.5) : null, neckR);
+  return defineChannelLoop(p, rib, inset - offset, inset - centerOffset, neckR);
 }
 
 function defineCachedChannelPath(cuts: Map<string, ReturnType<typeof defineChannelPath>>, p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, neckR: number | null): ReturnType<typeof defineChannelPath> {
