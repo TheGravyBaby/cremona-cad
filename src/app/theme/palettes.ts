@@ -29,11 +29,10 @@ export const PALETTES = {
     name: 'Ice and Fire',
     inks: ['#7c95da', '#648f7b', '#e49338'],
   },
-  // a plate held up to the lamp: four cool inks for the loops, one for the points, then a ramp from
-  // the glow of thin wood to the dark of thick
+  // a plate held up to the lamp: four cool inks for the loops, one for the points
   lamplight: {
     name: 'Lamplight',
-    inks: ['#5a82b3', '#4f9a94', '#8a7fb0', '#9bb07a', '#4b55e3', '#f6efc6', '#f1c260', '#e38d3e', '#bd4f30', '#6b2522'],
+    inks: ['#5a82b3', '#4f9a94', '#8a7fb0', '#9bb07a', '#4b55e3'],
   },
   orchid: {
     name: 'Orchid',
@@ -64,6 +63,19 @@ export const CANVAS_COLORS = {
   grabberStroke: '#78350f',
   highlighter: '#fde047',
 } as const;
+
+// a plate's thickness map, after Loen's: each colour stands for the same millimetres on every
+// instrument so two maps compare, wood under 2 mm goes grey, and the thick runs violet through blue
+// and teal to a pale glow. Fixed in both modes, since a remapped stop would read as another thickness
+export const THICKNESS_SCALE = [
+  { mm: 1.6, color: '#8b8e94' },
+  { mm: 2.0, color: '#8a7fc4' },
+  { mm: 2.5, color: '#5f87d6' },
+  { mm: 3.0, color: '#3fa2c6' },
+  { mm: 3.5, color: '#3db8a6' },
+  { mm: 4.5, color: '#8fdab6' },
+  { mm: 5.5, color: '#d9f2e2' },
+] as const;
 
 // the bulk SVG's machine codes, not a theme: the laser maps each pure colour to a power setting and
 // cuts only strokes no wider than 0.01px, 0.0026mm. cut1 goes through first, the holes inside a piece,

@@ -41,8 +41,8 @@ const KNOT_EPS = 1e-3;
 const SEED_LENGTH_SHARE = 0.75;
 const SEED_WIDTH_SHARE = 5.5 / 356;
 const SEED_MIDDLE_SHARE = 12 / 356;
-const SEED_QUARTER_SHARE = 9.5 / 356;
-const SEED_END_SHARE = 3 / 356;
+const SEED_QUARTER_SHARE = 6 / 356;
+const SEED_END_SHARE = 1 / 356;
 
 // a field's focus: the faces (length), the ends (width), or a point by its row
 export type BassBarHighlight = 'faces' | 'ends' | number;

@@ -162,8 +162,6 @@ export class DevFemPanel extends PanelComponentBase implements OnInit {
 // line it stands on
 export const renderFemMesh = (s: FemSolve, pal: PanelPalette) => (g: any, ui: any): void => {
   if (!s.triangles.length) return;
-  let lo = Math.min(...s.thickness), hi = Math.max(...s.thickness);
-  let scale = { lo, hi: Math.max(hi, lo + CONTOUR_INTERVAL) };
   let bands = new Map<number, string[]>();
   for (let [a, b, c] of s.triangles) {
     let level = Math.floor((s.thickness[a] + s.thickness[b] + s.thickness[c]) / 3 / CONTOUR_INTERVAL);
@@ -172,7 +170,7 @@ export const renderFemMesh = (s: FemSolve, pal: PanelPalette) => (g: any, ui: an
     else bands.set(level, [d]);
   }
   for (let [level, paths] of bands) {
-    renderFilledPath(paths.join(' '), rampFill(pal, scale, (level + 0.5) * CONTOUR_INTERVAL), 1, 'nonzero')(g, ui);
+    renderFilledPath(paths.join(' '), rampFill((level + 0.5) * CONTOUR_INTERVAL), 1, 'nonzero')(g, ui);
   }
   renderPath([...bands.values()].flat().join(' '), pal.neutral, STROKE_WEIGHT.guide, 0.5)(g, ui);
   if (s.web.length) {

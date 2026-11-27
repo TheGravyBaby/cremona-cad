@@ -77,13 +77,14 @@ export class ViolinFamily extends RecipeComponentBase<ViolinFamilyRecipe> {
     { id: 'stringSetup', label: 'String Setup', toggles: StringSetupPanel.renderToggles, seed: StringSetupPanel.seed },
     { id: 'export', label: 'Export', toggles: ExportPanel.renderToggles },
     // features on trial, never offered off localhost
-    ...(isLocalHost() ? [{ id: 'devFingerboard', label: 'Dev Fingerboard', toggles: DevFingerboardPanel.renderToggles, seed: StringSetupPanel.seed } as const] : []),
     ...(isLocalHost() ? [{ id: 'devGraduation', label: 'Dev Graduation', toggles: DevGraduationPanel.renderToggles, seed: DevGraduationPanel.seed } as const] : []),
     ...(isLocalHost() ? [{ id: 'devBassBar', label: 'Dev Bass Bar', toggles: DevBassBarPanel.renderToggles, seed: DevBassBarPanel.seed } as const] : []),
     ...(isLocalHost() ? [{ id: 'devFem', label: 'Dev FEM', toggles: DevFemPanel.renderToggles, seed: DevFemPanel.seed } as const] : []),
+    ...(isLocalHost() ? [{ id: 'devFingerboard', label: 'Dev Fingerboard', toggles: DevFingerboardPanel.renderToggles, seed: StringSetupPanel.seed } as const] : []),
     // drives the maker's own CNC, so it is never offered off localhost; its component is only named
     // inside @defer, so its planner is a separate chunk that is fetched only when the tab opens
     ...(isLocalHost() ? [{ id: 'devExport', label: 'Dev Export', toggles: [] } as const] : []),
+
   ];
 
   private readonly themeService = inject(ThemeService);

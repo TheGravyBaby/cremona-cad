@@ -307,13 +307,11 @@ export interface PlateGraduationParams {
   points: GraduationPoint[];
 }
 
-// one caliper reading in the plate's own frame: x across from the joint, y up the body. A zone
-// point keeps its name
+// one caliper reading in the plate's own frame: x across from the joint, y up the body
 export interface GraduationPoint {
   x: number;
   y: number;
   thickness: number;
-  label?: string;
 }
 
 // the bass bar, glued under the top's bass side once the top is graduated: its length, its width

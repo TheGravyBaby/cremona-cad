@@ -4,7 +4,7 @@ import { dist, pointInPolygon } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline, splitPathStrings } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
-import { calcClearSpot, calcHoleFill, isPointClear, calcLevelBridges, DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, solvedGraduation, solvedThicknessBands, solvedThicknessField, zonePoints } from './dev-graduation-panel';
+import { calcClearSpot, calcHoleFill, calcZones, isPointClear, calcLevelBridges, DevGraduationPanel, edgeThicknessOf, gridPoints, innerSurfaceZAt, plateMap, solveGraduation, solvedGraduation, solvedThicknessBands, solvedThicknessField, zonePoints } from './dev-graduation-panel';
 import { definePurflingPath, PlateContourPanel } from '../plate-contour-panel/plate-contour-panel';
 import { CornersPanel, solvedRibArcs } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
@@ -716,8 +716,8 @@ describe('the thickness field', () => {
   it('maps a plate read alike all over as whole bands, none broken up by a contour at the reading', () => {
     const p = arched();
     grad(p);
-    p.graduation!.back.points = zonePoints(p, 'back');
-    const read = p.graduation!.back.points[0].thickness;
+    const read = edgeThicknessOf(p, 'back');
+    p.graduation!.back.points = zonePoints(p, 'back').map(pt => ({ ...pt, thickness: read }));
     const bands = solvedThicknessBands(p, 'back');
     expect(bands.length).toBeGreaterThan(1);
     for (const { level, polygons } of bands) {
@@ -792,23 +792,24 @@ describe('the inner surface', () => {
 describe('the zones layout', () => {
   const zoned = (p = seeded()) => {
     grad(p);
-    return { points: zonePoints(p, 'back'), loop: points(solveGraduation(p)!.boundary!) };
+    const zones = calcZones(p, 'back');
+    return { zones, points: zones.map(z => z.point), loop: points(solveGraduation(p)!.boundary!) };
   };
 
   it('lays seventeen named zones inside the boundary, the sides mirrored', () => {
-    const { points: pts, loop } = zoned();
+    const { zones, points: pts, loop } = zoned();
     expect(pts.length).toBe(17);
-    expect(new Set(pts.map(pt => pt.label)).size).toBe(17);
+    expect(new Set(zones.map(z => z.zone)).size).toBe(17);
     for (const pt of pts) {
       expect(pointInPolygon(new Pt(pt.x, pt.y), loop)).toBe(true);
       expect(pts.some(q => q.x === -pt.x && q.y === pt.y)).toBe(true);
     }
-    expect(pts.filter(pt => pt.x === 0).map(pt => pt.label)).toEqual(['Lower dome', 'Island lower', 'Island', 'Island upper', 'Upper dome']);
+    expect(zones.filter(z => z.point.x === 0).map(z => z.zone)).toEqual(['Lower dome', 'Island lower', 'Island', 'Island upper', 'Upper dome']);
   });
 
   it('runs the channels along the edge, the flanks between the dome and the island, the island at the waist', () => {
-    const { points: pts, loop } = zoned();
-    const by = (label: string) => pts.find(pt => pt.label === label)!;
+    const { zones, points: pts, loop } = zoned();
+    const by = (zone: string) => zones.find(z => z.zone === zone)!.point;
     const idx = buildPolylineIndex(loop);
     for (const bout of ['Lower', 'Upper']) {
       const channel = by(`${bout} channel treble`), dome = by(`${bout} dome`), flank = by(`${bout} flank treble`);
@@ -843,5 +844,41 @@ describe('the zones layout', () => {
     const settings = grad(p);
     settings.edgeInset = NaN;
     expect(zonePoints(p, 'back')).toEqual([]);
+  });
+
+  it('thins from the middle out with no pocket shut inside a thicker band', () => {
+    const p = seeded();
+    FlutingPanel.seed(p);
+    FHolePlacementPanel.seed(p);
+    FHoleContoursPanel.seed(p);
+    LongArchingPanel.seed(p);
+    const s = grad(p);
+    const holes = solveGraduation(p)!.holes;
+    for (const plate of ['top', 'back'] as const) {
+      s[plate].points = zonePoints(p, plate);
+      for (const { polygons } of solvedThicknessBands(p, plate)) {
+        // a ring cut out of a band is an f-hole or it is a pocket
+        for (const ring of polygons.flatMap(poly => poly.slice(1))) {
+          const c = new Pt(ring.reduce((a, q) => a + q.x, 0) / ring.length, ring.reduce((a, q) => a + q.y, 0) / ring.length);
+          expect(plate === 'top' && holes.some(hole => pointInPolygon(c, hole))).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('leaves no hole in the lowest band past a thin point read close beside a thicker one', () => {
+    const p = seeded();
+    FlutingPanel.seed(p);
+    FHolePlacementPanel.seed(p);
+    FHoleContoursPanel.seed(p);
+    LongArchingPanel.seed(p);
+    const s = grad(p);
+    s.back.points = zonePoints(p, 'back');
+    const thin = s.back.points[calcZones(p, 'back').findIndex(z => z.zone === 'Lower edge bass')];
+    thin.thickness = 1.4;
+    // a steep step over a few mm, which the spline carries on down past the thin point
+    s.back.points.push({ x: thin.x + 6, y: thin.y + 12, thickness: 1.7 });
+    const [lowest] = solvedThicknessBands(p, 'back');
+    expect(lowest.polygons.flatMap(poly => poly.slice(1))).toEqual([]);
   });
 });

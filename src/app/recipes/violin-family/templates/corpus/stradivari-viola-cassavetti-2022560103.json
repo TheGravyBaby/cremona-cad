@@ -331,80 +331,67 @@
           {
             "x": -90.2,
             "y": 90,
-            "thickness": 4,
-            "label": "Lower channel bass"
+            "thickness": 4
           },
           {
             "x": 0,
             "y": 113,
-            "thickness": 4.4,
-            "label": "Lower dome"
+            "thickness": 4.4
           },
           {
             "x": 90.2,
             "y": 90,
-            "thickness": 4,
-            "label": "Lower channel treble"
+            "thickness": 4
           },
           {
             "x": -56.1,
             "y": 133.5,
-            "thickness": 4,
-            "label": "Lower flank bass"
+            "thickness": 4
           },
           {
             "x": 56.1,
             "y": 133.5,
-            "thickness": 4,
-            "label": "Lower flank treble"
+            "thickness": 4
           },
           {
             "x": 0,
             "y": 177,
-            "thickness": 5.3,
-            "label": "Island lower"
+            "thickness": 5.3
           },
           {
             "x": 0,
             "y": 223.5,
-            "thickness": 5.3,
-            "label": "Island"
+            "thickness": 5.3
           },
           {
             "x": 0,
             "y": 270,
-            "thickness": 5.3,
-            "label": "Island upper"
+            "thickness": 5.3
           },
           {
             "x": -42.6,
             "y": 304,
-            "thickness": 4,
-            "label": "Upper flank bass"
+            "thickness": 4
           },
           {
             "x": 42.6,
             "y": 304,
-            "thickness": 4,
-            "label": "Upper flank treble"
+            "thickness": 4
           },
           {
             "x": -67.6,
             "y": 338,
-            "thickness": 4,
-            "label": "Upper channel bass"
+            "thickness": 4
           },
           {
             "x": 0,
             "y": 338,
-            "thickness": 4,
-            "label": "Upper dome"
+            "thickness": 4
           },
           {
             "x": 67.6,
             "y": 338,
-            "thickness": 4,
-            "label": "Upper channel treble"
+            "thickness": 4
           },
           {
             "x": 0,
@@ -418,80 +405,67 @@
           {
             "x": -90.2,
             "y": 90,
-            "thickness": 4,
-            "label": "Lower channel bass"
+            "thickness": 4
           },
           {
             "x": 0,
             "y": 90,
-            "thickness": 4,
-            "label": "Lower dome"
+            "thickness": 4
           },
           {
             "x": 90.2,
             "y": 90,
-            "thickness": 4,
-            "label": "Lower channel treble"
+            "thickness": 4
           },
           {
             "x": -56.1,
             "y": 133.5,
-            "thickness": 4,
-            "label": "Lower flank bass"
+            "thickness": 4
           },
           {
             "x": 56.1,
             "y": 133.5,
-            "thickness": 4,
-            "label": "Lower flank treble"
+            "thickness": 4
           },
           {
             "x": 0,
             "y": 177,
-            "thickness": 4,
-            "label": "Island lower"
+            "thickness": 4
           },
           {
             "x": 0,
             "y": 223.5,
-            "thickness": 4,
-            "label": "Island"
+            "thickness": 4
           },
           {
             "x": 0,
             "y": 270,
-            "thickness": 4,
-            "label": "Island upper"
+            "thickness": 4
           },
           {
             "x": -42.6,
             "y": 306,
-            "thickness": 4,
-            "label": "Upper flank bass"
+            "thickness": 4
           },
           {
             "x": 42.6,
             "y": 304,
-            "thickness": 4,
-            "label": "Upper flank treble"
+            "thickness": 4
           },
           {
             "x": -67.6,
             "y": 340,
-            "thickness": 4,
-            "label": "Upper channel bass"
+            "thickness": 4
           },
           {
             "x": 0,
             "y": 338,
-            "thickness": 4,
-            "label": "Upper dome"
+            "thickness": 4
           },
           {
             "x": 67.6,
             "y": 338,
-            "thickness": 4,
-            "label": "Upper channel treble"
+            "thickness": 4
           }
         ]
       }

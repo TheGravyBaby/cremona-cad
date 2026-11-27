@@ -12,8 +12,8 @@ import { DraftTool, DraftToolHost } from '../../../../draft-canvas/tools/draft-t
 import { ToolRegistryService } from '../../../../draft-canvas/tools/tool-registry';
 import { IconDirective } from '../../../../icons/icon.directive';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
-import { STROKE_WEIGHT } from '../../../../theme/palettes';
-import { contrastRatio, PanelPalette, parseHex, ThemeService, toHex } from '../../../../theme/theme.service';
+import { STROKE_WEIGHT, THICKNESS_SCALE } from '../../../../theme/palettes';
+import { PanelPalette, parseHex, ThemeService, toHex } from '../../../../theme/theme.service';
 import { Arc, Pt, Rectangle } from '../../../../models/types';
 import { GraduationParams, GraduationPoint, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
@@ -77,8 +77,9 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
   active: GraduationPlate = 'top';
   selected: number[] = [];
   maps!: Record<GraduationPlate, PlateMap>;
-  // the thickness the ramp's two ends stand for, shared by both plates so a colour reads the same on each
-  scale = { lo: 0, hi: 1 };
+  // the legend's two ends and its stops, placed by millimetres
+  readonly scale = { lo: THICKNESS_SCALE[0].mm, hi: THICKNESS_SCALE[THICKNESS_SCALE.length - 1].mm };
+  readonly rampGradient = `linear-gradient(90deg, ${THICKNESS_SCALE.map(s => `${s.color} ${(100 * (s.mm - this.scale.lo) / (this.scale.hi - this.scale.lo)).toFixed(1)}%`).join(', ')})`;
   // a map is dealt out again only when its points move, not on every thickness typed
   private mapCache: Partial<Record<GraduationPlate, { key: string; map: PlateMap }>> = {};
   // the canvas tool that takes the next click as a point, held while it is the active tool
@@ -288,7 +289,7 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
   // what the pick holds: one point by number and place, several by count and spread
   pickNote(): string {
     let picked = this.picked;
-    if (picked.length === 1) return `${picked[0].label ?? `Point ${this.selected[0] + 1}`} · x ${picked[0].x}, y ${picked[0].y} mm`;
+    if (picked.length === 1) return `Point ${this.selected[0] + 1} · x ${picked[0].x}, y ${picked[0].y} mm`;
     let t = picked.map(pt => pt.thickness);
     return `${picked.length} points · ${spread(t)} mm`;
   }
@@ -301,18 +302,12 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
   }
 
   fill(thickness: number): string {
-    return rampFill(this.pal, this.scale, thickness);
+    return rampFill(thickness);
   }
 
-  // a chip's number in whichever end of the ramp stands off its fill the more
+  // a chip's number in its own fill run dark, every stop being light enough to carry it
   fillText(thickness: number): string {
-    let fill = parseHex(this.fill(thickness));
-    let [thin, thick] = [this.pal.ink(RAMP[0]), this.pal.ink(RAMP[RAMP.length - 1])];
-    return contrastRatio(fill, parseHex(thin)) > contrastRatio(fill, parseHex(thick)) ? thin : thick;
-  }
-
-  get rampGradient(): string {
-    return `linear-gradient(90deg, ${RAMP.map(i => this.pal.ink(i)).join(', ')})`;
+    return shade(rampFill(thickness), 0.7);
   }
 
   reportSolveFailures(): void {
@@ -326,16 +321,6 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
     let fresh = this.mapDue || !this.shownBands || isThicknessMapHeld(p);
     this.mapDue = false;
     if (fresh) {
-      let all = GRADUATION_PLATES.flatMap(plate => this.gr[plate].points.map(pt => pt.thickness)).filter(Number.isFinite);
-      // the boundary reads what the arching left over the flat, which can sit under every point, and
-      // the top's holes carry the f-hole thickness
-      for (let plate of GRADUATION_PLATES) {
-        let field = solvedThicknessField(p, plate);
-        if (field) all.push(field.range.lo, field.range.hi);
-      }
-      let lo = all.length ? Math.floor(Math.min(...all) * 2) / 2 : 0;
-      let hi = all.length ? Math.ceil(Math.max(...all) * 2) / 2 : 1;
-      this.scale = { lo, hi: Math.max(hi, lo + 1) };
       this.shownBands = { top: solvedThicknessBands(p, 'top'), back: solvedThicknessBands(p, 'back') };
     } else {
       this.mapTimer = setTimeout(() => {
@@ -347,7 +332,7 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
     let solve = this.solve = solvedGraduation(p)!;
     let pc = solvedPlateContour(p);
     return [
-      renderThicknessMap(p, this.shownBands!, this.scale, this.pal, !fresh),
+      renderThicknessMap(p, this.shownBands!, this.pal, !fresh),
       renderFholePlate(p, pc, this.pal, rib, false),
       renderBackPlate(p, pc, this.pal, rib),
       renderGraduation(p, solve, this.pal),
@@ -356,9 +341,6 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
     ];
   }
 }
-
-// the lamplight palette's thin-to-thick inks, after the four the loops take and the points' own
-const RAMP = [5, 6, 7, 8, 9];
 
 // one click, unsnapped, handed back as a point; the point marked under the pointer, and across
 // the joint at `mirrorX` when mirrored, solid where the click would land and dashed where it would not
@@ -414,25 +396,26 @@ class PickPointTool implements DraftTool {
   }
 }
 
-// a thickness on the ramp, thin glowing and thick dark, blended between the palette's ramp inks
-export function rampFill(pal: PanelPalette, scale: { lo: number; hi: number }, thickness: number): string {
-  let { lo, hi } = scale;
-  let at = Math.min(1, Math.max(0, (thickness - lo) / (hi - lo))) * (RAMP.length - 1);
-  let k = Math.min(RAMP.length - 2, Math.floor(at));
-  let a = parseHex(pal.ink(RAMP[k])), b = parseHex(pal.ink(RAMP[k + 1])), f = at - k;
+// a thickness's colour on the fixed scale, blended between the stops either side of it
+export function rampFill(thickness: number): string {
+  let k = THICKNESS_SCALE.findIndex(s => s.mm > thickness);
+  if (k === 0 || !Number.isFinite(thickness)) return THICKNESS_SCALE[0].color;
+  if (k < 0) return THICKNESS_SCALE[THICKNESS_SCALE.length - 1].color;
+  let lo = THICKNESS_SCALE[k - 1], hi = THICKNESS_SCALE[k];
+  let a = parseHex(lo.color), b = parseHex(hi.color), f = (thickness - lo.mm) / (hi.mm - lo.mm);
   return toHex({ r: a.r + (b.r - a.r) * f, g: a.g + (b.g - a.g) * f, b: a.b + (b.b - a.b) * f });
 }
 
 // both plates' thickness maps, the bands stacked thin to thick in the ramp's colours, under
 // everything else drawn; each band's edge is traced as a contour line a shade darker than its
 // fill, so the steps read as a map and not a wash. A stale map, waiting on its solve, is faded
-export const renderThicknessMap = (p: ViolinFamilyParams, bands: Record<GraduationPlate, ThicknessBand[]>, scale: { lo: number; hi: number }, pal: PanelPalette, stale: boolean) => (g: any, ui: any): void => {
+export const renderThicknessMap = (p: ViolinFamilyParams, bands: Record<GraduationPlate, ThicknessBand[]>, pal: PanelPalette, stale: boolean) => (g: any, ui: any): void => {
   let opacity = stale ? STALE_MAP_OPACITY : 1;
   for (let plate of GRADUATION_PLATES) {
     let dx = PLATE_DX[plate](p);
     bands[plate].forEach(({ level, polygons }, i) => {
       let d = polygons.map(poly => poly.map(ring => pathFromPolyline(ring.map(q => new Pt(q.x + dx, q.y)), true)).join(' ')).join(' ');
-      let fill = rampFill(pal, scale, level + CONTOUR_INTERVAL / 2);
+      let fill = rampFill(level + CONTOUR_INTERVAL / 2);
       renderFilledPath(d, fill, opacity, 'evenodd')(g, ui);
       // the lowest band's edge is the boundary itself, already drawn
       if (i > 0) renderPath(d, shade(fill, 0.35), STROKE_WEIGHT.guide, 0.7 * opacity)(g, ui);
@@ -525,39 +508,58 @@ export function calcClearSpot(ground: GraduationGround, points: GraduationPoint[
 // way to the bouts; for each main bout a dome on the joint at its widest row, a channel zone each side
 // along the edge on that row, a pair out toward the block on the row most of the way to the end, and a flank each side on the row between the corners and the widest,
 // the four flanks fanning out from the island as an X. Each is placed off the boundary's half
-// chord at its row, so the zones scale with the outline. Read from the lower bout up
+// chord at its row, so the zones scale with the outline, and each takes its zone's thickness. Read
+// from the lower bout up
 export function zonePoints(p: ViolinFamilyParams, plate: GraduationPlate): GraduationPoint[] {
+  return calcZones(p, plate).map(z => z.point);
+}
+
+// the zone points, each with the zone it stands for
+export function calcZones(p: ViolinFamilyParams, plate: GraduationPlate): { zone: string; point: GraduationPoint }[] {
   let ground = solvedGraduation(p)?.ground;
   let marks = new Map(calcBodyLandmarks(p).map(k => [k.code, k.y]));
   let rows = (['LB', 'LC', 'UC', 'UB'] as const).map(code => marks.get(code));
   if (!ground || rows.some(y => y === undefined)) return [];
   let [LB, LC, UC, UB] = rows as number[];
-  let thickness = edgeThicknessOf(p, plate);
+  let mm = ZONE_THICKNESS[plate];
+  let scale = familyStandards(p.body.height).edgeThickness / VIOLIN_EDGE;
   let half = (y: number): number => loopHalfChordAtY(ground.loop, y) ?? 0;
-  let at = (x: number, y: number, label: string): GraduationPoint => ({ x: round(x), y: round(y), thickness, label });
-  let pair = (x: number, y: number, label: string): GraduationPoint[] => [at(-x, y, `${label} bass`), at(x, y, `${label} treble`)];
-  let points: GraduationPoint[] = [];
-  for (let [name, bout, corner, end] of [['Lower', LB, LC, ground.minY], ['Upper', UB, UC, ground.maxY]] as const) {
+  let at = (x: number, y: number, zone: string, t: number) => ({ zone, point: { x: round(x), y: round(y), thickness: round(t * scale) } });
+  let pair = (x: number, y: number, zone: string, t: number) => [at(-x, y, `${zone} bass`, t), at(x, y, `${zone} treble`, t)];
+  let points: { zone: string; point: GraduationPoint }[] = [];
+  for (let [name, bout, corner, end, dome] of [['Lower', LB, LC, ground.minY, mm.lowerDome], ['Upper', UB, UC, ground.maxY, mm.upperDome]] as const) {
     let flankY = (bout + corner) / 2;
     let edgeY = bout + ZONE.edgeRow * (end - bout);
     points.push(
-      ...pair(ZONE.edge * half(edgeY), edgeY, `${name} edge`),
-      ...pair(ZONE.channel * half(bout), bout, `${name} channel`),
-      at(0, bout, `${name} dome`),
-      ...pair(ZONE.flank * half(flankY), flankY, `${name} flank`),
+      ...pair(ZONE.edge * half(edgeY), edgeY, `${name} edge`, mm.edge),
+      ...pair(ZONE.channel * half(bout), bout, `${name} channel`, mm.channel),
+      at(0, bout, `${name} dome`, dome),
+      ...pair(ZONE.flank * half(flankY), flankY, `${name} flank`, mm.flank),
     );
   }
   // the island's middle sits midway between the corner rows, not on the waist, which can lie off
   // it; a point at each end makes the three one island
-  points.push(at(0, LC, 'Island lower'), at(0, (LC + UC) / 2, 'Island'), at(0, UC, 'Island upper'));
+  points.push(at(0, LC, 'Island lower', mm.islandEnd), at(0, (LC + UC) / 2, 'Island', mm.island), at(0, UC, 'Island upper', mm.islandEnd));
   return points
-    .filter(pt => pointInPolygon(new Pt(pt.x, pt.y), ground.loop))
-    .sort((a, b) => a.y - b.y || a.x - b.x);
+    .filter(({ point: pt }) => pointInPolygon(new Pt(pt.x, pt.y), ground.loop))
+    .sort((a, b) => a.point.y - b.point.y || a.point.x - b.point.x);
 }
 
 // where the channel, flank and edge zones sit, as shares of the half chord at their row; the edge
 // row as a share of the way from the widest row to the block's face
 const ZONE = { channel: 0.82, flank: 0.55, edge: 0.6, edgeRow: 0.7 };
+
+// a violin's zone thicknesses in mm, concentric as Langsather's modified Strad plan (quoted in Roach,
+// Chapter 7): each zone thicker than the ones outside it, so no zone is a hollow inside thicker wood.
+// The channels meet the boundary's thin sides; the end edges stand above them, the boundary there
+// rising onto the blocks. The top's island meets the f-hole wings, the back's peaks within Loen's
+// 4-5 mm (CAS Journal, Nov 2002). Other sizes scale by their edge thickness. Loen's backs sit their
+// thickest off the joint; these stay symmetric
+const ZONE_THICKNESS: Record<GraduationPlate, { edge: number; channel: number; lowerDome: number; upperDome: number; flank: number; islandEnd: number; island: number }> = {
+  top: { edge: 2.8, channel: 2.5, lowerDome: 3, upperDome: 3, flank: 3.2, islandEnd: 3.35, island: 3.5 },
+  back: { edge: 2.8, channel: 2.5, lowerDome: 3.2, upperDome: 3, flank: 3.5, islandEnd: 3.9, island: 4.5 },
+};
+const VIOLIN_EDGE = 3.5;
 
 // a lattice `spacing` apart, one column on the joint and the rows centred on the boundary, kept to
 // the points inside it and off the top's holes, where there is no wood to read, read top to bottom
@@ -879,7 +881,9 @@ export function solveThicknessBands(p: ViolinFamilyParams, plate: GraduationPlat
   let levels: number[] = [];
   for (let k = Math.floor(field.range.lo / CONTOUR_INTERVAL - 0.5); (k + 0.5) * CONTOUR_INTERVAL <= field.range.hi; k++) levels.push((k + 0.5) * CONTOUR_INTERVAL);
   let holes = plate === 'top' ? solve.holes.map(hole => sampleLoop(hole, CLIP_STEP)) : [];
-  let bands = fieldBands(field.interpolated, box, cell, levels, sampleLoop(field.loop, CLIP_STEP), holes);
+  // held up to the thinnest reading as the plate is, or a spline dipping under it beside a lone
+  // thin point falls below the lowest level and leaves a hole in every band
+  let bands = fieldBands((x, y) => Math.max(field.range.lo, field.interpolated(x, y)), box, cell, levels, sampleLoop(field.loop, CLIP_STEP), holes);
   return bands;
 }
 
