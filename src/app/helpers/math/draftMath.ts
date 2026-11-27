@@ -1,7 +1,7 @@
 import { Pt, Circle, Line, Arc } from "../../models/types";
 import {
   TURN, dist, angleFromCenter, pointOnCircle, angleWithinSweep, lineDirection,
-  lineNormal, offsetLineByDistance, closestPointOnLine, stepAlong, dot, subVec, normalizeRadians,
+  lineNormal, offsetLineByDistance, closestPointOnLine, stepAlong, dot, subVec, normalizeRadians, signedRadianDelta,
   lineFromTwoPoints, intersectLines, lineCircleIntersection,
 } from "./simpleGeometry";
 
@@ -661,32 +661,27 @@ export function biarcFromRoot(P1: Pt, P2: Pt, N1: Pt, N2: Pt, R: number): Arc[] 
 }
 
 // the biarcs leaving `start` heading `startTangent` and arriving at `end` heading `endTangent` are
-// one family, and exactly one passes through any point but the ends (Kurnosenko, "Biarcs and
-// bilens", 2013, eqs. 18 and 22, worked with the chord on [-1, 1]). Its joint found, each arc is the
-// tangent arc from its own end to the joint. Null where the member collapses to one arc and a kink
-// at an end, or its joint runs off to infinity
-export function solveBiarcThrough(start: Pt, startTangent: number, end: Pt, endTangent: number, through: Pt): ArcFit[] | null {
-  const half = dist(start, end) / 2;
-  if (half < 1e-9) return null;
+// one family, B(p) in Kurnosenko, "Biarcs and bilens" (2013), worked with the chord on [-1, 1] and
+// the headings off it within a half turn either way, as his parameter's sign depends on that
+function calcBiarcFrame(start: Pt, startTangent: number, end: Pt, endTangent: number) {
   const chord = Math.atan2(end.y - start.y, end.x - start.x);
-  const c = Math.cos(chord), s = Math.sin(chord);
-  const mid: Pt = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
-  const x = ((through.x - mid.x) * c + (through.y - mid.y) * s) / half;
-  const y = (-(through.x - mid.x) * s + (through.y - mid.y) * c) / half;
+  const alpha = signedRadianDelta(startTangent - chord);
+  const beta = signedRadianDelta(endTangent - chord);
+  return {
+    half: dist(start, end) / 2, c: Math.cos(chord), s: Math.sin(chord),
+    mid: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 } as Pt,
+    alpha, beta, omega: (alpha + beta) / 2, gamma: (alpha - beta) / 2,
+  };
+}
 
-  const alpha = startTangent - chord;
-  const beta = endTangent - chord;
-  const omega = (alpha + beta) / 2;
-  const gamma = (alpha - beta) / 2;
-
-  // which side of the joints' circle `through` falls on says which arc it lies on
-  const r2 = x * x + y * y;
-  const side = Math.sin(omega) * ((1 - r2) * Math.sin(gamma) - 2 * y * Math.cos(gamma));
-  const p = side <= 0
-    ? ((x + 1) ** 2 + y * y) * Math.sin(omega) / ((1 - r2) * Math.sin(alpha) - 2 * y * Math.cos(alpha))
-    : ((1 - r2) * Math.sin(beta) + 2 * y * Math.cos(beta)) / (((x - 1) ** 2 + y * y) * Math.sin(omega));
-  if (!Number.isFinite(p) || Math.abs(p) < 1e-9 || Math.abs(p) > 1e9) return null;
-
+// the family's member at `p` (his eq. 18): its joint runs along one circle through both ends, from
+// `start` as p nears 0 to `end` as it grows, the arc between them inside the lens of the two single
+// arcs. p = 1 is the member with the least jump in curvature at the joint; negative p loops out
+// past the ends. Each arc is then the tangent arc from its own end to the joint. Null where the
+// joint lands on an end or runs off to infinity
+export function solveBiarcAt(start: Pt, startTangent: number, end: Pt, endTangent: number, p: number): ArcFit[] | null {
+  const { half, c, s, mid, gamma } = calcBiarcFrame(start, startTangent, end, endTangent);
+  if (half < 1e-9 || !Number.isFinite(p) || Math.abs(p) < 1e-9 || Math.abs(p) > 1e9) return null;
   const f = p * p + 2 * p * Math.cos(gamma) + 1;
   const jx = (p * p - 1) / f;
   const jy = 2 * p * Math.sin(gamma) / f;
@@ -696,6 +691,23 @@ export function solveBiarcThrough(start: Pt, startTangent: number, end: Pt, endT
   const first = fitTangentArc(start, startTangent, joint);
   const second = fitTangentArc(end, endTangent + TURN.half, joint);
   return first && second ? [first, second] : null;
+}
+
+// exactly one member passes through any point but the ends (his eq. 22); null where that member
+// collapses to one arc and a kink at an end
+export function solveBiarcThrough(start: Pt, startTangent: number, end: Pt, endTangent: number, through: Pt): ArcFit[] | null {
+  const { half, c, s, mid, alpha, beta, omega, gamma } = calcBiarcFrame(start, startTangent, end, endTangent);
+  if (half < 1e-9) return null;
+  const x = ((through.x - mid.x) * c + (through.y - mid.y) * s) / half;
+  const y = (-(through.x - mid.x) * s + (through.y - mid.y) * c) / half;
+
+  // which side of the joints' circle `through` falls on says which arc it lies on
+  const r2 = x * x + y * y;
+  const side = Math.sin(omega) * ((1 - r2) * Math.sin(gamma) - 2 * y * Math.cos(gamma));
+  const p = side <= 0
+    ? ((x + 1) ** 2 + y * y) * Math.sin(omega) / ((1 - r2) * Math.sin(alpha) - 2 * y * Math.cos(alpha))
+    : ((1 - r2) * Math.sin(beta) + 2 * y * Math.cos(beta)) / (((x - 1) ** 2 + y * y) * Math.sin(omega));
+  return solveBiarcAt(start, startTangent, end, endTangent, p);
 }
 
 // ===== Runs =====

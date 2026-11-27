@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { nearestFraction } from '../../../../helpers/nearestFraction';
-import { findJoiningArcs } from '../../../../helpers/math/draftMath';
+import { findJoiningArcs, solveBiarcAt } from '../../../../helpers/math/draftMath';
 import { calcChannelHalfWidth, calcChannelSweep } from '../../../../helpers/math/archMath';
 import {
-  closestPointOnSegment, dist, flipArcAboutY, offsetArcRadius, pointInPolygon, pointOnCircle, signedRadianDelta, TURN,
+  angleFromCenter, closestPointOnSegment, dist, flipArcAboutY, normalizeRadians, offsetArcRadius, pointInPolygon, pointOnCircle,
+  signedRadianDelta, TURN,
 } from '../../../../helpers/math/simpleGeometry';
 import { pathFromArc, samplePathToPolyline, translatePath } from '../../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../../helpers/math/pathVibes';
@@ -117,14 +118,6 @@ export const renderFluting = (
 export const renderFlutingInnerEdge = (f: FlutingSolve) => (g: any, ui: any): void => {
   if (f.top) renderPath(f.top.inner, ThemeService.getPalette('classicCremona').ink(TOP_CHANNEL_INK).faint(3), STROKE_WEIGHT.guide)(g, ui);
 };
-
-// a flank is joined from a little way back from its end rather than the end itself, which is
-// somewhere up the next bout, so it stops there
-function calcAngleBeforeEnd(arc: Arc, degrees: number): number {
-  const delta = signedRadianDelta(arc.end - arc.start);
-  const dir = Math.sign(delta) || 1;
-  return arc.end - dir * Math.min(degrees * TURN.degree, Math.abs(delta));
-}
 
 // some center bout / main bout fluting combinations degenerate, this catches those
 const MAX_JOIN_RADIUS_TO_CHORD = 10;
@@ -290,6 +283,33 @@ function solveSJoinWithRetreat(
   return null;
 }
 
+// where the S's joint sits between the bout arc's end (0) and C0's (1), along the circle every
+// joint between those two ends lies on. 0.5 is the S with the least jump in curvature at its joint
+const JOIN_JOINT_FROM_BOUT = 0.5;
+
+// the S run from arc1 into arc2 with its joint JOIN_JOINT_FROM_BOUT of the way from the bout. Each
+// end's heading is the way the channel runs there, so no way round is guessed. Null when the joint
+// lands on an end, or one of its arcs passes a half turn, which an Arc can't draw
+function solveSJoinAt(arc1: Arc, side1: 'start' | 'end', arc2: Arc, side2: 'start' | 'end', cBoutSide: 1 | 2): Arc[] | null {
+  const a1 = side1 === 'end' ? arc1.end : arc1.start;
+  const a2 = side2 === 'end' ? arc2.end : arc2.start;
+  const P1 = pointOnCircle(arc1, a1);
+  const P2 = pointOnCircle(arc2, a2);
+  const turn1 = (side1 === 'end' ? 1 : -1) * Math.sign(signedRadianDelta(arc1.end - arc1.start));
+  const turn2 = (side2 === 'end' ? -1 : 1) * Math.sign(signedRadianDelta(arc2.end - arc2.start));
+  // the family runs its joint from arc1's end as p nears 0 to arc2's as it grows
+  const t = cBoutSide === 2 ? JOIN_JOINT_FROM_BOUT : 1 - JOIN_JOINT_FROM_BOUT;
+  const fits = solveBiarcAt(P1, a1 + turn1 * TURN.quarter, P2, a2 + turn2 * TURN.quarter, t / (1 - t));
+  if (!fits || fits.some(f => normalizeRadians(f.endAngle - f.startAngle) > TURN.half)) return null;
+  const [f1, f2] = fits;
+  const joint = [f1.startAngle, f1.endAngle].map(a => pointOnCircle({ x: f1.center.x, y: f1.center.y, r: f1.radius }, a))
+    .sort((p, q) => dist(q, P1) - dist(p, P1))[0];
+  return [
+    new Arc(f1.center.x, f1.center.y, f1.radius, angleFromCenter(f1.center, P1), angleFromCenter(f1.center, joint)),
+    new Arc(f2.center.x, f2.center.y, f2.radius, angleFromCenter(f2.center, joint), angleFromCenter(f2.center, P2)),
+  ];
+}
+
 // the fluting's edge, the plate edge `delta` in with the corners followed: the line the channel is cut
 // inside. Null when the offset is too far in for the corner arcs to exist
 function defineFlutingEdgePath(p: ViolinFamilyParams, rib: RibArcs, delta: number, neckR: number | null): string | null {
@@ -301,18 +321,25 @@ function defineFlutingEdgePath(p: ViolinFamilyParams, rib: RibArcs, delta: numbe
   }
 }
 
-// a flank shorter than the join-back is cut to nothing: the join still leaves from its start
-// with its heading, but a zero-length arc in the path is one the sampler can't measure
-function pushFlankArc(arcs: Arc[], arc: Arc, offset: number, back: number): Arc {
+// how far down a viol flank the channel follows it before the S takes off: its share of the
+// flank's sweep from the shoulder (0) to the corner tip (1)
+const FLANK_TAKEOFF_ALONG = 0.75;
+
+// the flank cut where the S takes off. Cut to nothing, it stays out of the path, as a zero-length
+// arc is one the sampler can't measure, but keeps a sliver of its sweep, as the join reads which
+// way the channel runs from that
+function pushFlankArc(arcs: Arc[], arc: Arc, offset: number): Arc {
   let cut = offsetArcRadius(arc, offset);
-  cut.end = calcAngleBeforeEnd(cut, back);
-  if (Math.abs(signedRadianDelta(cut.end - cut.start)) > 1e-9) arcs.push(cut);
+  let sweep = signedRadianDelta(cut.end - cut.start);
+  cut.end = cut.start + sweep * FLANK_TAKEOFF_ALONG;
+  if (Math.abs(sweep * FLANK_TAKEOFF_ALONG) > 1e-9) arcs.push(cut);
+  else cut.end = cut.start + (Math.sign(sweep) || 1) * 1e-9;
   return cut;
 }
 
 // the channel's arcs at `offset` from the rib line (in when negative), C0 at its own: the bouts'
 // offset arcs, and in place of each corner the S joining C0 to the bout arc beside it. A viol
-// corner's flank is joined from a little way back from its end. Null when a join can't be made
+// corner's flank is followed FLANK_TAKEOFF_ALONG of the way to its tip. Null when a join can't be made
 function solveChannelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, edge: Pt[] | null, neckStart?: number): Arc[] | null {
   let k = p.corners!;
   let arcs = solveOffsetArcs(p, rib, offset, 'none', centerOffset, neckStart).bouts;
@@ -322,17 +349,13 @@ function solveChannelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, c
   let C0 = arcs[at];
   let L2 = k.useViolCornerLC ? null : arcs[at - 1];
   let U2 = k.useViolCornerUC ? null : arcs[at + 1];
-  let back = k.useViolCornerLC && k.useViolCornerUC ? 10 : 12;
 
-  if (L2) easeCBoutEnd(L2, 'end', C0, 'end', false, 2, edge);
-  if (U2) easeCBoutEnd(C0, 'start', U2, 'end', true, 1, edge);
-
-  let lower = L2 ?? pushFlankArc(arcs, rib.L4!, offset, back);
-  let lowerJoin = solveSJoinWithRetreat(lower, 'end', C0, 'end', false, 2, edge);
+  let lower = L2 ?? pushFlankArc(arcs, rib.L4!, offset);
+  let lowerJoin = solveSJoinAt(lower, 'end', C0, 'end', 2);
   if (!lowerJoin) return null;
 
-  let upper = U2 ?? pushFlankArc(arcs, rib.U4!, offset, back);
-  let upperJoin = solveSJoinWithRetreat(C0, 'start', upper, 'end', true, 1, edge);
+  let upper = U2 ?? pushFlankArc(arcs, rib.U4!, offset);
+  let upperJoin = solveSJoinAt(C0, 'start', upper, 'end', 1);
   if (!upperJoin) return null;
 
   return [...arcs, ...lowerJoin, ...upperJoin];

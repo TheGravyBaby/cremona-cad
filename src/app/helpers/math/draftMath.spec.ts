@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { arcBetweenTravels, arcContinuingFrom, fitArcFromEndsAndCenter, fitArcThroughPoints, interceptCirclesAndPoint, interceptCirclesAndPointCompound, interceptCirclesAndPointCompoundBySweep, solveBiarcThrough, ArcFit } from './draftMath';
+import { arcBetweenTravels, arcContinuingFrom, fitArcFromEndsAndCenter, fitArcThroughPoints, interceptCirclesAndPoint, interceptCirclesAndPointCompound, interceptCirclesAndPointCompoundBySweep, solveBiarcAt, solveBiarcThrough, ArcFit } from './draftMath';
 import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, pointOnCircle, signedRadianDelta, travelAtArcEnd } from './simpleGeometry';
 import { Circle } from '../../models/types';
 
@@ -212,6 +212,35 @@ describe('solveBiarcThrough', () => {
       const outOfJoint = travelAt(second, end, angleFromCenter(second.center, joint)) + Math.PI;
       expect(Math.abs(signedRadianDelta(intoJoint - outOfJoint))).toBeLessThan(1e-5);
       expect(onArc(first, through) || onArc(second, through)).toBe(true);
+    }
+    expect(solved).toBeGreaterThan(200);
+  });
+
+  it('is the member solveBiarcAt names when passed through its joint, which turns smoothly', () => {
+    let solved = 0;
+    for (let i = 0; i < 300; i++) {
+      const start = { x: rand(-50, 50), y: rand(-50, 50) };
+      const end = { x: rand(-50, 50), y: rand(-50, 50) };
+      const chord = dist(start, end);
+      if (chord < 5) continue;
+      const startTangent = rand(-Math.PI, Math.PI);
+      const endTangent = rand(-Math.PI, Math.PI);
+      const t = rand(0.05, 0.95);
+
+      const arcs = solveBiarcAt(start, startTangent, end, endTangent, t / (1 - t));
+      if (!arcs) continue;
+      solved++;
+      const [first, second] = arcs;
+      const joint = otherEnd(first, start);
+      expect(dist(otherEnd(second, end), joint)).toBeLessThan(1e-6 * chord);
+      const intoJoint = travelAt(first, start, angleFromCenter(first.center, joint));
+      const outOfJoint = travelAt(second, end, angleFromCenter(second.center, joint)) + Math.PI;
+      expect(Math.abs(signedRadianDelta(intoJoint - outOfJoint))).toBeLessThan(1e-5);
+
+      const through = solveBiarcThrough(start, startTangent, end, endTangent, joint);
+      expect(through).not.toBeNull();
+      expect(dist(through![0].center, first.center)).toBeLessThan(1e-6 * Math.max(chord, first.radius));
+      expect(dist(through![1].center, second.center)).toBeLessThan(1e-6 * Math.max(chord, second.radius));
     }
     expect(solved).toBeGreaterThan(200);
   });

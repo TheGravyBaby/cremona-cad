@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { dist, pointInPolygon, pointOnCircle } from '../../../../helpers/math/simpleGeometry';
+import { dist, pointInPolygon, pointOnCircle, signedRadianDelta } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
@@ -198,6 +198,27 @@ describe('the channel', () => {
       for (const d of [...edges(t.top!), ...edges(t.back!)]) {
         expect(subpaths(d), label).toBe(1);
         expect(closed(d), label).toBe(true);
+      }
+    }
+  });
+});
+
+describe('the channel at a viol corner', () => {
+  it('runs on from the flank without a kink, on every edge', () => {
+    for (const corner of ['useViolCornerUC', 'useViolCornerLC'] as const) {
+      const p = blank();
+      MainBoutsPanel.seed(p);
+      CornersPanel.seed(p);
+      p.corners![corner] = true;
+      PlateContourPanel.seed(p);
+      FlutingPanel.seed(p);
+      const s = solveFluting(p)!;
+      expect(s.failures).toEqual([]);
+      for (const d of edges(s.top!)) {
+        const q = points(d);
+        const turns = q.slice(2).map((c, i) =>
+          Math.abs(signedRadianDelta(Math.atan2(c.y - q[i + 1].y, c.x - q[i + 1].x) - Math.atan2(q[i + 1].y - q[i].y, q[i + 1].x - q[i].x))));
+        expect(Math.max(...turns)).toBeLessThan(3 * Math.PI / 180);
       }
     }
   });
