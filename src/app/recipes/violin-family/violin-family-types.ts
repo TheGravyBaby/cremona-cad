@@ -74,7 +74,6 @@ export interface MainBoutsParams {
 
 export interface ViolNeckParams {
   width: number;
-  neckRadius: number;
   V0R: number;
   // degrees: how far the join turns the outline down from the level top face, and how far V0 then
   // sweeps on from that heading before U0 takes over

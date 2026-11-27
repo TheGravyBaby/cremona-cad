@@ -48,4 +48,3 @@ Some viols and basses feature a long straight section before the bout curves upw
 | Join Turn | Defines the angle at which the viol neck begins to curve downward. |
 | V0 Sweep | The degrees for V0s arc sweep.|
 | Width | The distance between the end segments of V0, the width of the neck. |
-| Join Radius | Necks feature varying degrees of rounding at their top. Use this to set the rounding to your liking. |

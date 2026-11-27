@@ -97,12 +97,6 @@
                 <span class="field-title">Width</span>
                 <input type="number" class="basic-input" step="1" [(ngModel)]="viol.width" (input)="recordEditAndRedraw()" />
             </label>
-            <label class="field-cell">
-                <span class="field-title">Join Radius</span>
-                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="viol.neckRadius" (input)="recordEditAndRedraw()" />
-            </label>
-            <button type="button" class="info-icon" (click)="showFieldHelp('violNeckJoin')" title="More information"
-                aria-label="Information">ⓘ</button>
         </div>
     </div>
     }

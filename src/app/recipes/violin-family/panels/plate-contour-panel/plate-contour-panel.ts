@@ -241,7 +241,7 @@ export function solveOffsetArcs(p: ViolinFamilyParams, rib: RibArcs, offset: num
   bouts.push(offsetArcRadius(rib.U1, offset));
   bouts.push(offsetArcRadius(rib.U0, offset));
   if (b.useViolNeck && rib.V0) {
-    let cap = calcViolNeckCap(rib.V0, b.viol!.neckRadius, offset);
+    let cap = calcViolNeckCap(rib.V0, offset);
     let V0off = offsetArcRadius(rib.V0, -offset);
     if (cap) V0off.start = cap.v0Start;
     bouts.push(V0off);
@@ -316,7 +316,7 @@ function defineButton(b: ButtonParams, topY: number, U0: Arc | null): { paths: s
 }
 
 export function defineViolNeckTopLine(p: ViolinFamilyParams, rib: RibArcs, d: number): string | null {
-  const cap = p.bouts!.useViolNeck && rib.V0 ? calcViolNeckCap(rib.V0, p.bouts!.viol!.neckRadius, d) : null;
+  const cap = p.bouts!.useViolNeck && rib.V0 ? calcViolNeckCap(rib.V0, d) : null;
   return cap ? pathFromLine({ x: cap.topX, y: cap.topY }, { x: -cap.topX, y: cap.topY }) : null;
 }
 
@@ -338,7 +338,7 @@ export function defineOuterPath(p: ViolinFamilyParams, rib: RibArcs, offset: num
   if (!corners.length) throw new Error('the corner arcs do not meet');
 
   // a button wider than the neck face has nothing to stand on, so it takes the face
-  const neck = b.useViolNeck && rib.V0 ? calcViolNeckCap(rib.V0, b.viol!.neckRadius, offset) : null;
+  const neck = b.useViolNeck && rib.V0 ? calcViolNeckCap(rib.V0, offset) : null;
   let bt: ReturnType<typeof defineButton> = null;
   if (withButton && neck) bt = defineButton({ width: Math.min(pc.button.width, 2 * neck.topX), height: pc.button.height }, neck.topY, null);
   // U0 is the last arc pushed when there's no viol neck

@@ -64,7 +64,6 @@ export class MainBoutsPanel extends PanelComponentBase<MainBoutArcKey, ViolinFam
     if (p.bouts.useViolNeck && !p.bouts.viol) {
       p.bouts.viol = {
         width: p.bouts.UBW * .1,
-        neckRadius: 0,
         V0R: p.bouts.UBW / 5,
         joinTurn: 81,
         V0Sweep: 60,
@@ -149,7 +148,7 @@ export const renderMainBoutCircles = (m: MainBoutsSolve, pal: PanelPalette) => (
 // the main bouts in their own colours on this panel, where their fields are; grey under another
 // panel's work unless all arcs are shown. A bout whose section failed isn't drawn; its failure is
 // the join and the neck's top face, mirrored. Derived rather than authored, so plain even in the
-// module view. At a join radius of 0 there's no join arc: the rib corner is sharp
+// module view. The rib corner is sharp; only an outward offset rounds it
 const renderViolNeckJoin = (cap: ViolNeckCap, color: string) => (g: any, ui: any): void => {
   if (cap.fillet) renderMirroredArc(cap.fillet, color, STROKE_WEIGHT.trace)(g, ui);
   renderSegment(new Pt(cap.topX, cap.topY), new Pt(-cap.topX, cap.topY), color, STROKE_WEIGHT.trace)(g, ui);
@@ -301,7 +300,7 @@ export function solveMainBouts(p: ViolinFamilyParams): MainBoutsSolve | null {
   });
 
   solveSection(s.failures, 'Upper bout', ['U0', 'U1', 'U2'], () => {
-    let viol = b.useViolNeck && b.viol ? [b.viol.width, b.viol.neckRadius, b.viol.V0R, b.viol.joinTurn, b.viol.V0Sweep] : [];
+    let viol = b.useViolNeck && b.viol ? [b.viol.width, b.viol.V0R, b.viol.joinTurn, b.viol.V0Sweep] : [];
     let missing = buildBlankMiss('Upper bout', ['U0', 'U1', 'U2'], [inset, p.body.height, b.UBW, b.U0R, b.U1R, b.U2R, b.UJoinY, ...viol]);
     if (missing) return missing;
     let join = calcBoutJoin(UBWI / 2, b.U1R, b.U2R, b.UJoinY, b.UJoinY <= 0);
@@ -309,20 +308,15 @@ export function solveMainBouts(p: ViolinFamilyParams): MainBoutsSolve | null {
     let U1: Arc;
     if (b.useViolNeck && b.viol) {
       let v = b.viol;
-      // the flat top face runs out to width/2, then a join of neckRadius turns the corner into
-      // the flank. V0 begins where that join ends, so its centre goes back (Vr + R) along the
-      // start ray from the join's centre, which puts V0.start *on* the tangency instead of
-      // somewhere the join later trims off. At R = 0 the join centre is the corner itself. The join
-      // turns the outline down from the level top face, and V0 runs on from that heading
+      // the flat top face runs out to width/2, where V0 leaves the corner turning the outline down
+      // from level, so its centre goes back Vr along the start ray from that corner
       let start = 3 * TURN.quarter - v.joinTurn * TURN.degree;
       let end = start + v.V0Sweep * TURN.degree;
-      let joinCenter = new Pt(v.width / 2, p.body.height - inset - v.neckRadius);
-      let VyDiff = Math.sin(start) * (v.V0R + v.neckRadius);
-      let VxDiff = Math.cos(start) * (v.V0R + v.neckRadius);
-      let V0 = new Arc(joinCenter.x - VxDiff, joinCenter.y - VyDiff, v.V0R, start, end);
+      let corner = new Pt(v.width / 2, p.body.height - inset);
+      let V0 = new Arc(corner.x - Math.cos(start) * v.V0R, corner.y - Math.sin(start) * v.V0R, v.V0R, start, end);
       s.V0 = V0;
-      s.violCap = calcViolNeckCap(V0, v.neckRadius, 0);
-      s.violOuterCap = calcViolNeckCap(V0, v.neckRadius, inset);
+      s.violCap = calcViolNeckCap(V0, 0);
+      s.violOuterCap = calcViolNeckCap(V0, inset);
       s.violJoin = calcViolNeckJoinLimit(p);
 
       let V0End = pointOnCircle(V0, V0.end);
@@ -409,7 +403,7 @@ export function calcViolNeckJoinLimit(p: ViolinFamilyParams): ViolNeckJoin | nul
   let start = 3 * TURN.quarter - v.joinTurn * TURN.degree;
   let end = start + v.V0Sweep * TURN.degree;
 
-  let reach = v.width / 2 - (v.V0R + v.neckRadius) * Math.cos(start) + v.V0R * Math.cos(end);
+  let reach = v.width / 2 - v.V0R * Math.cos(start) + v.V0R * Math.cos(end);
   let join = calcBoutJoin(b.UBW / 2 - inset, b.U1R, b.U2R, b.UJoinY, b.UJoinY <= 0);
   if (!join) return null;
   let limit = join.x - b.U1R * Math.cos(end);
@@ -418,18 +412,17 @@ export function calcViolNeckJoinLimit(p: ViolinFamilyParams): ViolNeckJoin | nul
 }
 
 // where the neck meets its top face at offset d: V0's new start, the join arc, and the face's end
-export function calcViolNeckCap(V0: Arc, neckRadius: number, d: number): ViolNeckCap | null {
-  let R = neckRadius;
+export function calcViolNeckCap(V0: Arc, d: number): ViolNeckCap | null {
+  let C = pointOnCircle(V0, V0.start);
 
-  if (R + d > 1e-9) {
-    // back down the start ray to the join's centre, the point V0 was seated against
-    let C = new Pt(V0.x + (V0.r + R) * Math.cos(V0.start), V0.y + (V0.r + R) * Math.sin(V0.start));
+  // offset outward, the sharp corner rounds about itself
+  if (d > 1e-9) {
     if (C.x <= 0) return null;
-    return { v0Start: V0.start, fillet: new Arc(C.x, C.y, R + d, V0.start + TURN.half, TURN.quarter), topX: C.x, topY: C.y + R + d };
+    return { v0Start: V0.start, fillet: new Arc(C.x, C.y, d, V0.start + TURN.half, TURN.quarter), topX: C.x, topY: C.y + d };
   }
 
-  let topY = V0.y + (V0.r + R) * Math.sin(V0.start) + R + d;
-  let P = calcNeckSeat(V0, V0.r - d, topY, pointOnCircle(V0, V0.start));
+  let topY = C.y + d;
+  let P = calcNeckSeat(V0, V0.r - d, topY, C);
   if (!P || P.x <= 0) return null;
   return { v0Start: angleFromCenter(V0, P), fillet: null, topX: P.x, topY };
 }

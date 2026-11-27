@@ -214,26 +214,19 @@ describe('the viol neck', () => {
     const v = p.bouts!.viol!;
     expect(normalizeRadians(-travelAtArcStart(m.V0!)) / TURN.degree).toBeCloseTo(v.joinTurn, 9);
     expect(signedArcSweep(m.V0!) / TURN.degree).toBeCloseTo(v.V0Sweep, 9);
-    const q = withViol();
-    q.bouts!.viol!.neckRadius = 4;
-    const fillet = solveMainBouts(q)!.violCap!.fillet!;
+    const fillet = m.violOuterCap!.fillet!;
     expect(normalizeRadians(fillet.end - fillet.start) / TURN.degree).toBeCloseTo(v.joinTurn, 9);
   });
 
-  it('closes the neck under the rib box\'s head, with or without a join radius', () => {
-    for (const neckRadius of [0, 4]) {
-      const q = withViol();
-      q.bouts!.viol!.neckRadius = neckRadius;
-      const cap = solveMainBouts(q)!.violCap!;
-      expect(cap.topY).toBeCloseTo(q.body.height - inset, 9);
-    }
+  it('closes the neck under the rib box\'s head', () => {
+    expect(m.violCap!.topY).toBeCloseTo(p.body.height - inset, 9);
+    expect(m.violOuterCap!.topY).toBeCloseTo(p.body.height, 9);
   });
 
   it('reads the join limit\'s reach off the solved V0, not just the closed form', () => {
-    for (const [width, neckRadius] of [[16, 0], [30, 6], [52, 0]] as const) {
+    for (const width of [16, 30, 52]) {
       const q = withViol();
       q.bouts!.viol!.width = width;
-      q.bouts!.viol!.neckRadius = neckRadius;
       const V0 = solveMainBouts(q)!.V0!;
       expect(calcViolNeckJoinLimit(q)!.reach).toBeCloseTo(pointOnCircle(V0, V0.end).x, 9);
     }

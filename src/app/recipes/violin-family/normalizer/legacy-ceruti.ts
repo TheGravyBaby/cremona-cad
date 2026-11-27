@@ -150,7 +150,7 @@ function legacyBouts(c: any): MainBoutsParams | undefined {
     useViolNeck: !!c.options.useViolNeck,
     // V0 ran counterclockwise from the join, which turns the outline down from the level top face
     viol: isArc(V0) ? {
-      width: c.viol.width, neckRadius: c.viol.neckRadius ?? 0, V0R: V0.r,
+      width: c.viol.width, V0R: V0.r,
       joinTurn: round(270 - normalizeRadians(V0.start) / TURN.degree), V0Sweep: deg(normalizeRadians(V0.end - V0.start)),
     } : null,
     CBW: b.CBW, C0R: b.C0.r, C0Y: b.C0.y,

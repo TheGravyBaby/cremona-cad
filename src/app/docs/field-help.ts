@@ -34,11 +34,6 @@ export const FIELD_HELP = {
     text:
       "Replaces the standard upper block geometry with a rounded neck profile common on viols, gambas, and double basses.",
   },
-  violNeckJoin: {
-    title: "Neck Join Radius",
-    text:
-      "Historical instruments have various degrees of rounding at their necks. These controls alter the degree of rounding.",
-  },
   violCorner: {
     title: "Viol Corner",
     text:
