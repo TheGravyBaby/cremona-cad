@@ -171,6 +171,22 @@ describe('the graduation solve', () => {
     }
   });
 
+  it('trims each corner block on a straight from one lining\'s inner edge to the other\'s', () => {
+    const p = seeded();
+    const { settings, solve: s } = solved(p);
+    const idx = buildPolylineIndex(ribLine(p));
+    const onInnerEdge = (q: Pt) => Math.abs(distPointToPolylineIndexed(q, idx) - settings.lining) < 0.05;
+    for (const d of s.blocks!.corners) {
+      // each command's end point, and whether it was reached by a straight
+      const steps = (d.match(/[MLAZ][^MLAZ]*/g) ?? []).filter(c => c[0] !== 'Z').map(c => {
+        const n = c.slice(1).trim().split(/[\s,]+/).map(Number);
+        return { straight: c[0] === 'L', end: new Pt(n[n.length - 2], n[n.length - 1]) };
+      });
+      const trims = steps.filter((step, i) => i > 0 && step.straight && onInnerEdge(step.end) && onInnerEdge(steps[i - 1].end) && dist(step.end, steps[i - 1].end) > 1);
+      expect(trims.length).toBe(1);
+    }
+  });
+
   it('cuts the boundary straight across at the blocks and runs the linings up beside them', () => {
     const s = solved(seeded()).solve;
     const neck = points(s.blocks!.neck);

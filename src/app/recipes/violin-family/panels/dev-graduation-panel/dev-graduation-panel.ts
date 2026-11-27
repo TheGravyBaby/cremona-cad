@@ -1,8 +1,8 @@
 import { Component, inject, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { flipRectAboutY, pointInPolygon } from '../../../../helpers/math/simpleGeometry';
+import { clipPolygonToHalfPlane, flipPointAboutY, pointInPolygon, segmentArcIntersections } from '../../../../helpers/math/simpleGeometry';
 import { filletRightAngleCorner } from '../../../../helpers/math/draftMath';
-import { pathFromPolyline, pathFromRect, samplePathToPolyline, translatePath } from '../../../../helpers/math/pathMath';
+import { pathFromPolygon, pathFromPolyline, pathFromRect, samplePathToPolyline, translatePath } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, closestPointToPolylineIndexed, distPointToPolylineIndexed, minCostAssignment, pointAtPolylineLength, polylineCumulativeLengths, Reading, thinPlateSplineFitter } from '../../../../helpers/math/vibeMath';
 import { differenceFromManyPaths, fieldBands, intersectionFromTwoPaths, mirroredLoop, normalOffsetZAt } from '../../../../helpers/math/pathVibes';
 import { renderFilledPath, renderPath, renderPointHalo, renderSolveFailures, renderText } from '../../../../helpers/renderFuncs';
@@ -14,7 +14,7 @@ import { IconDirective } from '../../../../icons/icon.directive';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { contrastRatio, PanelPalette, parseHex, ThemeService, toHex } from '../../../../theme/theme.service';
-import { Pt, Rectangle } from '../../../../models/types';
+import { Arc, Pt, Rectangle } from '../../../../models/types';
 import { GraduationParams, GraduationPoint, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey } from '../../violin-family-types';
 import { PanelComponentBase } from '../panel-component-base';
 import { updateSolved } from '../../violin-family-solved';
@@ -22,7 +22,7 @@ import { GraduationFailure, GraduationGround, GraduationSolve, Land, PlateContou
 import { familyStandards } from '../../violin-family-seed';
 import { solveMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { solveCorners, solvedRibArcs, RibArcs } from '../corners-panel/corners-panel';
-import { PLATE_LAYOUT_GAP, definePurflingPath, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { PLATE_LAYOUT_GAP, definePurflingPath, solveOffsetArcs, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholePlate } from '../fhole-placement-panel/fhole-placement-panel';
 import { solveFholeContours } from '../fhole-contours-panel/fhole-contours-panel';
 import { defineChannelLoop } from '../fluting-panel/fluting-panel';
@@ -881,6 +881,18 @@ function trimBlock(rect: Rectangle, inward: 1 | -1, trim: number): Rectangle | n
   return new Rectangle(new Pt(rect.Pt1.x, near), new Pt(rect.Pt2.x, face));
 }
 
+// a corner block as the mould sizes it, trimmed as a maker would on the straight from where one
+// lining's inner edge meets it to where the other's does, keeping the side with the corner's tip.
+// With no inset arcs it comes back square; null when the arcs don't meet it once each side
+function calcCornerBlockOutline(rect: Rectangle, tip: Pt, inset: Arc[]): Pt[] | null {
+  let [x0, x1] = [Math.min(rect.Pt1.x, rect.Pt2.x), Math.max(rect.Pt1.x, rect.Pt2.x)];
+  let [y0, y1] = [Math.min(rect.Pt1.y, rect.Pt2.y), Math.max(rect.Pt1.y, rect.Pt2.y)];
+  let square = [new Pt(x0, y0), new Pt(x1, y0), new Pt(x1, y1), new Pt(x0, y1)];
+  if (!inset.length) return square;
+  let meets = square.flatMap((a, i) => inset.flatMap(arc => segmentArcIntersections(a, square[(i + 1) % 4], arc)));
+  return meets.length === 2 ? clipPolygonToHalfPlane(square, meets[0], meets[1], tip) : null;
+}
+
 // a neck or end block as the mould sizes it, its inner face flat and the face's two corners
 // rounded. `inward` is +1 for a block whose face looks down the body (the neck block), -1 for one
 // looking up (the end block). The loop reaches past the rib line, to be cut to it, so the block's
@@ -945,8 +957,16 @@ export function solveGraduation(p: ViolinFamilyParams): GraduationSolve | null {
     faces.neck = Math.min(neck.Pt1.y, neck.Pt2.y) - hold;
     faces.end = Math.max(end.Pt1.y, end.Pt2.y) + hold;
     if (!(faces.end < faces.neck)) return fail('Graduation: the blocks meet in the middle; nothing is left to graduate.', ['blockMargin']);
-    let corners = [blocks.upperCorner, flipRectAboutY(blocks.upperCorner), blocks.lowerCorner, flipRectAboutY(blocks.lowerCorner)];
-    uncut = [defineBlockLoop(neck, 1), defineBlockLoop(end, -1), ...corners.map(r => pathFromRect(r))];
+    // the corner blocks trimmed to the linings, treble then its bass mirror; left square until a lining solves
+    let off = Number.isFinite(gr.lining) && gr.lining > 0 ? solveOffsetArcs(p, rib!, -gr.lining, 'meet') : null;
+    let corners: Pt[][] = [];
+    for (let [rect, tip] of [[blocks.upperCorner, p.corners!.UCr], [blocks.lowerCorner, p.corners!.LCr]] as const) {
+      let trimmed = off?.corners.length ? calcCornerBlockOutline(rect, tip, [...off.bouts, ...off.corners]) : null;
+      if (off?.corners.length && !trimmed) s.failures.push(fail('Graduation: a lining doesn\'t meet its corner block once each side, so the block is left square. Bring the lining in less, or resize the block on the mould.', ['lining']));
+      let outline = trimmed ?? calcCornerBlockOutline(rect, tip, [])!;
+      corners.push(outline, outline.map(q => flipPointAboutY(q)));
+    }
+    uncut = [defineBlockLoop(neck, 1), defineBlockLoop(end, -1), ...corners.map(q => pathFromPolygon(q))];
     let [neckShape, endShape, ...cornerShapes] = uncut.map(d => intersectionFromTwoPaths(ribLine, d));
     s.blocks = { neck: neckShape, end: endShape, corners: cornerShapes };
     return null;

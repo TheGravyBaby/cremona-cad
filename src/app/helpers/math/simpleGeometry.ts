@@ -128,6 +128,21 @@ export function pointInPolygon(point: Pt, polygon: Pt[]): boolean {
   return inside;
 }
 
+// what is left of the polygon on `keep`'s side of the line through a and b
+export function clipPolygonToHalfPlane(polygon: Pt[], a: Pt, b: Pt, keep: Pt): Pt[] {
+  const along = subVec(b, a);
+  const sense = Math.sign(cross(along, subVec(keep, a)));
+  const side = (q: Pt) => sense * cross(along, subVec(q, a));
+  const kept: Pt[] = [];
+  polygon.forEach((q, i) => {
+    const r = polygon[(i + 1) % polygon.length];
+    const sq = side(q), sr = side(r);
+    if (sq >= 0) kept.push(q);
+    if (sq * sr < 0) kept.push(lerpVec(q, r, sq / (sq - sr)) as Pt);
+  });
+  return kept;
+}
+
 // ===== Circles =====
 
 export function pointOnCircle(circle: Circle, angle: number): Pt {
@@ -485,6 +500,21 @@ export function arcHorizontalIntersections(arc: Arc, y: number): Pt[] {
   const xOff = Math.sqrt(arc.r * arc.r - dy * dy);
   const candidates: Pt[] = [{ x: arc.x + xOff, y }, { x: arc.x - xOff, y }];
   return candidates.filter(pt => angleOnDrawnArc(arc, angleFromCenter(arc, pt)));
+}
+
+// where the segment from a to b crosses the arc's drawn (minor) span
+export function segmentArcIntersections(a: Pt, b: Pt, arc: Arc): Pt[] {
+  const d = subVec(b, a);
+  const f = subVec(a, arc);
+  const qa = dot(d, d);
+  const qb = 2 * dot(f, d);
+  const disc = qb * qb - 4 * qa * (dot(f, f) - arc.r * arc.r);
+  if (qa === 0 || disc < 0) return [];
+  const s = Math.sqrt(disc);
+  return [(-qb - s) / (2 * qa), (-qb + s) / (2 * qa)]
+    .filter(t => t >= 0 && t <= 1)
+    .map(t => lerpVec(a, b, t) as Pt)
+    .filter(q => angleOnDrawnArc(arc, angleFromCenter(arc, q)));
 }
 
 export function offsetArcRadius(arc: Arc, offset: number): Arc {
