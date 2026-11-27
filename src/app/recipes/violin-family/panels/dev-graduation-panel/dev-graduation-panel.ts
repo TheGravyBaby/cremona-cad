@@ -45,7 +45,10 @@ export type GraduationPlate = typeof GRADUATION_PLATES[number];
 const DEFAULT_SPACING = 40;
 // how near an added point may come to one already placed: the dot and its thickness label
 const POINT_CLEARANCE = 40;
+// how long a spacing waits to be laid as a grid, so a grid isn't laid at each digit typed
 const EDIT_DEBOUNCE_MS = 500;
+// how long the map's solve waits after the last draw that left it unsolved
+const MAP_SETTLE_MS = 400;
 // where each plate is drawn: the top at the origin, the back beside it as the plate contour lays them
 const PLATE_DX: Record<GraduationPlate, (p: ViolinFamilyParams) => number> = { top: () => 0, back: p => -p.body.width * PLATE_LAYOUT_GAP };
 const round = (v: number): number => Math.round(v * 10) / 10;
@@ -82,7 +85,11 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
   private pickTool: PickPointTool | null = null;
   // whether the held pick places a twin across the joint as well
   pickMirror = false;
-  private pending: ReturnType<typeof setTimeout> | undefined;
+  // the map as last solved. An edit that clears it is drawn at once over this map faded, and the
+  // map's own solve (the lands, fields and bands, about a second) runs once the drawing settles
+  private shownBands: Record<GraduationPlate, ThicknessBand[]> | null = null;
+  private mapTimer: ReturnType<typeof setTimeout> | undefined;
+  private mapDue = false;
   // a spacing being typed or stepped, laid as a grid once it settles
   private gridPending: { plate: GraduationPlate; timer: ReturnType<typeof setTimeout> } | undefined;
   private unwatchTools =this.tools.onChange(() => {
@@ -107,7 +114,7 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
 
   ngOnDestroy(): void {
     this.layGridNow();
-    if (this.pending !== undefined) this.recordEditAndRedraw();
+    clearTimeout(this.mapTimer);
     this.unwatchTools();
     if (this.pickTool) this.tools.selectTool(null);
   }
@@ -150,22 +157,10 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
     return new Pt(pt.x - PLATE_DX[plate](this.params), pt.y);
   }
 
-  override recordEditAndRedraw(): void {
-    clearTimeout(this.pending);
-    this.pending = undefined;
-    super.recordEditAndRedraw();
-  }
-
-  // typed and stepped fields settle before the solve runs, since it is slow
-  editedSoon(): void {
-    clearTimeout(this.pending);
-    this.pending = setTimeout(() => this.recordEditAndRedraw(), EDIT_DEBOUNCE_MS);
-  }
-
-  setAllSoon(value: number | null): void {
+  setAll(value: number | null): void {
     if (value === null || !Number.isFinite(value)) return;
     for (let pt of this.picked) pt.thickness = value;
-    this.editedSoon();
+    this.recordEditAndRedraw();
   }
 
   layGridSoon(plate: GraduationPlate): void {
@@ -263,7 +258,7 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
     e?.preventDefault();
     if (!this.picked.length) return;
     for (let pt of this.picked) pt.thickness = Math.max(0, Math.round((pt.thickness + delta) * 100) / 100);
-    this.editedSoon();
+    this.recordEditAndRedraw();
   }
 
   move(dx: number, dy: number, e?: Event): void {
@@ -273,7 +268,7 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
       pt.x = Math.round((pt.x + dx) * 100) / 100;
       pt.y = Math.round((pt.y + dy) * 100) / 100;
     }
-    this.editedSoon();
+    this.recordEditAndRedraw();
   }
 
   // the arrows move the pick on the plate, = and - step its thickness
@@ -327,21 +322,32 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
   protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
     this.maps = { top: this.mapOf('top'), back: this.mapOf('back') };
-    let all = GRADUATION_PLATES.flatMap(plate => this.gr[plate].points.map(pt => pt.thickness)).filter(Number.isFinite);
-    // the boundary reads what the arching left over the flat, which can sit under every point, and
-    // the top's holes carry the f-hole thickness
-    for (let plate of GRADUATION_PLATES) {
-      let field = solvedThicknessField(p, plate);
-      if (field) all.push(field.range.lo, field.range.hi);
+    clearTimeout(this.mapTimer);
+    let fresh = this.mapDue || !this.shownBands || isThicknessMapHeld(p);
+    this.mapDue = false;
+    if (fresh) {
+      let all = GRADUATION_PLATES.flatMap(plate => this.gr[plate].points.map(pt => pt.thickness)).filter(Number.isFinite);
+      // the boundary reads what the arching left over the flat, which can sit under every point, and
+      // the top's holes carry the f-hole thickness
+      for (let plate of GRADUATION_PLATES) {
+        let field = solvedThicknessField(p, plate);
+        if (field) all.push(field.range.lo, field.range.hi);
+      }
+      let lo = all.length ? Math.floor(Math.min(...all) * 2) / 2 : 0;
+      let hi = all.length ? Math.ceil(Math.max(...all) * 2) / 2 : 1;
+      this.scale = { lo, hi: Math.max(hi, lo + 1) };
+      this.shownBands = { top: solvedThicknessBands(p, 'top'), back: solvedThicknessBands(p, 'back') };
+    } else {
+      this.mapTimer = setTimeout(() => {
+        this.mapDue = true;
+        this.drawCanvas();
+      }, MAP_SETTLE_MS);
     }
-    let lo = all.length ? Math.floor(Math.min(...all) * 2) / 2 : 0;
-    let hi = all.length ? Math.ceil(Math.max(...all) * 2) / 2 : 1;
-    this.scale = { lo, hi: Math.max(hi, lo + 1) };
     let rib = solvedRibArcs(p);
     let solve = this.solve = solvedGraduation(p)!;
     let pc = solvedPlateContour(p);
     return [
-      renderThicknessMap(p, this.scale, this.pal),
+      renderThicknessMap(p, this.shownBands!, this.scale, this.pal, !fresh),
       renderFholePlate(p, pc, this.pal, rib, false),
       renderBackPlate(p, pc, this.pal, rib),
       renderGraduation(p, solve, this.pal),
@@ -419,20 +425,22 @@ export function rampFill(pal: PanelPalette, scale: { lo: number; hi: number }, t
 
 // both plates' thickness maps, the bands stacked thin to thick in the ramp's colours, under
 // everything else drawn; each band's edge is traced as a contour line a shade darker than its
-// fill, so the steps read as a map and not a wash
-export const renderThicknessMap = (p: ViolinFamilyParams, scale: { lo: number; hi: number }, pal: PanelPalette) => (g: any, ui: any): void => {
+// fill, so the steps read as a map and not a wash. A stale map, waiting on its solve, is faded
+export const renderThicknessMap = (p: ViolinFamilyParams, bands: Record<GraduationPlate, ThicknessBand[]>, scale: { lo: number; hi: number }, pal: PanelPalette, stale: boolean) => (g: any, ui: any): void => {
+  let opacity = stale ? STALE_MAP_OPACITY : 1;
   for (let plate of GRADUATION_PLATES) {
     let dx = PLATE_DX[plate](p);
-    let bands = solvedThicknessBands(p, plate);
-    bands.forEach(({ level, polygons }, i) => {
+    bands[plate].forEach(({ level, polygons }, i) => {
       let d = polygons.map(poly => poly.map(ring => pathFromPolyline(ring.map(q => new Pt(q.x + dx, q.y)), true)).join(' ')).join(' ');
       let fill = rampFill(pal, scale, level + CONTOUR_INTERVAL / 2);
-      renderFilledPath(d, fill, 1, 'evenodd')(g, ui);
+      renderFilledPath(d, fill, opacity, 'evenodd')(g, ui);
       // the lowest band's edge is the boundary itself, already drawn
-      if (i > 0) renderPath(d, shade(fill, 0.35), STROKE_WEIGHT.guide, 0.7)(g, ui);
+      if (i > 0) renderPath(d, shade(fill, 0.35), STROKE_WEIGHT.guide, 0.7 * opacity)(g, ui);
     });
   }
 };
+
+const STALE_MAP_OPACITY = 0.35;
 
 // a colour pulled toward black by `f`
 function shade(hex: string, f: number): string {
@@ -845,6 +853,12 @@ export const CONTOUR_INTERVAL = 0.25;
 const RASTER_COLUMNS = 80;
 // the clip needs no finer a loop than the raster; cutting to the boundary as sampled costs four times as much
 const CLIP_STEP = 2;
+
+// whether both plates' bands stand solved on the params, so the map draws without solving
+function isThicknessMapHeld(p: ViolinFamilyParams): boolean {
+  updateSolved(p);
+  return p.solved!.thicknessBandsTop.solve !== undefined && p.solved!.thicknessBandsBack.solve !== undefined;
+}
 
 // a plate's bands as held on the params, solved first if an edit has cleared them
 export function solvedThicknessBands(p: ViolinFamilyParams, plate: GraduationPlate): ThicknessBand[] {
