@@ -1,13 +1,13 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { dist, pointInPolygon } from '../../../../helpers/math/simpleGeometry';
+import { dist, pointInPolygon, pointOnCircle } from '../../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../../helpers/math/vibeMath';
 import { Pt } from '../../../../models/types';
 import { calcChannelHalfWidth } from '../../../../helpers/math/archMath';
-import { FlutingPanel, solveFluting } from './fluting-panel';
-import { PlateContourPanel, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
-import { CornersPanel, solveCorners } from '../corners-panel/corners-panel';
+import { defineChannelLoop, FlutingPanel, solveFluting } from './fluting-panel';
+import { calcNeckPurflingRadius, PlateContourPanel, solveNeckPurflingArc, solvePlateContour } from '../plate-contour-panel/plate-contour-panel';
+import { CornersPanel, solveCorners, solvedRibArcs } from '../corners-panel/corners-panel';
 import { MainBoutsPanel } from '../main-bouts-panel/main-bouts-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
 import { ChannelSolve } from '../../violin-family-solves';
@@ -200,6 +200,47 @@ describe('the channel', () => {
         expect(closed(d), label).toBe(true);
       }
     }
+  });
+});
+
+describe('the channel across a viol neck', () => {
+  const p = violNecked(q => solveFluting(q)!.failures.length === 0);
+  const pc = p.plateContour!;
+  const rib = solvedRibArcs(p)!;
+  const r = calcNeckPurflingRadius(p, rib)!;
+  const t = solveFluting(p)!;
+  const top = (d: string) => Math.max(...points(d).map(q => q.y));
+  const crown = top(solvePlateContour(p)!.purfling!);
+
+  it('crosses on the purfling\'s arc, each edge its own distance in from it', () => {
+    const w = calcChannelHalfWidth(p.fluting!.top.width, p.fluting!.top.depth);
+    const edge = p.fluting!.flutingEdge;
+    for (const [d, delta] of [[t.flutingEdge!, edge], [t.top!.outer, edge], [t.top!.center, edge + w], [t.top!.inner, edge + 2 * w]] as const) {
+      if (r + pc.purflingOffset - delta <= 0) continue;
+      expect(top(d)).toBeCloseTo(crown + pc.purflingOffset - delta, 2);
+    }
+  });
+
+  it('meets on the centreline in a point once an edge runs in past the arc\'s centre, and still closes', () => {
+    const inset = p.body.overhang + p.body.rib;
+    const deep = inset - pc.purflingOffset - r - 2;
+    const neck = solveNeckPurflingArc(p, rib, deep, r)!;
+    expect(neck.arc).toBeNull();
+    const V0 = { x: rib.V0!.x, y: rib.V0!.y, r: rib.V0!.r - deep };
+    expect(pointOnCircle(V0, neck.v0Start).x).toBeCloseTo(0, 9);
+    const loop = defineChannelLoop(p, rib, deep, deep, null, r);
+    expect(loop.path).not.toBeNull();
+    expect(subpaths(loop.path!)).toBe(1);
+    expect(closed(loop.path!)).toBe(true);
+  });
+
+  it('fails the channel until the purfling solves, as it follows the purfling\'s arc', () => {
+    const q: ViolinFamilyParams = JSON.parse(JSON.stringify(p));
+    q.plateContour!.neckPurflingRadius = 0;
+    const s = solveFluting(q)!;
+    expect(s.top).toBeNull();
+    expect(s.back).toBeNull();
+    expect(s.failures.length).toBeGreaterThan(0);
   });
 });
 

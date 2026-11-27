@@ -24,6 +24,7 @@ import { solveCorners, solvedRibArcs, RibArcs } from '../corners-panel/corners-p
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import {
   solveOffsetArcs, defineOuterPath, PLATE_LAYOUT_GAP, renderPlateContour, solvedPlateContour, defineViolNeckTopLine,
+  calcNeckPurflingRadius, solveNeckPurflingArc,
 } from '../plate-contour-panel/plate-contour-panel';
 
 // The fluting channel: the hollow cut into each plate inside the flat left round its edge. The
@@ -291,10 +292,10 @@ function solveSJoinWithRetreat(
 
 // the fluting's edge, the plate edge `delta` in with the corners followed: the line the channel is cut
 // inside. Null when the offset is too far in for the corner arcs to exist
-function defineFlutingEdgePath(p: ViolinFamilyParams, rib: RibArcs, delta: number): string | null {
+function defineFlutingEdgePath(p: ViolinFamilyParams, rib: RibArcs, delta: number, neckR: number | null): string | null {
   let inset = p.body.overhang + p.body.rib;
   try {
-    return defineOuterPath(p, rib, inset - delta, false).path;
+    return defineOuterPath(p, rib, inset - delta, false, neckR).path;
   } catch {
     return null;
   }
@@ -312,9 +313,9 @@ function pushFlankArc(arcs: Arc[], arc: Arc, offset: number, back: number): Arc 
 // the channel's arcs at `offset` from the rib line (in when negative), C0 at its own: the bouts'
 // offset arcs, and in place of each corner the S joining C0 to the bout arc beside it. A viol
 // corner's flank is joined from a little way back from its end. Null when a join can't be made
-function solveChannelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, edge: Pt[] | null): Arc[] | null {
+function solveChannelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, edge: Pt[] | null, neckStart?: number): Arc[] | null {
   let k = p.corners!;
-  let arcs = solveOffsetArcs(p, rib, offset, 'none', centerOffset).bouts;
+  let arcs = solveOffsetArcs(p, rib, offset, 'none', centerOffset, neckStart).bouts;
   // L0, L1, L2, C0, U2, U1, U0: whichever side is viol, its corner arc (L2/U2) drops out,
   // leaving C0 next to L1/U1
   let at = k.useViolCornerLC ? 2 : 3;
@@ -340,12 +341,16 @@ function solveChannelArcs(p: ViolinFamilyParams, rib: RibArcs, offset: number, c
 // one closed loop `offset` from the rib line (in when negative), the C bout's run at `centerOffset`,
 // the corners bypassed by the channel's S joins and kept inside `edge`. `joined` false when the C
 // bout can't be joined to the bouts; no path with it true when the loop doesn't close, as across a
-// neck face the loop has eaten. The graduation reads its boundary loop through this
-export function defineChannelLoop(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, edge: Pt[] | null): { path: string | null; joined: boolean } {
-  let arcs = solveChannelArcs(p, rib, offset, centerOffset, edge);
+// neck face the loop has eaten. Given `neckR`, the purfling's inner line radius, a viol neck is
+// crossed on the purfling's arc rather than along its face. The graduation reads its boundary loop
+// through this
+export function defineChannelLoop(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, edge: Pt[] | null, neckR: number | null = null): { path: string | null; joined: boolean } {
+  let neck = neckR !== null ? solveNeckPurflingArc(p, rib, offset, neckR) : null;
+  if (neckR !== null && !neck) return { path: null, joined: true };
+  let arcs = solveChannelArcs(p, rib, offset, centerOffset, edge, neck?.v0Start);
   if (!arcs) return { path: null, joined: false };
   let paths = [...arcs, ...arcs.map(arc => flipArcAboutY(arc))].map(arc => pathFromArc(arc));
-  let top = defineViolNeckTopLine(p, rib, offset);
+  let top = neck ? neck.arc && pathFromArc(neck.arc) : defineViolNeckTopLine(p, rib, offset);
   if (top) paths.push(top);
   try {
     return { path: unifyConnectedSvgPaths(paths), joined: true };
@@ -357,15 +362,15 @@ export function defineChannelLoop(p: ViolinFamilyParams, rib: RibArcs, offset: n
 // one edge of the channel, `offset` in from the plate edge, the C bout's run at `centerOffset`. The
 // fluting edge it has to stay inside is taken at the outer of the two, or C0's own end would sit
 // outside it
-export function defineChannelPath(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number): { path: string | null; joined: boolean } {
+export function defineChannelPath(p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, neckR: number | null = null): { path: string | null; joined: boolean } {
   let inset = p.body.overhang + p.body.rib;
-  let edge = defineFlutingEdgePath(p, rib, Math.min(offset, centerOffset));
-  return defineChannelLoop(p, rib, inset - offset, inset - centerOffset, edge ? samplePathToPolyline(edge, 0.5) : null);
+  let edge = defineFlutingEdgePath(p, rib, Math.min(offset, centerOffset), neckR);
+  return defineChannelLoop(p, rib, inset - offset, inset - centerOffset, edge ? samplePathToPolyline(edge, 0.5) : null, neckR);
 }
 
-function defineCachedChannelPath(cuts: Map<string, ReturnType<typeof defineChannelPath>>, p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number): ReturnType<typeof defineChannelPath> {
+function defineCachedChannelPath(cuts: Map<string, ReturnType<typeof defineChannelPath>>, p: ViolinFamilyParams, rib: RibArcs, offset: number, centerOffset: number, neckR: number | null): ReturnType<typeof defineChannelPath> {
   let key = `${offset} ${centerOffset}`;
-  if (!cuts.has(key)) cuts.set(key, defineChannelPath(p, rib, offset, centerOffset));
+  if (!cuts.has(key)) cuts.set(key, defineChannelPath(p, rib, offset, centerOffset, neckR));
   return cuts.get(key)!;
 }
 
@@ -396,7 +401,13 @@ export function solveFluting(p: ViolinFamilyParams): FlutingSolve | null {
     s.failures.push({ message: 'Fluting: the fluting edge needs a value of 0 or more.', unsolved: ['top', 'back'], circles: [], segments: [] });
     return s;
   }
-  s.flutingEdge = defineFlutingEdgePath(p, rib, f.flutingEdge);
+  // a viol neck's channel follows the purfling's arc across it, so the purfling has to stand first
+  let neckR = p.bouts.useViolNeck ? calcNeckPurflingRadius(p, rib) : null;
+  if (neckR !== null && !solvedPlateContour(p)!.purfling) {
+    s.failures.push({ message: 'Fluting: the purfling has to solve first; the channel follows its arc across the neck.', unsolved: ['top', 'back'], circles: [], segments: [] });
+    return s;
+  }
+  s.flutingEdge = defineFlutingEdgePath(p, rib, f.flutingEdge, neckR);
   // the plates usually take the same channels, and an edge is the same cut on either
   let cuts = new Map<string, ReturnType<typeof defineChannelPath>>();
 
@@ -413,14 +424,14 @@ export function solveFluting(p: ViolinFamilyParams): FlutingSolve | null {
 
       let edge = f.flutingEdge;
       let edges = [
-        defineCachedChannelPath(cuts, p, rib, edge, edge),
-        defineCachedChannelPath(cuts, p, rib, edge + w, edge + wC),
-        defineCachedChannelPath(cuts, p, rib, edge + 2 * w, edge + 2 * wC),
+        defineCachedChannelPath(cuts, p, rib, edge, edge, neckR),
+        defineCachedChannelPath(cuts, p, rib, edge + w, edge + wC, neckR),
+        defineCachedChannelPath(cuts, p, rib, edge + 2 * w, edge + 2 * wC, neckR),
       ];
       if (edges.some(e => !e.joined))
         return buildMiss(`${label}: the channel round the C bout can't be joined to the one round the bouts at these corners. Bring the two gouges closer, or open the corners.`, [plate]);
       if (edges.some(e => !e.path))
-        return buildMiss(`${label}: the channel doesn't close into one loop at this width; it has eaten the neck face. Narrow the gouge or bring the fluting edge in.`, [plate]);
+        return buildMiss(`${label}: the channel doesn't close into one loop at this width; it has eaten the neck. Narrow the gouge, bring the fluting edge in, or raise the neck's purfling radius.`, [plate]);
       let [outer, center, inner] = edges.map(e => e.path!);
       s[plate] = {
         outer, center, inner, sweep: calcChannelSweep(2 * w, channel.depth), cBoutSweep: calcChannelSweep(2 * wC, channel.depth),

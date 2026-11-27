@@ -276,16 +276,17 @@ describe('the purfling across a viol neck', () => {
         const neck = solveNeckPurflingArc(p, rib, offset, r)!;
         const V0 = { x: rib.V0!.x, y: rib.V0!.y, r: rib.V0!.r - offset };
         const meet = pointOnCircle(V0, neck.v0Start);
-        expect(dist(meet, pointOnCircle(neck.arc, neck.arc.start))).toBeCloseTo(0, 9);
-        expect(dist(V0, neck.arc)).toBeCloseTo(V0.r + neck.arc.r, 9);
-        expect(neck.arc.x).toBe(0);
+        const arc = neck.arc!;
+        expect(dist(meet, pointOnCircle(arc, arc.start))).toBeCloseTo(0, 9);
+        expect(dist(V0, arc)).toBeCloseTo(V0.r + arc.r, 9);
+        expect(arc.x).toBe(0);
       }
     }
   });
 
   it('reaches the neck\'s top face at its least radius, and sits lower above it', () => {
     const face = pointOnCircle(rib.V0!, rib.V0!.start).y + inner;
-    const crown = (r: number) => { const a = solveNeckPurflingArc(p, rib, inner, r)!.arc; return a.y + a.r; };
+    const crown = (r: number) => { const a = solveNeckPurflingArc(p, rib, inner, r)!.arc!; return a.y + a.r; };
     expect(crown(range.min)).toBeCloseTo(face, 9);
     expect(crown(range.min + 1)).toBeLessThan(face);
   });
