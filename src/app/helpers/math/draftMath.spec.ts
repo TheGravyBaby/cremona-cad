@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { arcBetweenTravels, arcContinuingFrom, fitArcFromEndsAndCenter, fitArcThroughPoints, interceptCirclesAndPoint, interceptCirclesAndPointCompound, interceptCirclesAndPointCompoundBySweep } from './draftMath';
+import { arcBetweenTravels, arcContinuingFrom, fitArcFromEndsAndCenter, fitArcThroughPoints, interceptCirclesAndPoint, interceptCirclesAndPointCompound, interceptCirclesAndPointCompoundBySweep, solveBiarcThrough, ArcFit } from './draftMath';
 import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, pointOnCircle, signedRadianDelta, travelAtArcEnd } from './simpleGeometry';
 import { Circle } from '../../models/types';
 
@@ -168,5 +168,51 @@ describe('fitArcFromEndsAndCenter', () => {
 
   it('returns null when the two ends coincide, leaving no bisector', () => {
     expect(fitArcFromEndsAndCenter({ x: 5, y: 5 }, { x: 5, y: 5 }, { x: 0, y: 0 })).toBeNull();
+  });
+});
+
+describe('solveBiarcThrough', () => {
+  let seed = 7;
+  const rand = (lo: number, hi: number) => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return lo + (hi - lo) * seed / 2147483648;
+  };
+  // which way the curve runs at `angle` on an arc fitted from `from`: counterclockwise when the
+  // fit kept `from` as its start angle
+  const travelAt = (arc: ArcFit, from: { x: number; y: number }, angle: number) =>
+    angle + (Math.abs(signedRadianDelta(arc.startAngle - angleFromCenter(arc.center, from))) < 1e-6 ? 1 : -1) * Math.PI / 2;
+  const otherEnd = (arc: ArcFit, from: { x: number; y: number }) =>
+    pointOnCircle({ x: arc.center.x, y: arc.center.y, r: arc.radius } as Circle,
+      Math.abs(signedRadianDelta(arc.startAngle - angleFromCenter(arc.center, from))) < 1e-6 ? arc.endAngle : arc.startAngle);
+  const onArc = (arc: ArcFit, q: { x: number; y: number }) =>
+    Math.abs(dist(arc.center, q) - arc.radius) < 1e-6 * Math.max(1, arc.radius)
+    && angleWithinSweep(angleFromCenter(arc.center, q), arc.startAngle - 1e-9, arc.endAngle + 1e-9);
+
+  it('leaves and arrives on its tangents, turns smoothly at the joint, and passes the point', () => {
+    let solved = 0;
+    for (let i = 0; i < 300; i++) {
+      const start = { x: rand(-50, 50), y: rand(-50, 50) };
+      const end = { x: rand(-50, 50), y: rand(-50, 50) };
+      const through = { x: rand(-80, 80), y: rand(-80, 80) };
+      const chord = dist(start, end);
+      if (chord < 5 || dist(through, start) < 0.05 * chord || dist(through, end) < 0.05 * chord) continue;
+      const startTangent = rand(-Math.PI, Math.PI);
+      const endTangent = rand(-Math.PI, Math.PI);
+
+      const arcs = solveBiarcThrough(start, startTangent, end, endTangent, through);
+      if (!arcs) continue;
+      solved++;
+      const [first, second] = arcs;
+      const joint = otherEnd(first, start);
+
+      expect(dist(otherEnd(second, end), joint)).toBeLessThan(1e-6 * chord);
+      expect(Math.abs(signedRadianDelta(travelAt(first, start, angleFromCenter(first.center, start)) - startTangent))).toBeLessThan(1e-6);
+      expect(Math.abs(signedRadianDelta(travelAt(second, end, angleFromCenter(second.center, end)) - (endTangent + Math.PI)))).toBeLessThan(1e-6);
+      const intoJoint = travelAt(first, start, angleFromCenter(first.center, joint));
+      const outOfJoint = travelAt(second, end, angleFromCenter(second.center, joint)) + Math.PI;
+      expect(Math.abs(signedRadianDelta(intoJoint - outOfJoint))).toBeLessThan(1e-5);
+      expect(onArc(first, through) || onArc(second, through)).toBe(true);
+    }
+    expect(solved).toBeGreaterThan(200);
   });
 });

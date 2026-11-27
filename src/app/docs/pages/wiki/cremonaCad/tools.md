@@ -43,7 +43,7 @@ The draw tools identify and snap to edges of existing geometry. When snapped to 
 | :arc-through: Three Point | Here you never define the center; your three clicks define points along the arc path. |
 | :arc-tangent: Tangent Arc | This tool will draw an arc that is always tangent to the path of a snapped shape. |
 | :arc-chain: Chained Arc | This tool allows you to draw multiple arcs that are smoothly joined. Hold *Shift* to change the sweep direction of the arc being drawn at the tangent point. |
-| :join-arc: Join Arc | This one is cool. Use this tool to draw a smooth biarc join between two selected paths. There are often multiple solutions, some of which can look fairly odd. Hit *Shift* to cycle through the solutions; there is usually a pretty one in there. |
+| :join-arc: Join Arc | This one is cool. Use this tool to draw a smooth biarc join between two snapped paths. Select the two ends and then select a point between them to adjust the bi-arc curve. Hit the shift key to cycle between various tangency options for your starting positions. |
 
 ## Circle & Polygons — C
 

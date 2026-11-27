@@ -70,7 +70,7 @@ On a Mac, *Cmd* works wherever *Ctrl* is listed.
 | Line: *Ctrl* (held, while dragging) | If the line was started on an edge, holding *Ctrl* locks the line angle to the tangent of that edge. |
 
 | Arc: *Shift* | Use the longer arc length between the two points |
-| Join Arc: *Shift* | Cycle through the possible joins |
+| Join Arc: *Shift* | Flip which way the join leaves each end |
 
 | Polyline: *Enter* or *double-click* | Finish |
 | Polyline: *Backspace* | Remove the last point |
