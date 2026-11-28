@@ -13,6 +13,8 @@ Theory alone would not have been sufficient to properly model these instruments.
 
 ## Reading
 
+### [**Coates, Kevin.**](https://archive.org/details/geometryproporti0000coat/page/16/mode/2up) *Geometry, Proportion, and the Art of Lutherie.* Oxford: Clarendon Press, 1985.
+
 ### [**Andrey, Denise, and Mirko Galli.**](https://doi.org/10.1007/s00004-004-0017-4) "Geometric Methods of the 1500s for Laying Out the Ionic Volute." *Nexus Network Journal* 6, no. 2 (2004): 31–48.
 
 ### [**Gonzalez, Sebastian, Davide Salvi, Daniel Baeza, Fabio Antonacci, and Augusto Sarti.**](https://doi.org/10.1038/s41598-021-88931-z) "A Data-Driven Approach to Violin Making." *Scientific Reports* 11 (2021): 9455.
@@ -26,6 +28,8 @@ Theory alone would not have been sufficient to properly model these instruments.
 ### [**Hargrave, Roger Graham.**](https://www.roger-hargrave.de/PDF/Arching/Arching_Purfling_Edgework.pdf) *Arching, Purfling & Edgework in Cremonese Instruments.* Edited by Chris Ruffo. Schwanewede: self-published, 2015. PDF.
 
 ### [**Mottola, R. M.**](http://SavartJournal.org/index.php/sj/article/view/12/pdf) "Comparison of Arching Profiles of Golden Age Cremonese Violins and Some Mathematically Generated Curves." *Savart Journal* 1, no. 1 (2011).
+
+### [**Kurnosenko, A. I.**](https://www.sciencedirect.com/science/article/abs/pii/S0167839612001276) "Biarcs and bilens." Computer Aided Geometric Design, 30, 310–330 (2013).
 
 ## Special Thanks
 A very special thanks to my partner, Caroline Dahm, who has beem my most ardent supporter and active tester, this app would have not been possible without her. Thanks dear <3. 
