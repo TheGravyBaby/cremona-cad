@@ -397,14 +397,14 @@
       "label": "Top (sp=2)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0002/full/pct:100.0/0/default.jpg",
       "x": -157.89043273925785,
-      "y": -17.314347076416,
+      "y": -17.514347076416,
       "width": 300.52673797607423,
       "height": 450.7901069641114,
       "rotationDeg": 359.7,
       "opacity": 0.75,
       "suppressWhite": true,
       "mirrored": false,
-      "locked": false,
+      "locked": true,
       "scope": {
         "except": [
           "volute",
