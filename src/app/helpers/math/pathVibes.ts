@@ -492,6 +492,10 @@ function exactIntersection(segA: PathSeg, segB: PathSeg, hint: [number, number])
   return best && bestDist < MAX_SNAP_DIST ? [best.x, best.y] : null;
 }
 
+function isSegEndpoint(seg: PathSeg, [x, y]: [number, number]): boolean {
+  return Math.hypot(seg.p0.x - x, seg.p0.y - y) < 1e-6 || Math.hypot(seg.p1.x - x, seg.p1.y - y) < 1e-6;
+}
+
 function snapRunBoundaries(runs: Run[], segments: PathSeg[]): void {
   const n = runs.length;
   for (let i = 0; i < n; i++) {
@@ -501,7 +505,19 @@ function snapRunBoundaries(runs: Run[], segments: PathSeg[]): void {
     const last = runs[i].points[runs[i].points.length - 1];
     const first = runs[j].points[0];
     const gap = Math.hypot(last[0] - first[0], last[1] - first[1]);
-    if (gap < 1e-6 || gap > MAX_SNAP_DIST) continue; // already exact, or too far to be this kind of gap
+    if (gap < 1e-6) continue;
+    // a vertex two source segments share is tagged to only one of them, and polygon-clipping can drop
+    // the collinear samples beside it, leaving a gap past MAX_SNAP_DIST: hand the vertex to the other
+    // run too, so a straight isn't drawn as a connector and a shortened copy of itself
+    if (isSegEndpoint(segments[runs[j].segIndex], last)) {
+      runs[j].points.unshift(last);
+      continue;
+    }
+    if (isSegEndpoint(segments[runs[i].segIndex], first)) {
+      runs[i].points.push(first);
+      continue;
+    }
+    if (gap > MAX_SNAP_DIST) continue; // too far to be this kind of gap
 
     const hint: [number, number] = [(last[0] + first[0]) / 2, (last[1] + first[1]) / 2];
     const snapped = exactIntersection(segments[runs[i].segIndex], segments[runs[j].segIndex], hint);
@@ -629,6 +645,9 @@ function booleanOpFromPaths(subjectPath: string, clipPaths: string[], op: 'diffe
   for (const polygon of result) {
     for (const ring of polygon) {
       if (ring.length < 3) continue;
+      // a shape touching the other tangentially can leave a sliver of no area where floating
+      // point puts the two a hair across each other
+      if (Math.abs(signedPolygonArea(ring.map(([x, y]) => new Pt(x, y)))) < 1e-6) continue;
       subpaths.push(ringToPrimitivePath(ring, segments, lookup));
     }
   }

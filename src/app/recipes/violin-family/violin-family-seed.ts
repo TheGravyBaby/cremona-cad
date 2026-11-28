@@ -5,14 +5,14 @@ import { NeckParams, StringSetupParams, ViolinFamilyParams } from './violin-fami
 
 // what a drafted outline reads as, named <thing>to<datum>. The radius ratios are taken against the
 // bout's inner width (the width less the inset both sides), as the Ceruti recipe always measured
-// them, so the two compare. Stamped on the file for study; nothing reads them back
+// them, so the two compare; the two join radii, U0 and L0, against the body's height. Stamped on the file for study; nothing reads them back
 export interface ViolinFamilyRatios {
   HtoW: number;
   UBtoLB: number;
-  U0toUBW: number;
+  U0toH: number;
   U1toUBW: number;
   LBtoH: number;
-  L0toLBW: number;
+  L0toH: number;
   L1toLBW: number;
   U2toUBW: number;
   U3toLBW: number;
@@ -68,10 +68,10 @@ export const SEED_RATIOS: ViolinFamilyRatios & { height: number } = {
   height: 356,
   HtoW: 7 / 4,
   UBtoLB: 4 / 5,
-  U0toUBW: 8 / 9,
+  U0toH: 7 / 18,
   U1toUBW: 2 / 5,
   LBtoH: 4 / 7,
-  L0toLBW: 3 / 2,
+  L0toH: 5 / 6,
   L1toLBW: 1 / 3,
   U2toUBW: 3 / 5,
   U3toLBW: 1 / 8,

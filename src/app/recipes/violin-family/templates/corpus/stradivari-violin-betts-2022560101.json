@@ -18,7 +18,7 @@
       "U1R": 61,
       "U2R": 96,
       "UJoinY": 0,
-      "L0R": 391,
+      "L0R": 286.3,
       "L1R": 69,
       "L2R": 84,
       "LJoinY": 0,
@@ -246,9 +246,14 @@
       "nutWidth": 25
     },
     "stringSetup": {
+      "bridgeWidth": 43,
+      "soundPostOffset": {
+        "x": -5,
+        "y": -8
+      },
+      "soundPostDiameter": 6,
       "bodyStop": 196.9,
       "bridgeHeight": 33,
-      "bridgeWidth": 43,
       "nutThickness": 6.5,
       "fingerboardLength": 270,
       "fingerboardThickness": 4,
@@ -256,12 +261,7 @@
       "fingerboardEndRadius": 43,
       "scoopAt": 135,
       "scoopBass": 0.75,
-      "scoopTreble": 0.5,
-      "soundPostOffset": {
-        "x": -5,
-        "y": -8
-      },
-      "soundPostDiameter": 6
+      "scoopTreble": 0.5
     },
     "scroll": {
       "style": "salviati",
@@ -349,15 +349,15 @@
   "ratios": {
     "HtoW": 1.71875,
     "UBtoLB": 0.7980769230769231,
-    "U0toUBW": 0.8924050632911392,
+    "U0toH": 0.3944055944055944,
     "U1toUBW": 0.3860759493670886,
     "LBtoH": 0.5818181818181818,
-    "L0toLBW": 1.955,
+    "L0toH": 0.8008391608391608,
     "L1toLBW": 0.345,
     "U2toUBW": 0.6075949367088608,
+    "L2toLBW": 0.42,
     "U3toLBW": 2,
     "U31toLBW": 0.1,
-    "L2toLBW": 0.42,
     "L3toLBW": 2,
     "L31toLBW": 0.1,
     "UCYtoH": 0.6544055944055944,
@@ -397,7 +397,7 @@
       "label": "Top (sp=2)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0002/full/pct:100.0/0/default.jpg",
       "x": -157.89043273925785,
-      "y": -17.514347076416,
+      "y": -17.314347076416,
       "width": 300.52673797607423,
       "height": 450.7901069641114,
       "rotationDeg": 359.7,

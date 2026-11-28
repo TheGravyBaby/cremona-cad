@@ -4,7 +4,7 @@ import { clipPolygonToHalfPlane, flipPointAboutY, pointInPolygon, segmentArcInte
 import { filletRightAngleCorner } from '../../../../helpers/math/draftMath';
 import { pathFromPolygon, pathFromPolyline, pathFromRect, samplePathToPolyline, translatePath } from '../../../../helpers/math/pathMath';
 import { buildPolylineIndex, closestPointToPolylineIndexed, distPointToPolylineIndexed, minCostAssignment, pointAtPolylineLength, polylineCumulativeLengths, Reading, thinPlateSplineFitter } from '../../../../helpers/math/vibeMath';
-import { differenceFromManyPaths, fieldBands, intersectionFromTwoPaths, mirroredLoop, normalOffsetZAt } from '../../../../helpers/math/pathVibes';
+import { differenceFromManyPaths, fieldBands, flattenPath, intersectionFromTwoPaths, mirroredLoop, normalOffsetZAt } from '../../../../helpers/math/pathVibes';
 import { renderFilledPath, renderPath, renderPointHalo, renderSolveFailures, renderText } from '../../../../helpers/renderFuncs';
 import { reportFailures, solveSection } from '../../../../helpers/validators';
 import { stepAmountForKey } from '../../../../helpers/stepSize';
@@ -1019,7 +1019,7 @@ export function solveGraduation(p: ViolinFamilyParams): GraduationSolve | null {
     return null;
   });
   if (s.boundary) {
-    let loop = samplePathToPolyline(s.boundary, 0.5, true);
+    let loop = flattenPath(s.boundary, 0.5, true)[0];
     let xs = loop.map(q => q.x), ys = loop.map(q => q.y);
     s.ground = { loop, minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
   }

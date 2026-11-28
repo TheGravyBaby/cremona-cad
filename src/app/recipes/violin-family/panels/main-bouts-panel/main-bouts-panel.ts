@@ -43,9 +43,9 @@ export class MainBoutsPanel extends PanelComponentBase<MainBoutArcKey, ViolinFam
       let UBWI = UBW - 2 * inset;
       let LBWI = LBW - 2 * inset;
 
-      let U0R = Math.round(UBWI * SEED_RATIOS.U0toUBW * 10) / 10;
+      let U0R = Math.round(p.body.height * SEED_RATIOS.U0toH * 10) / 10;
       let U1R = Math.round(UBWI * SEED_RATIOS.U1toUBW * 10) / 10;
-      let L0R = Math.round(LBWI * SEED_RATIOS.L0toLBW * 10) / 10;
+      let L0R = Math.round(p.body.height * SEED_RATIOS.L0toH * 10) / 10;
       let L1R = Math.round(LBWI * SEED_RATIOS.L1toLBW * 10) / 10;
       let U2R = Math.round(UBWI * SEED_RATIOS.U2toUBW);
       let L2R = Math.round(LBWI * SEED_RATIOS.L2toLBW);
@@ -427,7 +427,8 @@ function calcNeckSeat(V0: Arc, r: number, y: number, corner: Pt): Pt | null {
 }
 
 // read off the params every solve, so they can't drift from the instrument. The radius ratios are
-// taken against the inner width, the width less the inset both sides
+// taken against the inner width, the width less the inset both sides, but for the join radii, taken
+// against the height
 export function calcMainBoutsRatios(p: ViolinFamilyParams): Partial<ViolinFamilyRatios> {
   if (!p.bouts) return {};
   let b = p.bouts;
@@ -438,10 +439,10 @@ export function calcMainBoutsRatios(p: ViolinFamilyParams): Partial<ViolinFamily
 
   return {
     UBtoLB: b.UBW / LBW,
-    U0toUBW: b.U0R / UBWI,
+    U0toH: b.U0R / p.body.height,
     U1toUBW: b.U1R / UBWI,
     LBtoH: LBW / p.body.height,
-    L0toLBW: b.L0R / LBWI,
+    L0toH: b.L0R / p.body.height,
     L1toLBW: b.L1R / LBWI,
     U2toUBW: b.U2R / UBWI,
     L2toLBW: b.L2R / LBWI,

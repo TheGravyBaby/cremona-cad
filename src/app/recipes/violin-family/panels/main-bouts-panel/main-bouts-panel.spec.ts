@@ -256,9 +256,9 @@ describe('ratios', () => {
     const LBWI = p.body.width - 2 * inset;
 
     expect(Math.abs(r.UBtoLB! - SEED_RATIOS.UBtoLB)).toBeLessThanOrEqual(0.5 / p.body.width);
-    expect(Math.abs(r.U0toUBW! - SEED_RATIOS.U0toUBW)).toBeLessThanOrEqual(0.05 / UBWI + 1e-12);
+    expect(Math.abs(r.U0toH! - SEED_RATIOS.U0toH)).toBeLessThanOrEqual(0.05 / p.body.height + 1e-12);
     expect(Math.abs(r.U1toUBW! - SEED_RATIOS.U1toUBW)).toBeLessThanOrEqual(0.05 / UBWI + 1e-12);
-    expect(Math.abs(r.L0toLBW! - SEED_RATIOS.L0toLBW)).toBeLessThanOrEqual(0.05 / LBWI + 1e-12);
+    expect(Math.abs(r.L0toH! - SEED_RATIOS.L0toH)).toBeLessThanOrEqual(0.05 / p.body.height + 1e-12);
     expect(Math.abs(r.L1toLBW! - SEED_RATIOS.L1toLBW)).toBeLessThanOrEqual(0.05 / LBWI + 1e-12);
     expect(Math.abs(r.U2toUBW! - SEED_RATIOS.U2toUBW)).toBeLessThanOrEqual(0.5 / UBWI + 1e-12);
     expect(Math.abs(r.L2toLBW! - SEED_RATIOS.L2toLBW)).toBeLessThanOrEqual(0.5 / LBWI + 1e-12);
@@ -266,9 +266,9 @@ describe('ratios', () => {
 
   it('follows an edit, with nothing to refresh', () => {
     const p = seeded();
-    const before = calcMainBoutsRatios(p).L0toLBW!;
+    const before = calcMainBoutsRatios(p).L0toH!;
     p.bouts!.L0R *= 1.1;
-    expect(calcMainBoutsRatios(p).L0toLBW).toBeCloseTo(before * 1.1, 9);
+    expect(calcMainBoutsRatios(p).L0toH).toBeCloseTo(before * 1.1, 9);
   });
 
   it('agrees with the geometry it describes', () => {
@@ -277,7 +277,7 @@ describe('ratios', () => {
     const m = solveMainBouts(p)!;
     const inset = p.body.overhang + p.body.rib;
     expect(r.LBtoH).toBeCloseTo(p.body.width / p.body.height, 12);
-    expect(r.U0toUBW).toBeCloseTo(m.U0!.r / (p.bouts!.UBW - 2 * inset), 12);
+    expect(r.U0toH).toBeCloseTo(m.U0!.r / p.body.height, 12);
     expect(r.L1toLBW).toBeCloseTo(m.L1!.r / (p.body.width - 2 * inset), 12);
   });
 
