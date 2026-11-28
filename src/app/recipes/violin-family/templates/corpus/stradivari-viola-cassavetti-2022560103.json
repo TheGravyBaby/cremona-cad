@@ -323,6 +323,7 @@
     },
     "graduation": {
       "lining": 2.5,
+      "liningHeight": 8,
       "edgeInset": 4.5,
       "blockMargin": 0,
       "fHoleThickness": 5.3,

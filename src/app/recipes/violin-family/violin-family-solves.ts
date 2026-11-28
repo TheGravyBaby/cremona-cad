@@ -58,6 +58,9 @@ export interface ViolinFamilySolved {
   bassBarContact: { solve: { step: number; left: Pt[]; right: Pt[] } | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
   // the mesh as last built and the options it was built with, as text; cleared, it is not built again until asked for
   femMesh: { solve: { options: string; mesh: FemSolve } | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  // the garland as last built and the element size it was built at; cleared like the plate's mesh
+  femGarland: { solve: { step: number; mesh: GarlandFemSolve } | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  femNeck: { solve: { step: number; mesh: NeckFemSolve } | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
 }
 
 export type BodyKey = 'height' | 'width' | 'overhang' | 'rib';
@@ -496,5 +499,58 @@ export interface FemSolve {
   barVolume: number;
   webVolume: number;
   minAngle: number;
+  failures: FemFailure[];
+}
+
+// the rib garland as elements, standing on the back's gluing plane with z up to the top's. `plan`
+// holds every node of the plan once: the blocks' triangles, three corners each in `triangles`;
+// `ribLine`, the ribs' inner face stepped off counterclockwise, corner and midside alternating,
+// round once with no repeat, a block's own nodes wherever a rib is glued over one; and the
+// linings' inner edges. `lined` says of each stretch of the rib line, corner to corner, whether it
+// carries linings: all but those over a block. A plan node stands as a column of `nodes`, the
+// blocks', the ribs' and the linings' the same ones where they are glued. `normals` looks outward
+// from each rib node, and is all zeros at a corner's tip and off the ribs. The ribs are eight-node
+// quadrilaterals looking outward, the linings twenty-node bricks behind them, both sorted by the
+// way their grain runs; `wedges` are the blocks', fifteen nodes each. The volumes are in mm³. A
+// plate that takes `ribLine` as a line to follow lands its nodes on the garland's own
+export interface GarlandFemSolve {
+  plan: Pt[];
+  triangles: number[][];
+  ribLine: number[];
+  lined: boolean[];
+  nodes: Pt3D[];
+  normals: Vec3[];
+  runs: GarlandRun[];
+  wedges: number[][];
+  ribVolume: number;
+  liningVolume: number;
+  blockVolume: number;
+  failures: FemFailure[];
+}
+
+// the elements whose grain runs within a few degrees of `angle`, in degrees off +x in plan
+export interface GarlandRun {
+  angle: number;
+  ribs: number[][];
+  linings: number[][];
+}
+
+// the neck, its head and the fingerboard as solids, in the garland's frame: x across, y up the
+// body, z up off the back's gluing plane. `side` is the neck's side view meshed, in the neck
+// solve's frame (x up, y up the body): the heel, the neck, the pegbox and the volute as one
+// outline, `triangles` three corners each. Every side node stands as a row of `nodes` across the
+// neck, and the wedges run between the rows in three layers, a cheek, the middle and a cheek; the
+// middle is left out over the pegbox's hollow. `bricks` are the fingerboard, glued to the neck's
+// front by the neck's own nodes and running on free over the body; `board` is its side view, a
+// closed outline. The volumes are in mm³
+export interface NeckFemSolve {
+  side: Pt[];
+  triangles: number[][];
+  board: Pt[];
+  nodes: Pt3D[];
+  wedges: number[][];
+  bricks: number[][];
+  neckVolume: number;
+  boardVolume: number;
   failures: FemFailure[];
 }

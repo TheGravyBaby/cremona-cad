@@ -289,15 +289,18 @@ export interface CrossArchPoint {
 
 // the plates' thicknesses. The glue platform is shared: `lining` and `edgeInset` are read in from
 // the rib line (the ribs' inner face), the lining being the strip glued inside the ribs between
-// the blocks, so the platform ends that far in, and the edge inset where the gouge may start;
-// `blockMargin` is read from the neck and end blocks' inner faces, positive holding the gouge short
-// of a block, negative trimming the block back as blocks are once off the mould. The lining sits
-// here only until the linings have a stage of their own. The f-holes are the top's own: each hole's outline reads
+// the blocks, so the platform ends that far in, and the edge inset the flat left for gluing
+// beyond it, where the gouge may start; it runs across the neck and end blocks' faces too.
+// `blockMargin` moves those faces: negative trims a block back as blocks are once off the mould,
+// positive holds the gouge further off it. `liningHeight` is
+// how far a lining stands up the rib from the plate it backs; nothing in the plan reads it. The
+// linings sit here only until they have a stage of their own. The f-holes are the top's own: each hole's outline reads
 // `fHoleThickness`, what its wings carry. Inside the boundary each plate's thickness is its
 // readings, no mirroring: the two halves are read apart. A template carries no readings unless
 // they were read off a real instrument
 export interface GraduationParams {
   lining: number;
+  liningHeight: number;
   edgeInset: number;
   blockMargin: number;
   fHoleThickness: number;
@@ -338,14 +341,21 @@ export interface BassBarPoint {
 // density is in kg/m³ and the stiffness, Young's modulus along the grain, in GPa; the species
 // stands for the constants nobody measures, held as ratios to that stiffness. A plate's cut says
 // which way the rings stand: on the quarter they stand upright across the plate, on the slab they
-// lie in it. The bar is always on the quarter
+// lie in it. The bar is always on the quarter, and so are the ribs and linings, their grain running
+// round the garland; a block's grain stands upright between the plates. The neck's and the
+// fingerboard's run up the neck
 export interface WoodParams {
   top: PlateWood;
   back: PlateWood;
   bassBar: Wood;
+  ribs: Wood;
+  linings: Wood;
+  blocks: Wood;
+  neck: Wood;
+  fingerboard: Wood;
 }
 
-export type WoodSpecies = 'spruce' | 'maple';
+export type WoodSpecies = 'spruce' | 'maple' | 'ebony';
 
 export interface Wood {
   species: WoodSpecies;

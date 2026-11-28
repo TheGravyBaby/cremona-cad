@@ -109,8 +109,8 @@ export class DevGraduationPanel extends PanelComponentBase implements OnDestroy 
   // at the top's edge thickness, and no readings: the user lays or picks their own
   static seed(p: ViolinFamilyParams): void {
     if (p.graduation || !p.plateContour) return;
-    let lining = familyStandards(p.body.height).lining;
-    p.graduation = { lining, edgeInset: 2, blockMargin: 0, fHoleThickness: edgeThicknessOf(p, 'top'), top: { points: [] }, back: { points: [] } };
+    let { lining, liningHeight } = familyStandards(p.body.height);
+    p.graduation = { lining, liningHeight, edgeInset: 2, blockMargin: 0, fHoleThickness: edgeThicknessOf(p, 'top'), top: { points: [] }, back: { points: [] } };
   }
 
   ngOnDestroy(): void {
@@ -450,17 +450,23 @@ const renderBackPlate = (p: ViolinFamilyParams, pc: PlateContourSolve | null, pa
   if (inner) renderPath(translatePath(inner, dx, 0), pal.neutral, STROKE_WEIGHT.guide)(g, ui);
 };
 
-// the blocks and linings as faint fills and the boundary, on both plates, each in its own ink
+// the garland from above, `dx` across from the top's place: the blocks and the linings between
+// them as faint fills, each in its own ink. A sibling panel that shows the ribs draws them with this
+export const renderGarland = (s: GraduationSolve, pal: PanelPalette, dx = 0) => (g: any, ui: any): void => {
+  for (let block of s.blocks ? [s.blocks.neck, s.blocks.end, ...s.blocks.corners] : []) {
+    renderFilledPath(translatePath(block, dx, 0), pal.ink(2), 0.15)(g, ui);
+    renderPath(translatePath(block, dx, 0), pal.ink(2), STROKE_WEIGHT.guide)(g, ui);
+  }
+  if (s.lining) {
+    renderFilledPath(translatePath(s.lining, dx, 0), pal.ink(0), 0.15)(g, ui);
+    renderPath(translatePath(s.lining, dx, 0), pal.ink(0), STROKE_WEIGHT.guide)(g, ui);
+  }
+};
+
+// the garland and the boundary the gouge starts at, on both plates
 export const renderGraduation = (p: ViolinFamilyParams, s: GraduationSolve, pal: PanelPalette) => (g: any, ui: any): void => {
   for (let dx of GRADUATION_PLATES.map(plate => PLATE_DX[plate](p))) {
-    for (let block of s.blocks ? [s.blocks.neck, s.blocks.end, ...s.blocks.corners] : []) {
-      renderFilledPath(translatePath(block, dx, 0), pal.ink(2), 0.15)(g, ui);
-      renderPath(translatePath(block, dx, 0), pal.ink(2), STROKE_WEIGHT.guide)(g, ui);
-    }
-    if (s.lining) {
-      renderFilledPath(translatePath(s.lining, dx, 0), pal.ink(0), 0.15)(g, ui);
-      renderPath(translatePath(s.lining, dx, 0), pal.ink(0), STROKE_WEIGHT.guide)(g, ui);
-    }
+    renderGarland(s, pal, dx)(g, ui);
     if (s.boundary) renderPath(translatePath(s.boundary, dx, 0), pal.ink(1), STROKE_WEIGHT.trace)(g, ui);
   }
 };
@@ -1012,7 +1018,10 @@ export function solveGraduation(p: ViolinFamilyParams): GraduationSolve | null {
     let made = loop(gr.lining + gr.edgeInset, 'edgeInset', 'boundary');
     if (!made) return null;
     if (!s.blocks) { s.boundary = made; return null; }
-    let between = new Rectangle(new Pt(-p.body.width, faces.end), new Pt(p.body.width, faces.neck));
+    // the glue flat runs across each block's face as it runs along the linings
+    let neckFace = faces.neck - gr.edgeInset, endFace = faces.end + gr.edgeInset;
+    if (!(endFace < neckFace)) return fail('Graduation: nothing of the boundary is left between the blocks.', ['edgeInset']);
+    let between = new Rectangle(new Pt(-p.body.width, endFace), new Pt(p.body.width, neckFace));
     let cut = intersectionFromTwoPaths(made, pathFromRect(between));
     if (!cut.trim()) return fail('Graduation: nothing of the boundary is left between the blocks.', ['edgeInset']);
     s.boundary = cut;

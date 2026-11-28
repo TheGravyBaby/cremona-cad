@@ -1,5 +1,5 @@
 // Finite element export: a plan-view triangle mesh of a region with holes, and a CalculiX input deck
-// (.inp, Abaqus syntax) of shell elements for a frequency step. Neither knows what is being meshed:
+// (.inp, Abaqus syntax) of shell and wedge elements for a frequency step. Neither knows what is being meshed:
 // the caller lifts the plan mesh onto its own surface and names the materials. Mesh, then deck.
 
 import { Delaunay } from 'd3';
@@ -10,13 +10,15 @@ import { buildPolylineIndex, distPointToPolylineIndexed, pointAtPolylineLength, 
 // six-node triangles over a region in plan. The corner nodes come first, `corners` of them, then one
 // midside node per edge. A triangle lists its corners counterclockwise, then the midsides of the
 // edges 1-2, 2-3 and 3-1, which is the order an S6 element takes them in. `lineNodes` follows each
-// line end to end, corner and midside alternating; `lost` holds every stretch of the outline, a
+// line end to end, corner and midside alternating, and `loopNodes` the outline and then each hole
+// the same way, round once with no repeat; `lost` holds every stretch of the outline, a
 // hole or a line that the triangulation did not keep as an element edge, and is empty on a sound mesh
 export interface TriangleMesh {
   nodes: Pt[];
   corners: number;
   triangles: number[][];
   lineNodes: number[][];
+  loopNodes: number[][];
   lost: [Pt, Pt][];
   minAngle: number;
 }
@@ -33,12 +35,13 @@ const FLAT_AREA = 1e-4;
 // `outer` and `holes` are closed loops, `lines` open polylines that
 // element edges must follow (a stiffener's foot). The loops and lines are stepped off evenly, the
 // outline and lines at `step` and the holes at `holeStep`; a triangular lattice fills between; a
-// Delaunay triangulation joins the lot, and the triangles off the region are dropped
-export function buildTriangleMesh(outer: Pt[], holes: Pt[][], lines: Pt[][], step: number, holeStep = step): TriangleMesh {
+// Delaunay triangulation joins the lot, and the triangles off the region are dropped. `keep` names
+// points of the outline that stay nodes however close they stand to a corner or to one another
+export function buildTriangleMesh(outer: Pt[], holes: Pt[][], lines: Pt[][], step: number, holeStep = step, keep: Pt[] = []): TriangleMesh {
   outer = openLoop(outer);
   holes = holes.map(openLoop);
   let chains: { nodes: Pt[]; closed: boolean }[] = [
-    { nodes: stepAlongLoop(outer, step), closed: true },
+    { nodes: stepAlongLoop(outer, step, keep), closed: true },
     ...holes.map(hole => ({ nodes: stepAlongLoop(hole, holeStep), closed: true })),
     ...lines.map(line => ({ nodes: stepAlongLine(line, step), closed: false })),
   ];
@@ -104,6 +107,7 @@ export function buildTriangleMesh(outer: Pt[], holes: Pt[][], lines: Pt[][], ste
 
   let lost: [Pt, Pt][] = [];
   let lineNodes: number[][] = [];
+  let loopNodes: number[][] = [];
   chains.forEach((chain, ci) => {
     let along: number[] = [];
     let whole = true;
@@ -119,7 +123,8 @@ export function buildTriangleMesh(outer: Pt[], holes: Pt[][], lines: Pt[][], ste
         if (i === count - 1) along.push(b!);
       }
     }
-    if (!chain.closed) lineNodes.push(whole ? along : []);
+    if (chain.closed) loopNodes.push(whole ? along.slice(0, -1) : []);
+    else lineNodes.push(whole ? along : []);
   });
 
   let minAngle = Math.PI;
@@ -129,7 +134,7 @@ export function buildTriangleMesh(outer: Pt[], holes: Pt[][], lines: Pt[][], ste
       minAngle = Math.min(minAngle, Math.atan2(Math.abs(ux * vy - uy * vx), ux * vx + uy * vy));
     }
   }
-  return { nodes, corners, triangles, lineNodes, lost, minAngle };
+  return { nodes, corners, triangles, lineNodes, loopNodes, lost, minAngle };
 }
 
 // a loop that repeats its first point at its end, without the repeat
@@ -139,8 +144,9 @@ function openLoop(loop: Pt[]): Pt[] {
 }
 
 // a loop stepped off evenly between its corners, so a corner stays a node and is not cut across. A
-// corner within half a step of the one before it is passed over, as the two sides of a nick are
-function stepAlongLoop(loop: Pt[], step: number): Pt[] {
+// corner within half a step of the one before it is passed over, as the two sides of a nick are,
+// unless it is one of `keep`
+function stepAlongLoop(loop: Pt[], step: number, keep: Pt[] = []): Pt[] {
   let n = loop.length;
   let corners: number[] = [];
   let since = Infinity;
@@ -151,7 +157,8 @@ function stepAlongLoop(loop: Pt[], step: number): Pt[] {
       (at.x - before.x) * (after.y - at.y) - (at.y - before.y) * (after.x - at.x),
       (at.x - before.x) * (after.x - at.x) + (at.y - before.y) * (after.y - at.y),
     ));
-    if (turn > CORNER_TURN && since >= step / 2) { corners.push(i); since = 0; }
+    let kept = keep.some(q => Math.hypot(q.x - at.x, q.y - at.y) < 1e-6);
+    if (kept || (turn > CORNER_TURN && since >= step / 2)) { corners.push(i); since = 0; }
   }
   if (corners.length < 2) {
     let closed = [...loop, loop[0]];
@@ -198,7 +205,9 @@ export interface FemOrientation {
 // one set of shell elements, S6 triangles or S8R quadrilaterals, each a list of indices into the
 // deck's nodes in the element's own order. A null thickness reads each node's from the deck's
 // `thickness`; `ownNormals` writes the deck's `normals` for every node of every element, so
-// neighbours share one normal and the shell stays smooth across them
+// neighbours share one normal and the shell stays smooth across them, but for a node whose normal
+// is all zeros, where each element keeps its own and the two are jointed. Sets that share nodes
+// under one normal must share a thickness there too: CalculiX fails on the step
 export interface FemShellSet {
   name: string;
   type: 'S6' | 'S8R';
@@ -209,12 +218,26 @@ export interface FemShellSet {
   ownNormals: boolean;
 }
 
+// one set of solid elements. A C3D15 is a wedge: a six-node triangle below, its corners
+// counterclockwise seen from above and then its midsides as a TriangleMesh lists them, the same
+// six above, and the three nodes halfway up the corners' edges. A C3D20 is a brick: a face's four
+// corners, counterclockwise seen from the face across, that face's four alike, each face's four
+// midsides in turn, and the four nodes halfway between the faces' corners
+export interface FemSolidSet {
+  name: string;
+  type: 'C3D15' | 'C3D20';
+  elements: number[][];
+  material: string;
+  orientation: string;
+}
+
 export interface FemDeck {
   heading: string[];
   nodes: Pt3D[];
   thickness: number[];
   normals: Vec3[];
   sets: FemShellSet[];
+  solids: FemSolidSet[];
   materials: FemMaterial[];
   orientations: FemOrientation[];
   // how many modes the frequency step asks for
@@ -238,8 +261,17 @@ export function buildCalculixDeck(deck: FemDeck): string {
       out.push(`${element}, ${nodes.map(n => n + 1).join(', ')}`);
       for (let n of nodes) {
         if (set.thickness === null) nodal.add(n);
-        if (set.ownNormals) normals.push(`${element}, ${n + 1}, ${num(deck.normals[n].x)}, ${num(deck.normals[n].y)}, ${num(deck.normals[n].z)}`);
+        let normal = set.ownNormals ? deck.normals[n] : null;
+        if (normal && (normal.x || normal.y || normal.z)) normals.push(`${element}, ${n + 1}, ${num(normal.x)}, ${num(normal.y)}, ${num(normal.z)}`);
       }
+    }
+  }
+  for (let set of deck.solids) {
+    out.push(`*ELEMENT, TYPE=${set.type}, ELSET=${set.name}`);
+    for (let nodes of set.elements) {
+      element++;
+      // a line holds sixteen entries at most
+      out.push(`${element}, ${nodes.slice(0, 8).map(n => n + 1).join(', ')},`, nodes.slice(8).map(n => n + 1).join(', '));
     }
   }
   if (nodal.size) {
@@ -266,6 +298,7 @@ export function buildCalculixDeck(deck: FemDeck): string {
     // read only without the flag, but the line has to be there
     out.push(num(set.thickness ?? deck.thickness[set.elements[0][0]]));
   }
+  for (let set of deck.solids) out.push(`*SOLID SECTION, ELSET=${set.name}, MATERIAL=${set.material}, ORIENTATION=${set.orientation}`);
 
   out.push('*STEP', '*FREQUENCY', String(deck.modes), '*NODE FILE', 'U', '*END STEP');
   return out.join('\n') + '\n';

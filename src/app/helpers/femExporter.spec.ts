@@ -51,6 +51,18 @@ describe('the triangle mesh', () => {
     }
   });
 
+  it('follows the outline and the hole round once each, corner and midside alternating', () => {
+    expect(mesh.loopNodes.length).toBe(2);
+    for (const [ring, half, cx, cy] of [[mesh.loopNodes[0], 50, 0, 0], [mesh.loopNodes[1], 8, 20, 10]] as const) {
+      expect(ring.length).toBeGreaterThan(0);
+      expect(new Set(ring).size).toBe(ring.length);
+      ring.forEach((n, k) => {
+        expect(n < mesh.corners).toBe(k % 2 === 0);
+        expect(Math.max(Math.abs(mesh.nodes[n].x - cx), Math.abs(mesh.nodes[n].y - cy))).toBeCloseTo(half, 9);
+      });
+    }
+  });
+
   it('reports an edge it could not keep', () => {
     // a line run through the hole has nothing to be an edge of there
     const through: Pt[] = [new Pt(0, 10), new Pt(40, 10)];
@@ -65,6 +77,7 @@ describe('the CalculiX deck', () => {
     thickness: [3, 3, 3, 3, 3, 3],
     normals: [0, 1, 2, 3, 4, 5].map(() => ({ x: 0, y: 0, z: 1 })),
     sets: [{ name: 'PATCH', type: 'S6', elements: [[0, 2, 4, 1, 3, 5]], material: 'WOOD', orientation: 'GRAIN', thickness: null, ownNormals: true }],
+    solids: [],
     materials: [{ name: 'WOOD', density: 4e-10, E1: 12000, E2: 900, E3: 500, nu12: 0.37, nu13: 0.47, nu23: 0.43, G12: 760, G13: 730, G23: 36 }],
     orientations: [{ name: 'GRAIN', x: { x: 0, y: 1, z: 0 }, xy: { x: -1, y: 0, z: 0 } }],
     modes: 10,
@@ -91,5 +104,33 @@ describe('the CalculiX deck', () => {
     expect(lines.some(l => l.startsWith('*ORIENTATION, NAME=GRAIN'))).toBe(true);
     expect(block('*ELASTIC').join(' ').split(',').map(Number).filter(Number.isFinite).length).toBe(9);
     expect(block('*FREQUENCY')).toEqual(['10']);
+  });
+
+  it('leaves a node with no normal to its elements, and numbers the solids on after the shells', () => {
+    const nodes = Array.from({ length: 20 }, (_, i) => ({ x: i, y: i * i, z: i % 3 }));
+    const jointed: FemDeck = {
+      ...deck,
+      nodes,
+      thickness: [],
+      normals: nodes.map((_, i) => ({ x: 0, y: 0, z: i === 2 ? 0 : 1 })),
+      sets: [{ name: 'PATCH', type: 'S6', elements: [[0, 2, 4, 1, 3, 5]], material: 'WOOD', orientation: 'GRAIN', thickness: 2, ownNormals: true }],
+      solids: [
+        { name: 'WEDGE', type: 'C3D15', elements: [nodes.slice(0, 15).map((_, i) => i)], material: 'WOOD', orientation: 'GRAIN' },
+        { name: 'BRICK', type: 'C3D20', elements: [nodes.map((_, i) => i)], material: 'WOOD', orientation: 'GRAIN' },
+      ],
+    };
+    const text = buildCalculixDeck(jointed).split('\n');
+    const from = text.indexOf('*NORMAL');
+    const normals = text.slice(from + 1, text.findIndex((l, i) => i > from && l.startsWith('*')));
+    expect(normals.map(l => l.split(',')[1].trim())).toEqual(['1', '5', '2', '4', '6']);
+    for (const [name, id, count] of [['WEDGE', 2, 15], ['BRICK', 3, 20]] as const) {
+      const at = text.findIndex(l => l.startsWith('*ELEMENT') && l.endsWith(`ELSET=${name}`));
+      const entries = `${text[at + 1]} ${text[at + 2]}`.split(',').map(Number);
+      expect(entries[0]).toBe(id);
+      expect(entries.slice(1)).toEqual(Array.from({ length: count }, (_, i) => i + 1));
+      expect(text[at + 1].split(',').length).toBeLessThanOrEqual(16);
+      expect(text[at + 2].split(',').length).toBeLessThanOrEqual(16);
+      expect(text.some(l => l.startsWith(`*SOLID SECTION, ELSET=${name}, MATERIAL=WOOD`))).toBe(true);
+    }
   });
 });

@@ -16,7 +16,7 @@ export function updateSolved(p: ViolinFamilyParams): void {
       fluting: { solve: undefined, children: ['crossArchingTop', 'crossArchingBack'], lastParams: '' },
       crossArchingTop: { solve: undefined, children: ['landTop'], lastParams: '' },
       crossArchingBack: { solve: undefined, children: ['landBack'], lastParams: '' },
-      graduation: { solve: undefined, children: ['landTop', 'landBack'], lastParams: '' },
+      graduation: { solve: undefined, children: ['landTop', 'landBack', 'femGarland'], lastParams: '' },
       landTop: { solve: undefined, children: ['thicknessFieldTop'], lastParams: '' },
       landBack: { solve: undefined, children: ['thicknessFieldBack'], lastParams: '' },
       thicknessFieldTop: { solve: undefined, children: ['thicknessBandsTop', 'bassBarContact', 'femMesh'], lastParams: '' },
@@ -25,6 +25,8 @@ export function updateSolved(p: ViolinFamilyParams): void {
       thicknessBandsBack: { solve: undefined, children: [], lastParams: '' },
       bassBarContact: { solve: undefined, children: [], lastParams: '' },
       femMesh: { solve: undefined, children: [], lastParams: '' },
+      femGarland: { solve: undefined, children: [], lastParams: '' },
+      femNeck: { solve: undefined, children: [], lastParams: '' },
     };
     Object.defineProperty(p, 'solved', { value: solved, enumerable: false });
   }
@@ -93,6 +95,18 @@ export function updateSolved(p: ViolinFamilyParams): void {
   if (s.femMesh.lastParams !== femMesh) {
     s.femMesh.lastParams = femMesh;
     clearSolved(s, 'femMesh');
+  }
+
+  let femGarland = JSON.stringify([p.arching?.ribHeightLower, p.arching?.ribHeightUpper, gr?.liningHeight]);
+  if (s.femGarland.lastParams !== femGarland) {
+    s.femGarland.lastParams = femGarland;
+    clearSolved(s, 'femGarland');
+  }
+
+  let femNeck = JSON.stringify([p.body, p.arching, p.plateContour, p.neck, p.scroll, p.stringSetup]);
+  if (s.femNeck.lastParams !== femNeck) {
+    s.femNeck.lastParams = femNeck;
+    clearSolved(s, 'femNeck');
   }
 }
 

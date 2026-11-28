@@ -2,10 +2,12 @@
     <div class="ui-group-title">Mesh</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Plate</span>
-            <select [(ngModel)]="options.plate" (change)="drawCanvas()">
+            <span class="field-title">Part</span>
+            <select [(ngModel)]="part" (change)="pickPart()">
                 <option value="top">Top</option>
                 <option value="back">Back</option>
+                <option value="garland">Ribs</option>
+                <option value="neck">Neck</option>
             </select>
         </label>
         <label class="field-cell">
@@ -13,7 +15,7 @@
             <input type="number" class="basic-input" step="0.5" min="0" [(ngModel)]="options.step" (input)="drawCanvas()" />
         </label>
     </div>
-    @if (hasBar) {
+    @if (hasBar && part === 'top') {
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
             <input type="checkbox" [(ngModel)]="options.bar" (change)="drawCanvas()" /><span>Bass bar</span>
@@ -25,11 +27,43 @@
     </div>
     @if (s?.triangles?.length) {
     <p class="hint">{{ s!.nodes.length }} nodes, {{ s!.triangles.length + s!.web.length }} elements.</p>
+    } @else if (assembly?.wedges?.length) {
+    <p class="hint">{{ assembly!.nodes.length }} nodes, {{ assemblyElements }} elements. {{ part === 'neck' ? 'Neck and Board' : 'Garland' }} Weight: {{ assemblyGrams.toFixed(1) }} g.</p>
     } @else {
     <p class="hint">Building takes a few seconds :] </p>
     }
 </section>
 
+@if (part === 'garland' || part === 'neck') {
+@for (each of partWoods; track each.title) {
+<section class="ui-group">
+    <div class="ui-group-title">{{ each.title }} Wood</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Species</span>
+            <select [(ngModel)]="each.wood.species" (change)="recordEditAndRedraw()">
+                <option value="spruce">Spruce</option>
+                <option value="maple">Maple</option>
+                <option value="ebony">Ebony</option>
+            </select>
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Density <span class="unit-label">kg/m³</span></span>
+            <input type="number" class="basic-input" step="5" min="0" [(ngModel)]="each.wood.density" (input)="recordEditAndRedraw()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Stiffness <span class="unit-label">GPa</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [(ngModel)]="each.wood.stiffness" (input)="recordEditAndRedraw()" />
+        </label>
+    </div>
+    @if (assembly?.wedges?.length) {
+    <p class="hint">{{ each.title }} Weight: {{ (each.volume * each.wood.density * 1e-6).toFixed(1) }} g.</p>
+    }
+</section>
+}
+} @else {
 <section class="ui-group">
     <div class="ui-group-title">{{ options.plate === 'top' ? 'Top' : 'Back' }} Wood</div>
     <div class="input-group basic-row field-row" role="group">
@@ -62,8 +96,9 @@
     <p class="hint">Plate Weight:  {{ plateGrams.toFixed(1) }} g.</p>
     }
 </section>
+}
 
-@if (hasBar && options.bar) {
+@if (hasBar && part === 'top' && options.bar) {
 <section class="ui-group">
     <div class="ui-group-title">Bass Bar Wood</div>
     <div class="input-group basic-row field-row" role="group">

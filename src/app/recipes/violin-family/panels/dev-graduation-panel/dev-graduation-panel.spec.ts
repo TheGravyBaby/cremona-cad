@@ -187,12 +187,13 @@ describe('the graduation solve', () => {
     }
   });
 
-  it('cuts the boundary straight across at the blocks and runs the linings up beside them', () => {
-    const s = solved(seeded()).solve;
+  it('cuts the boundary straight across the blocks, the flat inset off their faces, and runs the linings up beside them', () => {
+    const { settings, solve: s } = solved(seeded());
+    const inset = settings.edgeInset;
     const neck = points(s.blocks!.neck);
     const end = points(s.blocks!.end);
-    const neckFace = Math.min(...neck.map(pt => pt.y));
-    const endFace = Math.max(...end.map(pt => pt.y));
+    const neckFace = Math.min(...neck.map(pt => pt.y)) - inset;
+    const endFace = Math.max(...end.map(pt => pt.y)) + inset;
     const boundary = points(s.boundary!);
     expect(closed(s.boundary!)).toBe(true);
     for (const pt of boundary) {
@@ -232,9 +233,10 @@ describe('the graduation solve', () => {
     expect(top(trimmed.blocks!.neck)).toBeCloseTo(top(whole.blocks!.neck), 3);
     expect(top(whole.blocks!.end) - top(trimmed.blocks!.end)).toBeCloseTo(5, 3);
     expect(bottom(trimmed.blocks!.end)).toBeCloseTo(bottom(whole.blocks!.end), 3);
-    // and the boundary meets the new faces
-    expect(top(trimmed.boundary!)).toBeCloseTo(bottom(trimmed.blocks!.neck), 3);
-    expect(bottom(trimmed.boundary!)).toBeCloseTo(top(trimmed.blocks!.end), 3);
+    // and the boundary follows the new faces, the flat inset off them
+    const inset = p.graduation!.edgeInset;
+    expect(bottom(trimmed.blocks!.neck) - top(trimmed.boundary!)).toBeCloseTo(inset, 3);
+    expect(bottom(trimmed.boundary!) - top(trimmed.blocks!.end)).toBeCloseTo(inset, 3);
     expect(trimmed.failures).toEqual([]);
   });
 
