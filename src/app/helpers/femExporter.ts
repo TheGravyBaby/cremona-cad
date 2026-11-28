@@ -4,7 +4,7 @@
 
 import { Delaunay } from 'd3';
 import { Pt, Pt3D, Vec3 } from '../models/types';
-import { pointInPolygon } from './math/simpleGeometry';
+import { pointInPolygon, signedPolygonArea } from './math/simpleGeometry';
 import { buildPolylineIndex, distPointToPolylineIndexed, pointAtPolylineLength, polylineCumulativeLengths } from './math/vibeMath';
 
 // six-node triangles over a region in plan. The corner nodes come first, `corners` of them, then one
@@ -89,21 +89,8 @@ export function buildTriangleMesh(outer: Pt[], holes: Pt[][], lines: Pt[][], ste
     }
   }
   let corners = nodes.length;
-  let midsides = new Map<number, number>();
+  let { triangles, midsides } = addMidsides(nodes, kept.map(tri => tri.map(n => renumber.get(n)!)));
   let edgeKey = (a: number, b: number): number => Math.min(a, b) * corners + Math.max(a, b);
-  let triangles = kept.map(tri => {
-    let [a, b, c] = tri.map(n => renumber.get(n)!);
-    let mids = [[a, b], [b, c], [c, a]].map(([u, v]) => {
-      let key = edgeKey(u, v);
-      let mid = midsides.get(key);
-      if (mid === undefined) {
-        midsides.set(key, mid = nodes.length);
-        nodes.push({ x: (nodes[u].x + nodes[v].x) / 2, y: (nodes[u].y + nodes[v].y) / 2 });
-      }
-      return mid;
-    });
-    return [a, b, c, ...mids];
-  });
 
   let lost: [Pt, Pt][] = [];
   let lineNodes: number[][] = [];
@@ -135,6 +122,59 @@ export function buildTriangleMesh(outer: Pt[], holes: Pt[][], lines: Pt[][], ste
     }
   }
   return { nodes, corners, triangles, lineNodes, loopNodes, lost, minAngle };
+}
+
+// three-node triangles made six-node: a midside node pushed onto `nodes` halfway along every edge,
+// one to an edge however many triangles share it. `midsides` finds an edge's by its two corners,
+// the lower times the number of corners plus the higher
+export function addMidsides(nodes: Pt[], corners: number[][]): { triangles: number[][]; midsides: Map<number, number> } {
+  let count = nodes.length;
+  let midsides = new Map<number, number>();
+  let triangles = corners.map(([a, b, c]) => {
+    let mids = [[a, b], [b, c], [c, a]].map(([u, v]) => {
+      let key = Math.min(u, v) * count + Math.max(u, v);
+      let mid = midsides.get(key);
+      if (mid === undefined) {
+        midsides.set(key, mid = nodes.length);
+        nodes.push({ x: (nodes[u].x + nodes[v].x) / 2, y: (nodes[u].y + nodes[v].y) / 2 });
+      }
+      return mid;
+    });
+    return [a, b, c, ...mids];
+  });
+  return { triangles, midsides };
+}
+
+// the band between a closed chain of nodes that already stand and the outline round them: the
+// outline is stepped off, and triangles zipped between the two, each step taking whichever side's
+// next node makes the shorter edge across. A triangle names the chain's nodes by their place in
+// it and the outline's by theirs after the chain's count, its corners counterclockwise
+export function buildEdgeBand(chain: Pt[], outline: Pt[], step: number): { outer: Pt[]; triangles: number[][] } {
+  let outer = stepAlongLoop(openLoop(outline), step);
+  let n = chain.length, m = outer.length;
+  let wayIn = Math.sign(signedPolygonArea(chain)), wayOut = Math.sign(signedPolygonArea(outer));
+  let i = 0;
+  let j = outer.reduce((best, q, k) => Math.hypot(q.x - chain[0].x, q.y - chain[0].y) < Math.hypot(outer[best].x - chain[0].x, outer[best].y - chain[0].y) ? k : best, 0);
+  let triangles: number[][] = [];
+  for (let onChain = 0, onOuter = 0; onChain < n || onOuter < m;) {
+    let nextI = ((i + wayIn) % n + n) % n, nextJ = ((j + wayOut) % m + m) % m;
+    let across = Math.hypot(chain[nextI].x - outer[j].x, chain[nextI].y - outer[j].y);
+    let along = Math.hypot(chain[i].x - outer[nextJ].x, chain[i].y - outer[nextJ].y);
+    if (onOuter >= m || (onChain < n && across <= along)) {
+      triangles.push([i, n + j, nextI]);
+      i = nextI;
+      onChain++;
+    } else {
+      triangles.push([i, n + j, n + nextJ]);
+      j = nextJ;
+      onOuter++;
+    }
+  }
+  let all = [...chain, ...outer];
+  return {
+    outer,
+    triangles: triangles.map(([a, b, c]) => (all[b].x - all[a].x) * (all[c].y - all[a].y) - (all[c].x - all[a].x) * (all[b].y - all[a].y) > 0 ? [a, b, c] : [a, c, b]),
+  };
 }
 
 // a loop that repeats its first point at its end, without the repeat
@@ -204,10 +244,12 @@ export interface FemOrientation {
 
 // one set of shell elements, S6 triangles or S8R quadrilaterals, each a list of indices into the
 // deck's nodes in the element's own order. A null thickness reads each node's from the deck's
-// `thickness`; `ownNormals` writes the deck's `normals` for every node of every element, so
-// neighbours share one normal and the shell stays smooth across them, but for a node whose normal
-// is all zeros, where each element keeps its own and the two are jointed. Sets that share nodes
-// under one normal must share a thickness there too: CalculiX fails on the step
+// `thickness`. `normals`, where a set has them, holds one for every node of the deck that the set
+// stands on, and is written for every node of every element, so neighbours share one normal and
+// the shell stays smooth across them, but for a node whose normal is all zeros, where each element
+// keeps its own and the two are jointed. Two sets may give one node different normals, and are
+// jointed there. Sets that share nodes under one normal must share a thickness there too:
+// CalculiX fails on the step
 export interface FemShellSet {
   name: string;
   type: 'S6' | 'S8R';
@@ -215,7 +257,7 @@ export interface FemShellSet {
   material: string;
   orientation: string;
   thickness: number | null;
-  ownNormals: boolean;
+  normals: Vec3[] | null;
 }
 
 // one set of solid elements. A C3D15 is a wedge: a six-node triangle below, its corners
@@ -231,13 +273,23 @@ export interface FemSolidSet {
   orientation: string;
 }
 
+// a glued joint between meshes that don't match: every one of `nodes` within `tolerance` of one
+// of `faces` moves with the point of the face it stands over. A face is an element of a solid
+// set, by its place in the set, and which of its faces as CalculiX numbers them
+export interface FemTie {
+  name: string;
+  tolerance: number;
+  nodes: number[];
+  faces: { set: string; element: number; face: number }[];
+}
+
 export interface FemDeck {
   heading: string[];
   nodes: Pt3D[];
   thickness: number[];
-  normals: Vec3[];
   sets: FemShellSet[];
   solids: FemSolidSet[];
+  ties: FemTie[];
   materials: FemMaterial[];
   orientations: FemOrientation[];
   // how many modes the frequency step asks for
@@ -261,13 +313,15 @@ export function buildCalculixDeck(deck: FemDeck): string {
       out.push(`${element}, ${nodes.map(n => n + 1).join(', ')}`);
       for (let n of nodes) {
         if (set.thickness === null) nodal.add(n);
-        let normal = set.ownNormals ? deck.normals[n] : null;
+        let normal = set.normals?.[n];
         if (normal && (normal.x || normal.y || normal.z)) normals.push(`${element}, ${n + 1}, ${num(normal.x)}, ${num(normal.y)}, ${num(normal.z)}`);
       }
     }
   }
+  let firstOf = new Map<string, number>();
   for (let set of deck.solids) {
     out.push(`*ELEMENT, TYPE=${set.type}, ELSET=${set.name}`);
+    firstOf.set(set.name, element + 1);
     for (let nodes of set.elements) {
       element++;
       // a line holds sixteen entries at most
@@ -299,6 +353,14 @@ export function buildCalculixDeck(deck: FemDeck): string {
     out.push(num(set.thickness ?? deck.thickness[set.elements[0][0]]));
   }
   for (let set of deck.solids) out.push(`*SOLID SECTION, ELSET=${set.name}, MATERIAL=${set.material}, ORIENTATION=${set.orientation}`);
+  for (let tie of deck.ties) {
+    out.push(`*NSET, NSET=${tie.name}_NODES`);
+    for (let k = 0; k < tie.nodes.length; k += 12) out.push(tie.nodes.slice(k, k + 12).map(n => n + 1).join(', '));
+    out.push(`*SURFACE, NAME=${tie.name}_GLUED, TYPE=NODE`, `${tie.name}_NODES`);
+    out.push(`*SURFACE, NAME=${tie.name}_FACES, TYPE=ELEMENT`);
+    for (let face of tie.faces) out.push(`${firstOf.get(face.set)! + face.element}, S${face.face}`);
+    out.push(`*TIE, NAME=${tie.name}, POSITION TOLERANCE=${num(tie.tolerance)}`, `${tie.name}_GLUED, ${tie.name}_FACES`);
+  }
 
   out.push('*STEP', '*FREQUENCY', String(deck.modes), '*NODE FILE', 'U', '*END STEP');
   return out.join('\n') + '\n';

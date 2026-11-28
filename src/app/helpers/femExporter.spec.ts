@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { buildCalculixDeck, buildTriangleMesh, FemDeck } from './femExporter';
+import { buildCalculixDeck, buildEdgeBand, buildTriangleMesh, FemDeck } from './femExporter';
 import { Pt } from '../models/types';
 
 const square = (half: number, cx = 0, cy = 0): Pt[] => [
@@ -70,14 +70,40 @@ describe('the triangle mesh', () => {
   });
 });
 
+describe('the band between a chain of nodes and the outline round it', () => {
+  // a ring of nodes inside a square, the two wound opposite ways
+  const chain = Array.from({ length: 12 }, (_, k) => new Pt(20 * Math.cos(-k * Math.PI / 6), 20 * Math.sin(-k * Math.PI / 6)));
+  const band = buildEdgeBand(chain, square(25), 6);
+  const all = [...chain, ...band.outer];
+
+  it('covers the band and nothing else, every triangle counterclockwise', () => {
+    let covered = 0;
+    for (const [a, b, c] of band.triangles) {
+      const each = area(all[a], all[b], all[c]);
+      expect(each).toBeGreaterThan(0);
+      covered += each;
+    }
+    const ring = chain.reduce((sum, q, k) => sum + area(new Pt(0, 0), chain[(k + 1) % 12], q), 0);
+    expect(covered).toBeCloseTo(50 * 50 - ring, 6);
+  });
+
+  it('keeps every stretch of the chain and of the outline as one triangle\'s edge', () => {
+    expect(band.triangles.length).toBe(chain.length + band.outer.length);
+    const edges = new Set(band.triangles.flatMap(([a, b, c]) => [[a, b], [b, c], [c, a]].map(([u, v]) => `${Math.min(u, v)} ${Math.max(u, v)}`)));
+    for (let k = 0; k < 12; k++) expect(edges.has(`${Math.min(k, (k + 1) % 12)} ${Math.max(k, (k + 1) % 12)}`)).toBe(true);
+    const m = band.outer.length;
+    for (let k = 0; k < m; k++) expect(edges.has(`${12 + Math.min(k, (k + 1) % m)} ${12 + Math.max(k, (k + 1) % m)}`)).toBe(true);
+  });
+});
+
 describe('the CalculiX deck', () => {
   const deck: FemDeck = {
     heading: ['a patch'],
     nodes: [0, 1, 2, 3, 4, 5].map(i => ({ x: i, y: i * i, z: 0 })),
     thickness: [3, 3, 3, 3, 3, 3],
-    normals: [0, 1, 2, 3, 4, 5].map(() => ({ x: 0, y: 0, z: 1 })),
-    sets: [{ name: 'PATCH', type: 'S6', elements: [[0, 2, 4, 1, 3, 5]], material: 'WOOD', orientation: 'GRAIN', thickness: null, ownNormals: true }],
+    sets: [{ name: 'PATCH', type: 'S6', elements: [[0, 2, 4, 1, 3, 5]], material: 'WOOD', orientation: 'GRAIN', thickness: null, normals: [0, 1, 2, 3, 4, 5].map(() => ({ x: 0, y: 0, z: 1 })) }],
     solids: [],
+    ties: [],
     materials: [{ name: 'WOOD', density: 4e-10, E1: 12000, E2: 900, E3: 500, nu12: 0.37, nu13: 0.47, nu23: 0.43, G12: 760, G13: 730, G23: 36 }],
     orientations: [{ name: 'GRAIN', x: { x: 0, y: 1, z: 0 }, xy: { x: -1, y: 0, z: 0 } }],
     modes: 10,
@@ -112,12 +138,12 @@ describe('the CalculiX deck', () => {
       ...deck,
       nodes,
       thickness: [],
-      normals: nodes.map((_, i) => ({ x: 0, y: 0, z: i === 2 ? 0 : 1 })),
-      sets: [{ name: 'PATCH', type: 'S6', elements: [[0, 2, 4, 1, 3, 5]], material: 'WOOD', orientation: 'GRAIN', thickness: 2, ownNormals: true }],
+      sets: [{ name: 'PATCH', type: 'S6', elements: [[0, 2, 4, 1, 3, 5]], material: 'WOOD', orientation: 'GRAIN', thickness: 2, normals: nodes.map((_, i) => ({ x: 0, y: 0, z: i === 2 ? 0 : 1 })) }],
       solids: [
         { name: 'WEDGE', type: 'C3D15', elements: [nodes.slice(0, 15).map((_, i) => i)], material: 'WOOD', orientation: 'GRAIN' },
         { name: 'BRICK', type: 'C3D20', elements: [nodes.map((_, i) => i)], material: 'WOOD', orientation: 'GRAIN' },
       ],
+      ties: [{ name: 'JOINT', tolerance: 1.5, nodes: [0, 1, 2], faces: [{ set: 'BRICK', element: 0, face: 4 }] }],
     };
     const text = buildCalculixDeck(jointed).split('\n');
     const from = text.indexOf('*NORMAL');
@@ -132,5 +158,9 @@ describe('the CalculiX deck', () => {
       expect(text[at + 2].split(',').length).toBeLessThanOrEqual(16);
       expect(text.some(l => l.startsWith(`*SOLID SECTION, ELSET=${name}, MATERIAL=WOOD`))).toBe(true);
     }
+    // the brick is the third element, after the shell and the wedge
+    expect(text).toContain('3, S4');
+    expect(text[text.indexOf('*NSET, NSET=JOINT_NODES') + 1]).toBe('1, 2, 3');
+    expect(text).toContain('*TIE, NAME=JOINT, POSITION TOLERANCE=1.5');
   });
 });

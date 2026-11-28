@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { buildFemDeck, buildGarlandDeck, buildNeckDeck, calcWoodMaterial, DevFemPanel, isFemBuilt, isFemGarlandBuilt, isFemNeckBuilt, solvedFem, solvedFemGarland, solvedFemNeck } from './dev-fem-panel';
+import { buildFemDeck, buildGarlandDeck, buildNeckDeck, calcWoodMaterial, DevFemPanel, isFemBuilt, isFemGarlandBuilt, isFemNeckBuilt, isFemViolinBuilt, solvedFem, solvedFemGarland, solvedFemNeck, solvedFemViolin, buildViolinDeck } from './dev-fem-panel';
 import { solveNeck } from '../neck-panel/neck-panel';
 import { TURN } from '../../../../helpers/math/simpleGeometry';
 import { DevBassBarPanel } from '../dev-bassbar-panel/dev-bassbar-panel';
@@ -19,7 +19,7 @@ import { FlutingPanel } from '../fluting-panel/fluting-panel';
 import { LongArchingPanel } from '../long-arching-panel/long-arching-panel';
 import { NeckPanel } from '../neck-panel/neck-panel';
 import { VolutePanel } from '../volute-panel/volute-panel';
-import { StringSetupPanel } from '../string-setup-panel/string-setup-panel';
+import { solveStringSetup, StringSetupPanel } from '../string-setup-panel/string-setup-panel';
 import { ViolinFamilyParams } from '../../violin-family-types';
 import { Pt } from '../../../../models/types';
 import { DEFAULT_VIOLIN_FAMILY_PARAMS } from '../../violin-family-seed';
@@ -467,5 +467,193 @@ describe('the neck, head and fingerboard as elements', () => {
     expect(lines.filter(l => l.startsWith('*SOLID SECTION')).length).toBe(2);
     expect(lines.some(l => l.startsWith('*SHELL SECTION') || l.startsWith('*NORMAL'))).toBe(false);
     expect(lines).toContain('*MATERIAL, NAME=BOARD_WOOD');
+  });
+});
+
+describe('the violin glued up', () => {
+  const p = seeded();
+  const step = 8;
+  const garlandBefore = JSON.stringify(solvedFemGarland(p, step)!.nodes);
+  const v = solvedFemViolin(p, step, true, true)!;
+  const garland = solvedFemGarland(p, step)!;
+  const neck = solvedFemNeck(p, step)!;
+  const topAlone = solvedFem(p, { plate: 'top', step, bar: true })!;
+  const backAlone = solvedFem(p, { plate: 'back', step, bar: false })!;
+  const taper = solveRibTaper(p)!;
+  const topEdge = p.arching!.top.thickness, backEdge = p.arching!.back.thickness;
+  const ribs = v.runs.flatMap(run => run.ribs);
+  const linings = v.runs.flatMap(run => run.linings);
+  const signedVolume = (a: number, b: number, c: number, d: number): number => {
+    const [o, u, w, t] = [a, b, c, d].map(i => v.nodes[i]);
+    return ((u.x - o.x) * ((w.y - o.y) * (t.z - o.z) - (w.z - o.z) * (t.y - o.y))
+      - (u.y - o.y) * ((w.x - o.x) * (t.z - o.z) - (w.z - o.z) * (t.x - o.x))
+      + (u.z - o.z) * ((w.x - o.x) * (t.y - o.y) - (w.y - o.y) * (t.x - o.x)));
+  };
+
+  it('builds without a failure, writes to no params and leaves the garland alone as it was', () => {
+    const snapshot = JSON.stringify(p);
+    expect(solvedFemViolin(p, step, true, true)!.failures).toEqual([]);
+    expect(JSON.stringify(p)).toBe(snapshot);
+    expect(JSON.stringify(garland.nodes)).toBe(garlandBefore);
+  });
+
+  it('ends every column of the garland on a node of the plate over it, the top above and the back below', () => {
+    const inTop = new Set(v.top.flat()), inBack = new Set(v.back.flat());
+    for (const n of garland.tops) expect(inTop.has(n)).toBe(true);
+    for (const n of garland.feet) expect(inBack.has(n)).toBe(true);
+    for (const plan of garland.ribLine) {
+      const top = v.nodes[garland.tops[plan]], foot = v.nodes[garland.feet[plan]];
+      const height = ribHeightAt(p, garland.plan[plan].y, taper);
+      // plumb over the rib line, half an edge thickness into each plate, give or take the taper's lean
+      expect(Math.hypot(top.x - garland.plan[plan].x, top.y - garland.plan[plan].y)).toBeLessThan(0.05);
+      expect(foot.x).toBeCloseTo(garland.plan[plan].x, 9);
+      // the outside has begun to fall away from the edge by the rib line
+      expect(top.z).toBeLessThan(height + topEdge / 2 + 0.05);
+      expect(top.z).toBeGreaterThan(height + topEdge / 2 - 0.5);
+      expect(foot.z).toBeGreaterThan(-backEdge / 2 - 0.05);
+      expect(foot.z).toBeLessThan(-backEdge / 2 + 0.5);
+    }
+    expect(Math.min(...[...inTop].map(n => v.nodes[n].z))).toBeGreaterThan(Math.max(...[...inBack].map(n => v.nodes[n].z)));
+  });
+
+  it('stands every element the right way out, the plates\' along their own normals', () => {
+    for (const tri of [...v.top, ...v.back]) {
+      const [a, b, c] = tri.map(n => v.nodes[n]);
+      const across = {
+        x: (b.y - a.y) * (c.z - a.z) - (b.z - a.z) * (c.y - a.y),
+        y: (b.z - a.z) * (c.x - a.x) - (b.x - a.x) * (c.z - a.z),
+        z: (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x),
+      };
+      for (const n of tri) {
+        const normal = v.plateNormals[n];
+        expect(across.x * normal.x + across.y * normal.y + across.z * normal.z).toBeGreaterThan(0);
+      }
+      // a midside node within the middle of its edge, so the element isn't folded
+      for (const [u, w, mid] of [[0, 1, 3], [1, 2, 4], [2, 0, 5]]) {
+        const from = v.nodes[tri[u]], to = v.nodes[tri[w]], at = v.nodes[tri[mid]];
+        const along = ((at.x - from.x) * (to.x - from.x) + (at.y - from.y) * (to.y - from.y) + (at.z - from.z) * (to.z - from.z))
+          / ((to.x - from.x) ** 2 + (to.y - from.y) ** 2 + (to.z - from.z) ** 2);
+        expect(along).toBeGreaterThan(0.3);
+        expect(along).toBeLessThan(0.7);
+      }
+    }
+    for (const wedge of [...v.blocks, ...v.neck]) expect(signedVolume(wedge[0], wedge[1], wedge[2], wedge[3])).toBeGreaterThan(0);
+    for (const brick of [...linings, ...v.board]) expect(signedVolume(brick[0], brick[1], brick[3], brick[4])).toBeGreaterThan(0);
+    for (const quad of ribs) expect(v.nodes[quad[3]].z).toBeGreaterThan(v.nodes[quad[0]].z);
+  });
+
+  it('turns the back over under the garland and sets the top on the taper', () => {
+    const deepest = Math.min(...v.back.flat().map(n => v.nodes[n].z));
+    const crown = Math.max(...backAlone.nodes.map(q => q.z));
+    expect(deepest).toBeCloseTo(-(crown + backEdge), 0);
+    const high = Math.max(...v.top.flat().map(n => v.nodes[n].z));
+    expect(high).toBeGreaterThan(Math.max(taper.zLower, taper.zUpper) + topEdge);
+    expect(v.web.length).toBeGreaterThan(0);
+    // the bar hangs under the top, inside the body
+    for (const quad of v.web) expect(v.nodes[quad[0]].z).toBeLessThan(v.nodes[quad[3]].z);
+  });
+
+  it('stands the sound post between the plates on their own nodes, where the string setup puts it', () => {
+    const stands = solveStringSetup(p)!.soundPost!;
+    const inTop = new Set(v.top.flat()), inBack = new Set(v.back.flat());
+    const nodes = new Set(v.post.flat());
+    expect(v.post.length % 6).toBe(0);
+    expect(v.post.length).toBeGreaterThanOrEqual(12);
+    expect([...nodes].filter(n => inTop.has(n)).length).toBe(19);
+    expect([...nodes].filter(n => inBack.has(n)).length).toBe(19);
+    let section = 0;
+    for (const wedge of v.post) {
+      expect(new Set(wedge).size).toBe(15);
+      expect(signedVolume(wedge[0], wedge[1], wedge[2], wedge[3])).toBeGreaterThan(0);
+      for (const n of wedge) expect(Math.hypot(v.nodes[n].x - stands.x, v.nodes[n].y - stands.y)).toBeLessThan(1.25 * stands.r);
+    }
+    // the six wedges of the lowest layer cover the post's own section
+    for (const wedge of v.post.filter(w => inBack.has(w[0]))) {
+      const [a, b, c] = wedge.slice(0, 3).map(n => v.nodes[n]);
+      section += ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) / 2;
+    }
+    expect(section / (Math.PI * stands.r ** 2)).toBeGreaterThan(0.95);
+    expect(section / (Math.PI * stands.r ** 2)).toBeLessThan(1.05);
+    expect(v.shares.soundPost).toBeGreaterThan(0.9);
+    expect(v.shares.soundPost).toBeLessThan(1);
+    const span = Math.max(...[...nodes].map(n => v.nodes[n].z)) - Math.min(...[...nodes].map(n => v.nodes[n].z));
+    expect(v.volumes.soundPost).toBeLessThan(Math.PI * stands.r ** 2 * span);
+    expect(v.volumes.soundPost).toBeGreaterThan(0.8 * Math.PI * stands.r ** 2 * span);
+  });
+
+  it('glues the heel\'s end to the neck block\'s outer face', () => {
+    expect(v.heel.length).toBe(neck.seat.length);
+    expect(v.mortise.length).toBeGreaterThan(0);
+    const rootY = v.nodes[v.heel[0]].y;
+    for (const n of v.heel) expect(v.nodes[n].y).toBeCloseTo(rootY, 9);
+    const reach = Math.max(...v.heel.map(n => Math.abs(v.nodes[n].x)));
+    for (const { element, face } of v.mortise) {
+      const wedge = v.blocks[element];
+      const [a, b] = [[0, 1], [1, 2], [2, 0]][face - 3].map(k => v.nodes[wedge[k]]);
+      expect(a.y).toBeGreaterThan(0.9 * p.body.height);
+      // the face runs along the ribs, and where it passes behind the heel it is within the glue's reach
+      for (const q of [a, b]) {
+        if (Math.abs(q.x) < reach) expect(Math.abs(q.y - rootY)).toBeLessThan(3);
+      }
+    }
+    const covered = Math.max(...v.mortise.flatMap(({ element }) => v.blocks[element].slice(0, 6).map(n => Math.abs(v.nodes[n].x))));
+    expect(covered).toBeGreaterThanOrEqual(reach);
+  });
+
+  it('lightens the garland by the wood its longer columns share with the plates, and weighs each part as it is alone', () => {
+    for (const share of Object.values(v.shares)) {
+      expect(share).toBeGreaterThan(0.7);
+      expect(share).toBeLessThan(1);
+    }
+    expect(v.volumes.ribs).toBe(garland.ribVolume);
+    expect(v.volumes.neck).toBe(neck.neckVolume);
+    // the glued top is meshed over again on the garland, so it weighs the same only nearly
+    expect(v.volumes.top / topAlone.plateVolume).toBeGreaterThan(0.97);
+    expect(v.volumes.top / topAlone.plateVolume).toBeLessThan(1.03);
+  });
+
+  it('keeps a built violin through a wood edit, and no longer once any part of it moves', () => {
+    const q = seeded();
+    expect(isFemViolinBuilt(q, step, true, true)).toBe(false);
+    // the mesh built above stands in for one built on these params, which are the same
+    const moves = [
+      () => { q.graduation!.top.points[0].thickness += 0.5; }, () => { q.graduation!.back.points[0].thickness += 0.5; },
+      () => { q.graduation!.liningHeight += 1; }, () => { q.neck!.length += 1; }, () => { q.bassBar!.width += 0.5; },
+    ];
+    for (const move of moves) {
+      q.solved!.femViolin.solve = { options: JSON.stringify([step, true, true]), mesh: v };
+      q.wood!.back.density += 10;
+      expect(isFemViolinBuilt(q, step, true, true)).toBe(true);
+      expect(isFemViolinBuilt(q, step, false, true)).toBe(false);
+      expect(isFemViolinBuilt(q, step, true, false)).toBe(false);
+      move();
+      expect(isFemViolinBuilt(q, step, true, true)).toBe(false);
+    }
+  });
+
+  it('reports what a part would alone: a plate with no readings, a neck with no scroll, a cleared wood field', () => {
+    const q = seeded();
+    q.graduation!.back.points = [];
+    expect(solvedFemViolin(q, step, true, true)!.failures.map(f => f.unsolved)).toEqual([['mesh']]);
+    const r = seeded();
+    delete r.scroll;
+    expect(solvedFemViolin(r, step, true, true)!.failures.map(f => f.unsolved)).toEqual([['mesh']]);
+    const stiffness = p.wood!.neck.stiffness;
+    (p.wood!.neck as any).stiffness = null;
+    expect(solvedFemViolin(p, step, true, true)!.failures.map(f => f.unsolved)).toEqual([['wood']]);
+    p.wood!.neck.stiffness = stiffness;
+  });
+
+  it('writes one deck: a section for every set, every element on nodes it holds, and the neck tied on', () => {
+    const lines = buildViolinDeck(p, v, 12, 'spec').split('\n');
+    const sets = lines.filter(l => l.startsWith('*ELEMENT')).map(l => l.split('ELSET=')[1]);
+    const sections = lines.filter(l => l.startsWith('*SHELL SECTION') || l.startsWith('*SOLID SECTION')).map(l => l.split('ELSET=')[1].split(',')[0]);
+    expect([...sections].sort()).toEqual([...sets].sort());
+    for (const name of ['TOP', 'BACK', 'BASS_BAR', 'BLOCKS', 'NECK', 'FINGERBOARD', 'SOUND_POST']) expect(sets).toContain(name);
+    expect(lines.filter(l => l.startsWith('*TIE')).length).toBe(1);
+    const from = lines.indexOf('*NODAL THICKNESS');
+    const thick = lines.slice(from + 1, lines.findIndex((l, i) => i > from && l.startsWith('*')));
+    expect(thick.length).toBe(new Set([...v.top.flat(), ...v.back.flat()]).size);
+    for (const line of thick) expect(Number(line.split(',')[1])).toBeGreaterThan(0);
   });
 });

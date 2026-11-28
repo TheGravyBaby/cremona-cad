@@ -342,8 +342,8 @@ export interface BassBarPoint {
 // stands for the constants nobody measures, held as ratios to that stiffness. A plate's cut says
 // which way the rings stand: on the quarter they stand upright across the plate, on the slab they
 // lie in it. The bar is always on the quarter, and so are the ribs and linings, their grain running
-// round the garland; a block's grain stands upright between the plates. The neck's and the
-// fingerboard's run up the neck
+// round the garland; a block's grain stands upright between the plates, as the sound post's does.
+// The neck's and the fingerboard's run up the neck
 export interface WoodParams {
   top: PlateWood;
   back: PlateWood;
@@ -353,6 +353,7 @@ export interface WoodParams {
   blocks: Wood;
   neck: Wood;
   fingerboard: Wood;
+  soundPost: Wood;
 }
 
 export type WoodSpecies = 'spruce' | 'maple' | 'ebony';

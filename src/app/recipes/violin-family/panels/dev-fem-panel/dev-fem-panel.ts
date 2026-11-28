@@ -1,6 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { buildCalculixDeck, buildTriangleMesh, saveDeckFile, FemMaterial, FemOrientation, FemShellSet, FemSolidSet } from '../../../../helpers/femExporter';
+import { addMidsides, buildCalculixDeck, buildEdgeBand, buildTriangleMesh, saveDeckFile, FemMaterial, FemOrientation, FemShellSet, FemSolidSet, TriangleMesh } from '../../../../helpers/femExporter';
 import { clamp, cross3, dist, dot, pointInPolygon, pointOnCircle, signedArcSweep, signedPolygonArea, stepAlong3, subVec, subVec3, TURN, vecAtAngle } from '../../../../helpers/math/simpleGeometry';
 import { makeMonotoneSpline, pointAtPolylineLength, polylineCumulativeLengths, polylineSlice, projectOntoPolyline } from '../../../../helpers/math/vibeMath';
 import { applyMatrix, pathFromPolyline, translatePath } from '../../../../helpers/math/pathMath';
@@ -10,9 +10,9 @@ import { buildBlankMiss, buildMiss, reportFailures, solveSection } from '../../.
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
 import { PanelPalette, ThemeService } from '../../../../theme/theme.service';
-import { Pt, Pt3D, Vec3 } from '../../../../models/types';
+import { Circle, Pt, Pt3D, Vec3 } from '../../../../models/types';
 import { PlateWood, RenderLayer, ViolinFamilyParams, ViolinFamilyToggleKey, Wood, WoodSpecies } from '../../violin-family-types';
-import { FemFailure, FemSolve, GarlandFemSolve, GarlandRun, NeckFemSolve, NeckSolve, Plate, ScrollSolve, SurfaceRow } from '../../violin-family-solves';
+import { FemFailure, FemSolve, GarlandFemSolve, GarlandRun, NeckFemSolve, NeckSolve, Plate, ScrollSolve, SurfaceRow, ViolinFemSolve } from '../../violin-family-solves';
 import { PanelComponentBase } from '../panel-component-base';
 import { updateSolved } from '../../violin-family-solved';
 import { rowAt, solvedCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
@@ -21,8 +21,8 @@ import { solveBassBar } from '../dev-bassbar-panel/dev-bassbar-panel';
 import { definePurflingPath, PLATE_LAYOUT_GAP, renderPlateContour, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import { solvedRibArcs } from '../corners-panel/corners-panel';
-import { ribHeightAt, solveRibTaper } from '../long-arching-panel/long-arching-panel';
-import { calcMortiseFloorY, calcNeckTaper, calcScrollOnNeck, defineNeckInPlan, neckHalfWidthAt } from '../neck-panel/neck-panel';
+import { calcTopPlatePlacement, placeOnTopPlate, ribHeightAt, solveRibTaper } from '../long-arching-panel/long-arching-panel';
+import { calcNeckTaper, calcScrollOnNeck, defineNeckInPlan, neckHalfWidthAt } from '../neck-panel/neck-panel';
 import { defineSideScrollPath, solveScroll } from '../pegbox-panel/pegbox-panel';
 import { calcPegboxCavity, pegboxWidthAt } from '../scroll-widths-panel/scroll-widths-panel';
 import { defineFingerboardInPlan, fingerboardRadiusAt, solveStringSetup } from '../string-setup-panel/string-setup-panel';
@@ -31,8 +31,8 @@ import { defineFingerboardInPlan, fingerboardRadiusAt, solveStringSetup } from '
 // plates are graduated: the wood each part is cut from, the mesh drawn over the plate in the
 // thickness each element carries, and a CalculiX deck asking for the free plate's modes. The rib
 // garland is a part beside the two plates: ribs as shells, linings and blocks as solids. The neck
-// is another: neck, head and fingerboard as solids. Panel and renders, then the plate's solve and
-// deck, then the garland's, then the neck's.
+// is another: neck, head and fingerboard as solids. The violin is all of them glued up. Panel and
+// renders, then the plate's solve and deck, then the garland's, the neck's and the violin's.
 
 const BAR_INK = 0;
 const RIB_INK = 1;
@@ -65,6 +65,11 @@ const HEEL_CHORDS = 16;
 // width falls away with depth below the fingerboard, to half the neck's at the back, which makes
 // it about 0.85 of the block it is carved from
 const NECK_ROUND = 0.75;
+// the sound post is meshed six-sided: a hexagon this much wider than the post has its section's area
+const POST_HEXAGON = Math.sqrt(TURN.full / (3 * Math.sqrt(3)));
+// how far the heel's flat end may stand off the neck block's curved face and still be glued to it,
+// as a share of the body
+const HEEL_GAP_SHARE = 3 / 356;
 // ribs whose grain runs within half of this of one another share an orientation, degrees
 const GRAIN_STEP = 10;
 
@@ -112,7 +117,7 @@ export class DevFemPanel extends PanelComponentBase implements OnInit {
     if (!p.wood) {
       p.wood = {
         top: { ...spruce, cut: 'quarter' }, back: { ...maple, cut: 'quarter' }, bassBar: { ...spruce },
-        ribs: { ...maple }, linings: { ...spruce }, blocks: { ...spruce }, neck: { ...maple }, fingerboard: { ...ebony },
+        ribs: { ...maple }, linings: { ...spruce }, blocks: { ...spruce }, neck: { ...maple }, fingerboard: { ...ebony }, soundPost: { ...spruce },
       };
     }
     // a file whose wood was seeded before the garland or the neck had any
@@ -121,17 +126,47 @@ export class DevFemPanel extends PanelComponentBase implements OnInit {
     p.wood.blocks ??= { ...spruce };
     p.wood.neck ??= { ...maple };
     p.wood.fingerboard ??= { ...ebony };
+    p.wood.soundPost ??= { ...spruce };
   }
 
   // what is exported and how finely: choices about the run, not the instrument, so not in the file
-  part: Plate | 'garland' | 'neck' = 'top';
+  part: Plate | 'garland' | 'neck' | 'violin' = 'top';
   options: FemMeshOptions = { plate: 'top', step: 6, bar: true };
+  // whether the violin carries its sound post
+  post = true;
   modes = 12;
   // the mesh as last built, while it still answers to the fields; null before a build and once
   // anything it was built from has moved, when only the plates' outlines are drawn
   s: FemSolve | null = null;
   garland: GarlandFemSolve | null = null;
   neck: NeckFemSolve | null = null;
+  violin: ViolinFemSolve | null = null;
+
+  // what each part of the built violin weighs, grams
+  get violinWeights(): { title: string; grams: number }[] {
+    let wood = this.params.wood!, v = this.violin!.volumes;
+    return [
+      { title: 'Top', grams: v.top * wood.top.density * 1e-6 },
+      { title: 'Bass bar', grams: v.bassBar * wood.bassBar.density * 1e-6 },
+      { title: 'Back', grams: v.back * wood.back.density * 1e-6 },
+      { title: 'Ribs', grams: v.ribs * wood.ribs.density * 1e-6 },
+      { title: 'Linings', grams: v.linings * wood.linings.density * 1e-6 },
+      { title: 'Blocks', grams: v.blocks * wood.blocks.density * 1e-6 },
+      { title: 'Neck', grams: v.neck * wood.neck.density * 1e-6 },
+      { title: 'Fingerboard', grams: v.fingerboard * wood.fingerboard.density * 1e-6 },
+      { title: 'Sound post', grams: v.soundPost * wood.soundPost.density * 1e-6 },
+    ];
+  }
+
+  get violinGrams(): number {
+    return this.violinWeights.reduce((sum, part) => sum + part.grams, 0);
+  }
+
+  get violinElements(): number {
+    let v = this.violin!;
+    return v.top.length + v.back.length + v.web.length + v.blocks.length + v.neck.length + v.board.length + v.post.length
+      + v.runs.reduce((sum, run) => sum + run.ribs.length + run.linings.length, 0);
+  }
 
   // the woods of the garland or the neck, whichever is picked, each with what was meshed of it
   get partWoods(): { title: string; wood: Wood; volume: number }[] {
@@ -199,7 +234,7 @@ export class DevFemPanel extends PanelComponentBase implements OnInit {
   }
 
   reportSolveFailures(): void {
-    let built = this.assembly ?? this.s;
+    let built = this.violin ?? this.assembly ?? this.s;
     if (built) reportFailures(built.failures, 'Dev FEM');
   }
 
@@ -207,6 +242,7 @@ export class DevFemPanel extends PanelComponentBase implements OnInit {
   buildMesh(): void {
     if (this.part === 'garland') solvedFemGarland(this.params, this.options.step);
     else if (this.part === 'neck') solvedFemNeck(this.params, this.options.step);
+    else if (this.part === 'violin') solvedFemViolin(this.params, this.options.step, this.options.bar, this.post);
     else solvedFem(this.params, this.options);
     this.drawCanvas();
     this.reportSolveFailures();
@@ -214,7 +250,7 @@ export class DevFemPanel extends PanelComponentBase implements OnInit {
 
   exportDeck(): void {
     this.buildMesh();
-    let built = this.assembly ?? this.s;
+    let built = this.violin ?? this.assembly ?? this.s;
     if (!built || built.failures.length) return;
     if (!(this.modes > 0)) {
       reportFailures([buildMiss('Modes: the number of modes needs a value above 0.', ['mesh'])], 'Dev FEM');
@@ -223,6 +259,7 @@ export class DevFemPanel extends PanelComponentBase implements OnInit {
     let name = this.fileName.trim() || 'violin-family';
     if (this.part === 'garland') saveDeckFile(`${name}-garland.inp`, buildGarlandDeck(this.params, this.garland!, this.modes, name));
     else if (this.part === 'neck') saveDeckFile(`${name}-neck.inp`, buildNeckDeck(this.params, this.neck!, this.modes, name));
+    else if (this.part === 'violin') saveDeckFile(`${name}-violin.inp`, buildViolinDeck(this.params, this.violin!, this.modes, name));
     else saveDeckFile(`${name}-${this.options.plate}.inp`, buildFemDeck(this.params, this.s!, this.modes, name));
   }
 
@@ -230,7 +267,13 @@ export class DevFemPanel extends PanelComponentBase implements OnInit {
     let p = this.params;
     let pc = solvedPlateContour(p)!;
     let outlines = [renderPlateContour(p, pc, this.pal, this.flags, false), renderFholes(p, this.pal)];
-    this.s = this.garland = this.neck = null;
+    this.s = this.garland = this.neck = this.violin = null;
+    if (this.part === 'violin') {
+      // everything as it was drafted, and the top's mesh over it once the violin is built
+      let drafted = [...outlines, renderGarland(solvedGraduation(p)!, this.pal), renderNeckInPlan(p, this.pal)];
+      let violin = this.violin = isFemViolinBuilt(p, this.options.step, this.options.bar, this.post) ? solvedFemViolin(p, this.options.step, this.options.bar, this.post) : null;
+      return violin ? [...drafted, renderFemViolin(violin, this.pal), renderSolveFailures(violin.failures, this.pal.alert)] : drafted;
+    }
     if (this.part === 'neck') {
       // the neck and its board in plan as they were drafted, and the mesh's side view once there is one
       let drafted = [...outlines, renderNeckInPlan(p, this.pal)];
@@ -313,6 +356,13 @@ export const renderFemNeck = (p: ViolinFamilyParams, s: NeckFemSolve, pal: Panel
   renderPath(translatePath(pathFromPolyline(s.board, true), dx, 0), pal.ink(BAR_INK), STROKE_WEIGHT.section)(g, ui);
 };
 
+// the built violin from above: the top's elements, every node where the garland under it put it
+export const renderFemViolin = (s: ViolinFemSolve, pal: PanelPalette) => (g: any, ui: any): void => {
+  if (!s.top.length) return;
+  let top = s.top.map(tri => pathFromPolyline(tri.slice(0, 3).map(n => new Pt(s.nodes[n].x, s.nodes[n].y)), true)).join(' ');
+  renderPath(top, pal.neutral, STROKE_WEIGHT.guide, 0.5)(g, ui);
+};
+
 // whether the mesh held on the params is of these options: built, and nothing it was built from
 // moved since. No wood field is among what clears it
 export function isFemBuilt(p: ViolinFamilyParams, options: FemMeshOptions): boolean {
@@ -345,10 +395,12 @@ function pushWoodFailure(failures: FemFailure[], woods: Wood[]): void {
   });
 }
 
-function solveFemMesh(p: ViolinFamilyParams, options: FemMeshOptions): FemSolve {
+// `garland` is given when the plate is to be glued to one: its mesh then stands on the garland's,
+// and has a seat for the sound post where `post` stands, as the top's plan has it
+function solveFemMesh(p: ViolinFamilyParams, options: FemMeshOptions, garland: GarlandFemSolve | null = null, post: Circle | null = null): FemSolve {
   let { plate, step } = options;
   let s: FemSolve = {
-    plate, plan: [], nodes: [], normals: [], thickness: [], corners: 0, triangles: [], web: [],
+    plate, seat: [], post: [], plan: [], nodes: [], normals: [], thickness: [], corners: 0, triangles: [], web: [],
     webVolume: 0, plateVolume: 0, barVolume: 0, minAngle: 0, failures: [],
   };
   let bb = options.bar && plate === 'top' ? p.bassBar : undefined;
@@ -376,7 +428,14 @@ function solveFemMesh(p: ViolinFamilyParams, options: FemMeshOptions): FemSolve 
     let field = solvedThicknessField(p, plate);
     if (!surface || !field) return buildMiss(`Mesh: the ${plate} has no thickness readings yet; graduate it first.`, ['mesh']);
     let holes = plate === 'top' ? solvedGraduation(p)?.holes ?? [] : [];
-    let mesh = buildTriangleMesh(surface.outline, holes, foot ? [foot] : [], step, step * HOLE_STEP_SHARE);
+    // the back is turned over, so the post's corners run round it the other way and still pair off with the top's
+    let side = plate === 'back' ? -1 : 1;
+    let hexagon = post ? Array.from({ length: 6 }, (_, k) => new Pt(side * (post.x + post.r * POST_HEXAGON * Math.cos(k * TURN.full / 6)), post.y + post.r * POST_HEXAGON * Math.sin(k * TURN.full / 6))) : null;
+    let glued = garland ? buildGluedPlateMesh(surface.outline, holes, foot ? [foot] : [], step, step * HOLE_STEP_SHARE, garland, plate === 'back', hexagon) : null;
+    if (garland && !glued) return buildMiss('Mesh: the garland\'s linings and blocks don\'t close into one glued ground under the plate.', ['mesh']);
+    let mesh = glued?.mesh ?? buildTriangleMesh(surface.outline, holes, foot ? [foot] : [], step, step * HOLE_STEP_SHARE);
+    s.seat = glued?.seat ?? [];
+    s.post = glued?.post ?? [];
 
     // a row is the slow part of a surface read; the lattice shares its rows
     let rows = new Map<number, SurfaceRow>();
@@ -384,16 +443,25 @@ function solveFemMesh(p: ViolinFamilyParams, options: FemMeshOptions): FemSolve 
       let row = rows.get(y) ?? rows.set(y, rowAt(surface, y)).get(y)!;
       return surfaceZAt(surface, x, y, row);
     };
-    for (let q of mesh.nodes) {
+    let edge = p.arching![plate].thickness;
+    mesh.nodes.forEach((q, n) => {
       // a node on the outline can read as just off the plate, where the land is level
       let z = zAt(q.x, q.y) ?? 0;
+      s.plan.push(q);
+      if (s.seat[n] < -1 || s.seat[n] >= 0) {
+        // out at the edge the inside is the flat gluing face, an edge thickness under the outside's
+        // edge, whatever the channel does above: the node stays plumb, over its seat if it has one
+        s.normals.push({ x: 0, y: 0, z: 1 });
+        s.thickness.push(z + edge);
+        s.nodes.push(new Pt3D(q.x, q.y, (z - edge) / 2));
+        return;
+      }
       let normal = heightFieldNormalAt(zAt, q.x, q.y, z, NORMAL_STEP);
       let thickness = field.at(q.x, q.y);
-      s.plan.push(q);
       s.normals.push(normal);
       s.thickness.push(thickness);
       s.nodes.push(stepAlong3(new Pt3D(q.x, q.y, z), normal, -thickness / 2));
-    }
+    });
     s.corners = mesh.corners;
     s.triangles = mesh.triangles;
     s.minAngle = mesh.minAngle;
@@ -412,6 +480,130 @@ function solveFemMesh(p: ViolinFamilyParams, options: FemMeshOptions): FemSolve 
     return null;
   });
   return s;
+}
+
+// a plate's plan mesh made to stand on a garland's: the garland's own blocks and lining tops in
+// plan, the band out to the plate's edge zipped onto the rib line, and the open plate within the
+// linings and blocks meshed as a plate alone is, from their inner edge. `seat` names the
+// garland's plan node under each node; where there is none it is -2 for a node over the edge's
+// flat underside, the glued ground and the overhang past it, and -1 for one over the open plate. `turned` is the back, which is
+// drawn from outside and so lies on the garland mirrored. `hexagon` is where a sound post's end
+// stands: the open plate is meshed round it as round a hole, and the hole filled with six
+// triangles about its centre; `post` names their nodes as a FemSolve does. Null where the glued
+// ground's inner edge is not one loop
+function buildGluedPlateMesh(outline: Pt[], holes: Pt[][], lines: Pt[][], step: number, holeStep: number, g: GarlandFemSolve, turned: boolean, hexagon: Pt[] | null): { mesh: TriangleMesh; seat: number[]; post: number[] } | null {
+  let at = g.plan.map(q => new Pt(turned ? -q.x : q.x, q.y));
+  let count = g.plan.length;
+  // an edge of the ground that only one block or lining has, and no rib stands on, is its inner edge
+  let ribbed = new Set<number>();
+  for (let k = 0; k < g.ribLine.length; k += 2) {
+    let a = g.ribLine[k], b = g.ribLine[(k + 2) % g.ribLine.length];
+    ribbed.add(Math.min(a, b) * count + Math.max(a, b));
+  }
+  let cells = [...g.triangles, ...g.linings];
+  let shared = new Map<number, number>();
+  for (let cell of cells) {
+    for (let k = 0; k < cell.length; k++) {
+      let a = cell[k], b = cell[(k + 1) % cell.length];
+      let key = Math.min(a, b) * count + Math.max(a, b);
+      shared.set(key, (shared.get(key) ?? 0) + 1);
+    }
+  }
+  let beside = new Map<number, number[]>();
+  let inner = 0;
+  for (let [key, uses] of shared) {
+    if (uses !== 1 || ribbed.has(key)) continue;
+    let a = Math.floor(key / count), b = key % count;
+    beside.set(a, [...(beside.get(a) ?? []), b]);
+    beside.set(b, [...(beside.get(b) ?? []), a]);
+    inner++;
+  }
+  if (!inner || [...beside.values()].some(pair => pair.length !== 2)) return null;
+  let loop = [beside.keys().next().value!];
+  for (let before = -1; loop.length <= inner;) {
+    let here = loop[loop.length - 1];
+    let next = beside.get(here)!.find(n => n !== before)!;
+    if (next === loop[0]) break;
+    before = here;
+    loop.push(next);
+  }
+  if (loop.length !== inner) return null;
+
+  let edge = loop.map(n => at[n]);
+  let open = buildTriangleMesh(edge, hexagon ? [...holes, hexagon] : holes, lines, step, holeStep, edge);
+  let onLoop = new Map(loop.map(n => [`${at[n].x.toFixed(6)} ${at[n].y.toFixed(6)}`, n]));
+  let corners: Pt[] = [];
+  let seat: number[] = [];
+  let cornerOf = new Map<number, number>();
+  let openCorner: number[] = [];
+  for (let k = 0; k < open.corners; k++) {
+    let n = onLoop.get(`${open.nodes[k].x.toFixed(6)} ${open.nodes[k].y.toFixed(6)}`);
+    if (n !== undefined) cornerOf.set(n, corners.length);
+    openCorner.push(corners.length);
+    corners.push(n !== undefined ? at[n] : open.nodes[k]);
+    seat.push(n ?? -1);
+  }
+  for (let n of cells.flat()) {
+    if (cornerOf.has(n)) continue;
+    cornerOf.set(n, corners.length);
+    corners.push(at[n]);
+    seat.push(n);
+  }
+  let triples = open.triangles.map(tri => tri.slice(0, 3).map(k => openCorner[k]));
+  // the post's six corners are found among the open plate's nodes; a corner the mesh didn't keep leaves the post off
+  let rim = (hexagon ?? []).map(q => openCorner[open.nodes.findIndex((node, k) => k < open.corners && dist(node, q) < 1e-6)]);
+  let centre = corners.length;
+  if (hexagon && rim.every(n => n !== undefined)) {
+    corners.push(new Pt(hexagon.reduce((sum, q) => sum + q.x, 0) / 6, hexagon.reduce((sum, q) => sum + q.y, 0) / 6));
+    seat.push(-1);
+    for (let k = 0; k < 6; k++) triples.push([centre, rim[k], rim[(k + 1) % 6]]);
+  } else {
+    rim = [];
+  }
+  let openCount = triples.length;
+  for (let tri of g.triangles) triples.push(tri.map(n => cornerOf.get(n)!));
+  for (let [a, b, c, d] of g.linings.map(quad => quad.map(n => cornerOf.get(n)!))) triples.push([a, b, c], [a, c, d]);
+
+  let chain = g.ribLine.filter((_, k) => k % 2 === 0);
+  let band = buildEdgeBand(chain.map(n => at[n]), outline, step);
+  let outerFrom = corners.length;
+  for (let q of band.outer) {
+    corners.push(q);
+    seat.push(-1);
+  }
+  for (let tri of band.triangles) triples.push(tri.map(k => k < chain.length ? cornerOf.get(chain[k])! : outerFrom + k - chain.length));
+
+  let nodes = [...corners];
+  let { triangles, midsides } = addMidsides(nodes, triples.map(([a, b, c]) => {
+    let turn = (nodes[b].x - nodes[a].x) * (nodes[c].y - nodes[a].y) - (nodes[c].x - nodes[a].x) * (nodes[b].y - nodes[a].y);
+    return turn > 0 ? [a, b, c] : [a, c, b];
+  }));
+  while (seat.length < nodes.length) seat.push(-1);
+  // a garland edge's midside node may stand off the chord, on the curve; the plate's goes there
+  for (let [a, mid, b] of g.edges) {
+    let u = cornerOf.get(a), v = cornerOf.get(b);
+    let shares = u === undefined || v === undefined ? undefined : midsides.get(Math.min(u, v) * corners.length + Math.max(u, v));
+    if (shares === undefined) continue;
+    nodes[shares] = at[mid];
+    seat[shares] = mid;
+  }
+  // every other node outside the open plate is over the flat of the edge all the same
+  for (let tri of triangles.slice(openCount)) {
+    for (let n of tri) {
+      if (seat[n] === -1) seat[n] = -2;
+    }
+  }
+  let lineNodes = open.lineNodes.map(line => line.map((k, i) => {
+    if (i % 2 === 0) return openCorner[k];
+    let u = openCorner[line[i - 1]], v = openCorner[line[i + 1]];
+    return midsides.get(Math.min(u, v) * corners.length + Math.max(u, v))!;
+  }));
+  let post = rim.length ? [
+    centre, ...rim,
+    ...rim.map(n => midsides.get(Math.min(centre, n) * corners.length + Math.max(centre, n))!),
+    ...rim.map((n, k) => midsides.get(Math.min(n, rim[(k + 1) % 6]) * corners.length + Math.max(n, rim[(k + 1) % 6]))!),
+  ] : [];
+  return { mesh: { nodes, corners: corners.length, triangles, lineNodes, loopNodes: [], lost: open.lost, minAngle: open.minAngle }, seat, post };
 }
 
 // the bar as a web: under each node along its foot a node on its underside, and between each pair
@@ -471,7 +663,7 @@ export function buildFemDeck(p: ViolinFamilyParams, s: FemSolve, modes: number, 
   let heading = [`${name}, ${s.plate} plate, free`];
   let materials = [calcWoodMaterial(`${plateName}_WOOD`, wood[s.plate], wood[s.plate].cut === 'quarter' ? 'R' : 'T')];
   let orientations = [{ name: 'PLATE_GRAIN', x: { x: 0, y: 1, z: 0 }, xy: { x: -1, y: 0, z: 0 } }];
-  let sets: FemShellSet[] = [{ name: plateName, type: 'S6', elements: s.triangles, material: `${plateName}_WOOD`, orientation: 'PLATE_GRAIN', thickness: null, ownNormals: true }];
+  let sets: FemShellSet[] = [{ name: plateName, type: 'S6', elements: s.triangles, material: `${plateName}_WOOD`, orientation: 'PLATE_GRAIN', thickness: null, normals: s.normals }];
   if (s.web.length) {
     let along: Vec3 = { ...vecAtAngle(p.bassBar!.angle * TURN.degree), z: 0 };
     // the web's upper half-plate of wood is the plate's already, so the bar's weight is spread over the web
@@ -479,9 +671,9 @@ export function buildFemDeck(p: ViolinFamilyParams, s: FemSolve, modes: number, 
     heading.push(`** bass bar: density scaled by ${share.toFixed(3)}, the web hanging from the plate's mid-surface`);
     materials.push(calcWoodMaterial('BAR_WOOD', wood.bassBar, 'T', share));
     orientations.push({ name: 'BAR_GRAIN', x: along, xy: { x: 0, y: 0, z: 1 } });
-    sets.push({ name: 'BASS_BAR', type: 'S8R', elements: s.web, material: 'BAR_WOOD', orientation: 'BAR_GRAIN', thickness: p.bassBar!.width, ownNormals: false });
+    sets.push({ name: 'BASS_BAR', type: 'S8R', elements: s.web, material: 'BAR_WOOD', orientation: 'BAR_GRAIN', thickness: p.bassBar!.width, normals: null });
   }
-  return buildCalculixDeck({ heading, nodes: s.nodes, thickness: s.thickness, normals: s.normals, sets, solids: [], materials, orientations, modes: modes + RIGID_MODES });
+  return buildCalculixDeck({ heading, nodes: s.nodes, thickness: s.thickness, sets, solids: [], ties: [], materials, orientations, modes: modes + RIGID_MODES });
 }
 
 export function isFemGarlandBuilt(p: ViolinFamilyParams, step: number): boolean {
@@ -508,7 +700,7 @@ export function solvedFemGarland(p: ViolinFamilyParams, step: number): GarlandFe
 // butts against one. A rib stands square to
 // the back, and the taper only shortens it toward the neck
 function solveFemGarland(p: ViolinFamilyParams, step: number): GarlandFemSolve {
-  let s: GarlandFemSolve = { plan: [], triangles: [], ribLine: [], lined: [], nodes: [], normals: [], runs: [], wedges: [], ribVolume: 0, liningVolume: 0, blockVolume: 0, failures: [] };
+  let s: GarlandFemSolve = { plan: [], triangles: [], ribLine: [], lined: [], edges: [], linings: [], tops: [], feet: [], nodes: [], normals: [], runs: [], wedges: [], ribVolume: 0, liningVolume: 0, blockVolume: 0, failures: [] };
 
   solveSection(s.failures, 'Mesh', ['mesh'], () => {
     let gr = p.graduation!;
@@ -677,9 +869,17 @@ function solveFemGarland(p: ViolinFamilyParams, step: number): GarlandFemSolve {
       return column;
     });
 
+    s.tops = columns.map(column => column[2 * rows]);
+    s.feet = columns.map(column => column[0]);
+
     let runs = new Map<number, GarlandRun>();
     for (let e = 0; 2 * e < s.ribLine.length; e++) {
       let a = s.ribLine[2 * e], mid = s.ribLine[2 * e + 1], b = s.ribLine[(2 * e + 2) % s.ribLine.length];
+      s.edges.push([a, mid, b]);
+      if (s.lined[e]) {
+        s.linings.push([a, b, inner.get(b)!, inner.get(a)!]);
+        s.edges.push([inner.get(a)!, inner.get(mid)!, inner.get(b)!], [a, halfway.get(a)!, inner.get(a)!], [b, halfway.get(b)!, inner.get(b)!]);
+      }
       let length = dist(s.plan[a], s.plan[b]);
       let turn = Math.atan2(s.plan[b].y - s.plan[a].y, s.plan[b].x - s.plan[a].x) / TURN.degree;
       // grain has no sense, so a rib and its mirror across the body may share a run
@@ -709,6 +909,7 @@ function solveFemGarland(p: ViolinFamilyParams, step: number): GarlandFemSolve {
       let [a, b, c] = corners.map(n => s.plan[n]);
       let area = ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) / 2;
       s.triangles.push(corners);
+      s.edges.push([tri[0], tri[3], tri[1]], [tri[1], tri[4], tri[2]], [tri[2], tri[5], tri[0]]);
       s.blockVolume += area * corners.reduce((sum, n) => sum + s.nodes[columns[n][2 * rows]].z, 0) / 3;
       for (let row = 0; row < rows; row++) {
         let low = 2 * row, half = low + 1, high = low + 2;
@@ -737,10 +938,10 @@ export function buildGarlandDeck(p: ViolinFamilyParams, s: GarlandFemSolve, mode
   for (let run of s.runs) {
     let grain = `GRAIN_${run.angle}`;
     orientations.push({ name: grain, x: { ...vecAtAngle(run.angle * TURN.degree), z: 0 }, xy: { x: 0, y: 0, z: 1 } });
-    sets.push({ name: `RIBS_${run.angle}`, type: 'S8R', elements: run.ribs, material: 'RIB_WOOD', orientation: grain, thickness: p.body.rib, ownNormals: true });
+    sets.push({ name: `RIBS_${run.angle}`, type: 'S8R', elements: run.ribs, material: 'RIB_WOOD', orientation: grain, thickness: p.body.rib, normals: s.normals });
     if (run.linings.length) solids.push({ name: `LININGS_${run.angle}`, type: 'C3D20', elements: run.linings, material: 'LINING_WOOD', orientation: grain });
   }
-  return buildCalculixDeck({ heading: [`${name}, rib garland, free`], nodes: s.nodes, thickness: [], normals: s.normals, sets, solids, materials, orientations, modes: modes + RIGID_MODES });
+  return buildCalculixDeck({ heading: [`${name}, rib garland, free`], nodes: s.nodes, thickness: [], sets, solids, ties: [], materials, orientations, modes: modes + RIGID_MODES });
 }
 
 export function isFemNeckBuilt(p: ViolinFamilyParams, step: number): boolean {
@@ -788,12 +989,14 @@ function calcNeckRow(half: number, wall: number): number[] {
   return [-half, -(half + inner) / 2, -inner, 0, inner, (half + inner) / 2, half];
 }
 
-// the side view is one outline: up the neck's front from the mortise floor, round the head, down
-// the back and the heel's cove to the button and along the heel's foot. It is meshed in triangles
+// the side view is one outline: up the neck's front from its root, round the head, down the back
+// and the heel's cove to the button and along the heel's foot. The root is the face the ribs were
+// glued over, the neck block's outer face: the tenon let in past it is left to the block, which
+// is meshed whole. It is meshed in triangles
 // and each stood across the neck as three wedges. The fingerboard is a run of bricks on the neck's
 // front edge, crowned across, and on past the root over the body
 function solveFemNeck(p: ViolinFamilyParams, step: number): NeckFemSolve {
-  let s: NeckFemSolve = { side: [], triangles: [], board: [], nodes: [], wedges: [], bricks: [], neckVolume: 0, boardVolume: 0, failures: [] };
+  let s: NeckFemSolve = { side: [], triangles: [], board: [], seat: [], nodes: [], wedges: [], bricks: [], neckVolume: 0, boardVolume: 0, failures: [] };
 
   solveSection(s.failures, 'Mesh', ['mesh'], () => {
     let blank = buildBlankMiss('Mesh', ['mesh'], [step]);
@@ -822,11 +1025,14 @@ function solveFemNeck(p: ViolinFamilyParams, step: number): NeckFemSolve {
     let head = [...front, ...polylineSlice(back, backCum, meets, backCum[backCum.length - 1]).slice(1)].map(q => applyMatrix(onNeck, q));
     let sweep = signedArcSweep(n.heel);
     let heel = Array.from({ length: HEEL_CHORDS + 1 }, (_, k) => pointOnCircle(n.heel!, n.heel!.start + sweep * k / HEEL_CHORDS));
+    let rootY = p.body.height - p.body.overhang - p.body.rib;
+    let rootShare = (rootY - n.bottomFront.y) / (n.neckTop.y - n.bottomFront.y);
+    let root = new Pt(n.bottomFront.x + (n.neckTop.x - n.bottomFront.x) * rootShare, rootY);
     // a board that stops short of the root still gets a node to end on
-    let boardFoot = boardEnd.y > n.bottomFront.y ? boardEnd : n.bottomFront;
-    let outline = [n.neckTop, ...head, ...heel, n.tip, new Pt(0, calcMortiseFloorY(p)), n.bottomFront, boardFoot]
+    let boardFoot = boardEnd.y > root.y ? boardEnd : root;
+    let outline = [n.neckTop, ...head, ...heel, n.tip, new Pt(0, rootY), root, boardFoot]
       .filter((q, k, all) => dist(q, all[(k + all.length - 1) % all.length]) > 1e-6);
-    let mesh = buildTriangleMesh(outline, [], [], step, step, [n.neckTop, n.bottomFront, boardFoot]);
+    let mesh = buildTriangleMesh(outline, [], [], step, step, [n.neckTop, root, boardFoot]);
     let ring = mesh.loopNodes[0];
     if (mesh.lost.length || !ring.length) {
       let miss = buildMiss('Mesh: the neck\'s elements don\'t follow its edge at the marks; try a smaller element size.', ['mesh']);
@@ -874,11 +1080,11 @@ function solveFemNeck(p: ViolinFamilyParams, step: number): NeckFemSolve {
     // the board's stations up the fingerboard plane, corner and midside alternating: its own over
     // the body, then the neck's front edge from the root to the nut
     let stations: { at: Pt; row: number[] | null }[] = [];
-    if (boardEnd.y < n.bottomFront.y) {
-      let count = Math.max(1, Math.round(dist(boardEnd, n.bottomFront) / step));
+    if (boardEnd.y < root.y) {
+      let count = Math.max(1, Math.round(dist(boardEnd, root) / step));
       for (let k = 0; k < 2 * count; k++) {
         let t = k / (2 * count);
-        stations.push({ at: new Pt(boardEnd.x + (n.bottomFront.x - boardEnd.x) * t, boardEnd.y + (n.bottomFront.y - boardEnd.y) * t), row: null });
+        stations.push({ at: new Pt(boardEnd.x + (root.x - boardEnd.x) * t, boardEnd.y + (root.y - boardEnd.y) * t), row: null });
       }
     }
     let foot = ring.findIndex(i => dist(mesh.nodes[i], boardFoot) < 1e-6), nut = ring.findIndex(i => dist(mesh.nodes[i], n.neckTop!) < 1e-6);
@@ -934,6 +1140,7 @@ function solveFemNeck(p: ViolinFamilyParams, step: number): NeckFemSolve {
     s.nodes = kept;
     s.wedges = s.wedges.map(element => element.map(i => used.get(i)!));
     s.bricks = s.bricks.map(element => element.map(i => used.get(i)!));
+    s.seat = [...new Set(s.wedges.flat())].filter(i => Math.abs(s.nodes[i].y - rootY) < 1e-9);
     return null;
   });
   return s;
@@ -950,5 +1157,211 @@ export function buildNeckDeck(p: ViolinFamilyParams, s: NeckFemSolve, modes: num
     { name: 'NECK', type: 'C3D15', elements: s.wedges, material: 'NECK_WOOD', orientation: 'NECK_GRAIN' },
     { name: 'FINGERBOARD', type: 'C3D20', elements: s.bricks, material: 'BOARD_WOOD', orientation: 'NECK_GRAIN' },
   ];
-  return buildCalculixDeck({ heading: [`${name}, neck and fingerboard, free`], nodes: s.nodes, thickness: [], normals: [], sets: [], solids, materials, orientations, modes: modes + RIGID_MODES });
+  return buildCalculixDeck({ heading: [`${name}, neck and fingerboard, free`], nodes: s.nodes, thickness: [], sets: [], solids, ties: [], materials, orientations, modes: modes + RIGID_MODES });
+}
+
+export function isFemViolinBuilt(p: ViolinFamilyParams, step: number, bar: boolean, post: boolean): boolean {
+  updateSolved(p);
+  return p.solved!.femViolin.solve?.options === JSON.stringify([step, bar, post]);
+}
+
+// the violin as held on the params, every part's wood checked against it; built first if an edit
+// has cleared it or it was built with other options, which takes longer than any part alone
+export function solvedFemViolin(p: ViolinFamilyParams, step: number, bar: boolean, post: boolean): ViolinFemSolve | null {
+  if (!p.graduation) return null;
+  updateSolved(p);
+  let held = p.solved!.femViolin;
+  let built = JSON.stringify([step, bar, post]);
+  if (held.solve?.options !== built) held.solve = { options: built, mesh: solveFemViolin(p, step, bar, post) };
+  let s: ViolinFemSolve = { ...held.solve.mesh, failures: [...held.solve.mesh.failures] };
+  let wood = p.wood;
+  if (wood) pushWoodFailure(s.failures, [wood.top, wood.back, wood.bassBar, wood.ribs, wood.linings, wood.blocks, wood.neck, wood.fingerboard, wood.soundPost]);
+  return s;
+}
+
+// the garland and the neck are meshed as they are alone, and each plate over again to stand on
+// the garland. The garland's nodes are numbered first and keep their numbers; a plate's node that
+// has a seat takes the garland's node at that column's end and moves it to where the plate has it,
+// so the column runs on half an edge thickness into the plate. The neck's nodes come after, and
+// last the sound post's between the two plates' seats for it
+function solveFemViolin(p: ViolinFamilyParams, step: number, bar: boolean, post: boolean): ViolinFemSolve {
+  let s: ViolinFemSolve = {
+    nodes: [], thickness: [], plateNormals: [], ribNormals: [], top: [], back: [], web: [], runs: [], blocks: [], neck: [], board: [], post: [], heel: [], mortise: [],
+    shares: { ribs: 1, linings: 1, blocks: 1, bassBar: 1, soundPost: 1 },
+    volumes: { top: 0, back: 0, bassBar: 0, ribs: 0, linings: 0, blocks: 0, neck: 0, fingerboard: 0, soundPost: 0 },
+    failures: [],
+  };
+  let stands = post && p.neck && p.stringSetup ? solveStringSetup(p)?.soundPost ?? null : null;
+  solveSection(s.failures, 'Sound post', ['post'], () => {
+    return post && !stands ? buildMiss('Sound post: the post has to solve on the string setup before it can be meshed; the violin is built without it.', ['post']) : null;
+  });
+  let garland = solvedFemGarland(p, step)!;
+  let neck = solvedFemNeck(p, step)!;
+  // a part that can't be meshed is said so before the slow ones are tried
+  let meshed = ![garland, neck].some(part => part.failures.some(f => f.unsolved.includes('mesh')));
+  let back = meshed ? solveFemMesh(p, { plate: 'back', step, bar }, garland, stands) : null;
+  let top = back && !back.failures.length ? solveFemMesh(p, { plate: 'top', step, bar }, garland, stands) : null;
+  s.failures.push(...[garland, neck, top, back].flatMap(part => part?.failures ?? []).filter(f => !f.unsolved.includes('wood')));
+  let taper = p.arching ? solveRibTaper(p) : null;
+  if (!top || !back || !taper || s.failures.some(f => f.unsolved.includes('mesh'))) return s;
+
+  let topEdge = p.arching!.top.thickness, backEdge = p.arching!.back.thickness;
+  let placement = calcTopPlatePlacement(p, taper);
+  let tilt = placement.angleDeg * TURN.degree;
+  let none: Vec3 = { x: 0, y: 0, z: 0 };
+  s.nodes = [...garland.nodes];
+  s.ribNormals = [...garland.normals];
+
+  // the top is carved against its own gluing plane and set on the taper by the side view's rotation
+  let topNodes = top.nodes.map((q, n) => {
+    let side = placeOnTopPlate(placement, new Pt(taper.zLower + q.z + topEdge, q.y));
+    let seat = top.seat[n] ?? -1;
+    let node = seat < 0 ? s.nodes.length : garland.tops[seat];
+    let normal = top.normals[n];
+    s.nodes[node] = new Pt3D(q.x, side.y, side.x);
+    s.thickness[node] = top.thickness[n];
+    s.plateNormals[node] = { x: normal.x, y: normal.z * Math.sin(tilt) + normal.y * Math.cos(tilt), z: normal.z * Math.cos(tilt) - normal.y * Math.sin(tilt) };
+    return node;
+  });
+  // the back is turned over about the body's long axis, its gluing plane the garland's foot
+  let backNodes = back.nodes.map((q, n) => {
+    let seat = back.seat[n] ?? -1;
+    let node = seat < 0 ? s.nodes.length : garland.feet[seat];
+    let normal = back.normals[n];
+    s.nodes[node] = new Pt3D(-q.x, q.y, -(q.z + backEdge));
+    s.thickness[node] = back.thickness[n];
+    s.plateNormals[node] = { x: -normal.x, y: normal.y, z: -normal.z };
+    return node;
+  });
+  let neckFrom = s.nodes.length;
+  s.nodes.push(...neck.nodes);
+
+  // the post: a column from each of the back's nodes under it to the top's over it, a corner's
+  // with a node at every half layer and a midside node's at the layers' faces alone
+  if (stands && top.post.length && back.post.length) {
+    let high = top.post.map(n => topNodes[n]), low = back.post.map(n => backNodes[n]);
+    let from = s.nodes[low[0]], to = s.nodes[high[0]];
+    let length = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
+    let layers = Math.max(2, Math.round(length / step));
+    let columns = high.map((end, j) => {
+      let foot = s.nodes[low[j]], head = s.nodes[end];
+      let column = [low[j]];
+      for (let half = j < 7 ? 1 : 2; half < 2 * layers; half += j < 7 ? 1 : 2) {
+        let t = half / (2 * layers);
+        column[half] = s.nodes.length;
+        s.nodes.push(new Pt3D(foot.x + (head.x - foot.x) * t, foot.y + (head.y - foot.y) * t, foot.z + (head.z - foot.z) * t));
+      }
+      column[2 * layers] = end;
+      return column;
+    });
+    for (let layer = 0; layer < layers; layer++) {
+      let under = 2 * layer, half = under + 1, over = under + 2;
+      for (let k = 0; k < 6; k++) {
+        // the centre's column, two of the six round it, then the spoke, the edge round and the next spoke
+        let corners = [columns[0], columns[1 + k], columns[1 + (k + 1) % 6]];
+        let mids = [columns[7 + k], columns[13 + k], columns[7 + (k + 1) % 6]];
+        s.post.push([...corners.map(c => c[under]), ...corners.map(c => c[over]), ...mids.map(c => c[under]), ...mids.map(c => c[over]), ...corners.map(c => c[half])]);
+      }
+    }
+    let fitted = length - (s.thickness[low[0]] + s.thickness[high[0]]) / 2;
+    s.shares.soundPost = fitted / length;
+    s.volumes.soundPost = Math.PI * stands.r ** 2 * fitted;
+  }
+  for (let n = 0; n < s.nodes.length; n++) {
+    s.thickness[n] ??= 0;
+    s.plateNormals[n] ??= none;
+    s.ribNormals[n] ??= none;
+  }
+
+  s.top = top.triangles.map(tri => tri.map(n => topNodes[n]));
+  s.web = top.web.map(quad => quad.map(n => topNodes[n]));
+  s.back = back.triangles.map(tri => tri.map(n => backNodes[n]));
+  s.runs = garland.runs;
+  s.blocks = garland.wedges;
+  s.neck = neck.wedges.map(wedge => wedge.map(n => n + neckFrom));
+  s.board = neck.bricks.map(brick => brick.map(n => n + neckFrom));
+  s.heel = neck.seat.map(n => n + neckFrom);
+
+  // the neck block's outer face: the wedges of the block at the neck end that a rib stands on
+  let count = garland.plan.length;
+  let ribbed = new Set<number>();
+  for (let k = 0; k < garland.ribLine.length; k += 2) {
+    let a = garland.ribLine[k], b = garland.ribLine[(k + 2) % garland.ribLine.length];
+    ribbed.add(Math.min(a, b) * count + Math.max(a, b));
+  }
+  let rows = garland.wedges.length / garland.triangles.length;
+  garland.triangles.forEach((tri, t) => {
+    if ((garland.plan[tri[0]].y + garland.plan[tri[1]].y + garland.plan[tri[2]].y) / 3 < 0.9 * p.body.height) return;
+    for (let k = 0; k < 3; k++) {
+      let a = tri[k], b = tri[(k + 1) % 3];
+      if (!ribbed.has(Math.min(a, b) * count + Math.max(a, b))) continue;
+      // a wedge's side faces are its third to fifth, in the order of its triangle's edges
+      for (let row = 0; row < rows; row++) s.mortise.push({ element: t * rows + row, face: 3 + k });
+    }
+  });
+
+  let height = (taper.zLower + taper.zUpper) / 2;
+  let longer = topEdge / 2 + backEdge / 2;
+  s.shares = {
+    ...s.shares,
+    ribs: height / (height + longer),
+    blocks: height / (height + longer),
+    linings: 2 * p.graduation!.liningHeight / (2 * p.graduation!.liningHeight + longer),
+    bassBar: top.webVolume ? top.barVolume / top.webVolume : 1,
+  };
+  s.volumes = {
+    ...s.volumes,
+    top: top.plateVolume, back: back.plateVolume, bassBar: top.barVolume,
+    ribs: garland.ribVolume, linings: garland.liningVolume, blocks: garland.blockVolume,
+    neck: neck.neckVolume, fingerboard: neck.boardVolume,
+  };
+  return s;
+}
+
+// the deck for the whole violin, free: every part's elements under the materials and grain its own
+// deck gives it, the garland's woods lightened by their shares, and the heel tied to the neck block
+export function buildViolinDeck(p: ViolinFamilyParams, s: ViolinFemSolve, modes: number, name: string): string {
+  let wood = p.wood!;
+  let neckAngle = p.neck!.angle * TURN.degree;
+  let materials = [
+    calcWoodMaterial('TOP_WOOD', wood.top, wood.top.cut === 'quarter' ? 'R' : 'T'),
+    calcWoodMaterial('BACK_WOOD', wood.back, wood.back.cut === 'quarter' ? 'R' : 'T'),
+    calcWoodMaterial('RIB_WOOD', wood.ribs, 'R', s.shares.ribs),
+    calcWoodMaterial('LINING_WOOD', wood.linings, 'R', s.shares.linings),
+    calcWoodMaterial('BLOCK_WOOD', wood.blocks, 'R', s.shares.blocks),
+    calcWoodMaterial('NECK_WOOD', wood.neck, 'R'),
+    calcWoodMaterial('BOARD_WOOD', wood.fingerboard, 'R'),
+  ];
+  let orientations: FemOrientation[] = [
+    { name: 'PLATE_GRAIN', x: { x: 0, y: 1, z: 0 }, xy: { x: -1, y: 0, z: 0 } },
+    { name: 'BLOCK_GRAIN', x: { x: 0, y: 0, z: 1 }, xy: { x: 0, y: 1, z: 0 } },
+    { name: 'NECK_GRAIN', x: { x: 0, y: Math.cos(neckAngle), z: -Math.sin(neckAngle) }, xy: { x: 1, y: 0, z: 0 } },
+  ];
+  let sets: FemShellSet[] = [
+    { name: 'TOP', type: 'S6', elements: s.top, material: 'TOP_WOOD', orientation: 'PLATE_GRAIN', thickness: null, normals: s.plateNormals },
+    { name: 'BACK', type: 'S6', elements: s.back, material: 'BACK_WOOD', orientation: 'PLATE_GRAIN', thickness: null, normals: s.plateNormals },
+  ];
+  if (s.web.length) {
+    materials.push(calcWoodMaterial('BAR_WOOD', wood.bassBar, 'T', s.shares.bassBar));
+    orientations.push({ name: 'BAR_GRAIN', x: { ...vecAtAngle(p.bassBar!.angle * TURN.degree), z: 0 }, xy: { x: 0, y: 0, z: 1 } });
+    sets.push({ name: 'BASS_BAR', type: 'S8R', elements: s.web, material: 'BAR_WOOD', orientation: 'BAR_GRAIN', thickness: p.bassBar!.width, normals: null });
+  }
+  let solids: FemSolidSet[] = [
+    { name: 'BLOCKS', type: 'C3D15', elements: s.blocks, material: 'BLOCK_WOOD', orientation: 'BLOCK_GRAIN' },
+    { name: 'NECK', type: 'C3D15', elements: s.neck, material: 'NECK_WOOD', orientation: 'NECK_GRAIN' },
+    { name: 'FINGERBOARD', type: 'C3D20', elements: s.board, material: 'BOARD_WOOD', orientation: 'NECK_GRAIN' },
+  ];
+  if (s.post.length) {
+    // its grain stands upright as a block's does
+    materials.push(calcWoodMaterial('POST_WOOD', wood.soundPost, 'R', s.shares.soundPost));
+    solids.push({ name: 'SOUND_POST', type: 'C3D15', elements: s.post, material: 'POST_WOOD', orientation: 'BLOCK_GRAIN' });
+  }
+  for (let run of s.runs) {
+    let grain = `GRAIN_${run.angle}`;
+    orientations.push({ name: grain, x: { ...vecAtAngle(run.angle * TURN.degree), z: 0 }, xy: { x: 0, y: 0, z: 1 } });
+    sets.push({ name: `RIBS_${run.angle}`, type: 'S8R', elements: run.ribs, material: 'RIB_WOOD', orientation: grain, thickness: p.body.rib, normals: s.ribNormals });
+    if (run.linings.length) solids.push({ name: `LININGS_${run.angle}`, type: 'C3D20', elements: run.linings, material: 'LINING_WOOD', orientation: grain });
+  }
+  let ties = [{ name: 'NECK_JOINT', tolerance: p.body.height * HEEL_GAP_SHARE, nodes: s.heel, faces: s.mortise.map(face => ({ set: 'BLOCKS', ...face })) }];
+  return buildCalculixDeck({ heading: [`${name}, the violin glued up, free`], nodes: s.nodes, thickness: s.thickness, sets, solids, ties, materials, orientations, modes: modes + RIGID_MODES });
 }

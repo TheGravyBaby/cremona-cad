@@ -61,6 +61,7 @@ export interface ViolinFamilySolved {
   // the garland as last built and the element size it was built at; cleared like the plate's mesh
   femGarland: { solve: { step: number; mesh: GarlandFemSolve } | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
   femNeck: { solve: { step: number; mesh: NeckFemSolve } | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
+  femViolin: { solve: { options: string; mesh: ViolinFemSolve } | undefined; children: (keyof ViolinFamilySolved)[]; lastParams: string };
 }
 
 export type BodyKey = 'height' | 'width' | 'overhang' | 'rib';
@@ -476,7 +477,7 @@ export interface BassBarSolve {
   failures: BassBarFailure[];
 }
 
-export type FemKey = 'mesh' | 'bar' | 'wood';
+export type FemKey = 'mesh' | 'bar' | 'post' | 'wood';
 export type FemFailure = SolveFailure<FemKey>;
 
 // one plate as shell elements. A node stands on the plate's mid-surface: `plan` is where it was
@@ -485,9 +486,14 @@ export type FemFailure = SolveFailure<FemKey>;
 // plate's, six nodes each as an S6 takes them; `web` is the bass bar's, a row of eight-node
 // quadrilaterals standing on the bar's centreline and hanging to its underside, sharing the plate's
 // nodes along their upper edge. The volumes are in mm³: the bar's as it is carved, and the web's as
-// it stands, which starts half a plate higher. Empty until the plate is graduated
+// it stands, which starts half a plate higher. Empty until the plate is graduated. A plate meshed
+// to stand on a garland has `seat`: under each node the garland's plan node it shares, or less
+// than 0. `post` is the nodes the sound post's end stands on, where the plate was meshed for one:
+// its centre, six round it, the midsides of the six spokes and those of the six edges round
 export interface FemSolve {
   plate: Plate;
+  seat: number[];
+  post: number[];
   plan: Pt[];
   nodes: Pt3D[];
   normals: Vec3[];
@@ -511,13 +517,19 @@ export interface FemSolve {
 // blocks', the ribs' and the linings' the same ones where they are glued. `normals` looks outward
 // from each rib node, and is all zeros at a corner's tip and off the ribs. The ribs are eight-node
 // quadrilaterals looking outward, the linings twenty-node bricks behind them, both sorted by the
-// way their grain runs; `wedges` are the blocks', fifteen nodes each. The volumes are in mm³. A
-// plate that takes `ribLine` as a line to follow lands its nodes on the garland's own
+// way their grain runs; `wedges` are the blocks', fifteen nodes each, a triangle's one above
+// another. The volumes are in mm³. What a plate is glued to: `edges` is every element edge of the
+// plan, corner, midside, corner; `linings` each lining's top in plan, its four corners from the
+// rib round; `tops` and `feet` the node each plan node's column ends on
 export interface GarlandFemSolve {
   plan: Pt[];
   triangles: number[][];
   ribLine: number[];
   lined: boolean[];
+  edges: number[][];
+  linings: number[][];
+  tops: number[];
+  feet: number[];
   nodes: Pt3D[];
   normals: Vec3[];
   runs: GarlandRun[];
@@ -542,15 +554,47 @@ export interface GarlandRun {
 // neck, and the wedges run between the rows in three layers, a cheek, the middle and a cheek; the
 // middle is left out over the pegbox's hollow. `bricks` are the fingerboard, glued to the neck's
 // front by the neck's own nodes and running on free over the body; `board` is its side view, a
-// closed outline. The volumes are in mm³
+// closed outline. `seat` is the nodes of the heel's end, the face glued to the neck block. The
+// volumes are in mm³
 export interface NeckFemSolve {
   side: Pt[];
   triangles: number[][];
   board: Pt[];
+  seat: number[];
   nodes: Pt3D[];
   wedges: number[][];
   bricks: number[][];
   neckVolume: number;
   boardVolume: number;
+  failures: FemFailure[];
+}
+
+// the whole instrument as one mesh, in the garland's frame. The garland stands as it does alone,
+// but its columns end on the plates' mid-surfaces, half an edge thickness past each gluing plane,
+// where the plates' own nodes are: a plate shares every node of the ribs, linings and blocks under
+// it. The back is turned over onto the garland about the body's long axis; the top is set on the
+// rib taper. `shares` is what each garland part's density is scaled by for the wood its longer
+// columns double with the plates', and the bar's as on the top alone. The neck is glued by `heel`,
+// the nodes of its end face, to `mortise`, the neck block's outer face: each a wedge of `blocks`
+// and which of its faces. The sound post is a column of wedges, six round, on the plates' own
+// nodes at each end, so it too runs half a plate into each and is lightened for it. `volumes` are
+// each part's wood as it is carved, mm³
+export interface ViolinFemSolve {
+  nodes: Pt3D[];
+  thickness: number[];
+  plateNormals: Vec3[];
+  ribNormals: Vec3[];
+  top: number[][];
+  back: number[][];
+  web: number[][];
+  runs: GarlandRun[];
+  blocks: number[][];
+  neck: number[][];
+  board: number[][];
+  post: number[][];
+  heel: number[];
+  mortise: { element: number; face: number }[];
+  shares: { ribs: number; linings: number; blocks: number; bassBar: number; soundPost: number };
+  volumes: { top: number; back: number; bassBar: number; ribs: number; linings: number; blocks: number; neck: number; fingerboard: number; soundPost: number };
   failures: FemFailure[];
 }

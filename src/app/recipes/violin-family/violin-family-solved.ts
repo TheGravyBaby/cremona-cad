@@ -16,17 +16,18 @@ export function updateSolved(p: ViolinFamilyParams): void {
       fluting: { solve: undefined, children: ['crossArchingTop', 'crossArchingBack'], lastParams: '' },
       crossArchingTop: { solve: undefined, children: ['landTop'], lastParams: '' },
       crossArchingBack: { solve: undefined, children: ['landBack'], lastParams: '' },
-      graduation: { solve: undefined, children: ['landTop', 'landBack', 'femGarland'], lastParams: '' },
+      graduation: { solve: undefined, children: ['landTop', 'landBack', 'femGarland', 'femViolin'], lastParams: '' },
       landTop: { solve: undefined, children: ['thicknessFieldTop'], lastParams: '' },
       landBack: { solve: undefined, children: ['thicknessFieldBack'], lastParams: '' },
-      thicknessFieldTop: { solve: undefined, children: ['thicknessBandsTop', 'bassBarContact', 'femMesh'], lastParams: '' },
-      thicknessFieldBack: { solve: undefined, children: ['thicknessBandsBack', 'femMesh'], lastParams: '' },
+      thicknessFieldTop: { solve: undefined, children: ['thicknessBandsTop', 'bassBarContact', 'femMesh', 'femViolin'], lastParams: '' },
+      thicknessFieldBack: { solve: undefined, children: ['thicknessBandsBack', 'femMesh', 'femViolin'], lastParams: '' },
       thicknessBandsTop: { solve: undefined, children: [], lastParams: '' },
       thicknessBandsBack: { solve: undefined, children: [], lastParams: '' },
       bassBarContact: { solve: undefined, children: [], lastParams: '' },
       femMesh: { solve: undefined, children: [], lastParams: '' },
       femGarland: { solve: undefined, children: [], lastParams: '' },
       femNeck: { solve: undefined, children: [], lastParams: '' },
+      femViolin: { solve: undefined, children: [], lastParams: '' },
     };
     Object.defineProperty(p, 'solved', { value: solved, enumerable: false });
   }
@@ -107,6 +108,12 @@ export function updateSolved(p: ViolinFamilyParams): void {
   if (s.femNeck.lastParams !== femNeck) {
     s.femNeck.lastParams = femNeck;
     clearSolved(s, 'femNeck');
+  }
+
+  let femViolin = JSON.stringify([femMesh, femGarland, femNeck]);
+  if (s.femViolin.lastParams !== femViolin) {
+    s.femViolin.lastParams = femViolin;
+    clearSolved(s, 'femViolin');
   }
 }
 
