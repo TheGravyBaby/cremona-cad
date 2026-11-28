@@ -3,9 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { addMidsides, buildCalculixDeck, buildEdgeBand, buildTriangleMesh, saveDeckFile, FemMaterial, FemOrientation, FemShellSet, FemSolidSet, TriangleMesh } from '../../../../helpers/femExporter';
 import { clamp, cross3, dist, dot, pointInPolygon, pointOnCircle, signedArcSweep, signedPolygonArea, stepAlong3, subVec, subVec3, TURN, vecAtAngle } from '../../../../helpers/math/simpleGeometry';
 import { makeMonotoneSpline, pointAtPolylineLength, polylineCumulativeLengths, polylineSlice, projectOntoPolyline } from '../../../../helpers/math/vibeMath';
-import { applyMatrix, pathFromPolyline, translatePath } from '../../../../helpers/math/pathMath';
+import { applyMatrix, pathFromPolyline } from '../../../../helpers/math/pathMath';
 import { flattenPath, heightFieldNormalAt } from '../../../../helpers/math/pathVibes';
-import { renderFilledPath, renderPath, renderSolveFailures, renderTranslatedLayers } from '../../../../helpers/renderFuncs';
+import { renderCircle, renderFilledPath, renderPath, renderSolveFailures, renderTranslatedLayers } from '../../../../helpers/renderFuncs';
 import { buildBlankMiss, buildMiss, reportFailures, solveSection } from '../../../../helpers/validators';
 import { NumberStepperDirective } from '../../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../../../theme/palettes';
@@ -16,13 +16,13 @@ import { FemFailure, FemSolve, GarlandFemSolve, GarlandRun, NeckFemSolve, NeckSo
 import { PanelComponentBase } from '../panel-component-base';
 import { updateSolved } from '../../violin-family-solved';
 import { rowAt, solvedCrossArching, surfaceZAt } from '../cross-arching-panel/cross-arching-panel';
-import { CONTOUR_INTERVAL, rampFill, renderGarland, solvedGraduation, solvedThicknessField } from '../dev-graduation-panel/dev-graduation-panel';
+import { CONTOUR_INTERVAL, rampFill, renderBackPlate, renderGarland, solvedGraduation, solvedThicknessField } from '../dev-graduation-panel/dev-graduation-panel';
 import { solveBassBar } from '../dev-bassbar-panel/dev-bassbar-panel';
 import { definePurflingPath, PLATE_LAYOUT_GAP, renderPlateContour, solvedPlateContour } from '../plate-contour-panel/plate-contour-panel';
 import { renderFholes } from '../fhole-contours-panel/fhole-contours-panel';
 import { solvedRibArcs } from '../corners-panel/corners-panel';
 import { calcTopPlatePlacement, placeOnTopPlate, ribHeightAt, solveRibTaper } from '../long-arching-panel/long-arching-panel';
-import { calcNeckTaper, calcScrollOnNeck, defineNeckInPlan, neckHalfWidthAt } from '../neck-panel/neck-panel';
+import { calcNeckTaper, calcScrollOnNeck, neckHalfWidthAt, renderNeckViews, solveNeck } from '../neck-panel/neck-panel';
 import { defineSideScrollPath, solveScroll } from '../pegbox-panel/pegbox-panel';
 import { calcPegboxCavity, pegboxWidthAt } from '../scroll-widths-panel/scroll-widths-panel';
 import { defineFingerboardInPlan, fingerboardRadiusAt, solveStringSetup } from '../string-setup-panel/string-setup-panel';
@@ -37,6 +37,7 @@ import { defineFingerboardInPlan, fingerboardRadiusAt, solveStringSetup } from '
 const BAR_INK = 0;
 const RIB_INK = 1;
 const BLOCK_INK = 2;
+const POST_INK = 3;
 // a violin's plate meshes well at 6 mm; the bigger instruments scale from it
 const SEED_STEP_SHARE = 6 / 356;
 // under this share of the body an element is finer than a plate's modes need and the mesh too big to draw
@@ -266,19 +267,29 @@ export class DevFemPanel extends PanelComponentBase implements OnInit {
   protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
     let pc = solvedPlateContour(p)!;
-    let outlines = [renderPlateContour(p, pc, this.pal, this.flags, false), renderFholes(p, this.pal)];
     this.s = this.garland = this.neck = this.violin = null;
+    // the neck and violin are seen as the neck panel shows the instrument, the neck and scroll on
+    // every view; until a neck is drafted, as the plates alone
+    let n = p.neck ? solveNeck(p) : null;
+    let views = !!n?.neckTop && (this.part === 'neck' || this.part === 'violin');
     if (this.part === 'violin') {
-      // everything as it was drafted, and the top's mesh over it once the violin is built
-      let drafted = [...outlines, renderGarland(solvedGraduation(p)!, this.pal), renderNeckInPlan(p, this.pal)];
+      // everything as it was drafted, the post under the top while it is in, and the top's mesh
+      // over it all once the violin is built
+      let post = this.post && p.stringSetup ? solveStringSetup(p)?.soundPost : null;
       let violin = this.violin = isFemViolinBuilt(p, this.options.step, this.options.bar, this.post) ? solvedFemViolin(p, this.options.step, this.options.bar, this.post) : null;
-      return violin ? [...drafted, renderFemViolin(violin, this.pal), renderSolveFailures(violin.failures, this.pal.alert)] : drafted;
+      let front = [
+        renderGarland(solvedGraduation(p)!, this.pal),
+        renderBoardInPlan(p, this.pal),
+        ...(post ? [renderCircle(post, this.pal.ink(POST_INK), false, '2 2')] : []),
+        ...(violin ? [renderFemViolin(violin, this.pal), renderSolveFailures(violin.failures, this.pal.alert)] : []),
+      ];
+      return views ? renderNeckViews(p, n!, pc, this.pal, { ground: true, front }) : [renderPlateContour(p, pc, this.pal, this.flags, false), renderFholes(p, this.pal), ...front];
     }
     if (this.part === 'neck') {
-      // the neck and its board in plan as they were drafted, and the mesh's side view once there is one
-      let drafted = [...outlines, renderNeckInPlan(p, this.pal)];
+      // the board over the neck in plan as it was drafted, and the mesh over the neck's side once there is one
       let neck = this.neck = isFemNeckBuilt(p, this.options.step) ? solvedFemNeck(p, this.options.step) : null;
-      return neck ? [...drafted, renderFemNeck(p, neck, this.pal), renderSolveFailures(neck.failures, this.pal.alert)] : drafted;
+      let side = neck ? [renderFemNeck(neck, this.pal), renderSolveFailures(neck.failures, this.pal.alert)] : [];
+      return views ? renderNeckViews(p, n!, pc, this.pal, { ground: true, front: [renderBoardInPlan(p, this.pal)], side }) : side;
     }
     if (this.part === 'garland') {
       // the garland as it was drafted, and over it the mesh once there is one
@@ -286,13 +297,14 @@ export class DevFemPanel extends PanelComponentBase implements OnInit {
       let garland = this.garland = isFemGarlandBuilt(p, this.options.step) ? solvedFemGarland(p, this.options.step) : null;
       return garland ? [...drafted, renderFemGarland(garland, this.pal), renderSolveFailures(garland.failures, this.pal.alert)] : drafted;
     }
+    // a plate alone: the top with its holes, or the back where the plate contour lays it, to the top's left
+    let back = this.options.plate === 'back';
+    let outline = back ? [renderBackPlate(p, pc, this.pal, solvedRibArcs(p))] : [renderPlateContour(p, pc, this.pal, this.flags, false, false), renderFholes(p, this.pal)];
     let s = this.s = isFemBuilt(p, this.options) ? solvedFem(p, this.options) : null;
-    if (!s) return outlines;
-    // the back lies to the top's left, as the plate contour lays the two out
-    let dx = s.plate === 'back' ? -p.body.width * PLATE_LAYOUT_GAP : 0;
+    if (!s) return outline;
     return [
-      ...outlines,
-      renderTranslatedLayers([renderFemMesh(s, this.pal), renderSolveFailures(s.failures, this.pal.alert)], dx),
+      ...outline,
+      renderTranslatedLayers([renderFemMesh(s, this.pal), renderSolveFailures(s.failures, this.pal.alert)], back ? -p.body.width * PLATE_LAYOUT_GAP : 0),
     ];
   }
 }
@@ -336,24 +348,21 @@ export const renderFemGarland = (s: GarlandFemSolve, pal: PanelPalette) => (g: a
   renderPath(pathFromPolyline(s.ribLine.map(n => s.plan[n]), true), pal.ink(RIB_INK), STROKE_WEIGHT.section)(g, ui);
 };
 
-// the neck over the body in plan, the fingerboard over the neck
-export const renderNeckInPlan = (p: ViolinFamilyParams, pal: PanelPalette) => (g: any, ui: any): void => {
-  let setup = p.neck && p.stringSetup ? solveStringSetup(p) : null;
-  if (!setup?.neck.neckTop) return;
-  renderPath(defineNeckInPlan(p, setup.neck), pal.ink(BLOCK_INK), STROKE_WEIGHT.guide)(g, ui);
-  let board = defineFingerboardInPlan(p, setup);
+// the fingerboard in plan, over the neck the front view draws
+export const renderBoardInPlan = (p: ViolinFamilyParams, pal: PanelPalette) => (g: any, ui: any): void => {
+  let setup = p.stringSetup ? solveStringSetup(p) : null;
+  let board = setup ? defineFingerboardInPlan(p, setup) : null;
   if (board) renderPath(board, pal.ink(BAR_INK), STROKE_WEIGHT.guide)(g, ui);
 };
 
-// the neck's mesh from the side, stood beside the body with the back's gluing plane toward it:
-// the wedges' triangles, and the fingerboard's outline over them
-export const renderFemNeck = (p: ViolinFamilyParams, s: NeckFemSolve, pal: PanelPalette) => (g: any, ui: any): void => {
+// the neck's mesh in the side elevation's frame, over the neck it was meshed from: the wedges'
+// triangles, and the fingerboard's outline over them
+export const renderFemNeck = (s: NeckFemSolve, pal: PanelPalette) => (g: any, ui: any): void => {
   if (!s.triangles.length) return;
-  let dx = p.body.width * PLATE_LAYOUT_GAP;
   let wedges = s.triangles.map(tri => pathFromPolyline(tri.map(n => s.side[n]), true)).join(' ');
-  renderFilledPath(translatePath(wedges, dx, 0), pal.ink(BLOCK_INK), 0.15, 'nonzero')(g, ui);
-  renderPath(translatePath(wedges, dx, 0), pal.ink(BLOCK_INK), STROKE_WEIGHT.guide, 0.5)(g, ui);
-  renderPath(translatePath(pathFromPolyline(s.board, true), dx, 0), pal.ink(BAR_INK), STROKE_WEIGHT.section)(g, ui);
+  renderFilledPath(wedges, pal.ink(BLOCK_INK), 0.15, 'nonzero')(g, ui);
+  renderPath(wedges, pal.ink(BLOCK_INK), STROKE_WEIGHT.guide, 0.5)(g, ui);
+  renderPath(pathFromPolyline(s.board, true), pal.ink(BAR_INK), STROKE_WEIGHT.section)(g, ui);
 };
 
 // the built violin from above: the top's elements, every node where the garland under it put it

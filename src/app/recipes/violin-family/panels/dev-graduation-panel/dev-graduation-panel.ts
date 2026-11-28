@@ -442,7 +442,8 @@ const spread = (values: number[]): string => {
   return lo === hi ? lo.toFixed(1) : `${lo.toFixed(1)}–${hi.toFixed(1)}`;
 };
 
-const renderBackPlate = (p: ViolinFamilyParams, pc: PlateContourSolve | null, pal: PanelPalette, rib: RibArcs | null) => (g: any, ui: any): void => {
+// the back from outside, laid to the top's left, with the ribs' inner face on it
+export const renderBackPlate = (p: ViolinFamilyParams, pc: PlateContourSolve | null, pal: PanelPalette, rib: RibArcs | null) => (g: any, ui: any): void => {
   let dx = PLATE_DX.back(p);
   if (pc?.back) renderPath(translatePath(pc.back, dx, 0), pal.neutral, STROKE_WEIGHT.trace)(g, ui);
   if (pc?.button) renderPath(translatePath(pc.button.path, dx, 0), pal.neutral, STROKE_WEIGHT.trace)(g, ui);

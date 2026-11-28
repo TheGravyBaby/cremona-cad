@@ -65,24 +65,39 @@ export class NeckPanel extends PanelComponentBase<NeckHighlightKey> {
   protected buildCanvasLayers(): RenderLayer[] {
     let p = this.params;
     let n = this.n = solveNeck(p)!;
-    let a = solveLongArching(p)!;
     let pc = solvedPlateContour(p)!;
-    let w = p.scroll ? solveScrollWidths(p) : null;
-    let scroll = w && !w.scroll.failures.length ? w.scroll : undefined;
-    let scrollInPlan = scroll && !w!.failures.some(f => f.unsolved.length) ? scroll : null;
-    let sideX = calcSideViewOffsetX(p);
-    let side = [
-      renderBodySideProfile(p, a, pc, this.pal, false, { ground: true }),
-      renderNeck(p, n, this.pal, { guides: this.flags.showModuleGuides, scroll }),
-      renderNeckHighlight(p, n, this.highlightedPart, 'side'),
-      renderSolveFailures(n.failures, this.pal.alert),
-    ];
-    return [
-      renderNeckFrontView(p, n, pc, scrollInPlan, this.pal),
-      renderNeckHighlight(p, n, this.highlightedPart, 'front', pc.back ? -p.body.width * PLATE_LAYOUT_GAP : null),
-      renderTranslatedLayers(side, sideX),
-    ];
+    return renderNeckViews(p, n, pc, this.pal, {
+      guides: this.flags.showModuleGuides,
+      front: [renderNeckHighlight(p, n, this.highlightedPart, 'front', pc.back ? -p.body.width * PLATE_LAYOUT_GAP : null)],
+      side: [renderNeckHighlight(p, n, this.highlightedPart, 'side'), renderSolveFailures(n.failures, this.pal.alert)],
+    });
   }
+}
+
+// the front view, the back beside it, and the side elevation, each with the neck and the scroll on
+// it. `front` and `side` are drawn over each view in its own frame, for a panel adding to the neck.
+// Ground draws the neck all neutral, for a panel where the neck is what something else stands on
+export function renderNeckViews(
+  p: ViolinFamilyParams,
+  n: NeckSolve,
+  pc: PlateContourSolve,
+  pal: PanelPalette,
+  opts: { guides?: boolean; ground?: boolean; front?: RenderLayer[]; side?: RenderLayer[] },
+): RenderLayer[] {
+  let a = solveLongArching(p)!;
+  let w = p.scroll ? solveScrollWidths(p) : null;
+  let scroll = w && !w.scroll.failures.length ? w.scroll : undefined;
+  let scrollInPlan = scroll && !w!.failures.some(f => f.unsolved.length) ? scroll : null;
+  let side = [
+    renderBodySideProfile(p, a, pc, pal, false, { ground: true }),
+    renderNeck(p, n, pal, { guides: opts.guides, ground: opts.ground, scroll }),
+    ...(opts.side ?? []),
+  ];
+  return [
+    renderNeckFrontView(p, n, pc, scrollInPlan, pal, !!opts.ground),
+    ...(opts.front ?? []),
+    renderTranslatedLayers(side, calcSideViewOffsetX(p)),
+  ];
 }
 
 // the neck in the side elevation, over the body's side profile. Only what a field sets is in
@@ -234,8 +249,9 @@ const renderScrollViewOnNeck = (view: ScrollView, sides: boolean, pal: PanelPale
 
 // the instrument from the front, the top plate with whatever the neck covers cut away and the neck
 // over it, and beside it the back with the neck's sides coming out past its edge, the plate nearest
-// the eye. Only the two ends a width sets are in colour, the top the neck's and the root the root's
-const renderNeckFrontView = (p: ViolinFamilyParams, n: NeckSolve, pc: PlateContourSolve, scroll: ScrollSolve | null, pal: PanelPalette) => (g: any, ui: any): void => {
+// the eye. Only the two ends a width sets are in colour, the top the neck's and the root the root's,
+// and neither on ground
+const renderNeckFrontView = (p: ViolinFamilyParams, n: NeckSolve, pc: PlateContourSolve, scroll: ScrollSolve | null, pal: PanelPalette, ground: boolean) => (g: any, ui: any): void => {
   if (!n.neckTop) return;
   let nk = p.neck!;
   let neck = defineNeckInPlan(p, n);
@@ -266,6 +282,7 @@ const renderNeckFrontView = (p: ViolinFamilyParams, n: NeckSolve, pc: PlateConto
   }
 
   // drawn last, since they lie along the neck's own ends
+  if (ground) return;
   renderSegment(new Pt(-nk.topWidth / 2, n.neckTop.y), new Pt(nk.topWidth / 2, n.neckTop.y), pal.ink(2).faint(3), STROKE_WEIGHT.section)(g, ui);
   if (pc.back) renderSegment(new Pt(dx - nk.topWidth / 2, n.neckTop.y), new Pt(dx + nk.topWidth / 2, n.neckTop.y), pal.ink(2).faint(3), STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(-nk.rootWidth / 2, calcMortiseFloorY(p)), new Pt(nk.rootWidth / 2, calcMortiseFloorY(p)), pal.ink(2).faint(-3), STROKE_WEIGHT.section)(g, ui);
